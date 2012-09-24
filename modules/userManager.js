@@ -7,6 +7,8 @@ var step = require("Step");
 var exceptions = require("./exceptions.js");
 var UserNotExisting = exceptions.UserNotExisting;
 var AccessException = exceptions.AccessException;
+var InvalidSignature = exceptions.InvalidSignature;
+var InvalidSymKey = exceptions.InvalidSymKey;
 
 var ssnH = helper;
 var h = helper;
@@ -426,18 +428,29 @@ var UserManager = function () {
 		this.setProfile = function (cb, view, group, data) {
 			step(function ownUser() {
 				if (ownUser(view)) {
-					//if (h.isSig(data.sig)
-					//TODO
+					if (h.isSig(data.sig)) {
+						if (h.isInt(group) && group > 0) {
+							//TODO
+						} else {
+							cb(null, false);
+						}
+					} else {
+						cb(null, false);
+					}
 				} else {
 					throw new AccessException("not own user");
 				}
 			});
 		};
 
-		this.setPublicProfile = function (cb, view, group) {
+		this.setPublicProfile = function (cb, view, data) {
 			step(function ownUser() {
 				if (ownUser(view)) {
-					//TODO
+					if (h.isSig(data.sig)) {
+						//TODO
+					} else {
+						cb(null, false);
+					}
 				} else {
 					throw new AccessException("not own user");
 				}
@@ -527,15 +540,27 @@ var UserManager = function () {
 			}
 		};
 
-		this.hasFriendShipRequested = function (cb, view) {
+		this.hasFriendShipRequested = function (cb, view, theUserID) {
 			step(function getFSR() {
 				theUser.usersFriendShipRequests(this, false);
 			}, function theFSR(err, fsr) {
 				if (err) { throw err; }
-				if (ssnH.inArray(fsr, view.getUserID())) {
-					this(null, true);
+				if (ssnH.isset(theUserID) && theUserID !== view.getUserID()) {
+					if (ownUser(view)) {
+						if (ssnH.inArray(fsr, theUserID)) {
+							this(null, true);
+						} else {
+							this(null, false);
+						}
+					} else {
+						throw new AccessException("can not get friendshiprequests for other users");
+					}
 				} else {
-					this(null, false);
+					if (ssnH.inArray(fsr, view.getUserID())) {
+						this(null, true);
+					} else {
+						this(null, false);
+					}
 				}
 			}, cb);
 		};
@@ -544,20 +569,78 @@ var UserManager = function () {
 			step(function getOwnUser() {
 				view.getSession().getOwnUser(this);
 			}, function ownUser(u) {
-				u.hasFriendShipRequested(this, view);
+				u.hasFriendShipRequested(this, view, userid);
 			}, cb);
 		};
 
-		this.friendShip = function (cb, view, keys, sig, group) {
+		this.friendShip = function (cb, view, keys, sig, token, group) {
+			var theOwnUser;
+			step(function startFriendShip() {
+				if (!h.isInt(group) || group < 1) {
+					group = 1;
+				}
+
+				if (view.getSession().checkLogin() !== true) {
+					throw new AccessException("not logged in any more");
+				}
+
+				theUser.didIRequestFriendShip(this, view);
+			}, h.sF(function (alreadyFriends) {
+				if (alreadyFriends) {
+					cb(null, true);
+				} else {
+					if (h.isSig(sig)) {
+						view.getOwnUser(this);
+					} else {
+						throw new InvalidSignature("not a signature.");
+					}
+				}
+			}), h.sF(function (ownUser) {
+				theOwnUser = ownUser;
+				theOwnUser.checkToken(this, view, token, "friendShip");
+			}), h.sF(function (tokenOK) {
+				if (tokenOK !== true) {
+					throw new InvalidSignature("friendShip not correctly signed.");
+				}
+
+				theOwnUser.checkSignature(sig, "friendShip|" + userid + "|" + token, this);
+			}), h.sF(function (sigOK) {
+				if (!sigOK) {
+					throw new InvalidSignature("friendShip not correctly signed.");
+				}
+
+				if (h.isSymKey(keys.profile) !== true) {
+					throw new InvalidSymKey("profile");
+				}
+
+				if (h.isSymKey(keys.wall) !== true) {
+					throw new InvalidSymKey("wall");
+				}
+
+				var stmt = "Insert INTO `friends` (`userid`, `friendid`, `group`, `profilKey`, `wallKey`) VALUES (?, ?, ?, ?, ?)";
+				//check keys
+			}));
+
+			//TODO
+		};
+
+		this.unfriend = function (cb) {
 			//TODO
 		};
 
 		this.checkSignature = function (signature, message, callback) {
 			//TODO
 		};
-		
-		this.unfriend = function (cb) {
-			//TODO
+
+		this.checkToken = function (cb, view, token, topic) {
+			step(function () {
+				if (ownUser(view)) {
+					//TODO
+					//select from db, etc.
+				} else {
+					throw new AccessException("not own user");
+				}
+			}, cb);
 		};
 
 		this.addLoadListener = function (toCall) {
