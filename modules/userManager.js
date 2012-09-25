@@ -618,8 +618,11 @@ var UserManager = function () {
 				}
 
 				var stmt = "Insert INTO `friends` (`userid`, `friendid`, `group`, `profilKey`, `wallKey`) VALUES (?, ?, ?, ?, ?)";
+				require("./database.js").exec(stmt, [view.getUserID(), userid, group, keys["profile"], keys["wall"]], this);
 				//check keys
-			}));
+			}), h.sF(function (result) {
+				this(null, true);
+			}), cb);
 
 			//TODO
 		};
