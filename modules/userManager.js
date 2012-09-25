@@ -597,7 +597,7 @@ var UserManager = function () {
 				}
 			}), h.sF(function (ownUser) {
 				theOwnUser = ownUser;
-				theOwnUser.checkToken(this, view, token, "friendShip");
+				theOwnUser.useToken(this, view, token, "friendShip");
 			}), h.sF(function (tokenOK) {
 				if (tokenOK !== true) {
 					throw new InvalidSignature("friendShip not correctly signed.");
@@ -635,7 +635,11 @@ var UserManager = function () {
 			//TODO
 		};
 
-		this.checkToken = function (cb, view, token, topic) {
+		this.generateToken = function (cb, view, topic) {
+			//TODO
+		};
+
+		this.useToken = function (cb, view, token, topic) {
 			step(function () {
 				if (ownUser(view)) {
 					//TODO
