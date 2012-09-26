@@ -609,6 +609,7 @@ var UserManager = function () {
 					throw new InvalidSignature("friendShip not correctly signed.");
 				}
 
+				//check symmetric keys
 				if (h.isSymKey(keys.profile) !== true) {
 					throw new InvalidSymKey("profile");
 				}
@@ -619,12 +620,9 @@ var UserManager = function () {
 
 				var stmt = "Insert INTO `friends` (`userid`, `friendid`, `group`, `profilKey`, `wallKey`) VALUES (?, ?, ?, ?, ?)";
 				require("./database.js").exec(stmt, [view.getUserID(), userid, group, keys["profile"], keys["wall"]], this);
-				//check keys
 			}), h.sF(function (result) {
 				this(null, true);
 			}), cb);
-
-			//TODO
 		};
 
 		this.unfriend = function (cb) {
@@ -636,7 +634,24 @@ var UserManager = function () {
 		};
 
 		this.generateToken = function (cb, view, topic) {
-			//TODO
+			if (ownUser(view)) {
+				var theToken;
+				step(function generateRandom() {
+					require('crypto').randomBytes(48, this);
+				}, h.sF(function (buf) {
+					theToken = buf.toString("hex");
+					var stmt = "Select COUNT(`ID`) as count FROM `token` WHERE `userid` = ? and `topic` = ? and `token` = ?"
+					require("./database.js").exec(stmt, [view.getUserID(), topic, theToken], this);
+				}), h.sF(function (result) {
+					if (result[0].count === 0) {
+						this(null, theToken);
+					} else {
+						theUser.generateToken(cb, view, topic);
+					}
+				}), cb);
+			} else {
+				throw new AccessException("not own user");
+			}
 		};
 
 		this.useToken = function (cb, view, token, topic) {
