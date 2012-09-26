@@ -8,6 +8,11 @@ if (typeof (ssn.crypto) === "undefined") {
 	ssn.crypto = {};
 }
 
+if (typeof require === "function") {
+	var RSA = require("./rsa.js");
+	var BigInteger = require("./jsbn.js");
+}
+
 /**
 * A private Key
 * @param data The (Encrypted) Data of this key
@@ -41,7 +46,7 @@ ssn.crypto.privateKey = function (data, password) {
 	* @private
 	*/
 	var pkSign = function (message) {
-		return RSAObject.signPSS(message, d, p, q, u, this.n)
+		return RSAObject.signPSS(message, d, p, q, u, this.n);
 	};
 
 	/**
