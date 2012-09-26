@@ -11,8 +11,10 @@ var enc = rsa.encryptOAEP("abcd", ee, n, "socialize");
 
 console.log(enc.toString(16));
 
+var time = new Date().getTime();
 var signature = new BigInteger("a40ff334abb95c48da698cbfb6c21a40d41418d4774062f907bd5d201f8fcd55f919f8b2b02846898b07401799b18b234e2221774fdcf1a656ec0c5fcba049e8d94c90407f9a8eadafcb3cfbf262b4d4fa0879dadff64116d267fabe5742532a8c5086771150cbcf358362c98b52b8986f1630a152ec4892b317ba30fc73259b", 16);
-
 var real_hash = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash("Test!"));
-
 console.log(rsa.verifyPSS(real_hash, signature, ee, n));
+var time2 = new Date().getTime();
+console.log("Verify time:" + (time2 - time));
+
