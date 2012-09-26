@@ -18,6 +18,15 @@
 //
 // RSA implementation
 
+if (typeof require === "function") {
+	var sjcl = require("./sjcl.js");
+	var BigInteger = require("./jsbn.js");
+
+	ssn = {};
+	ssn.logger = {};
+	ssn.logger.log = console.log;
+}
+
 function SecureRandom() {
     function nextBytes(byteArray) {
 		var n;
@@ -30,7 +39,12 @@ function SecureRandom() {
 
 //length is in octets
 function secureRandomLength(length) {
-	return sjcl.codec.hex.fromBits(sjcl.random.randomWords(Math.ceil(length / 4), ssn.config.paranoia)).substring(0, length * 2);
+	if (typeof require === "function") {
+		var crypto = require("crypto");
+		return crypto.randomBytes(length).toString("hex");
+	}
+
+	return sjcl.codec.hex.fromBits(sjcl.random.randomWords(Math.ceil(length / 4))).substring(0, length * 2);
 }
 
 function sha256(text) {
@@ -78,7 +92,7 @@ function RSA() {
 	function MGF1(mgfSeed, maskLen) {
 		var T = "";
 		var C = "";
-
+		
 		var i = 0;
 		for (i = 0; i <= Math.ceil(maskLen / hlen) - 1; i += 1) {
 			C = I2OSP(i, 4);
@@ -142,7 +156,7 @@ function RSA() {
 
 		//hash of label
 		var lHash = sha256(l);
-		
+
 		var Y = EM.substr(0, 2);
 		var maskedSeed = EM.substr(2, hlen * 2);
 		var maskedDB = EM.substr(hlen * 2 + 2);
@@ -152,11 +166,11 @@ function RSA() {
 
 		var dbMask = MGF1(seed, k - hlen - 1);
 		var DB = xor(maskedDB, dbMask, k - hlen - 1);
-		
+
 		var lHash2 = DB.substr(0, hlen * 2);
 
 		if (lHash2 !== lHash) {
-			ssn.logger.log("hashes not equal: " + lHash2 + "-"+ lHash);
+			ssn.logger.log("hashes not equal: " + lHash2 + "-" + lHash);
 			return false;
 		}
 
@@ -225,7 +239,7 @@ function RSA() {
 		
 		//random seed
 		var seed = secureRandomLength(hlen);
-
+		
 		var dbMask = MGF1(seed, k - hlen - 1);
 		
 		var maskedDB = xor(DB, dbMask, k - hlen - 1);
@@ -511,3 +525,5 @@ function RSA() {
 	this.generateAsync = generateAsync;
 	this.keyObject = keyObject;
 }
+
+module.exports = RSA;
