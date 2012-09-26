@@ -603,7 +603,7 @@ var UserManager = function () {
 					throw new InvalidSignature("friendShip not correctly signed.");
 				}
 
-				theOwnUser.checkSignature(sig, "friendShip|" + userid + "|" + token, this);
+				theOwnUser.verifySignature(sig, "friendShip|" + userid + "|" + token, this);
 			}), h.sF(function (sigOK) {
 				if (!sigOK) {
 					throw new InvalidSignature("friendShip not correctly signed.");
@@ -629,8 +629,20 @@ var UserManager = function () {
 			//TODO
 		};
 
-		this.checkSignature = function (signature, message, callback) {
-			//TODO
+		this.verifySignature = function (cb, signature, message) {
+			step(function getPublicKey() {
+				theUser.getPublicKey(this);
+			}, h.sF(function thePublicKey(pubKey) {
+				var RSA = require("./crypto/rsa.js");
+				var BigInteger = require("./crypto/BigInteger.js");
+				var sjcl = reuqire("./crypto/sjcl.js");
+				var ee = new BigInteger(pubKey.ee, 16);
+				var n = new BigInteger(pubKey.n, 16);
+				
+				var signature = new BigInteger(signature, 16);
+				var real_hash = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(message));
+				this(null, rsa.verifyPSS(real_hash, signature, ee, n));
+			}), cb);
 		};
 
 		this.generateToken = function (cb, view, topic) {
@@ -657,12 +669,18 @@ var UserManager = function () {
 		this.useToken = function (cb, view, token, topic) {
 			step(function () {
 				if (ownUser(view)) {
-					//TODO
-					//select from db, etc.
+					var stmt = "Update `token` SET `used` = 1 WHERE `userid` = ? and `topic` = ? and `token` = ? and `used` = 0"
+					require("./database.js").exec(stmt, [view.getUserID(), topic, theToken], this);
 				} else {
 					throw new AccessException("not own user");
 				}
-			}, cb);
+			}, h.sF(function (result) {
+				if (result.affectedRows === 1) {
+					this(null, true);
+				} else {
+					this(null, false);
+				}
+			}), cb);
 		};
 
 		this.addLoadListener = function (toCall) {
