@@ -8,6 +8,14 @@ if (typeof (ssn.crypto) === "undefined") {
 	ssn.crypto = {};
 }
 
+if (typeof require === "function") {
+	ssn.logger = console.log;
+
+	var sjcl = require("./sjcl.js");
+	var RSA = require("./rsa.js");
+	var BigInteger = require("./jsbn.js");
+}
+
 /**
 * a session Key
 * @class
@@ -112,9 +120,10 @@ ssn.crypto.sessionKey = function (key) {
 
 	var skIsSymKey = function () {
 		var internal = sessionKey;
+		var internal2;
 		if (typeof internal === "string") {
 			try {
-				var internal2 = jQuery.parseJSON(sessionKey);
+				internal2 = jQuery.parseJSON(sessionKey);
 				if (typeof internal2 === "undefined" || internal2 === null) {
 					return false;
 				}
@@ -222,3 +231,5 @@ ssn.crypto.sessionKey = function (key) {
 	*/
 	this.decryptText = skDecryptText;
 };
+
+if (typeof module !== "undefined" && module.exports) {module.exports = ssn.crypto.sessionKey; }

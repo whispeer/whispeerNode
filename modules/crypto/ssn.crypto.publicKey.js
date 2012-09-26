@@ -8,6 +8,11 @@ if (typeof (ssn.crypto) === "undefined") {
 	ssn.crypto = {};
 }
 
+if (typeof require === "function") {
+	ssn.logger = console.log;
+	var BigInteger = require("./jsbn.js");
+}
+
 /**
 * @class
 */
@@ -95,3 +100,4 @@ ssn.crypto.publicKey = function (data) {
 		}
 	}
 };
+if (typeof module !== "undefined" && module.exports) { module.exports = ssn.crypto.publicKey; }

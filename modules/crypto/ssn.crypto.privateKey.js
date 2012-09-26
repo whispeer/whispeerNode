@@ -9,6 +9,9 @@ if (typeof (ssn.crypto) === "undefined") {
 }
 
 if (typeof require === "function") {
+	ssn.logger = console.log;
+
+	var sjcl = require("./sjcl.js");
 	var RSA = require("./rsa.js");
 	var BigInteger = require("./jsbn.js");
 }
@@ -182,3 +185,5 @@ ssn.crypto.privateKey = function (data, password) {
 		}
 	}
 };
+
+if (typeof module !== "undefined" && module.exports) {module.exports = ssn.crypto.privateKey; }

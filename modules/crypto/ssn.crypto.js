@@ -4,6 +4,15 @@ if (typeof (ssn) === "undefined") {
 	var ssn = {};
 }
 
+if (typeof require === "function") {
+	//TODO: ssn.config
+	ssn.logger = console.log;
+
+	var sjcl = require("./sjcl.js");
+	var RSA = require("./rsa.js");
+	var BigInteger = require("./jsbn.js");
+}
+
 /**
 * The Main Crypto Interface
 * Used to generate keys, encrypt/decrypt text and sign/verify text
@@ -247,3 +256,11 @@ ssn.crypto = {
 		return sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(text));
 	}
 };
+
+if (typeof require === "function") {
+	ssn.crypto.privateKey = require("./ssn.crypto.privateKey.js");
+	ssn.crypto.publicKey = require("./ssn.crypto.publicKey.js");
+	ssn.crypto.sessionKey = require("./ssn.crypto.sessionKey.js");
+}
+
+if (typeof module !== "undefined" && module.exports) {module.exports = ssn.crypto; }

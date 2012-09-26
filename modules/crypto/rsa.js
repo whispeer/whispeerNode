@@ -22,7 +22,7 @@ if (typeof require === "function") {
 	var sjcl = require("./sjcl.js");
 	var BigInteger = require("./jsbn.js");
 
-	ssn = {};
+	var ssn = {};
 	ssn.logger = {};
 	ssn.logger.log = console.log;
 }
@@ -526,4 +526,4 @@ function RSA() {
 	this.keyObject = keyObject;
 }
 
-module.exports = RSA;
+if(typeof module!="undefined"&&module.exports) module.exports=RSA;
