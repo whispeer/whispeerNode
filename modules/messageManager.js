@@ -308,6 +308,10 @@ var MessageManager = function () {
 			}
 		};
 
+		this.getJSON = function (view) {
+			//TODO
+		};
+
 		var setLoaded = function (err) {
 			loaded = true;
 			exists = (err ? false : true);
@@ -490,6 +494,11 @@ var MessageManager = function () {
 			}), h.sF(function () {
 				var stmt = "Update `messagetopics` SET `newest` = ? WHERE `ID` = ?";
 				require("./database.js").exec(stmt, [theMessageID, theTopicID]);
+			}), h.sF(function (theMessage) {
+				var i;
+				for (i = 0; i < theReceiver.length; i += 1) {
+					theReceiver[i].send("newmessage", theMessage.getJSON());
+				}
 
 				this(null, theTopicID, theMessageID);
 			}), cb);

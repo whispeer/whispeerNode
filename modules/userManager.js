@@ -66,6 +66,27 @@ var UserManager = function () {
 			}
 		};
 
+		this.send = function (topic, message) {
+			if (typeof topic !== "string") {
+				logger.log("Topic " + topic + " is not a string", logger.WARNING);
+			}
+
+			if (typeof message === "object") {
+				message = JSON.stringify(message);
+			}
+
+			if (typeof message !== "string") {
+				throw new SyntaxError("not JSON");
+			}
+
+			var clientid;
+			for (clientid in clients) {
+				if (clients.hasOwnProperty(clientid)) {
+					clients[clientid].send('{"' + topic + '":"' + message + ' "}');
+				}
+			}
+		};
+
 		this.removeClient = function (view) {
 			delete clients[view.getClient().getClientID()];
 		};
@@ -619,8 +640,9 @@ var UserManager = function () {
 				}
 
 				var stmt = "Insert INTO `friends` (`userid`, `friendid`, `group`, `profilKey`, `wallKey`) VALUES (?, ?, ?, ?, ?)";
-				require("./database.js").exec(stmt, [view.getUserID(), userid, group, keys["profile"], keys["wall"]], this);
+				require("./database.js").exec(stmt, [view.getUserID(), userid, group, keys.profile, keys.wall], this);
 			}), h.sF(function (result) {
+				//TODO affectedrows?
 				this(null, true);
 			}), cb);
 		};
@@ -635,13 +657,13 @@ var UserManager = function () {
 			}, h.sF(function thePublicKey(pubKey) {
 				var RSA = require("./crypto/rsa.js");
 				var BigInteger = require("./crypto/BigInteger.js");
-				var sjcl = reuqire("./crypto/sjcl.js");
+				var sjcl = require("./crypto/sjcl.js");
 				var ee = new BigInteger(pubKey.ee, 16);
 				var n = new BigInteger(pubKey.n, 16);
-				
-				var signature = new BigInteger(signature, 16);
+
+				signature = new BigInteger(signature, 16);
 				var real_hash = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(message));
-				this(null, rsa.verifyPSS(real_hash, signature, ee, n));
+				this(null, RSA.verifyPSS(real_hash, signature, ee, n));
 			}), cb);
 		};
 
@@ -652,7 +674,7 @@ var UserManager = function () {
 					require('crypto').randomBytes(48, this);
 				}, h.sF(function (buf) {
 					theToken = buf.toString("hex");
-					var stmt = "Select COUNT(`ID`) as count FROM `token` WHERE `userid` = ? and `topic` = ? and `token` = ?"
+					var stmt = "Select COUNT(`ID`) as count FROM `token` WHERE `userid` = ? and `topic` = ? and `token` = ?";
 					require("./database.js").exec(stmt, [view.getUserID(), topic, theToken], this);
 				}), h.sF(function (result) {
 					if (result[0].count === 0) {
@@ -669,8 +691,8 @@ var UserManager = function () {
 		this.useToken = function (cb, view, token, topic) {
 			step(function () {
 				if (ownUser(view)) {
-					var stmt = "Update `token` SET `used` = 1 WHERE `userid` = ? and `topic` = ? and `token` = ? and `used` = 0"
-					require("./database.js").exec(stmt, [view.getUserID(), topic, theToken], this);
+					var stmt = "Update `token` SET `used` = 1 WHERE `userid` = ? and `topic` = ? and `token` = ? and `used` = 0";
+					require("./database.js").exec(stmt, [view.getUserID(), topic, token], this);
 				} else {
 					throw new AccessException("not own user");
 				}
