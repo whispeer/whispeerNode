@@ -21,9 +21,16 @@ var MessageManager = function () {
 	var topics = new TimeArray(TOPICTIME, true);
 	var messages = new TimeArray(MESSAGETIME, true);
 
+	/** an object for a topic
+	* you need to add a load listener!
+	* @param id
+	*/
 	var Topic = function (id) {
+		/** is this topic loaded? */
 		var loaded = false;
+		/** load Listeners */
 		var loadListener = [];
+		/** does this topic exist? */
 		var exists;
 
 		var theTopic = this;
@@ -47,10 +54,18 @@ var MessageManager = function () {
 
 		var receivers = [];
 
+		/** get topic id
+		* @return id
+		*/
 		this.getID = function () {
 			return id;
 		};
 
+		/** add a load listener
+		* @param cb callback
+		* @callback called when loaded. 
+		* @callbackParam exits does the topic exist (bool)
+		*/
 		this.addLoadListener = function (cb) {
 			if (loaded === true) {
 				cb(exists);
@@ -59,6 +74,39 @@ var MessageManager = function () {
 			}
 		};
 
+		/** get topic data object representation
+		* @param cb callback
+		* @param view view
+		* @callback called with object representation
+		*/
+		this.getJSON = function (cb, view) {
+			var result = {};
+			step(function () {
+				if (theTopic.isReceiver(view)) {
+					result.key = theTopic.getKey(view);
+
+					result.receiver = receivers;
+					result.topicid = id;
+					theTopic.read(this, view);
+				} else {
+					throw new AccessException("not a receiver");
+				}
+			}, h.sF(function (isRead) {
+				result.read = isRead;
+				theTopic.getNewest(cb, view);
+			}), h.sF(function (theNewest) {
+				result.newest = theNewest;
+				theTopic.getNewestDate(cb, view);
+			}), h.sF(function (newestDate) {
+				result.newestSend = newestDate;
+				this(null, result);
+			}), cb);
+		};
+
+		/** called when topic is loaded
+		* @param err error during loading
+		* calls listeners
+		*/
 		var setLoaded = function (err) {
 			loaded = true;
 			exists = (err ? false : true);
@@ -77,6 +125,10 @@ var MessageManager = function () {
 			}
 		};
 
+		/** check if the currently logged in user is a receiver of this topic
+		* @param view view
+		* @return true/false
+		*/
 		this.isReceiver = function (view) {
 			var i;
 			for (i = 0; i < receivers.length; i += 1) {
@@ -88,6 +140,11 @@ var MessageManager = function () {
 			return false;
 		};
 
+		/** get the key for this topic
+		* @param view view
+		* key is based on logged in user
+		* @throws AccessException user not receiver
+		*/
 		this.getKey = function (view) {
 			var i;
 			for (i = 0; i < receivers.length; i += 1) {
@@ -99,6 +156,12 @@ var MessageManager = function () {
 			throw new AccessException("not a receiver");
 		};
 
+		/** get the topics newest message send date
+		* @param cb callback
+		* @param view view
+		* @callback (err, date) error: problem occured. date: newest message send date
+		* @throws AccessException user not receiver
+		*/
 		this.getNewestDate = function (cb, view) {
 			step(function () {
 				if (theTopic.isReceiver(view)) {
@@ -116,6 +179,12 @@ var MessageManager = function () {
 			}), cb);
 		};
 
+		/** get the topic newest message
+		* @param cb callback
+		* @param view view
+		* @callback (err, message) error: problem occured. message: newest message
+		* @throws AccessException user not receiver
+		*/
 		this.getNewest = function (cb, view) {
 			step(function () {
 				if (theTopic.isReceiver(view)) {
@@ -262,6 +331,29 @@ var MessageManager = function () {
 			return id;
 		};
 
+		this.isRead = function (view) {
+			return read[view.getUserID()];
+		};
+
+		this.setRead = function (view, read) {
+			if (topic.isReceiver(view)) {
+				if (read === false) {
+					read[view.getUserID()] = false;
+				} else {
+					read[view.getUserID()] = true;
+				}
+
+				step(function setReadDB() {
+					var stmt = "Update `messageread` SET `read` = ? WHERE `messageid` = ? and `userid` = ?";
+					require("./database.js").exec(stmt, [read[view.getUserID()], id, view.getUserID()], this);
+				}, h.sF(function readSetDB(result) {
+					if (result.affectedRows !== 1) {
+						logger.log("Set read problem " + view.getUserID() + " - " + id, logger.ERROR);
+					}
+				}));
+			}
+		};
+
 		this.getTopicID = function () {
 			return topicid;
 		};
@@ -308,8 +400,33 @@ var MessageManager = function () {
 			}
 		};
 
-		this.getJSON = function (view) {
-			//TODO
+		this.getJSON = function (cb, view, topicObject) {
+			var result = {};
+
+			step(function () {
+				if (topic.isReceiver(view)) {
+					result.messageid = id;
+					result.topicid = topicid;
+					result.signature = signature;
+					result.message = helper.hexToBase64(cryptedText);
+					result.iv = helper.hexToBase64(iv);
+					result.sender = sender;
+					result.sendDate = sendDate;
+					result.read = read[view.getUserID()];
+
+					if (topicObject === true) {
+						topic.getJSON(this, view);
+					}
+				} else {
+					throw new AccessException("not a receiver");
+				}
+			}, h.sF(function (topicJSON) {
+				if (topicObject === true) {
+					result.topic = topicJSON;
+				}
+
+				this(null, result);
+			}), cb);
 		};
 
 		var setLoaded = function (err) {
@@ -387,7 +504,7 @@ var MessageManager = function () {
 		step(function loadMessages() {
 			var i;
 			for (i = 0; i < ids.length; i += 1) {
-				this.getMessage(this.parallel(), ids[i]);
+				MessageManager.getMessage(this.parallel(), ids[i]);
 			}
 		}, h.sF(function (messages) {
 			messages = h.orderCorrectly(messages, ids, "getID");
@@ -494,10 +611,14 @@ var MessageManager = function () {
 			}), h.sF(function () {
 				var stmt = "Update `messagetopics` SET `newest` = ? WHERE `ID` = ?";
 				require("./database.js").exec(stmt, [theMessageID, theTopicID]);
+			}), h.sF(function () {
+				MessageManager.getMessage(theMessageID);
 			}), h.sF(function (theMessage) {
+				theMessage.getJSON(this, view);
+			}), h.sF(function (messageJSON) {
 				var i;
 				for (i = 0; i < theReceiver.length; i += 1) {
-					theReceiver[i].send("newmessage", theMessage.getJSON());
+					theReceiver[i].send("newmessage", messageJSON);
 				}
 
 				this(null, theTopicID, theMessageID);

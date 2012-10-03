@@ -451,7 +451,7 @@ var UserManager = function () {
 				if (ownUser(view)) {
 					if (h.isSig(data.sig)) {
 						if (h.isInt(group) && group > 0) {
-							//TODO
+							//TODO setProfile function
 						} else {
 							cb(null, false);
 						}
@@ -468,7 +468,7 @@ var UserManager = function () {
 			step(function ownUser() {
 				if (ownUser(view)) {
 					if (h.isSig(data.sig)) {
-						//TODO
+						//TODO setPublicProfile function
 					} else {
 						cb(null, false);
 					}
@@ -642,13 +642,13 @@ var UserManager = function () {
 				var stmt = "Insert INTO `friends` (`userid`, `friendid`, `group`, `profilKey`, `wallKey`) VALUES (?, ?, ?, ?, ?)";
 				require("./database.js").exec(stmt, [view.getUserID(), userid, group, keys.profile, keys.wall], this);
 			}), h.sF(function (result) {
-				//TODO affectedrows?
+				//TODO friendShip check affectedrows = 1 (or insertedRows?)?
 				this(null, true);
 			}), cb);
 		};
 
 		this.unfriend = function (cb) {
-			//TODO
+			//TODO unfriend
 		};
 
 		this.verifySignature = function (cb, signature, message) {
