@@ -17,8 +17,13 @@ var h = helper;
 var TOPICTIME = 10 * 60 * 1000;
 var MESSAGETIME = 5 * 60 * 1000;
 
+/** our message manager constructor
+* later used as singleton
+*/
 var MessageManager = function () {
+	/** topics cache */
 	var topics = new TimeArray(TOPICTIME, true);
+	/** messages cache */
 	var messages = new TimeArray(MESSAGETIME, true);
 
 	/** an object for a topic
@@ -32,14 +37,19 @@ var MessageManager = function () {
 		var loadListener = [];
 		/** does this topic exist? */
 		var exists;
-
+		/** this closure */
 		var theTopic = this;
 
+		/** receiver helper object
+		* not a user.
+		*/
 		var Receiver = function (userid, key, keySym, keySymIV) {
+			/** get the receivers userid */
 			this.getUserID = function () {
 				return userid;
 			};
 
+			/** get the receivers key */
 			this.getKey = function () {
 				if (h.isset(keySym) && h.isset(keySymIV)) {
 					return {
@@ -52,6 +62,7 @@ var MessageManager = function () {
 			};
 		};
 
+		/** list of receiver */
 		var receivers = [];
 
 		/** get topic id
@@ -203,6 +214,11 @@ var MessageManager = function () {
 			}), cb);
 		};
 
+		/** get the oldest message in this topic
+		* @param cb callback
+		* @param view view
+		* @callback message id of oldest message
+		*/
 		this.getOldest = function (cb, view) {
 			step(function () {
 				if (theTopic.isReceiver(view)) {
@@ -221,6 +237,13 @@ var MessageManager = function () {
 			}), cb);
 		};
 
+		/** get messages of this topic
+		* @param cb callback
+		* @param view view
+		* @param index start index
+		* @param count how many messages?
+		* @param callback array list.
+		*/
 		this.getMessages = function (cb, view, index, count) {
 			step(function () {
 				if (theTopic.isReceiver(view)) {
@@ -255,6 +278,13 @@ var MessageManager = function () {
 			}), cb);
 		};
 
+		/** get messages between two dates.
+		* @param cb callback
+		* @param view view
+		* @param startDate date after which the messages should be
+		* @param endDate date before which the messages should be
+		* @TODO
+		*/
 		this.getMessagesByDate = function (cb, view, startDate, endDate) {
 			step(function () {
 				if (theTopic.isReceiver(view)) {
@@ -281,6 +311,11 @@ var MessageManager = function () {
 			}), cb);
 		};
 
+		/** is this topic read?
+		* @param cb callback
+		* @param view view
+		* @callback see message.isRead
+		*/
 		this.read = function (cb, view) {
 			step(function getNewest() {
 				theTopic.getNewest(this, view);
@@ -289,6 +324,10 @@ var MessageManager = function () {
 			}), cb);
 		};
 
+		/** get the receivers of this message
+		* @param view view
+		* @return list of receiver ids.
+		*/
 		this.getReceiver = function (view) {
 			var receiverList = [];
 			var i, isReceiver = false;
@@ -307,6 +346,7 @@ var MessageManager = function () {
 			throw new AccessException("not a receiver");
 		};
 
+		/** load message data */
 		step(function () {
 			var stmt = "SELECT `receiverid`, `key`, `symKey`, `symKeyIV` FROM `messagereceiver` WHERE `topicid` = ?";
 			require("./database.js").exec(stmt, [id], this);
@@ -319,6 +359,10 @@ var MessageManager = function () {
 		}), setLoaded);
 	};
 
+	/** message constructor
+	* @param id message id
+	* add a load listener!
+	*/
 	var Message = function (id) {
 		var loaded = false;
 		var loadListener = [];

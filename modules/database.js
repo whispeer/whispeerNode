@@ -2,6 +2,7 @@
 var logger = require("./logger.js").logger;
 var step = require("Step");
 
+/** database class */
 var Database = function () {
 	var mysql = require('mysql');
 	var config = require("./config.js");
@@ -10,6 +11,7 @@ var Database = function () {
 	// Create a MySQL connection pool with
 	// a max of 10 connections, a min of 2, and a 30 second max idle time
 	var poolModule = require('generic-pool');
+	/** our pool */
 	var pool = poolModule.Pool({
 		name     : 'mysql',
 		create   : function (callback) {
@@ -36,6 +38,12 @@ var Database = function () {
 		log : logger.log
 	});
 
+	/** execute a statement
+	* @param stmt statement to execute
+	* @param params array of parameters
+	* @param callback callback
+	* @callback (err, results, fields): error, query results, query fields.
+	*/
 	this.exec = function (stmt, params, callback) {
 		var theClient;
 		step(function getCon() {
@@ -44,6 +52,7 @@ var Database = function () {
 			theClient = client;
 			if (err) {
 				logger.log(err, logger.ERROR);
+				this(err);
 			} else {
 				theClient.query(stmt, params, this);
 			}
@@ -53,6 +62,7 @@ var Database = function () {
 		});
 	};
 
+	/** on exit. Destroy all pool instances */
 	this.exit = function () {
 		pool.drain(function () {
 			pool.destroyAllNow();
@@ -60,6 +70,7 @@ var Database = function () {
 	};
 };
 
+/** make it a singleton */
 var theDatabase = new Database();
 
 module.exports = theDatabase;

@@ -1,4 +1,5 @@
 "use strict";
+/** exceptions */
 var exceptions = {
 	/** user is not existing exception */
 	UserNotExisting: function (message) {
