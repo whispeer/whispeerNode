@@ -3,6 +3,8 @@ var assert = require("assert");
 
 require("../modules/logger.js").logger.logLevel = 3;
 
+var step = require("step");
+
 describe('Database', function () {
 	var database = require("../modules/database.js");
 
@@ -83,7 +85,7 @@ describe('client', function () {
 				//todo
 			}, '{"testAction":"bla"}', 55);
 		});
-		
+
 	});
 
 	describe('with listener', function () {
@@ -95,7 +97,43 @@ describe('client', function () {
 	});
 });
 
-describe('helper', function () {});
+describe('helper', function () {
+	var helper = require("../modules/helper.js").helper;
+	describe('code', function () {
+		it('length of sid check', function (done) {
+			var l = Math.floor(Math.random() * 40);
+			helper.code(l, function (err, d) {
+				assert.equal(d.length, l);
+				done();
+			});
+		});
+
+		it('helper code does not throw an error', function (done) {
+			var l = Math.floor(Math.random() * 40);
+			helper.code(l, function (err) {
+				assert.ifError(err);
+				//TODO: check err is not an error object.
+				done();
+			});
+		});
+
+		it('code throws if length <= 0', function () {
+
+		});
+	});
+
+	describe('passFunction', function () {
+		it('just calls next function with arguments', function (done) {
+			step(function () {
+				this(1, "b");
+			}, helper.passFunction, function (a, b) {
+				assert.equal(a, 1);
+				assert.equal(b, "b");
+				done();
+			});
+		});
+	});
+});
 
 describe('logger', function () {});
 

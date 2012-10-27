@@ -10,7 +10,11 @@ var sjcl = require("./crypto/sjcl.js");
 ssn.helper = {
 	/** chars for a sid */
 	codeChars: ["Q", "W", "E", "R", "T", "Z", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Y", "X", "C", "V", "B", "N", "M", "q", "w", "e", "r", "t", "z", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "y", "x", "c", "v", "b", "n", "m", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-	/** get a random sid of given length */
+	/** get a random sid of given length 
+	* @param length length of sid
+	* @param callback callback
+	* @callback (error, sid)
+	*/
 	code: function (length, callback) {
 		var random = require('secure_random');
 
