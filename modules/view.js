@@ -8,6 +8,18 @@ var view = function (theClient, hid, action, data, responses) {
 		return theClient;
 	};
 
+	this.error = function (err) {
+		theClient.error(hid, err);
+	};
+
+	this.addError = function (err) {
+		theClient.addError(hid, err);
+	};
+
+	this.isError = function () {
+		return theClient.isError(hid);
+	};
+
 	/** get current session */
 	this.getSession = function () {
 		return this.getClient().getSession();

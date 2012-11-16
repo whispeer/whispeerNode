@@ -1,7 +1,7 @@
 "use strict";
 var WebSocketServer = require('websocket').server;
 var http = require('http');
-var step = require("Step");
+var step = require("step");
 
 /** own logger module */
 var logger = require("./logger.js").logger;

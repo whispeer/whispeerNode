@@ -3,11 +3,14 @@ if (typeof (ssn) === "undefined") {
 	var ssn = {};
 }
 
-var step = require("Step");
+var step = require("step");
 var sjcl = require("./crypto/sjcl.js");
 
 /** contains general helper functions */
 ssn.helper = {
+	/** to disable logging (console.log) which is necessary because logger.js depends on helper */
+	log: true,
+
 	/** chars for a sid */
 	codeChars: ["Q", "W", "E", "R", "T", "Z", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Y", "X", "C", "V", "B", "N", "M", "q", "w", "e", "r", "t", "z", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "y", "x", "c", "v", "b", "n", "m", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
 	/** get a random sid of given length 
@@ -19,6 +22,10 @@ ssn.helper = {
 		var random = require('secure_random');
 
 		step(function generateRandom() {
+			if (length <= 0) {
+				throw new Error("length not long enough");
+			}
+
 			var i = 0;
 			for (i = 0; i < length; i += 1) {
 				random.getRandomInt(0, ssn.helper.codeChars.length - 1, this.parallel());
@@ -28,6 +35,7 @@ ssn.helper = {
 		}, function (err, numbers) {
 			if (err) {
 				callback(err);
+				return;
 			}
 
 			var result = "", i = 0;
@@ -68,9 +76,9 @@ ssn.helper = {
 	/** decode an EncryptedSignedMessage */
 	decodeESM: function (esm) {
 		var result = {};
-		result.m = this.base64ToHex(esm.m);
-		result.s = this.base64ToHex(esm.s);
-		result.iv = this.base64ToHex(esm.iv);
+		result.m = ssn.helper.base64ToHex(esm.m);
+		result.s = ssn.helper.base64ToHex(esm.s);
+		result.iv = ssn.helper.base64ToHex(esm.iv);
 
 		return result;
 	},
@@ -103,22 +111,36 @@ ssn.helper = {
 
 	/** is data an id?*/
 	isID: function (data) {
-		return ssn.helper.isInt(data);
+		if (ssn.helper.isInt(data)) {
+			data = parseInt(data, 10);
+
+			return (data > 0);
+		}
+
+		return false;
 	},
 
 	/** is data a valid nickname? */
 	isNickname: function (data) {
-		return this.isset(data) && data.match(/^[A-z][A-z0-9]*$/);
+		return (ssn.helper.isset(data) && !!data.match(/^[A-z][A-z0-9]*$/));
 	},
 
 	/** is data an e-mail? */
 	isMail: function (data) {
-		return this.isset(data) && data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i);
+		return (ssn.helper.isset(data) && !!data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i));
 	},
 
 	/** is data a session Key (hex value with certain length) */
 	isSessionKey: function (data) {
-		return (data.match(/^[A-z0-9]$/) && (data.length === 64 || data.length === 32));
+		return (ssn.helper.isset(data) && (data.length === 64 || data.length === 32) && ssn.helper.isHex(data));
+	},
+
+	isPassword: function (data) {
+		return (data.isHex(data) && data.length === 64);
+	},
+
+	isHex: function (data) {
+		return (ssn.helper.isset(data) && !!data.match(/^[A-z0-9]*$/));
 	},
 
 	/** typeof val == object? */
@@ -138,8 +160,10 @@ ssn.helper = {
 	sF: function (cb) {
 		return function (err) {
 			if (err) {
-				console.log(err);
-				console.trace();
+				if (ssn.helper.log) {
+					console.log(err);
+					console.trace();
+				}
 				throw err;
 			}
 

@@ -399,7 +399,7 @@ function RSA() {
         key.e = parseInt(E, 16);
         key.ee = new BigInteger(E, 16);
 
-		//TODO: fix path for both tests and main
+		//fix path for both tests and main
 		var primeCalculator = new Worker('js/crypto/getNextBiggerPrime.js');
 
 		var generate = function (length) {

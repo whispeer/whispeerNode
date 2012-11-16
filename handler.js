@@ -1,6 +1,6 @@
 "use strict";
 var logger = require("./modules/logger.js").logger;
-var step = require("Step");
+var step = require("step");
 var userManager = require("./modules/userManager.js");
 var h = require("./modules/helper.js").helper;
 

@@ -30,6 +30,21 @@ var exceptions = {
 	InvalidSymKey: function (message) {
 		this.toString = function () { return "Invalid symmetric Key: " + this.message; };
 		this.message = message;
+	},
+	/** error if send is not available for a client */
+	NoSendAvailable: function (message) {
+		this.toString = function () { return "Send is not available: " + this.message; };
+		this.message = message;
+	},
+	/** error if mail invalid */
+	InvalidMail: function (message) {
+		this.toString = function () { return "Mail invalid: " + this.message; };
+		this.message = message;
+	},
+	/** error if nickname invalid */
+	InvalidNickname: function (message) {
+		this.toString = function () { return "Nickname invalid: " + this.message; };
+		this.message = message;
 	}
 };
 

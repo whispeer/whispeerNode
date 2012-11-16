@@ -4,7 +4,7 @@ var TimeArray = require("./timeArray.js");
 
 var helper = require("./helper.js").helper;
 var logger = require("./logger.js").logger;
-var step = require("Step");
+var step = require("step");
 
 var exceptions = require("./exceptions.js");
 var NotExisting = exceptions.NotExisting;

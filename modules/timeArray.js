@@ -3,77 +3,32 @@ var timeArray = function (removeAfter, doCheck) {
 	var that = this;
 
 	var hashMap = {};
-	var list = null;
+	var List = require("../modules/doubleLinkedList.js");
+	var list = new List();
 
 	if (doCheck !== false && doCheck !== true) {
 		doCheck = false;
 	}
 
-	var DoubleLinkedListObject = function (obj, id) {
-		var time = new Date().getTime();
-		var that = this;
-
-		this.previous = that;
-		this.next = that;
-		this.getTime = function () {
-			return time;
-		};
-
-		this.updateTime = function () {
-			time = new Date().getTime();
-		};
-
-		this.obj = function () {
-			return obj;
-		};
-
-		this.id = function () {
-			return id;
-		};
-
-		this.append = function (dlObject) {
-			dlObject.previous = that;
-			dlObject.next = that.next;
-
-			that.next.previous = dlObject;
-			that.next = dlObject;
-		};
-
-		this.prepend = function (dlObject) {
-			if (list.id() === id) {
-				list = dlObject;
-			}
-
-			dlObject.previous = that.previous;
-			dlObject.next = that;
-
-			that.previous.next = dlObject;
-			that.previous = dlObject;
-		};
-
-		this.remove = function () {
-			if (list.id() === id) {
-				list = that.next;
-			}
-
-			that.previous.next = that.next;
-			that.next.previous = that.previous;
-
-			that.previous = that;
-			that.next = that;
-		};
-	};
-
+	var timerID;
 	var theChecker;
 	theChecker = function () {
-		if (doCheck && list !== null) {
+		//console.log("called:" + new Date().getTime());
+		if (doCheck && !list.isEmpty()) {
 			that.check();
-			if (list !== null) {
-				var lastTime = list.previous.getTime();
+			if (!list.isEmpty()) {
+				var lastTime = list.getLast().getTime();
 
-				var nextCheck = (lastTime + removeAfter) - new Date().getTime() + 100;
-				nextCheck = (nextCheck < 1000 ? 1000 : nextCheck);
-				setTimeout(theChecker, nextCheck);
+				var nextCheck = (lastTime + removeAfter) - new Date().getTime();
+
+				nextCheck = (nextCheck < 100 ? 100 : nextCheck);
+
+				//console.log("call next time:" + nextCheck + "-" + new Date().getTime());
+
+				clearTimeout(timerID);
+				timerID = setTimeout(theChecker, nextCheck);
+			} else {
+				//console.log("list empty");
 			}
 		}
 	};
@@ -86,24 +41,25 @@ var timeArray = function (removeAfter, doCheck) {
 
 	this.stopAutoCheck = function () {
 		doCheck = false;
+		clearTimeout(timerID);
 	};
 
 	this.add = function (object, id) {
-		var dlObject = new DoubleLinkedListObject(object, id);
+		var listObject = list.createNode(object, id);
 		if (typeof hashMap[id] !== "undefined") {
 			throw new Error("Element already in TimedList!");
 		}
 
-		hashMap[id] = dlObject;
-
-		if (list === null) {
-			list = dlObject;
+		if (list.isEmpty()) {
 			if (doCheck) {
-				setTimeout(theChecker, removeAfter);
+				//console.log("start settimeout: " + removeAfter + "-" + new Date().getTime());
+				clearTimeout(timerID);
+				timerID = setTimeout(theChecker, removeAfter + 5);
 			}
-		} else {
-			list.prepend(dlObject);
 		}
+
+		hashMap[id] = listObject;
+		list.addFirst(listObject);
 	};
 
 	this.has = function (id) {
@@ -120,51 +76,38 @@ var timeArray = function (removeAfter, doCheck) {
 	};
 
 	this.show = function () {
-		var current = list;
-		console.log(current.previous.id() + " => " + current.getTime() + "-" + current.id() + " => " + current.next.id());
-
-		current = current.next;
-		while (current.id() !== list.id()) {
-			console.log(current.previous.id() + " => " + current.getTime() + "-" + current.id() + " => " + current.next.id());
-			current = current.next;
-		}
-
-		console.log("");
+		list.print();
 	};
 
 	this.check = function () {
-		var current = list.previous;
+		if (list.isEmpty()) {
+			return;
+		}
+
+		var current = list.getLast();
+
 		var checkTime = new Date().getTime() - removeAfter;
 
-		console.log("Deletetime:" + checkTime);
-		console.log("Next Element:" + current.getTime() + " - " + current.id());
-
-		while (current.getTime() < checkTime) {
-			console.log("Removing:" + current.getTime() + " - " + current.id());
-
-			if (current.previous === current) {
-				if (current.getTime() > checkTime) {
-					list = null;
-				}
-
-				break;
-			}
-
+		while (current.getTime() < checkTime && !list.isEmpty()) {
 			current = current.previous;
 			delete hashMap[current.next.id()];
-
-			console.log("");
-			console.log("Next:" + current.getTime() + " - " + current.id());
 
 			current.next.remove();
 		}
 	};
 
 	this.used = function (id) {
-		hashMap[id].updateTime();
-		hashMap[id].remove();
+		if (list.isEmpty()) {
+			console.log("dafuq!");
 
-		list.prepend(hashMap[id]);
+			console.log(id);
+			console.trace();
+
+			return;
+		}
+
+		hashMap[id].updateTime();
+		list.moveLast(hashMap[id]);
 	};
 };
 

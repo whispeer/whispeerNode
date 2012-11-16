@@ -1,5 +1,7 @@
 /** database config */
 
+exports.server = false;
+
 /** username */
 exports.user = "ssn";
 

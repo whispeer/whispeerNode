@@ -1,6 +1,6 @@
 "use strict";
 var logger = require("./logger.js").logger;
-var step = require("Step");
+var step = require("step");
 
 /** database class */
 var Database = function () {
@@ -15,12 +15,22 @@ var Database = function () {
 	var pool = poolModule.Pool({
 		name     : 'mysql',
 		create   : function (callback) {
-			var c = mysql.createConnection({
-				host: 'localhost',
-				user: config.user,
-				password: config.password,
-				database: config.db
-			});
+			var c;
+			if (config.server) {
+				c = mysql.createConnection({
+					socketPath: '/var/run/mysqld/mysqld.sock',
+					user: config.user,
+					password: config.password,
+					database: config.db
+				});
+			} else {
+				c = mysql.createConnection({
+					host: 'localhost',
+					user: config.user,
+					password: config.password,
+					database: config.db
+				});
+			}
 
 			c.connect();
 

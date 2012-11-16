@@ -2,7 +2,7 @@
 
 var helper = require("./helper.js").helper;
 var logger = require("./logger.js").logger;
-var step = require("Step");
+var step = require("step");
 
 var exceptions = require("./exceptions.js");
 var UserNotExisting = exceptions.UserNotExisting;

@@ -2,6 +2,8 @@
 
 var clientcount = 0;
 
+var NoSendAvailable = require("./exceptions.js").NoSendAvailable;
+
 /** create a new client object.
 * @param request request object created by http object or websocket object not yet used
 * @param handler controls how which request is handled
@@ -19,7 +21,7 @@ var Client = function (request, handler, listener) {
 
 	var helper = require("./helper").helper;
 	var logger = require("./logger").logger;
-	var step = require("Step");
+	var step = require("step");
 
 	var getClientIDHelper = function (clientid) {
 		return function () {
@@ -33,11 +35,13 @@ var Client = function (request, handler, listener) {
 	/** send some data to this client
 	* @param data data to send
 	* sends the data to the client
-	* @throws NoSendAvailable if just a request client //TODO
+	* @throws NoSendAvailable if just a request client
 	*/
 	this.send = function (data) {
 		if (typeof listener === "function") {
 			listener(data);
+		} else {
+			throw new NoSendAvailable("not able to send to this client");
 		}
 	};
 
@@ -116,9 +120,8 @@ var Client = function (request, handler, listener) {
 				},
 				function done(err) {
 					if (err) {
-						logger.log("PROBLEM!");
+						logger.log("PROBLEM!", logger.ERROR);
 						logger.log(err, logger.ERROR);
-						logger.trace();
 						theClient.error(hid);
 
 						return;
@@ -133,17 +136,32 @@ var Client = function (request, handler, listener) {
 		}
 	};
 
-	/** sets the response for hid to error
+	/** sets the response for hid to error with possibility to add more errors.
 	* @param hid which request errored?
 	* @param error what was the error?
 	*/
-	this.error = function (hid, error) {
-		responses[hid] = {'status': 0};
+	this.addError = function (hid, error) {
+		if (!this.isError(hid)) {
+			responses[hid] = {'status': 0};
+		}
+
 
 		if (typeof error === "string") {
 			responses[hid][error] = 1;
 			responses[hid].error = error;
 		}
+	};
+
+	this.isError = function (hid) {
+		return (typeof responses[hid] !== "undefined" && responses[hid].status === 0);
+	};
+
+	/** sets the response for hid to error
+	* @param hid which request errored?
+	* @param error what was the error?
+	*/
+	this.error = function (hid, error) {
+		this.addError(hid, error);
 
 		doneListeners[hid]();
 	};
