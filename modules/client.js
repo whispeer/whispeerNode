@@ -94,27 +94,43 @@ var Client = function (request, handler, listener) {
 			delete data.sid;
 
 			step(
-				function startHandlers() {
+				function handlerRunner() {
+					var stepThis = this;
+					var startHandlers = function (handler, data, curResponses, action, path) {
+						if (typeof curResponses[action] === "undefined") {
+							curResponses[action] = {};
+						}
+
+						/** check if we can handle the action in the current branch */
+						if (typeof handler[action] === "function") {
+							logger.log("Handling action: " + action, logger.NOTICE);
+
+							var View = require("./view.js");
+							var theView = new View(theClient, hid, action, data, curResponses);
+
+							handler[action](stepThis.parallel(), theView);
+						/** check if there might be more branches */
+						} else if (typeof handler[action] === "object") {
+							path.push(action);
+
+							var newAction;
+							for (newAction in data[action])  {
+								if (data[action].hasOwnProperty(newAction)) {
+									startHandlers(handler[action], data[action], curResponses[action], newAction, path);
+								}
+							}
+						} else {
+							logger.log("Invalid action received: " + action, logger.ERROR);
+							curResponses[action] = false;
+							var done = stepThis.parallel();
+							done();
+						}
+					};
+
 					var action;
 					for (action in data) {
 						if (data.hasOwnProperty(action)) {
-							if (typeof handler[action] === "function") {
-								if (!helper.isset(responses[hid][action])) {
-									responses[hid][action] = {};
-								}
-
-								logger.log("Handling action: " + action, logger.NOTICE);
-
-								var View = require("./view.js");
-								var theView = new View(theClient, hid, action, data, responses);
-
-								handler[action](this.parallel(), theView);
-							} else {
-								logger.log("Invalid action received: " + action, logger.ERROR);
-								responses[hid][action] = false;
-								var done = this.parallel();
-								done();
-							}
+							startHandlers(handler, data, responses[hid], action, []);
 						}
 					}
 				},

@@ -42,7 +42,7 @@ var view = function (theClient, hid, action, data, responses) {
 
 	/** get current handle (response object by hid and action)*/
 	this.getHandle = function () {
-		return responses[hid][action];
+		return responses[action];
 	};
 
 	/** set value in response object by hid, action, key.
@@ -52,7 +52,7 @@ var view = function (theClient, hid, action, data, responses) {
 	*/
 	this.setValue = function (key, val) {
 		logger.log("setVal: " + key + " = " + val, logger.NOTICE);
-		responses[hid][action][key] = val;
+		responses[action][key] = val;
 	};
 };
 

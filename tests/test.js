@@ -95,6 +95,29 @@ describe('client', function () {
 			assert.equal(typeof testClient.getClientID(), "number");
 		});
 
+		it('nested action function should be called correctly to', function (done) {
+			var testClient = new Client({}, {
+				testTopic: {
+					testAction: function (cb, view) {
+						assert.equal(view.getData(), "bla");
+						assert.equal(view.getHID(), 55);
+
+						view.setValue("k", 55);
+
+						cb();
+					}
+				}
+			});
+
+			testClient.handle(function () {
+				assert.equal(testClient.getResponse(55), '{"rid":5,"testTopic":{"testAction":{"k":55}}}');
+
+				done();
+			}, '{"testTopic":{"testAction":"bla"}, "rid": 5}', 55);
+
+			assert.equal(typeof testClient.getClientID(), "number");
+		});
+
 		it('no hid: hid = 0', function (done) {
 			var testClient = new Client({}, {
 				testAction: function (cb, view) {
@@ -501,7 +524,7 @@ describe('view', function () {
 	};
 
 	var View = require("../modules/view.js");
-	var view = new View(testClient, "testHID", "testAction", "nN", {testHID: {testAction: "test"}});
+	var view = new View(testClient, "testHID", "testAction", "nN", {testAction: "test"});
 
 	it('getClient', function () {
 		assert.equal(view.getClient().testAttr, "theTest");
