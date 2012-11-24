@@ -47,6 +47,19 @@ ssn.helper = {
 			callback(null, result);
 		});
 	},
+
+	/** get a file names extension */
+	getExtension: function (filename) {
+		var i = filename.lastIndexOf('.');
+		return (i < 0) ? '' : filename.substr(i);
+	},
+
+	/** get a filenames name */
+	getName: function (filename) {
+		var i = filename.lastIndexOf('.');
+		return (i < 0) ? filename : filename.substr(0, i);
+	},
+
 	/** just a function which moves on in step */
 	passFunction: function () {
 		this.apply(null, arguments);
