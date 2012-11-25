@@ -5,6 +5,211 @@ require("../modules/logger.js").logger.logLevel = 3;
 
 var step = require("step");
 
+describe('Step', function () {
+	var Step = require("step");
+	var fs = require('fs');
+	it('callbackTest', function (done) {
+		var selfText = fs.readFileSync(__filename, 'utf8');
+
+		step(
+			function readSelf() {
+				fs.readFile(__filename, 'utf8', this);
+			},
+			function capitalize(err, text) {
+				if (err) {
+					throw err;
+				}
+
+				assert.equal(selfText, text, "Text Loaded");
+				return text.toUpperCase();
+			},
+			function showIt(err, newText) {
+				if (err) {
+					throw err;
+				}
+
+				assert.equal(selfText.toUpperCase(), newText, "Text Uppercased");
+
+				done();
+			}
+		);
+	});
+
+	it('error Passing Test', function (done) {
+		var exception = new Error('Catch me!');
+
+		step(
+			function () {
+				var callback = this;
+				setTimeout(function () {
+					callback(exception);
+				}, 0);
+			},
+			function (err) {
+				assert.equal(exception, err, "error should passed through");
+				throw exception;
+			},
+			function (err) {
+				assert.equal(exception, err, "error should be caught and passed");
+				done();
+			}
+		);
+	});
+
+	it('fn Test', function (done) {
+		var myfn = Step.fn(
+			function (name) {
+				fs.readFile(name, 'utf8', this);
+			},
+			function capitalize(err, text) {
+				if (err) {
+					throw err;
+				}
+
+				return text.toUpperCase();
+			}
+		);
+
+		var selfText = fs.readFileSync(__filename, 'utf8');
+
+		myfn(__filename, function (err, result) {
+			if (err) {
+				throw err;
+			}
+
+			assert.equal(selfText.toUpperCase(), result, "It should work");
+			done();
+		});
+	});
+
+	it('parallel step with files', function (done) {
+		var selfText = fs.readFileSync(__filename, 'utf8'),
+			etcText = fs.readFileSync('./testFile.txt', 'utf8');
+
+		step(
+			// Loads two files in parallel
+			function loadStuff() {
+				fs.readFile(__filename, this.parallel());
+				fs.readFile("./testFile.txt", this.parallel());
+			},
+			// Show the result when done
+			function showStuff(err, result) {
+				if (err) {
+					throw err;
+				}
+
+				assert.equal(selfText, result[0], "Code should come first");
+				assert.equal(etcText, result[1], "Users should come second");
+
+				done();
+			}
+		);
+	});
+
+	it('parallel step with paralell calls', function (done) {
+		// Test lock functionality with N parallel calls
+		step(
+			function () {
+				return 1;
+			},
+			function makeParallelCalls(err, num) {
+				if (err) {
+					throw err;
+				}
+
+				assert.equal(num, 1);
+
+				setTimeout((function (callback) { return function () { callback(null, 1, 4); }; })(this.parallel()), 100);
+				this.parallel()(null, 2, 5);
+				setTimeout((function (callback) { return function () { callback(null, 3, 6); }; })(this.parallel()), 0);
+			},
+			function parallelResults(err, result, result2) {
+				if (err) {
+					throw err;
+				}
+
+				assert.deepEqual(result, [1, 2, 3]);
+				assert.deepEqual(result2, [4, 5, 6]);
+
+				return 2;
+			},
+			function terminate(err, result) {
+				if (err) {
+					throw err;
+				}
+
+				assert.equal(result, 2);
+				done();
+			}
+		);
+	});
+
+	it('parallel step with  delays', function () {
+		// Test lock functionality with parallel calls with delay
+		step(
+			function parallelCalls() {
+				var p1 = this.parallel(), p2 = this.parallel();
+				process.nextTick(function () { p1(null, 1, 3); });
+				process.nextTick(function () { p2(null, 2, 4); });
+			},
+			function parallelResults(err, one, two) {
+				if (err) {
+					throw err;
+				}
+
+				assert.deepEqual(one, [1, 2]);
+				assert.deepEqual(two, [3, 4]);
+
+				return 666;
+			},
+			function terminate1(err, num) {
+				if (err) {
+					throw err;
+				}
+
+				assert.equal(num, 666);
+				var next = this;
+				setTimeout(function () { next(null, 333); }, 50);
+			},
+			function terminate2(err, num) {
+				if (err) {
+					throw err;
+				}
+
+				assert.equal(num, 333);
+				this();
+			}
+		);
+	});
+/*
+	it('parallel calls with direct returns', function () {
+		// Test lock functionality with parallel calls which return immediately
+		step(
+			function parallelCalls() {
+				var p1 = this.parallel(), p2 = this.parallel();
+				p1(null, 1);
+				p2(null, 2);
+			},
+			function parallelResults(err, one, two) {
+				if(err) throw err;
+				fulfill("test4: " + [one, two]);
+				return 666;
+			},
+			function terminate1(err, num) {
+				if(err) throw err;
+				fulfill("test4 t1: " + num);
+				var next = this;
+				setTimeout(function() { next(null, 333); }, 50);
+			},
+			function terminate2(err, num) {
+				if(err) throw err;
+				fulfill("test4 t2: " + num);
+				this();
+			}
+		);
+	});*/
+});
+
 //tests for database.js - done
 describe('Database', function () {
 	var database = require("../modules/database.js");
@@ -581,14 +786,14 @@ describe('doubleLinkedList', function () {
 		assert.equal(theList.getNode(2).id(), node3.id());
 		assert.equal(theList.getNode(3).id(), node4.id());
 		assert.equal(theList.getNode(4).id(), node5.id());
-		
+
 		assert.equal(theList.getFirst().obj().id, node1.id());
 		assert.equal(theList.getNode(0).obj().id, node1.id());
 		assert.equal(theList.getNode(1).obj().id, node2.id());
 		assert.equal(theList.getNode(2).obj().id, node3.id());
 		assert.equal(theList.getNode(3).obj().id, node4.id());
 		assert.equal(theList.getNode(4).obj().id, node5.id());
-		
+
 		assert.equal(theList.getNode(5), null);
 		assert.equal(theList.getLast().id(), node5.id());
 
@@ -621,7 +826,7 @@ describe('doubleLinkedList', function () {
 		var node3 = theList.createNode({id: 3}, 3);
 		var node4 = theList.createNode({id: 4}, 4);
 		var node5 = theList.createNode({id: 5}, 5);
-		
+
 		assert.throws(function () {
 			theList2.addFirst(node1);
 		});
@@ -631,7 +836,7 @@ describe('doubleLinkedList', function () {
 		theList.addFirst(node3);
 		theList.addFirst(node2);
 		theList.addFirst(node1);
-		
+
 		assert.throws(function () {
 			theList.addFirst(node5);
 		});
@@ -661,16 +866,16 @@ describe('doubleLinkedList', function () {
 		theList.addFirst(node3);
 		theList.addFirst(node2);
 		theList.addFirst(node1);
-		
+
 		theList.moveFirst(node5);
 		theList.moveLast(node1);
 
-		assert.equal(theList.getFirst().id(), node5.id())
-		assert.equal(theList.getLast().id(), node1.id())
+		assert.equal(theList.getFirst().id(), node5.id());
+		assert.equal(theList.getLast().id(), node1.id());
 
 		//move should also work with elements not in list.
 		theList.moveFirst(node6);
-		assert.equal(theList.getFirst().id(), node6.id())
+		assert.equal(theList.getFirst().id(), node6.id());
 	});
 
 	it('time tests', function () {
@@ -680,7 +885,7 @@ describe('doubleLinkedList', function () {
 		var node1 = theList.createNode({id: 1}, 1);
 		assert.ok(node1.getTime() - t < 4);
 
-		var t = new Date().getTime();
+		t = new Date().getTime();
 		node1.updateTime();
 		assert.ok(node1.getTime() - t < 4);
 	});
