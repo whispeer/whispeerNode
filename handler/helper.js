@@ -1,6 +1,6 @@
 "use strict";
 
-helper = {
+var helper = {
 	checkMail: function () {
 
 	},
