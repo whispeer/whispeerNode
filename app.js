@@ -9,6 +9,7 @@ io.sockets.on('connection', function (socket) {
 	var topics = require('./topics.js');
 	var step = require('step');
 
+	//TODO: think about errors going back.
 	function handle(handler, data, fn) {
 		var topics;
 		step(function () {
@@ -47,6 +48,10 @@ io.sockets.on('connection', function (socket) {
 			socket.on(topic, handleF(topics[topic]));
 		}
 	}
+
+	socket.on('error', function () {
+		console.log(arguments);
+	});
 
 	socket.on('disconnect', function () {
 		console.log("client disconnected");
