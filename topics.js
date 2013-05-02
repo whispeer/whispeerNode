@@ -1,34 +1,34 @@
 "use strict";
 
+var step = require("step");
+var h = require("./includes/helper");
+
+require("./includes/errors.js");
+
 var whispeerAPI = {
-	salt: function (data, fn) {
-		console.log(data);
-		if (data.identifier) {
-			step(function () {
-				var User = require("includes/user");
+	salt: function getSalt(data, fn) {
+		step(function () {
+			if (data && data.identifier) {
+				var User = require("./includes/user");
 				User.getUser(data.identifier, this);
-			}, h.hEsF(function (myUser) {
-				myUser.getSalt(this);
-			}), function (e, salt) {
-				if (e) {
-					if (e instanceof UserNotExisting) {
-						fn.error({userNotExisting: true});
-					} else {
-						fn.error();
-					}
+			} else {
+				fn.error.protocol();
+			}
+		}, h.sF(function (myUser) {
+			myUser.getSalt(this);
+		}), h.hE(function (e, salt) {
+			if (e) {
+				fn.error({userNotExisting: true});
 
-					return;
-				}
+				this.last.ne();
+			}
 
-				this({salt: salt});
-			}, fn);
-		} else {
-			fn.error.protocol();
-		}
+			this.ne({salt: salt});
+		}, UserNotExisting), fn);
 	},
 	login: function (data, fn) {
 		console.log(data);
-		fn({result: "success"});
+		fn(null, {result: "success"});
 	}
 };
 

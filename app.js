@@ -1,11 +1,20 @@
 "use strict";
+
+/*process.on('uncaughtException', function (err) {
+    console.error('An uncaughtException was found, the program will end.');
+    //hopefully do some logging.
+
+	console.error(err);
+
+    process.exit(1);
+});*/
+
 var io = require('socket.io').listen(3000);
 
 io.sockets.on('connection', function (socket) {
 	console.log("connection received");
 
-	//socket.emit('news', { hello: 'world' });
-
+	var HandlerCallback = require("./includes/handlerCallback");
 	var topics = require('./topics.js');
 	var step = require('step');
 
@@ -14,7 +23,7 @@ io.sockets.on('connection', function (socket) {
 		var topics;
 		step(function () {
 			if (typeof handler === "function") {
-				handler(data, this.last);
+				handler(data, new HandlerCallback(this.last));
 			} else if (typeof handler === "object" && typeof data === "object") {
 				var topic;
 				for (topic in data) {
@@ -32,7 +41,7 @@ io.sockets.on('connection', function (socket) {
 				result[topics[i]] = results[i];
 			}
 
-			this.ne(result);
+			this(result);
 		}, fn);
 	}
 
