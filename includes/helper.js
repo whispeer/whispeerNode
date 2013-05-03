@@ -154,7 +154,7 @@ ssn.helper = {
 	* passes on all other stuff to given function
 	*/
 	sF: function (cb) {
-		return function (err) {
+		var mysf = function sfFunction(err) {
 			if (err) {
 				if (ssn.helper.log) {
 					console.log(err.stack);
@@ -171,6 +171,12 @@ ssn.helper = {
 
 			cb.apply(this, args);
 		};
+
+		mysf.getRealFunction = function () {
+			return cb;
+		};
+
+		return mysf;
 	},
 
 	/** handle Error function for step
