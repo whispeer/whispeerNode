@@ -169,10 +169,25 @@ var User = function (id) {
 	}
 	this.getNickname = getNicknameF;
 
+	//todo: think how we want to handle uniqueness in basic saving!
+	//we need to:
+	// - make sure no nick is taken two times
+	// - one user only blocks one nick (del unused nicks)
 	function setNicknameF(nickname, cb) {
 		step(function () {
+			client.setnx("user:nickname:" + nickname, id, this);
+		}, h.sF(function () {
+			client.get("user:nickname:" + nickname, this);
+		}), h.sF(function (setID) {
+			if (setID === id) {
+				getAttribute("nickname", this);
+			} else {
+				throw new NicknameInUse(nickname);
+			}
+		}), h.sF(function (nickname) {
+			client.del("user:nickname:" + nickname);
 			setAttribute({nickname: nickname}, this);
-		}, cb);
+		}), cb);
 	}
 	this.setNickname = setNicknameF;
 
