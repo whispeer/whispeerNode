@@ -1,21 +1,60 @@
 "use strict";
 
 var step = require("step");
-var redis = require("redis");
+var client = require("./redisClient");
 var h = require("./helper");
 var extend = require("xtend");
 
-var validKeys = {
-	nickname: true,
-	email: true
-};
+function logedinF(view, cb) {
+	step(function () {
+		view.logedinError(this);
+	}, cb);
+}
 
-redis.debug_mode = true;
+var validKeys = {
+	salt: {
+		read: true,
+		pre: function (view, user, newSalt, oldSalt, cb) {
+			step(function () {
+				view.logedinError(this);
+			}, cb);		
+		}
+	},
+	nickname: {
+		read: logedinF,
+		//TODO: match:?
+		pre: function (view, user, newNick, oldNick, cb) {
+			step(function () {
+				view.logedinError(this);
+			}, h.sF(function () {
+				client.setnx("user:nickname:" + newNick, user.getID(), this);
+			}), h.sF(function (set) {
+				if (set) {
+					this.ne();
+				} else {
+					throw new NicknameInUse(newNick);
+				}
+			}), cb);
+		},
+		post: function (view, user, newNick, oldNick, cb) {
+			step(function () {
+				client.del("user:nickname:" + oldNick);
+				this.ne();
+			}, cb);
+		}
+	},
+	email: {
+		read: function () {
+			//TODO: logedin: true
+		},
+		pre: function (nickname) {
+
+		}
+	}
+};
 
 var User = function (id) {
 	var userDomain;
-
-	var theClient = redis.createClient();
 
 	var getAttribute;
 
@@ -71,7 +110,7 @@ var User = function (id) {
 						if (typeof cur === "object" && !(cur instanceof Array)) {
 							realSetAttribute(val, key, this.parallel());
 						} else {
-							theClient.set(userDomain + ":" + obj2key(key), cur, this.parallel());
+							client.set(userDomain + ":" + obj2key(key), cur, this.parallel());
 						}
 					} else {
 						console.log("rejected: " + obj2key(key));
@@ -96,7 +135,7 @@ var User = function (id) {
 	function realGetAttribute(key, cb) {
 		step(function () {
 			if (validKey(key)) {
-				theClient.get(userDomain + ":" + obj2key(key), this);
+				client.get(userDomain + ":" + obj2key(key), this);
 			}
 		}, cb);
 	}
@@ -141,7 +180,7 @@ var User = function (id) {
 		this.save = function doSave(cb) {
 			step(function doSave() {
 				//check given data!
-				theClient.incr("users", this);
+				client.incr("users", this);
 			}, h.sF(function handleNewID(myid) {
 				id = myid;
 				userDomain = "user:" + id;
@@ -173,21 +212,10 @@ var User = function (id) {
 	//we need to:
 	// - make sure no nick is taken two times
 	// - one user only blocks one nick (del unused nicks)
-	function setNicknameF(nickname, cb) {
+	function setNicknameF(view, nickname, cb) {
 		step(function () {
-			client.setnx("user:nickname:" + nickname, id, this);
-		}, h.sF(function () {
-			client.get("user:nickname:" + nickname, this);
-		}), h.sF(function (setID) {
-			if (setID === id) {
-				getAttribute("nickname", this);
-			} else {
-				throw new NicknameInUse(nickname);
-			}
-		}), h.sF(function (nickname) {
-			client.del("user:nickname:" + nickname);
-			setAttribute({nickname: nickname}, this);
-		}), cb);
+			setAttribute(view, {nickname: nickname}, this);
+		}, cb);
 	}
 	this.setNickname = setNicknameF;
 
@@ -198,23 +226,20 @@ var User = function (id) {
 	}
 	this.getEMail = getEMailF;
 
-	function setMailF(mail, cb) {
+	function setMailF(view, mail, cb) {
 		step(function doSetMail() {
-			setAttribute({email: mail}, this);
+			setAttribute(view, {email: mail}, this);
 		}, cb);
 	}
 	this.setMail = setMailF;
 };
 
 User.getUser = function (identifier, callback) {
-	var theClient;
 	step(function () {
-		theClient = redis.createClient();
-
 		if (h.isMail(identifier)) {
-			theClient.get("user:mail:" + identifier, this);
+			client.get("user:mail:" + identifier, this);
 		} else if (h.isNickname(identifier)) {
-			theClient.get("user:nickname:" + identifier, this);
+			client.get("user:nickname:" + identifier, this);
 		} else {
 			throw new UserNotExisting(identifier);
 		}
