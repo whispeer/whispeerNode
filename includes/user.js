@@ -14,7 +14,7 @@ function logedinF(view, cb) {
 var validKeys = {
 	salt: {
 		read: true,
-		pre: function (view, user, newSalt, oldSalt, cb) {
+		pre: function (cb, view, user, newSalt, oldSalt) {
 			step(function () {
 				view.logedinError(this);
 			}, cb);
@@ -23,9 +23,10 @@ var validKeys = {
 	nickname: {
 		read: logedinF,
 		//TODO: match:?
-		pre: function (view, user, newNick, oldNick, cb) {
+		match: /^[A-z][A-z0-9]*$/,
+		pre: function (cb, view, user, newNick, oldNick) {
 			step(function () {
-				view.logedinError(this);
+				view.ownUserError(user, this);
 			}, h.sF(function () {
 				client.setnx("user:nickname:" + newNick, user.getID(), this);
 			}), h.sF(function (set) {
@@ -36,18 +37,33 @@ var validKeys = {
 				}
 			}), cb);
 		},
-		post: function (view, user, newNick, oldNick, cb) {
+		post: function (cb, view, user, newNick, oldNick) {
 			step(function () {
 				client.del("user:nickname:" + oldNick, this);
 			}, cb);
 		}
 	},
 	email: {
-		read: function () {
-			//TODO: logedin: true
+		read: logedinF,
+		match: /^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i,
+		pre: function (cb, view, user, newMail, oldMail) {
+			step(function () {
+				view.ownUserError(user, this);
+			}, h.sF(function () {
+				client.setnx("user:mail:" + newMail, user.getID(), this);
+			}), h.sF(function (set) {
+				if (set) {
+					this.ne();
+				} else {
+					throw new MailInUse(newMail);
+				}
+			}), cb);
 		},
-		pre: function (nickname) {
-
+		post: function (cb, view, user, newMail, oldMail) {
+			step(function () {
+				client.del("user:mail:" + oldNick);
+				this.ne();
+			}, cb);
 		}
 	}
 };
