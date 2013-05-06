@@ -2,6 +2,7 @@
 
 var step = require("step");
 var h = require("./helper");
+var client = require("./client");
 
 require("./errors");
 

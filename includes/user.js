@@ -17,7 +17,7 @@ var validKeys = {
 		pre: function (view, user, newSalt, oldSalt, cb) {
 			step(function () {
 				view.logedinError(this);
-			}, cb);		
+			}, cb);
 		}
 	},
 	nickname: {
@@ -38,8 +38,7 @@ var validKeys = {
 		},
 		post: function (view, user, newNick, oldNick, cb) {
 			step(function () {
-				client.del("user:nickname:" + oldNick);
-				this.ne();
+				client.del("user:nickname:" + oldNick, this);
 			}, cb);
 		}
 	},
@@ -55,6 +54,7 @@ var validKeys = {
 
 var User = function (id) {
 	var userDomain;
+	var theUser = this;
 
 	var getAttribute;
 
@@ -93,7 +93,37 @@ var User = function (id) {
 		return true;
 	}
 
-	function realSetAttribute(val, key, cb) {
+	function doSetOperation(view, key, value, cb) {
+		//TODO: post, match
+		var oldValue, attr;
+		step(function () {
+			attr = h.deepGet(validKeys, key);
+
+			if (!attr) {
+				throw new AccessViolation(key.toString(":"));
+			}
+
+			theUser.getAttribute(key, this);
+		}, h.sF(function (oldVal) {
+			oldValue = oldVal;
+			if (typeof attr.pre === "function") {
+				attr.pre(view, theUser, value, oldValue, this);
+			} else {
+				this.ne();
+			}
+		}), h.sF(function () {
+			client.set(userDomain + ":" + obj2key(key), value, this);
+		}), h.sF(function () {
+			if (typeof attr.post === "function") {
+				//TODO: rollback if this fails!
+				attr.post(view, theUser, value, oldValue, this);
+			} else {
+				this.ne();
+			}
+		}), cb);
+	}
+
+	function realSetAttribute(view, val, key, cb) {
 		console.log(arguments);
 		step(function doRealSetAttribute() {
 			if (typeof key !== "object") {
@@ -108,9 +138,9 @@ var User = function (id) {
 					cur = val[valKey];
 					if (validKey(key)) {
 						if (typeof cur === "object" && !(cur instanceof Array)) {
-							realSetAttribute(val, key, this.parallel());
+							realSetAttribute(view, val, key, this.parallel());
 						} else {
-							client.set(userDomain + ":" + obj2key(key), cur, this.parallel());
+							doSetOperation(view, key, cur, this.parallel());
 						}
 					} else {
 						console.log("rejected: " + obj2key(key));
@@ -126,8 +156,8 @@ var User = function (id) {
 		}), cb);
 	}
 
-	function setAttributeF(val, cb) {
-		realSetAttribute(val, [], cb);
+	function setAttributeF(view, val, cb) {
+		realSetAttribute(view, val, [], cb);
 	}
 
 	var setAttribute, saved;
@@ -169,7 +199,7 @@ var User = function (id) {
 			}, cb);
 		};
 
-		setAttribute = function (val, cb) {
+		setAttribute = function (view, val, cb) {
 			step(function fakeSetAttribute() {
 				vals = extend(vals, val);
 				this.ne(true);
@@ -177,7 +207,7 @@ var User = function (id) {
 		};
 
 		saved = false;
-		this.save = function doSave(cb) {
+		this.save = function doSave(view, cb) {
 			step(function doSave() {
 				//check given data!
 				client.incr("users", this);
@@ -187,7 +217,7 @@ var User = function (id) {
 
 				setAttribute = setAttributeF;
 				getAttribute = realGetAttribute;
-				setAttribute(vals, this);
+				setAttribute(view, vals, this);
 			}), h.sF(function saveDone() {
 				saved = true;
 				this.ne(true);

@@ -22,3 +22,4 @@ function addError(desc) {
 global.UserNotExisting = addError("User Not Existing");
 global.StepError = addError("Step Error");
 global.NotLogedin = addError("Session invalid");
+global.AccessViolation = addError("Access Violation");
