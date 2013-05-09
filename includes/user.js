@@ -68,46 +68,47 @@ var validKeys = {
 	}
 };
 
+
+function key2obj(key) {
+	if (typeof key === "string") {
+		return key.split(":");
+	}
+
+	return key;
+}
+
+function obj2key(key) {
+	if (typeof key === "string") {
+		return key;
+	}
+
+	return key.join(":");
+}
+
+function validKey(key) {
+	if (typeof key === "string") {
+		key = key2obj(key);
+	}
+
+	var cur = validKeys;
+
+	var i;
+	for (i = 0; i < key.length; i += 1) {
+		if (cur[key[i]]) {
+			cur = cur[key[i]];
+		} else {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 var User = function (id) {
 	var userDomain;
 	var theUser = this;
 
 	var getAttribute;
-
-	function key2obj(key) {
-		if (typeof key === "string") {
-			return key.split(":");
-		}
-
-		return key;
-	}
-
-	function obj2key(key) {
-		if (typeof key === "string") {
-			return key;
-		}
-
-		return key.join(":");
-	}
-
-	function validKey(key) {
-		if (typeof key === "string") {
-			key = key2obj(key);
-		}
-
-		var cur = validKeys;
-
-		var i;
-		for (i = 0; i < key.length; i += 1) {
-			if (cur[key[i]]) {
-				cur = cur[key[i]];
-			} else {
-				return false;
-			}
-		}
-
-		return true;
-	}
 
 	function doSetOperation(view, key, value, cb) {
 		//TODO: post, match
@@ -246,6 +247,11 @@ var User = function (id) {
 	}
 
 	this.isSaved = isSavedF;
+
+	function getIDF() {
+		return id;
+	}
+	this.getID = getIDF;
 
 	function getNicknameF(cb) {
 		step(function doGetNickname() {
