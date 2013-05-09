@@ -118,12 +118,12 @@ ssn.helper = {
 
 	/** is data a valid nickname? */
 	isNickname: function (data) {
-		return (ssn.helper.isset(data) && !!data.match(/^[A-z][A-z0-9]*$/));
+		return (ssn.helper.isString(data) && !!data.match(/^[A-z][A-z0-9]*$/));
 	},
 
 	/** is data an e-mail? */
 	isMail: function (data) {
-		return (ssn.helper.isset(data) && !!data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i));
+		return (ssn.helper.isString(data) && !!data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i));
 	},
 
 	/** is data a session Key (hex value with certain length) */
@@ -142,6 +142,11 @@ ssn.helper = {
 	/** typeof val == object? */
 	isObject: function (val) {
 		return (typeof val === "object");
+	},
+
+	/** is val set (not null/undefined) */
+	isString: function (val) {
+		return (val !== undefined && val !== null && typeof val === "string");
 	},
 
 	/** is val set (not null/undefined) */
