@@ -15,7 +15,7 @@ var view = function view(socket, session) {
 	};
 
 	this.getUserID = function getUserIDF() {
-		//TODO
+		return session.getUserID();
 	};
 
 	this.logedinError = function logedinErrorF(cb) {
