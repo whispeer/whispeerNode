@@ -25,3 +25,4 @@ global.NotLogedin = addError("Session invalid");
 global.AccessViolation = addError("Access Violation");
 global.MailInUse = addError("Mail already in use");
 global.NicknameInUse = addError("Nickname already in use");
+global.LostDecryptor = addError("Decryptor not Found");

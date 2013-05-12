@@ -4,6 +4,10 @@ var step = require("step");
 var h = require("./helper");
 var client = require("./client");
 
+var SymKey = require("./crypto/symKey.js");
+var CryptKey = require("./crypto/signKey.js");
+var SignKey = require("./crypto/cryptKey.js");
+
 require("./errors");
 
 /** how long is the session id */
@@ -186,10 +190,13 @@ var Session = function Session() {
 
 			this();
 		}), h.sF(function checkMainKey() {
+			var mainKeyO = new SymKey(mainKey);
 			//TODO
 		}), h.sF(function checkCryptKey() {
+			var cryptKeyO = new CryptKey(cryptKey);
 			//TODO
 		}), h.sF(function checkSignKey() {
+			var signKeyO = new SignKey(signKey);
 			//TODO
 		}));
 	};

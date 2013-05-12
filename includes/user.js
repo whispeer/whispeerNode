@@ -61,13 +61,12 @@ var validKeys = {
 		},
 		post: function (cb, view, user, newMail, oldMail) {
 			step(function () {
-				client.del("user:mail:" + oldNick);
+				client.del("user:mail:" + oldMail);
 				this.ne();
 			}, cb);
 		}
 	}
 };
-
 
 function key2obj(key) {
 	if (typeof key === "string") {
@@ -232,6 +231,11 @@ var User = function (id) {
 				id = myid;
 				userDomain = "user:" + id;
 
+				client.setnx("user:id:" + id, id, this);
+			}), h.sF(function (set) {
+				if (!set) {
+					console.error("id for user already in use: " + id);
+				}
 				setAttribute = setAttributeF;
 				getAttribute = realGetAttribute;
 				setAttribute(view, vals, this);
@@ -292,6 +296,8 @@ User.getUser = function (identifier, callback) {
 			client.get("user:mail:" + identifier, this);
 		} else if (h.isNickname(identifier)) {
 			client.get("user:nickname:" + identifier, this);
+		} else if (h.isID(identifier)) {
+			client.get("user:id:" + identifier, this);
 		} else {
 			throw new UserNotExisting(identifier);
 		}
