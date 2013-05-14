@@ -77,11 +77,21 @@ var Decryptor = function (keyRealID, counter) {
 			theDecryptor.getDecryptorID(this.parallel());
 			theDecryptor.getType(this.parallel());
 		}, h.sF(function theDecryptorData(result) {
-			jsonData = {
-				secret: result[0],
-				decryptorid: result[1],
-				decryptortype: result[2]
+			var jsonData;
+			if (result[1]) {
+				jsonData = {
+					secret: result[0],
+					decryptorid: result[1],
+					decryptortype: result[2]
+				}
+			} else {
+				jsonData = {
+					secret: result[0],
+					decryptortype: result[2]
+				}			
 			}
+
+			this.ne(jsonData);
 		})
 	};
 
