@@ -19,10 +19,16 @@ function addError(desc) {
 	return err;
 }
 
-global.UserNotExisting = addError("User Not Existing");
 global.StepError = addError("Step Error");
 global.NotLogedin = addError("Session invalid");
 global.AccessViolation = addError("Access Violation");
+
+global.UserNotExisting = addError("User Not Existing");
+
 global.MailInUse = addError("Mail already in use");
 global.NicknameInUse = addError("Nickname already in use");
+
 global.LostDecryptor = addError("Decryptor not Found");
+global.InvalidDecryptor = addError("Decryptor data invalid");
+global.NotASymKey = addError("Not a symmetric key");
+global.RealIDInUse = addError("RealID already in use.");
