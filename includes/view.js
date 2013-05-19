@@ -6,6 +6,7 @@ var h = require("./helper");
 require("./errors");
 
 var view = function view(socket, session) {
+	var theView = this;
 	this.getSocket = function getSocketF() {
 		return socket;
 	};
@@ -16,6 +17,18 @@ var view = function view(socket, session) {
 
 	this.getUserID = function getUserIDF() {
 		return session.getUserID();
+	};
+
+	this.ownUserError = function ownUserErrorF(user, cb) {
+		step(function () {
+			theView.logedinError(this);
+		}, h.sF(function () {
+			if (session.getUserID() === user.getUserID()) {
+				this.ne();
+			} else {
+				throw new AccessViolation();
+			}
+		}), cb);
 	};
 
 	this.logedinError = function logedinErrorF(cb) {

@@ -39,7 +39,13 @@ var validKeys = {
 				client.setnx("user:nickname:" + newNick, user.getID(), this);
 			}), h.sF(function (set) {
 				if (set) {
-					this.ne();
+					this.last.ne();
+				} else {
+					client.get("user:nickname:" + newNick, this);
+				}
+			}), h.sF(function (data) {
+				if (data === user.getID()) {
+					this.last.ne();
 				} else {
 					throw new NicknameInUse(newNick);
 				}
@@ -62,6 +68,12 @@ var validKeys = {
 			}), h.sF(function (set) {
 				if (set) {
 					this.ne();
+				} else {
+					client.get("user:mail:" + newMail, this);
+				}
+			}), h.sF(function (data) {
+				if (data === user.getID()) {
+					this.last.ne();
 				} else {
 					throw new MailInUse(newMail);
 				}
@@ -329,6 +341,20 @@ var User = function (id) {
 			}
 		}), cb);
 	}
+	this.generateToken = generateTokenF;
+
+	function useTokenF(token, cb) {
+		step(function () {
+			client.del("user:token:" + id + ":" + token, this);
+		}, h.sF(function (deleted) {
+			if (deleted === 1) {
+				this.ne(true);
+			} else {
+				this.ne(false);
+			}
+		}), cb);
+	}
+	this.useToken = useTokenF;
 };
 
 User.getUser = function (identifier, callback) {
