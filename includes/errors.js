@@ -23,6 +23,7 @@ global.StepError = addError("Step Error");
 global.NotLogedin = addError("Session invalid");
 global.InvalidLogin = addError("Login details wrong!");
 global.AccessViolation = addError("Access Violation");
+global.InvalidToken = addError("Token Invalid");
 
 global.UserNotExisting = addError("User Not Existing");
 

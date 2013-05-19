@@ -94,8 +94,12 @@ var whispeerAPI = {
 		step(function () {
 			var Session = require("./includes/session");
 			var mySession = new Session();
-			mySession.login(data.identifier, data.password, this):
-		}
+			mySession.login(data.identifier, data.password, data.token, this);
+		}, h.sF(function (sid) {
+			this.ne({
+				
+			});
+		}), fn);
 		console.log(data);
 		fn(null, {result: "success"});
 	}

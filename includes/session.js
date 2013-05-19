@@ -138,12 +138,12 @@ var Session = function Session() {
 
 	/** login
 	* @param identifier who wants to log in (mail or nickname)
-	* @param password the users password (sha256)
+	* @param externalHash the users password (sha256) (see protocol definition)
 	* @param callback called with results
 	* @callback (err, loginSuccess) error if something went wrong, loginSuccess true/false if login ok.
 	* @author Nilos
 	*/
-	this.login = function loginF(identifier, password, cb) {
+	this.login = function loginF(identifier, externalHash, token, cb) {
 		var myUser;
 		//TODO
 		step(function () {
@@ -151,16 +151,34 @@ var Session = function Session() {
 			User.getUser(identifier, this);
 		}, h.sF(function (user) {
 			myUser = user;
+			myUser.useToken(token, this);
+		}), h.sF(function (tokenUsed) {
+			if (tokenUsed !== true) {
+				throw new InvalidToken();
+			}
+
 			myUser.getPassword(this);
-		}), h.sF(function (pw) {
-			if (password === pw) {
+		}), h.sF(function (internalPassword) {
+
+			var crypto = require('crypto');
+
+			var shasum = crypto.createHash('sha256');
+			shasum.update(internalPassword + token);
+			var internalHash = shasum.digest('hex');
+
+			if (externalHash === internalHash) {
 				createSession(myUser.getID(), this);
 			} else {
 				throw new InvalidLogin();
 			}
-		}), h.sF(function (sid) {
-			if (sid) {
-				this.ne(sid);
+		}), h.sF(function (theSid) {
+			sid = theSid;
+			userid = myUser.getID();
+			logedin = true;
+			lastChecked = time();
+
+			if (theSid) {
+				this.ne(theSid);
 			} else {
 				this.ne(false);
 			}
@@ -234,7 +252,7 @@ var Session = function Session() {
 			checkLoginError(this);
 		}, h.sF(function () {
 			if (userid > 0) {
-				if (!sessionUser || sessionUser.getID !== userid) {
+				if (!sessionUser || sessionUser.getID() !== userid) {
 					var User = require("./user.js");
 					sessionUser = new User(userid);
 				}
