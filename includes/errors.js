@@ -25,12 +25,20 @@ global.InvalidLogin = addError("Login details wrong!");
 global.AccessViolation = addError("Access Violation");
 global.InvalidToken = addError("Token Invalid");
 
+/** user part */
 global.UserNotExisting = addError("User Not Existing");
 
 global.MailInUse = addError("Mail already in use");
 global.NicknameInUse = addError("Nickname already in use");
+/** end user part */
 
+/** crypto part */
 global.LostDecryptor = addError("Decryptor not Found");
 global.InvalidDecryptor = addError("Decryptor data invalid");
-global.NotASymKey = addError("Not a symmetric key");
 global.RealIDInUse = addError("RealID already in use.");
+
+global.NotASymKey = addError("Not a symmetric key");
+global.InvalidSymKey = addError("invalid symmetric key data");
+global.NotAEccKey = addError("Not a elliptic curve key");
+global.InvalidEccKey = addError("invalid elliptic curve key");
+/** end crypto part */

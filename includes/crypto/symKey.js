@@ -51,6 +51,22 @@ SymKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
+SymKey.createWithDecryptors = function createWithDecryptorsF(data, cb) {
+	step(function () {
+		if (data && data.realid) {
+			SymKey.create(data.realid, this);
+		} else {
+			throw new InvalidSymKey();
+		}
+	}, h.sF(function (theKey) {
+		if (data.decryptors) {
+			theKey.addDecryptors(data.decryptors, this);
+		} else {
+			this.ne(theKey);
+		}
+	}), cb);
+};
+
 /** create a symmetric key */
 SymKey.create = function (keyRealID, cb) {
 	//TODO: check keyRealID for correctness

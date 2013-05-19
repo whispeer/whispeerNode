@@ -57,6 +57,16 @@ var EccKey = function (keyRealID) {
 			Decryptor.create(keyRealID, data, this);
 		}, cb);
 	};
+
+	this.addDecryptors = function addDecryptorF(data, cb) {
+		step(function () {
+			var Decryptor = require("./decryptor");
+			var i;
+			for (i = 0; i < data.length; i += 1) {
+				Decryptor.create(keyRealID, data[i], this.parallel());
+			}
+		}, cb);
+	};
 };
 
 /** get all decryptors for a certain key id */
@@ -69,6 +79,25 @@ EccKey.get = function getF(keyRealID, cb) {
 			this.ne(new EccKey(keyRealID));
 		} else {
 			throw new NotAEccKey();
+		}
+	}), cb);
+};
+
+EccKey.createWithDecryptors = function createWithDecryptorsF(data, cb) {
+	step(function () {
+		if (data && data.realid && data.curve && data.point) {
+			EccKey.create(data.realid, {
+				curve: data.curve,
+				point: data.point
+			}, this);
+		} else {
+			throw new InvalidEccKey();
+		}
+	}, h.sF(function (theKey) {
+		if (data.decryptors) {
+			theKey.addDecryptors(data.decryptors, this);
+		} else {
+			this.ne(theKey);
 		}
 	}), cb);
 };

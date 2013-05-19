@@ -193,12 +193,12 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function (mail, nickname, password, mainKey, signKey, cryptKey, cb) {
+	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, cb) {
 		//TODO
 		//y rule 1: nickname or mail! one can be empty. check for that!
-		//n rule 2: main key valid
-		//n rule 3: sign key valid
-		//n rule 4: crypt key valid
+		//y rule 2: main key valid
+		//y rule 3: sign key valid
+		//y rule 4: crypt key valid
 		//n rule 5: mail&nick valid and unique
 		//n rule 6: password valid
 		var result;
@@ -225,16 +225,21 @@ var Session = function Session() {
 				result.errorCodes.invalidIdentifier = true;
 			}
 
+			if (!h.isPassword(password)) {
+				result.errorCodes.invalidPassword = true;
+			}
+
 			this();
 		}), h.sF(function checkMainKey() {
-			var mainKeyO = SymKey.create(mainKey.realid);
-			mainKeyO.addDecryptors(mainKey.decryptors);
-		}), h.sF(function checkCryptKey() {
-			var cryptKeyO = new CryptKey(cryptKey);
-			//TODO
-		}), h.sF(function checkSignKey() {
-			var signKeyO = new SignKey(signKey);
-			//TODO
+			SymKey.createWithDecryptors(mainKey, this);
+		}), h.sF(function checkCryptKey(key) {
+			var mainKeyO = key;
+			EccKey.createWithDecryptors(cryptKey, this);
+		}), h.sF(function checkSignKey(key) {
+			var cryptKeyO = key;
+			EccKey.createWithDecryptors(signKey, this);
+		}), h.sF(function createActualUser(key) {
+			var signKeyO = key;
 		}));
 	};
 

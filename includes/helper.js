@@ -132,7 +132,7 @@ ssn.helper = {
 	},
 
 	isPassword: function (data) {
-		return (data.isHex(data) && data.length === 64);
+		return (data.isHex(data) && data.length === 10);
 	},
 
 	isCurve: function (data) {
