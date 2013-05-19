@@ -25,6 +25,16 @@ var SymKey = function (keyRealID) {
 			Decryptor.create(keyRealID, data, this);
 		}, cb);
 	};
+
+	this.addDecryptors = function addDecryptorF(data, cb) {
+		step(function () {
+			var Decryptor = require("./decryptor");
+			var i;
+			for (i = 0; i < data.length; i += 1) {
+				Decryptor.create(keyRealID, data[i], this.parallel());
+			}
+		}, cb);
+	};
 };
 
 /** get all decryptors for a certain key id */

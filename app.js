@@ -18,7 +18,6 @@ io.sockets.on('connection', function (socket) {
 	var topics = require('./topics.js');
 	var step = require('step');
 
-	//TODO: think about errors going back.
 	function handle(handler, data, fn) {
 		var topics;
 		step(function () {

@@ -90,14 +90,18 @@ var whispeerAPI = {
 			}
 		}, UserNotExisting), fn);
 	},
+	register: function (data, fn) {
+		//TODO
+	},
 	login: function (data, fn) {
+		var mySession;
 		step(function () {
 			var Session = require("./includes/session");
-			var mySession = new Session();
+			mySession = new Session();
 			mySession.login(data.identifier, data.password, data.token, this);
 		}, h.sF(function (sid) {
 			this.ne({
-				
+				session: sid
 			});
 		}), fn);
 		console.log(data);

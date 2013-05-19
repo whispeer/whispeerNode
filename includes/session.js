@@ -145,7 +145,6 @@ var Session = function Session() {
 	*/
 	this.login = function loginF(identifier, externalHash, token, cb) {
 		var myUser;
-		//TODO
 		step(function () {
 			var User = require("./user.js");
 			User.getUser(identifier, this);
@@ -228,8 +227,8 @@ var Session = function Session() {
 
 			this();
 		}), h.sF(function checkMainKey() {
-			var mainKeyO = new SymKey(mainKey);
-			//TODO
+			var mainKeyO = SymKey.create(mainKey.realid);
+			mainKeyO.addDecryptors(mainKey.decryptors);
 		}), h.sF(function checkCryptKey() {
 			var cryptKeyO = new CryptKey(cryptKey);
 			//TODO
