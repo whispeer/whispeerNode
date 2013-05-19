@@ -145,6 +145,13 @@ var Session = function Session() {
 	*/
 	this.login = function loginF(identifier, password, cb) {
 		//TODO
+		step(function () {
+			User.getUser(identifier, this);
+		}, h.sF(function (user) {
+			user.getPassword(this);
+		}), h.sF(function (pw) {
+			this.ne(password === pw);
+		}), cb);
 	};
 
 	/** register a user.

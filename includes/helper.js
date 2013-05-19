@@ -135,6 +135,11 @@ ssn.helper = {
 		return (data.isHex(data) && data.length === 64);
 	},
 
+	isCurve: function (data) {
+		//TODO!
+		return false;
+	},
+
 	isHex: function (data) {
 		return (ssn.helper.isset(data) && !!data.match(/^[A-z0-9]*$/));
 	},

@@ -16,7 +16,15 @@ var validKeys = {
 		read: true,
 		pre: function (cb, view, user, newSalt, oldSalt) {
 			step(function () {
-				view.logedinError(this);
+				view.ownUserError(user, this);
+			}, cb);
+		}
+	},
+	password: {
+		read: true,
+		pre: function (cb, view, user, newPassword, oldPassword) {
+			step(function () {
+				view.ownUserError(user, this);
 			}, cb);
 		}
 	},
@@ -109,8 +117,15 @@ var User = function (id) {
 
 	var getAttribute;
 
+	//TODO: match
+	/** set an attribute of this user.
+	* @param view current view (for sessione etc.)
+	* @param key key to set
+	* @param value value to set to
+	* @param cb callback
+	* checks if we are allowed to do this set operation and uses validKeys for this.
+	*/
 	function doSetOperation(view, key, value, cb) {
-		//TODO: post, match
 		var oldValue, attr;
 		step(function () {
 			attr = h.deepGet(validKeys, key);
@@ -249,7 +264,6 @@ var User = function (id) {
 	function isSavedF() {
 		return saved;
 	}
-
 	this.isSaved = isSavedF;
 
 	function getIDF() {
@@ -264,16 +278,26 @@ var User = function (id) {
 	}
 	this.getNickname = getNicknameF;
 
-	//todo: think how we want to handle uniqueness in basic saving!
-	//we need to:
-	// - make sure no nick is taken two times
-	// - one user only blocks one nick (del unused nicks)
 	function setNicknameF(view, nickname, cb) {
 		step(function () {
 			setAttribute(view, {nickname: nickname}, this);
 		}, cb);
 	}
 	this.setNickname = setNicknameF;
+
+	function setPasswordF(view, password, cb) {
+		step(function doSetPassword() {
+			setAttribute(view, {password: password}, this);
+		}, cb);
+	}
+	this.setPassword = setPasswordF;
+
+	function getPasswordF(cb) {
+		step(function doGetPassword() {
+			getAttribute("password", this);
+		}, cb);
+	}
+	this.getPassword = getPasswordF;
 
 	function getEMailF(cb) {
 		step(function () {
@@ -288,6 +312,23 @@ var User = function (id) {
 		}, cb);
 	}
 	this.setMail = setMailF;
+
+	function generateTokenF(cb) {
+		var token;
+		step(function () {
+			var random = require("random");
+			random.getRandomInt(0, 999999999999999, this);
+		}, h.sF(function (random) {
+			token = random;
+			client.set("user:token:" + id + ":" + random, 'true', 'NX', 'EX', 60 * 5, this);
+		}), h.sF(function (set) {
+			if (set) {
+				this.ne(token);
+			} else {
+				this.ne(false);
+			}
+		}), cb);
+	}
 };
 
 User.getUser = function (identifier, callback) {
