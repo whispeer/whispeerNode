@@ -240,6 +240,14 @@ var Session = function Session() {
 			EccKey.createWithDecryptors(signKey, this);
 		}), h.sF(function createActualUser(key) {
 			var signKeyO = key;
+			var myUser = new User();
+			if (nickname) {
+				myUser.setNickname(nickname, this.parallel());
+			}
+			if (mail) {
+				myUser.setMail(mail, this.parallel());
+			}
+			myUser.setPassword(password, this.parallel());
 		}));
 	};
 

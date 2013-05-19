@@ -205,6 +205,17 @@ var User = function (id) {
 
 	var setAttribute, saved;
 
+	function deleteF(cb) {
+		step(function () {
+			client.keys(userDomain + ":*", this);
+		}, h.sF(function (keys) {
+			var i;
+			for (i = 0; i < keys.length; i += 1) {
+				client.del(keys[i], this.parallel());
+			}
+		}), cb);
+	}
+
 	function realGetAttribute(key, cb) {
 		step(function () {
 			if (validKey(key)) {
@@ -252,7 +263,6 @@ var User = function (id) {
 		saved = false;
 		this.save = function doSave(view, cb) {
 			step(function doSave() {
-				//check given data!
 				client.incr("users", this);
 			}, h.sF(function handleNewID(myid) {
 				id = myid;
@@ -266,10 +276,14 @@ var User = function (id) {
 				setAttribute = setAttributeF;
 				getAttribute = realGetAttribute;
 				setAttribute(view, vals, this);
-			}), h.sF(function saveDone() {
+			}), function saveDone(e) {
+				if (e) {
+					deleteF(function () {});
+					throw e;
+				}
 				saved = true;
 				this.ne(true);
-			}), cb);
+			}, cb);
 		};
 	}
 
@@ -332,7 +346,7 @@ var User = function (id) {
 			random.getRandomInt(0, 999999999999999, this);
 		}, h.sF(function (random) {
 			token = random;
-			client.set("user:token:" + id + ":" + random, 'true', 'NX', 'EX', 60 * 5, this);
+			client.set(userDomain + ":token:" + random, 'true', 'NX', 'EX', 60 * 5, this);
 		}), h.sF(function (set) {
 			if (set) {
 				this.ne(token);
@@ -345,7 +359,7 @@ var User = function (id) {
 
 	function useTokenF(token, cb) {
 		step(function () {
-			client.del("user:token:" + id + ":" + token, this);
+			client.del(userDomain + ":token:" + token, this);
 		}, h.sF(function (deleted) {
 			if (deleted === 1) {
 				this.ne(true);

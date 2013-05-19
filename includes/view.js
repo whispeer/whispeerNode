@@ -21,6 +21,10 @@ var view = function view(socket, session) {
 
 	this.ownUserError = function ownUserErrorF(user, cb) {
 		step(function () {
+			if (!user.isSaved()) {
+				this.last.ne();
+			}
+
 			theView.logedinError(this);
 		}, h.sF(function () {
 			if (session.getUserID() === user.getUserID()) {
