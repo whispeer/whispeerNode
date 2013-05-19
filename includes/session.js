@@ -144,13 +144,26 @@ var Session = function Session() {
 	* @author Nilos
 	*/
 	this.login = function loginF(identifier, password, cb) {
+		var myUser;
 		//TODO
 		step(function () {
+			var User = require("./user.js");
 			User.getUser(identifier, this);
 		}, h.sF(function (user) {
-			user.getPassword(this);
+			myUser = user;
+			myUser.getPassword(this);
 		}), h.sF(function (pw) {
-			this.ne(password === pw);
+			if (password === pw) {
+				createSession(myUser.getID(), this);
+			} else {
+				throw new InvalidLogin();
+			}
+		}), h.sF(function (sid) {
+			if (sid) {
+				this.ne(sid);
+			} else {
+				this.ne(false);
+			}
 		}), cb);
 	};
 

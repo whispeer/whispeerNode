@@ -91,6 +91,11 @@ var whispeerAPI = {
 		}, UserNotExisting), fn);
 	},
 	login: function (data, fn) {
+		step(function () {
+			var Session = require("./includes/session");
+			var mySession = new Session();
+			mySession.login(data.identifier, data.password, this):
+		}
 		console.log(data);
 		fn(null, {result: "success"});
 	}
