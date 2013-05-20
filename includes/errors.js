@@ -42,3 +42,5 @@ global.InvalidSymKey = addError("invalid symmetric key data");
 global.NotAEccKey = addError("Not a elliptic curve key");
 global.InvalidEccKey = addError("invalid elliptic curve key");
 /** end crypto part */
+
+// StepError,NotLogedin,InvalidLogin,AccessViolation,InvalidToken,UserNotExisting,MailInUse,NicknameInUse,LostDecryptor,InvalidDecryptor,RealIDInUse,NotASymKey,InvalidSymKey,NotAEccKey,InvalidEccKey

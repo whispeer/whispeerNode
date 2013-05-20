@@ -5,8 +5,7 @@ var h = require("./helper");
 var client = require("./client");
 
 var SymKey = require("./crypto/symKey.js");
-var CryptKey = require("./crypto/signKey.js");
-var SignKey = require("./crypto/cryptKey.js");
+var EccKey = require("./crypto/eccKey.js");
 
 require("./errors");
 
@@ -54,6 +53,17 @@ var Session = function Session() {
 
 	function time() {
 		return new Date().getTime();
+	}
+
+	function internalLogin(userid, callback) {
+		step(function () {
+			createSession(userid, this);
+		}, h.sF(function (sessionid) {
+			sid = sessionid;
+			logedin = true;
+			lastChecked = time();
+			this.ne(sid);
+		}), callback);
 	}
 
 	/** check if already loged in
@@ -166,16 +176,11 @@ var Session = function Session() {
 			var internalHash = shasum.digest('hex');
 
 			if (externalHash === internalHash) {
-				createSession(myUser.getID(), this);
+				internalLogin(myUser.getID(), this);
 			} else {
 				throw new InvalidLogin();
 			}
 		}), h.sF(function (theSid) {
-			sid = theSid;
-			userid = myUser.getID();
-			logedin = true;
-			lastChecked = time();
-
 			if (theSid) {
 				this.ne(theSid);
 			} else {
@@ -193,16 +198,19 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, cb) {
+	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, view, cb) {
 		//TODO
 		//y rule 1: nickname or mail! one can be empty. check for that!
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
 		//y rule 4: crypt key valid
-		//n rule 5: mail&nick valid and unique
-		//n rule 6: password valid
+		//y rule 5: mail&nick valid and unique
+		//y rule 6: password valid
 		var result;
 		var User = require("./user.js");
+		var myUser;
+
+		var mainKeyO, cryptKeyO, signKeyO;
 
 		step(function () {
 			result = {
@@ -233,14 +241,14 @@ var Session = function Session() {
 		}), h.sF(function checkMainKey() {
 			SymKey.createWithDecryptors(mainKey, this);
 		}), h.sF(function checkCryptKey(key) {
-			var mainKeyO = key;
+			mainKeyO = key;
 			EccKey.createWithDecryptors(cryptKey, this);
 		}), h.sF(function checkSignKey(key) {
-			var cryptKeyO = key;
+			cryptKeyO = key;
 			EccKey.createWithDecryptors(signKey, this);
 		}), h.sF(function createActualUser(key) {
-			var signKeyO = key;
-			var myUser = new User();
+			signKeyO = key;
+			myUser = new User();
 			if (nickname) {
 				myUser.setNickname(nickname, this.parallel());
 			}
@@ -248,7 +256,20 @@ var Session = function Session() {
 				myUser.setMail(mail, this.parallel());
 			}
 			myUser.setPassword(password, this.parallel());
-		}));
+			myUser.setMainKey(mainKeyO, this.parallel());
+			myUser.setCryptKey(cryptKeyO, this.parallel());
+			myUser.setSignKey(signKeyO, this.parallel());
+		}), h.sF(function userCreation() {
+			myUser.save(view, this);
+		}), h.sF(function createS() {
+			internalLogin(myUser.getID(), this);
+		}), h.sF(function sessionF(theSid) {
+			if (theSid) {
+				this.ne(theSid);
+			} else {
+				this.ne(false);
+			}
+		}), cb);
 	};
 
 	/** get the users id

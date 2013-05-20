@@ -11,6 +11,12 @@ function logedinF(view, cb) {
 	}, cb);
 }
 
+function ownUserF(view, cb) {
+	step(function () {
+		view.ownUserError(this);
+	}, cb);
+}
+
 var validKeys = {
 	salt: {
 		read: true,
@@ -85,6 +91,9 @@ var validKeys = {
 				this.ne();
 			}, cb);
 		}
+	},
+	mainKey: {
+		read: ownUserF,
 	}
 };
 
@@ -219,6 +228,12 @@ var User = function (id) {
 	function realGetAttribute(key, cb) {
 		step(function () {
 			if (validKey(key)) {
+				var attr = h.deepGet(validKeys, key);
+
+				if (typeof attr.read === "function") {
+					attr.read(this, view, user);
+				}
+
 				client.get(userDomain + ":" + obj2key(key), this);
 			}
 		}, cb);
