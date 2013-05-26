@@ -206,41 +206,76 @@ var Session = function Session() {
 		//y rule 4: crypt key valid
 		//y rule 5: mail&nick valid and unique
 		//y rule 6: password valid
-		var result;
 		var User = require("./user.js");
 		var myUser;
 
+		var result = {
+			error: false,
+			errorCodes: {
+				nicknameUsed: false,
+				mailUsed: false,
+				invalidIdentifier: false,
+				invalidPassword: false,
+				nicknameInvalid: false,
+				mailInvalid: false
+			}
+		};
+
+		function regErr(code) {
+			if (result.errorCodes[code] !== undefined) {
+				result.errorCodes[code] = true;
+			} else {
+				console.warn("Unknown register error code:" + code);
+			}
+
+			result.error = true;
+		}
+
 		var mainKeyO, cryptKeyO, signKeyO;
 
-		step(function () {
-			result = {
-				errorCodes: {
-					nicknameUsed: false,
-					mailUsed: false,
-					invalidIdentifier: false
-				}
-			};
-		}, h.sF(function nicknameORMail() {
+		step(function nicknameORMail() {
 			if (!h.isNickname(nickname)) {
 				nickname = null;
+				regErr("nicknameInvalid");
 			}
 
 			if (!h.isMail(mail)) {
 				mail = null;
+				regErr("mailInvalid");
 			}
 
 			if (!nickname && !mail) {
-				result.errorCodes.invalidIdentifier = true;
+				regErr("invalidIdentifier");
 			}
 
 			if (!h.isPassword(password)) {
-				result.errorCodes.invalidPassword = true;
+				regErr("invalidPassword");
 			}
 
 			this();
-		}), h.sF(function checkMainKey() {
+		}, h.sF(function checkMailUnique() {
+			if (mail) {
+				User.getUser(mail, this);
+			} else {
+				this();
+			}
+		}), h.hE(function checkNicknameUnique(e) {
+			if (e) {
+				regErr("mailUsed");
+			}
+
+			if (nickname) {
+				User.getUser(nickname, this);
+			} else {
+				this();
+			}
+		}, UserNotExisting), h.hE(function checkMainKey(e) {
+			if (e) {
+				regErr("nicknameUsed");
+			}
+
 			SymKey.createWithDecryptors(mainKey, this);
-		}), h.sF(function checkCryptKey(key) {
+		}, UserNotExisting), h.sF(function checkCryptKey(key) {
 			mainKeyO = key;
 			EccKey.createWithDecryptors(cryptKey, this);
 		}), h.sF(function checkSignKey(key) {
@@ -248,6 +283,11 @@ var Session = function Session() {
 			EccKey.createWithDecryptors(signKey, this);
 		}), h.sF(function createActualUser(key) {
 			signKeyO = key;
+			//TODO: do not do this when we have got errors!
+			if (result.error === true) {
+				this.last.ne(result);
+			}
+
 			myUser = new User();
 			if (nickname) {
 				myUser.setNickname(nickname, this.parallel());
@@ -265,10 +305,10 @@ var Session = function Session() {
 			internalLogin(myUser.getID(), this);
 		}), h.sF(function sessionF(theSid) {
 			if (theSid) {
-				this.ne(theSid);
-			} else {
-				this.ne(false);
+				result.sid = theSid;
 			}
+
+			this.ne(result);
 		}), cb);
 	};
 
