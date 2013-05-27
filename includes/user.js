@@ -5,34 +5,22 @@ var client = require("./redisClient");
 var h = require("./helper");
 var extend = require("xtend");
 
-function logedinF(view, cb) {
+function logedinF(data, cb) {
 	step(function () {
-		view.logedinError(this);
+		data.view.logedinError(this);
 	}, cb);
 }
 
-function ownUserF(view, cb) {
+function ownUserF(data, cb) {
 	step(function () {
-		view.ownUserError(this);
+		data.view.ownUserError(this);
 	}, cb);
 }
 
 var validKeys = {
-	salt: {
-		read: true,
-		pre: function (cb, view, user, newSalt, oldSalt) {
-			step(function () {
-				view.ownUserError(user, this);
-			}, cb);
-		}
-	},
 	password: {
 		read: true,
-		pre: function (cb, view, user, newPassword, oldPassword) {
-			step(function () {
-				view.ownUserError(user, this);
-			}, cb);
-		}
+		pre: ownUserF
 	},
 	//TODO
 	mainKey: {
@@ -47,56 +35,56 @@ var validKeys = {
 	nickname: {
 		read: logedinF,
 		match: /^[A-z][A-z0-9]*$/,
-		pre: function (cb, view, user, newNick, oldNick) {
+		pre: function (data, cb) {
 			step(function () {
-				view.ownUserError(user, this);
+				data.view.ownUserError(data.user, this);
 			}, h.sF(function () {
-				client.setnx("user:nickname:" + newNick, user.getID(), this);
+				client.setnx("user:nickname:" + data.value, data.user.getID(), this);
 			}), h.sF(function (set) {
 				if (set) {
 					this.last.ne();
 				} else {
-					client.get("user:nickname:" + newNick, this);
+					client.get("user:nickname:" + data.value, this);
 				}
-			}), h.sF(function (data) {
-				if (data === user.getID()) {
+			}), h.sF(function (id) {
+				if (id === data.user.getID()) {
 					this.last.ne();
 				} else {
-					throw new NicknameInUse(newNick);
+					throw new NicknameInUse(data.value);
 				}
 			}), cb);
 		},
-		post: function (cb, view, user, newNick, oldNick) {
+		post: function (data, cb) {
 			step(function () {
-				client.del("user:nickname:" + oldNick, this);
+				client.del("user:nickname:" + data.oldValue, this);
 			}, cb);
 		}
 	},
 	email: {
 		read: logedinF,
 		match: /^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i,
-		pre: function (cb, view, user, newMail, oldMail) {
+		pre: function (data, cb) {
 			step(function () {
-				view.ownUserError(user, this);
+				data.view.ownUserError(data.user, this);
 			}, h.sF(function () {
-				client.setnx("user:mail:" + newMail, user.getID(), this);
+				client.setnx("user:mail:" + data.value, data.user.getID(), this);
 			}), h.sF(function (set) {
 				if (set) {
 					this.ne();
 				} else {
-					client.get("user:mail:" + newMail, this);
+					client.get("user:mail:" + data.value, this);
 				}
-			}), h.sF(function (data) {
-				if (data === user.getID()) {
+			}), h.sF(function (id) {
+				if (id === data.user.getID()) {
 					this.last.ne();
 				} else {
-					throw new MailInUse(newMail);
+					throw new MailInUse(data.value);
 				}
 			}), cb);
 		},
-		post: function (cb, view, user, newMail, oldMail) {
+		post: function (data, cb) {
 			step(function () {
-				client.del("user:mail:" + oldMail);
+				client.del("user:mail:" + data.oldValue);
 				this.ne();
 			}, cb);
 		}
@@ -153,7 +141,9 @@ var User = function (id) {
 	* checks if we are allowed to do this set operation and uses validKeys for this.
 	*/
 	function doSetOperation(view, key, value, cb) {
-		var oldValue, attr;
+		var attr, data = {};
+		//view, user, key, value, oldValue
+
 		step(function () {
 			attr = h.deepGet(validKeys, key);
 
@@ -161,20 +151,34 @@ var User = function (id) {
 				throw new AccessViolation(key.toString(":"));
 			}
 
+			data.view = view;
+			data.user = theUser;
+			data.key = key;
+			data.value = value;
+
 			theUser.getAttribute(key, this);
 		}, h.sF(function (oldVal) {
-			oldValue = oldVal;
+			data.oldValue = oldVal;
+
 			if (typeof attr.pre === "function") {
-				attr.pre(view, theUser, value, oldValue, this);
+				attr.pre(data, this);
 			} else {
 				this.ne();
 			}
 		}), h.sF(function () {
-			client.set(userDomain + ":" + obj2key(key), value, this);
+			if (typeof attr.transform === "function") {
+				attr.transform(data, this);
+			} else {
+				this.ne(value);
+			}
+		}), h.sF(function (realValue) {
+			data.value = realValue;
+
+			client.set(userDomain + ":" + obj2key(key), data.value, this);
 		}), h.sF(function () {
 			if (typeof attr.post === "function") {
 				//TODO: rollback if this fails!
-				attr.post(view, theUser, value, oldValue, this);
+				attr.post(data, this);
 			} else {
 				this.ne();
 			}
@@ -236,8 +240,13 @@ var User = function (id) {
 			if (validKey(key)) {
 				var attr = h.deepGet(validKeys, key);
 
+				var data = {
+					view: view,
+					user: theUser
+				};
+
 				if (typeof attr.read === "function") {
-					attr.read(this, view, theUser);
+					attr.read(data, this);
 				}
 
 				client.get(userDomain + ":" + obj2key(key), this);
@@ -360,8 +369,10 @@ var User = function (id) {
 	}
 	this.setMail = setMailF;
 
-	function setMainKeyF(key, cb) {
-		//TODO
+	function setMainKeyF(view, key, cb) {
+		step(function doSetCryptKey() {
+			setAttribute(view, {mainKey: key}, this);
+		}, cb);
 	}
 
 	function setCryptKeyF(view, key, cb) {
