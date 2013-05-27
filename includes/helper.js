@@ -141,7 +141,7 @@ ssn.helper = {
 	},
 
 	isHex: function (data) {
-		return (ssn.helper.isset(data) && !!data.match(/^[A-z0-9]*$/));
+		return (ssn.helper.isset(data) && !!data.match(/^[A-Fa-f0-9]*$/));
 	},
 
 	/** typeof val == object? */

@@ -13,24 +13,98 @@ function logedinF(data, cb) {
 
 function ownUserF(data, cb) {
 	step(function () {
-		data.view.ownUserError(this);
+		data.view.ownUserError(data.user, this);
 	}, cb);
 }
 
+function trueF(data, cb) {
+	cb();
+}
+
+function falseF(data, cb) {
+	cb(new AccessViolation());
+}
+
+var EccKey = require("./crypto/eccKey");
+var SymKey = require("./crypto/symKey");
+
 var validKeys = {
 	password: {
-		read: true,
+		read: trueF,
+		match: /^[A-Fa-f0-9]{10}$/,
 		pre: ownUserF
 	},
-	//TODO
 	mainKey: {
-		read: ownUserF
+		read: ownUserF,
+		pre: function (data, cb) {
+			step(function () {
+				if (data.value instanceof SymKey) {
+					this.last.ne();
+				} else {
+					SymKey.get(data.value, this);
+				}
+			}, h.sF(function () {
+				this.ne();
+			}), cb);
+		},
+		transform: function (data, cb) {
+			step(function () {
+				if (data.value instanceof SymKey) {
+					this.ne(data.value.getRealID());
+				} else {
+					this.ne(data.value);
+				}
+			}, cb);
+		},
+		unset: falseF
 	},
 	cryptKey: {
-		read: ownUserF
+		read: ownUserF,
+		pre: function (data, cb) {
+			step(function () {
+				if (data.value instanceof EccKey) {
+					this.last.ne();
+				} else {
+					EccKey.get(data.value, this);
+				}
+			}, h.sF(function () {
+				this.ne();
+			}), cb);
+		},
+		transform: function (data, cb) {
+			step(function () {
+				if (data.value instanceof EccKey) {
+					this.ne(data.value.getRealID());
+				} else {
+					this.ne(data.value);
+				}
+			}, cb);
+		},
+		unset: falseF
 	},
 	signKey: {
-		read: ownUserF
+		read: ownUserF,
+		pre: function (data, cb) {
+			step(function () {
+				if (data.value instanceof EccKey) {
+					this.last.ne();
+				} else {
+					EccKey.get(data.value, this);
+				}
+			}, h.sF(function () {
+				this.ne();
+			}), cb);
+		},
+		transform: function (data, cb) {
+			step(function () {
+				if (data.value instanceof EccKey) {
+					this.ne(data.value.getRealID());
+				} else {
+					this.ne(data.value);
+				}
+			}, cb);
+		},
+		unset: falseF
 	},
 	nickname: {
 		read: logedinF,
@@ -58,6 +132,19 @@ var validKeys = {
 			step(function () {
 				client.del("user:nickname:" + data.oldValue, this);
 			}, cb);
+		},
+		unset: function (data, cb) {
+			step(function () {
+				data.view.ownUserError(data.user, this);
+			}, h.sF(function () {
+				client.get("user:nickname:" + data.value, this);
+			}), h.sF(function (id) {
+				if (id === data.user.getID()) {
+					client.del("user:nickname:" + data.value, this);
+				} else {
+					this.last.ne();
+				}
+			}), cb);
 		}
 	},
 	email: {
@@ -67,26 +154,44 @@ var validKeys = {
 			step(function () {
 				data.view.ownUserError(data.user, this);
 			}, h.sF(function () {
-				client.setnx("user:mail:" + data.value, data.user.getID(), this);
+				client.setnx("user:mail:" + data.value.toLowerCase(), data.user.getID(), this);
 			}), h.sF(function (set) {
 				if (set) {
 					this.ne();
 				} else {
-					client.get("user:mail:" + data.value, this);
+					client.get("user:mail:" + data.value.toLowerCase(), this);
 				}
 			}), h.sF(function (id) {
 				if (id === data.user.getID()) {
 					this.last.ne();
 				} else {
-					throw new MailInUse(data.value);
+					throw new MailInUse(data.value.toLowerCase());
 				}
 			}), cb);
 		},
+		transform: function (data, cb) {
+			step(function () {
+				this.ne(data.value.toLowerCase());
+			}, cb);
+		},
 		post: function (data, cb) {
 			step(function () {
-				client.del("user:mail:" + data.oldValue);
+				client.del("user:mail:" + data.oldValue.toLowerCase());
 				this.ne();
 			}, cb);
+		},
+		unset: function (data, cb) {
+			step(function () {
+				data.view.ownUserError(data.user, this);
+			}, h.sF(function () {
+				client.get("user:mail:" + data.value.toLowerCase(), this);
+			}), h.sF(function (id) {
+				if (id === data.user.getID()) {
+					client.del("user:mail:" + data.value.toLowerCase(), this);
+				} else {
+					this.last.ne();
+				}
+			}), cb);
 		}
 	}
 };
@@ -156,7 +261,7 @@ var User = function (id) {
 			data.key = key;
 			data.value = value;
 
-			theUser.getAttribute(key, this);
+			theUser.getAttribute(view, key, this);
 		}, h.sF(function (oldVal) {
 			data.oldValue = oldVal;
 
@@ -182,6 +287,42 @@ var User = function (id) {
 			} else {
 				this.ne();
 			}
+		}), cb);
+	}
+
+	/** set an attribute of this user.
+	* @param view current view (for sessione etc.)
+	* @param key key to set
+	* @param value value to set to
+	* @param cb callback
+	* checks if we are allowed to do this set operation and uses validKeys for this.
+	*/
+	function doUnSetOperation(view, key, cb) {
+		var attr, data = {};
+		//view, user, key, value
+
+		step(function () {
+			attr = h.deepGet(validKeys, key);
+
+			if (!attr) {
+				throw new AccessViolation(key.toString(":"));
+			}
+
+			data.view = view;
+			data.user = theUser;
+			data.key = key;
+
+			theUser.getAttribute(view, key, this);
+		}, h.sF(function (value) {
+			data.value = value;
+
+			if (typeof attr.unset === "function") {
+				attr.unset(data, this);
+			} else {
+				this.ne();
+			}
+		}), h.sF(function () {
+			client.del(userDomain + ":" + obj2key(key), this);
 		}), cb);
 	}
 
@@ -225,6 +366,7 @@ var User = function (id) {
 	var setAttribute, saved;
 
 	function deleteF(cb) {
+		//TODO: think about nickname, mail (unique values)
 		step(function () {
 			client.keys(userDomain + ":*", this);
 		}, h.sF(function (keys) {
@@ -235,7 +377,7 @@ var User = function (id) {
 		}), cb);
 	}
 
-	function realGetAttribute(key, cb) {
+	function realGetAttribute(view, key, cb) {
 		step(function () {
 			if (validKey(key)) {
 				var attr = h.deepGet(validKeys, key);
@@ -262,7 +404,7 @@ var User = function (id) {
 	} else {
 		var vals = {};
 
-		getAttribute = function (key, cb) {
+		getAttribute = function (view, key, cb) {
 			step(function fakeGetAttribute() {
 				key = key2obj(key);
 				var i, cur = vals;
@@ -308,7 +450,10 @@ var User = function (id) {
 				setAttribute(view, vals, this);
 			}), function saveDone(e) {
 				if (e) {
-					deleteF(function () {});
+					deleteF(function (e) {
+						console.err(e);
+					});
+
 					throw e;
 				}
 				saved = true;
@@ -327,9 +472,9 @@ var User = function (id) {
 	}
 	this.getID = getIDF;
 
-	function getNicknameF(cb) {
+	function getNicknameF(view, cb) {
 		step(function doGetNickname() {
-			getAttribute("nickname", this);
+			getAttribute(view, "nickname", this);
 		}, cb);
 	}
 	this.getNickname = getNicknameF;
@@ -348,16 +493,16 @@ var User = function (id) {
 	}
 	this.setPassword = setPasswordF;
 
-	function getPasswordF(cb) {
+	function getPasswordF(view, cb) {
 		step(function doGetPassword() {
-			getAttribute("password", this);
+			getAttribute(view, "password", this);
 		}, cb);
 	}
 	this.getPassword = getPasswordF;
 
-	function getEMailF(cb) {
+	function getEMailF(view, cb) {
 		step(function () {
-			getAttribute("email", this);
+			getAttribute(view, "email", this);
 		}, cb);
 	}
 	this.getEMail = getEMailF;
