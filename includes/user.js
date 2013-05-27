@@ -34,9 +34,18 @@ var validKeys = {
 			}, cb);
 		}
 	},
+	//TODO
+	mainKey: {
+		read: ownUserF
+	},
+	cryptKey: {
+		read: ownUserF
+	},
+	signKey: {
+		read: ownUserF
+	},
 	nickname: {
 		read: logedinF,
-		//TODO: match:?
 		match: /^[A-z][A-z0-9]*$/,
 		pre: function (cb, view, user, newNick, oldNick) {
 			step(function () {
@@ -91,9 +100,6 @@ var validKeys = {
 				this.ne();
 			}, cb);
 		}
-	},
-	mainKey: {
-		read: ownUserF,
 	}
 };
 
@@ -231,7 +237,7 @@ var User = function (id) {
 				var attr = h.deepGet(validKeys, key);
 
 				if (typeof attr.read === "function") {
-					attr.read(this, view, user);
+					attr.read(this, view, theUser);
 				}
 
 				client.get(userDomain + ":" + obj2key(key), this);
@@ -353,6 +359,26 @@ var User = function (id) {
 		}, cb);
 	}
 	this.setMail = setMailF;
+
+	function setMainKeyF(key, cb) {
+		//TODO
+	}
+
+	function setCryptKeyF(view, key, cb) {
+		step(function doSetCryptKey() {
+			setAttribute(view, {cryptKey: key}, this);
+		}, cb);
+	}
+
+	function setSignKeyF(view, key, cb) {
+		step(function doSetSignKey() {
+			setAttribute(view, {signKey: key}, this);
+		}, cb);
+	}
+
+	this.setMainKey = setMainKeyF;
+	this.setCryptKey = setCryptKeyF;
+	this.setSignKey = setSignKeyF;
 
 	function generateTokenF(cb) {
 		var token;

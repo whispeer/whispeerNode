@@ -6,11 +6,17 @@ var h = require("./includes/helper");
 require("./includes/errors.js");
 
 var whispeerAPI = {
-	nicknameFree: function isUserNameFree(data, fn) {
+	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
-			if (data && data.username && h.isNickname(data.username)) {
-				var User = require("./includes/user");
-				User.getUser(data.username, this);
+			if (data && data.nickname) {
+				if (h.isNickname(data.nickname)) {
+					var User = require("./includes/user");
+					User.getUser(data.nickname, this);
+				} else {
+					this.last.ne({
+						nicknameUsed: true
+					});
+				}
 			} else {
 				fn.error.protocol();
 			}
@@ -28,9 +34,15 @@ var whispeerAPI = {
 	},
 	mailFree: function isMailFree(data, fn) {
 		step(function () {
-			if (data && data.mail && h.isMail(data.username)) {
-				var User = require("./includes/user");
-				User.getUser(data.mail, this);
+			if (data && data.mail) {
+				if (h.isMail(data.mail)) {
+					var User = require("./includes/user");
+					User.getUser(data.mail, this);
+				} else {
+					this.last.ne({
+						mailUsed: true
+					});
+				}
 			} else {
 				fn.error.protocol();
 			}
@@ -69,26 +81,6 @@ var whispeerAPI = {
 				this.last.ne();
 			}
 		}), fn);
-	},
-	salt: function getSalt(data, fn) {
-		step(function () {
-			if (data && data.identifier) {
-				var User = require("./includes/user");
-				User.getUser(data.identifier, this);
-			} else {
-				fn.error.protocol();
-			}
-		}, h.sF(function (myUser) {
-			myUser.getSalt(this);
-		}), h.hE(function (e, salt) {
-			if (e) {
-				fn.error({userNotExisting: true});
-
-				this.last.ne();
-			} else {
-				this.ne({salt: salt});
-			}
-		}, UserNotExisting), fn);
 	},
 	register: function (data, fn) {
 		//TODO

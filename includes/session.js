@@ -290,15 +290,15 @@ var Session = function Session() {
 
 			myUser = new User();
 			if (nickname) {
-				myUser.setNickname(nickname, this.parallel());
+				myUser.setNickname(view, nickname, this.parallel());
 			}
 			if (mail) {
-				myUser.setMail(mail, this.parallel());
+				myUser.setMail(view, mail, this.parallel());
 			}
-			myUser.setPassword(password, this.parallel());
-			myUser.setMainKey(mainKeyO, this.parallel());
-			myUser.setCryptKey(cryptKeyO, this.parallel());
-			myUser.setSignKey(signKeyO, this.parallel());
+			myUser.setPassword(view, password, this.parallel());
+			myUser.setMainKey(view, mainKeyO, this.parallel());
+			myUser.setCryptKey(view, cryptKeyO, this.parallel());
+			myUser.setSignKey(view, signKeyO, this.parallel());
 		}), h.sF(function userCreation() {
 			myUser.save(view, this);
 		}), h.sF(function createS() {
