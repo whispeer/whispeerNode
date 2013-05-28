@@ -31,6 +31,7 @@ global.UserNotExisting = addError("User Not Existing");
 global.MailInUse = addError("Mail already in use");
 global.NicknameInUse = addError("Nickname already in use");
 global.InvalidPassword = addError("INvalid Password");
+global.InvalidAttribute = addError("invalid attribute");
 /** end user part */
 
 /** crypto part */

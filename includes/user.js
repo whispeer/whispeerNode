@@ -235,7 +235,7 @@ var User = function (id) {
 	var userDomain;
 	var theUser = this;
 
-	var getAttribute;
+	var getAttribute, unsetAttribute;
 
 	//TODO: match
 	/** set an attribute of this user.
@@ -253,13 +253,19 @@ var User = function (id) {
 			attr = h.deepGet(validKeys, key);
 
 			if (!attr) {
-				throw new AccessViolation(key.toString(":"));
+				throw new AccessViolation(obj2key(key));
 			}
 
 			data.view = view;
 			data.user = theUser;
 			data.key = key;
 			data.value = value;
+
+			if (attr.match instanceof RegExp) {
+				if (!attr.match.test(data.value)) {
+					throw new InvalidAttribute(obj2key(key));
+				}
+			}
 
 			theUser.getAttribute(view, key, this);
 		}, h.sF(function (oldVal) {
@@ -282,12 +288,40 @@ var User = function (id) {
 			client.set(userDomain + ":" + obj2key(key), data.value, this);
 		}), h.sF(function () {
 			if (typeof attr.post === "function") {
-				//TODO: rollback if this fails!
 				attr.post(data, this);
 			} else {
 				this.ne();
 			}
-		}), cb);
+		}), function (e) {
+			if (e) {
+				unsetAttribute(view, key, function (e) {
+					if (e) {
+						console.error(e);
+					}
+				});
+			}
+
+			this.ne();
+		}, cb);
+	}
+
+	function realGetAttribute(view, key, cb) {
+		step(function () {
+			if (validKey(key)) {
+				var attr = h.deepGet(validKeys, key);
+
+				var data = {
+					view: view,
+					user: theUser
+				};
+
+				if (typeof attr.read === "function") {
+					attr.read(data, this);
+				}
+
+				client.get(userDomain + ":" + obj2key(key), this);
+			}
+		}, cb);
 	}
 
 	/** set an attribute of this user.
@@ -297,7 +331,7 @@ var User = function (id) {
 	* @param cb callback
 	* checks if we are allowed to do this set operation and uses validKeys for this.
 	*/
-	function doUnSetOperation(view, key, cb) {
+	function realUnsetAttribute(view, key, cb) {
 		var attr, data = {};
 		//view, user, key, value
 
@@ -305,7 +339,7 @@ var User = function (id) {
 			attr = h.deepGet(validKeys, key);
 
 			if (!attr) {
-				throw new AccessViolation(key.toString(":"));
+				throw new AccessViolation(obj2key(key));
 			}
 
 			data.view = view;
@@ -377,30 +411,12 @@ var User = function (id) {
 		}), cb);
 	}
 
-	function realGetAttribute(view, key, cb) {
-		step(function () {
-			if (validKey(key)) {
-				var attr = h.deepGet(validKeys, key);
-
-				var data = {
-					view: view,
-					user: theUser
-				};
-
-				if (typeof attr.read === "function") {
-					attr.read(data, this);
-				}
-
-				client.get(userDomain + ":" + obj2key(key), this);
-			}
-		}, cb);
-	}
-
 	if (id) {
 		userDomain = "user:" + id;
 		saved = true;
 		setAttribute = setAttributeF;
 		getAttribute = realGetAttribute;
+		unsetAttribute = realUnsetAttribute;
 	} else {
 		var vals = {};
 
@@ -422,6 +438,24 @@ var User = function (id) {
 				} else {
 					this.ne(null);
 				}
+			}, cb);
+		};
+
+		unsetAttribute = function (view, key, cb) {
+			step(function fakeUnsetAttribute() {
+				key = key2obj(key);
+				var i, cur = vals;
+				for (i = 0; i < key.length - 1; i += 1) {
+					if (!cur) {
+						this.ne();
+						return;
+					}
+
+					cur = cur[key[i]];
+				}
+
+				delete cur[key[key.length - 1]];
+				this.ne(true);
 			}, cb);
 		};
 
@@ -447,11 +481,12 @@ var User = function (id) {
 				}
 				setAttribute = setAttributeF;
 				getAttribute = realGetAttribute;
+				unsetAttribute = realUnsetAttribute;
 				setAttribute(view, vals, this);
 			}), function saveDone(e) {
 				if (e) {
 					deleteF(function (e) {
-						console.err(e);
+						console.error(e);
 					});
 
 					throw e;
