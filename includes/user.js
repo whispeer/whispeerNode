@@ -292,17 +292,7 @@ var User = function (id) {
 			} else {
 				this.ne();
 			}
-		}), function (e) {
-			if (e) {
-				unsetAttribute(view, key, function (e) {
-					if (e) {
-						console.error(e);
-					}
-				});
-			}
-
-			this.ne();
-		}, cb);
+		}), cb);
 	}
 
 	function realGetAttribute(view, key, cb) {

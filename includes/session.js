@@ -2,7 +2,7 @@
 
 var step = require("step");
 var h = require("./helper");
-var client = require("./client");
+var client = require("./redisClient");
 
 var SymKey = require("./crypto/symKey.js");
 var EccKey = require("./crypto/eccKey.js");

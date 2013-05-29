@@ -18,11 +18,18 @@ io.sockets.on('connection', function (socket) {
 	var topics = require('./topics.js');
 	var step = require('step');
 
+	var Session = require("./includes/session");
+
+	var session = new Session();
+
+	var View = require("./includes/view");
+	var myView = new View(socket, session);
+
 	function handle(handler, data, fn) {
 		var topics;
 		step(function () {
 			if (typeof handler === "function") {
-				handler(data, new HandlerCallback(this.last));
+				handler(data, new HandlerCallback(this.last.ne));
 			} else if (typeof handler === "object" && typeof data === "object") {
 				var topic;
 				for (topic in data) {
@@ -40,13 +47,40 @@ io.sockets.on('connection', function (socket) {
 				result[topics[i]] = results[i];
 			}
 
-			this(result);
+			this.ne(result);
 		}, fn);
+	}
+
+	/** adds data which is always present.
+	* mainly adds login data
+	*/
+	function always(view, data, fn) {
+		step(function () {
+			view.logedin(this);
+		}, function (e, logedin) {
+			if (e) {
+				console.error(e);
+				data.status = 0;
+			}
+
+			if (data.status !== 0) {
+				data.status = 1;
+			}
+
+			data.logedin = logedin;
+
+			this(data);
+		}, fn);
+		
 	}
 
 	function handleF(handler) {
 		return function handleF(data, fn) {
-			handle(handler, data, fn);
+			step(function () {
+				handle(handler, data, this, myView);
+			}, function (e, result) {
+				always(myView, result, fn);
+			});
 		};
 	}
 
@@ -58,10 +92,11 @@ io.sockets.on('connection', function (socket) {
 	}
 
 	socket.on('error', function () {
-		console.log(arguments);
+		console.error(arguments);
 	});
 
 	socket.on('disconnect', function () {
+		//unregister listener
 		console.log("client disconnected");
 	});
 });

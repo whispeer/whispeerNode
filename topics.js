@@ -82,14 +82,17 @@ var whispeerAPI = {
 			}
 		}), fn);
 	},
-	register: function (data, fn) {
+	register: function (data, fn, view) {
+		step(function () {
+
+		});
 		//TODO
 	},
-	login: function (data, fn) {
+	login: function (data, fn, view) {
 		var mySession;
 		step(function () {
 			var Session = require("./includes/session");
-			mySession = new Session();
+			mySession = view.getSession();
 			mySession.login(data.identifier, data.password, data.token, this);
 		}, h.sF(function (sid) {
 			this.ne({

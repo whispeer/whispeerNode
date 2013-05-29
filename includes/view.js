@@ -35,6 +35,12 @@ var view = function view(socket, session) {
 		}), cb);
 	};
 
+	this.logedin = function (cb) {
+		step(function () {
+			session.logedin(this);
+		}, cb);
+	};
+
 	this.logedinError = function logedinErrorF(cb) {
 		step(function () {
 			session.logedin(this);

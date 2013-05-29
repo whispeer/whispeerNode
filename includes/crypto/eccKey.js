@@ -1,5 +1,5 @@
 var step = require("step");
-var client = require("../client");
+var client = require("../redisClient");
 var h = require("../helper");
 
 require("../errors");
