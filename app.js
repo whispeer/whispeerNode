@@ -1,5 +1,3 @@
-"use strict";
-
 /*process.on('uncaughtException', function (err) {
     console.error('An uncaughtException was found, the program will end.');
     //hopefully do some logging.
@@ -12,6 +10,7 @@
 var io = require('socket.io').listen(3000);
 
 io.sockets.on('connection', function (socket) {
+	"use strict";
 	console.log("connection received");
 
 	var HandlerCallback = require("./includes/handlerCallback");
@@ -26,7 +25,7 @@ io.sockets.on('connection', function (socket) {
 	var myView = new View(socket, session);
 
 	function handle(handler, data, fn) {
-		var topics;
+		var topics = [];
 		step(function () {
 			if (typeof handler === "function") {
 				handler(data, new HandlerCallback(this.last.ne));
@@ -35,7 +34,7 @@ io.sockets.on('connection', function (socket) {
 				for (topic in data) {
 					if (data.hasOwnProperty(topic) && handler[topic] !== undefined) {
 						topics.push(topic);
-						handle(handler[topic], data, this.parallel());
+						handle(handler[topic], data[topic], this.parallel());
 					}
 				}
 			}
@@ -71,7 +70,6 @@ io.sockets.on('connection', function (socket) {
 
 			this(data);
 		}, fn);
-		
 	}
 
 	function handleF(handler) {
@@ -90,6 +88,8 @@ io.sockets.on('connection', function (socket) {
 			socket.on(topic, handleF(topics[topic]));
 		}
 	}
+
+	socket.on("data", handleF(topics));
 
 	socket.on('error', function () {
 		console.error(arguments);
