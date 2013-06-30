@@ -7,13 +7,21 @@ var extend = require("xtend");
 
 function logedinF(data, cb) {
 	step(function () {
-		data.view.logedinError(this);
+		if (data.user.isSaved()) {
+			data.view.logedinError(this);
+		} else {
+			this.ne();
+		}
 	}, cb);
 }
 
 function ownUserF(data, cb) {
 	step(function () {
-		data.view.ownUserError(data.user, this);
+		if (data.user.isSaved()) {
+			data.view.ownUserError(data.user, this);
+		} else {
+			this.ne();
+		}
 	}, cb);
 }
 
@@ -38,7 +46,7 @@ var validKeys = {
 		read: ownUserF,
 		pre: function (data, cb) {
 			step(function () {
-				if (data.value instanceof SymKey) {
+				if (true || typeof data.value === "object" && data.value instanceof SymKey) {
 					this.last.ne();
 				} else {
 					SymKey.get(data.value, this);
@@ -49,7 +57,7 @@ var validKeys = {
 		},
 		transform: function (data, cb) {
 			step(function () {
-				if (data.value instanceof SymKey) {
+				if (typeof data.value === "object" && data.value instanceof SymKey) {
 					this.ne(data.value.getRealID());
 				} else {
 					this.ne(data.value);
@@ -62,7 +70,7 @@ var validKeys = {
 		read: ownUserF,
 		pre: function (data, cb) {
 			step(function () {
-				if (data.value instanceof EccKey) {
+				if (true || typeof data.value === "object" && data.value instanceof EccKey) {
 					this.last.ne();
 				} else {
 					EccKey.get(data.value, this);
@@ -73,7 +81,7 @@ var validKeys = {
 		},
 		transform: function (data, cb) {
 			step(function () {
-				if (data.value instanceof EccKey) {
+				if (typeof data.value === "object" && data.value instanceof EccKey) {
 					this.ne(data.value.getRealID());
 				} else {
 					this.ne(data.value);
@@ -86,7 +94,7 @@ var validKeys = {
 		read: ownUserF,
 		pre: function (data, cb) {
 			step(function () {
-				if (data.value instanceof EccKey) {
+				if (true || typeof data.value === "object" && data.value instanceof EccKey) {
 					this.last.ne();
 				} else {
 					EccKey.get(data.value, this);
@@ -97,7 +105,7 @@ var validKeys = {
 		},
 		transform: function (data, cb) {
 			step(function () {
-				if (data.value instanceof EccKey) {
+				if (typeof data.value === "object" && data.value instanceof EccKey) {
 					this.ne(data.value.getRealID());
 				} else {
 					this.ne(data.value);
@@ -110,17 +118,17 @@ var validKeys = {
 		read: logedinF,
 		match: /^[A-z][A-z0-9]*$/,
 		pre: function (data, cb) {
-			step(function () {
-				data.view.ownUserError(data.user, this);
+			step(function nPre1() {
+				ownUserF(data, this);
 			}, h.sF(function () {
 				client.setnx("user:nickname:" + data.value, data.user.getID(), this);
-			}), h.sF(function (set) {
+			}), h.sF(function nPre2(set) {
 				if (set) {
 					this.last.ne();
 				} else {
 					client.get("user:nickname:" + data.value, this);
 				}
-			}), h.sF(function (id) {
+			}), h.sF(function nPre3(id) {
 				if (id === data.user.getID()) {
 					this.last.ne();
 				} else {
@@ -135,7 +143,7 @@ var validKeys = {
 		},
 		unset: function (data, cb) {
 			step(function () {
-				data.view.ownUserError(data.user, this);
+				ownUserF(data, this);
 			}, h.sF(function () {
 				client.get("user:nickname:" + data.value, this);
 			}), h.sF(function (id) {
@@ -152,7 +160,7 @@ var validKeys = {
 		match: /^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i,
 		pre: function (data, cb) {
 			step(function () {
-				data.view.ownUserError(data.user, this);
+				ownUserF(data, this);
 			}, h.sF(function () {
 				client.setnx("user:mail:" + data.value.toLowerCase(), data.user.getID(), this);
 			}), h.sF(function (set) {
@@ -182,7 +190,7 @@ var validKeys = {
 		},
 		unset: function (data, cb) {
 			step(function () {
-				data.view.ownUserError(data.user, this);
+				ownUserF(data, this);
 			}, h.sF(function () {
 				client.get("user:mail:" + data.value.toLowerCase(), this);
 			}), h.sF(function (id) {
@@ -237,6 +245,8 @@ var User = function (id) {
 
 	var getAttribute, unsetAttribute;
 
+	var setAttribute, saved;
+
 	//TODO: match
 	/** set an attribute of this user.
 	* @param view current view (for sessione etc.)
@@ -248,6 +258,15 @@ var User = function (id) {
 	function doSetOperation(view, key, value, cb) {
 		var attr, data = {};
 		//view, user, key, value, oldValue
+
+		var newKey = [];
+
+		var i;
+		for (i = 0; i < key.length; i += 1) {
+			newKey.push(key[i]);
+		}
+
+		key = newKey;
 
 		step(function () {
 			attr = h.deepGet(validKeys, key);
@@ -261,13 +280,13 @@ var User = function (id) {
 			data.key = key;
 			data.value = value;
 
-			if (attr.match instanceof RegExp) {
+			if (typeof attr.match === "object" && attr.match instanceof RegExp) {
 				if (!attr.match.test(data.value)) {
 					throw new InvalidAttribute(obj2key(key));
 				}
 			}
 
-			theUser.getAttribute(view, key, this);
+			getAttribute(view, key, this);
 		}, h.sF(function (oldVal) {
 			data.oldValue = oldVal;
 
@@ -284,7 +303,6 @@ var User = function (id) {
 			}
 		}), h.sF(function (realValue) {
 			data.value = realValue;
-
 			client.set(userDomain + ":" + obj2key(key), data.value, this);
 		}), h.sF(function () {
 			if (typeof attr.post === "function") {
@@ -307,11 +325,15 @@ var User = function (id) {
 
 				if (typeof attr.read === "function") {
 					attr.read(data, this);
+				} else {
+					this.ne();
 				}
-
-				client.get(userDomain + ":" + obj2key(key), this);
+			} else {
+				throw new AccessViolation(obj2key(key));
 			}
-		}, cb);
+		}, h.sF(function () {
+			client.get(userDomain + ":" + obj2key(key), this);
+		}), cb);
 	}
 
 	/** set an attribute of this user.
@@ -336,7 +358,7 @@ var User = function (id) {
 			data.user = theUser;
 			data.key = key;
 
-			theUser.getAttribute(view, key, this);
+			getAttribute(view, key, this);
 		}, h.sF(function (value) {
 			data.value = value;
 
@@ -351,7 +373,6 @@ var User = function (id) {
 	}
 
 	function realSetAttribute(view, val, key, cb) {
-		console.log(arguments);
 		step(function doRealSetAttribute() {
 			if (typeof key !== "object") {
 				key = [];
@@ -386,8 +407,6 @@ var User = function (id) {
 	function setAttributeF(view, val, cb) {
 		realSetAttribute(view, val, [], cb);
 	}
-
-	var setAttribute, saved;
 
 	function deleteF(cb) {
 		//TODO: think about nickname, mail (unique values)
@@ -459,7 +478,7 @@ var User = function (id) {
 		saved = false;
 		this.save = function doSave(view, cb) {
 			step(function doSave() {
-				client.incr("users", this);
+				client.incr("user:count", this);
 			}, h.sF(function handleNewID(myid) {
 				id = myid;
 				userDomain = "user:" + id;
@@ -564,11 +583,12 @@ var User = function (id) {
 	function generateTokenF(cb) {
 		var token;
 		step(function () {
-			var random = require("random");
+			var random = require("secure_random");
 			random.getRandomInt(0, 999999999999999, this);
 		}, h.sF(function (random) {
 			token = random;
-			client.set(userDomain + ":token:" + random, 'true', 'NX', 'EX', 60 * 5, this);
+			//client.set(userDomain + ":token:" + random, 'true', 'NX', 'EX', 60 * 5, this);
+			client.setnx(userDomain + ":token:" + random, 'true', this);
 		}), h.sF(function (set) {
 			if (set) {
 				this.ne(token);
@@ -606,10 +626,10 @@ User.getUser = function (identifier, callback) {
 		}
 	}, h.sF(function (id) {
 		if (id) {
-			return new User(id);
+			this.ne(new User(id));
+		} else {
+			throw new UserNotExisting(identifier);
 		}
-
-		throw new UserNotExisting(identifier);
 	}), callback);
 };
 

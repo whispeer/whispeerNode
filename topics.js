@@ -6,6 +6,12 @@ var h = require("./includes/helper");
 require("./includes/errors.js");
 
 var whispeerAPI = {
+	priorized: ["addKeys"],
+	addKeys: function addKeysF(data, fn) {
+		step(function () {
+			this.ne();
+		}, fn);
+	},
 	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
 			if (data && data.nickname) {
@@ -83,24 +89,25 @@ var whispeerAPI = {
 		}), fn);
 	},
 	register: function (data, fn, view) {
+		var myUser;
 		step(function () {
-
-		});
-		//TODO
+			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, view, this);
+		}, h.sF(function (result) {
+			this.ne(result);
+		}), fn);
+		//TODO add keys
 	},
 	login: function (data, fn, view) {
 		var mySession;
 		step(function () {
-			var Session = require("./includes/session");
+			console.log(data);
 			mySession = view.getSession();
-			mySession.login(data.identifier, data.password, data.token, this);
+			mySession.login(view, data.identifier, data.password, data.token, this);
 		}, h.sF(function (sid) {
 			this.ne({
 				session: sid
 			});
 		}), fn);
-		console.log(data);
-		fn(null, {result: "success"});
 	}
 };
 

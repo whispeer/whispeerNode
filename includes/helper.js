@@ -8,6 +8,20 @@ ssn.helper = {
 	/** to disable logging (console.log) which is necessary because logger.js depends on helper */
 	log: true,
 
+	deepGet: function (obj, key) {
+		var i;
+		var cur = obj;
+		for (i = 0; i < key.length; i += 1) {
+			if (cur[key[i]]) {
+				cur = cur[key[i]];
+			} else {
+				return false;
+			}
+		}
+
+		return cur;
+	},
+
 	/** chars for a sid */
 	codeChars: ["Q", "W", "E", "R", "T", "Z", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Y", "X", "C", "V", "B", "N", "M", "q", "w", "e", "r", "t", "z", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "y", "x", "c", "v", "b", "n", "m", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
 	/** get a random sid of given length 
@@ -118,12 +132,12 @@ ssn.helper = {
 
 	/** is data a valid nickname? */
 	isNickname: function (data) {
-		return (ssn.helper.isString(data) && !!data.match(/^[A-z][A-z0-9]*$/));
+		return (ssn.helper.isString(data) && data.length !== 0 && !!data.match(/^[A-z][A-z0-9]*$/));
 	},
 
 	/** is data an e-mail? */
 	isMail: function (data) {
-		return (ssn.helper.isString(data) && !!data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i));
+		return (ssn.helper.isString(data) && data.length !== 0 && !!data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i));
 	},
 
 	/** is data a session Key (hex value with certain length) */
@@ -132,7 +146,7 @@ ssn.helper = {
 	},
 
 	isPassword: function (data) {
-		return (data.isHex(data) && data.length === 10);
+		return (ssn.helper.isHex(data) && data.length === 10);
 	},
 
 	isCurve: function (data) {

@@ -55,10 +55,11 @@ var Session = function Session() {
 		return new Date().getTime();
 	}
 
-	function internalLogin(userid, callback) {
+	function internalLogin(uid, callback) {
 		step(function () {
-			createSession(userid, this);
+			createSession(uid, this);
 		}, h.sF(function (sessionid) {
+			userid = uid;
 			sid = sessionid;
 			logedin = true;
 			lastChecked = time();
@@ -153,7 +154,7 @@ var Session = function Session() {
 	* @callback (err, loginSuccess) error if something went wrong, loginSuccess true/false if login ok.
 	* @author Nilos
 	*/
-	this.login = function loginF(identifier, externalHash, token, cb) {
+	this.login = function loginF(view, identifier, externalHash, token, cb) {
 		var myUser;
 		step(function () {
 			var User = require("./user.js");
@@ -166,7 +167,7 @@ var Session = function Session() {
 				throw new InvalidToken();
 			}
 
-			myUser.getPassword(this);
+			myUser.getPassword(view, this);
 		}), h.sF(function (internalPassword) {
 
 			var crypto = require('crypto');
@@ -233,15 +234,19 @@ var Session = function Session() {
 
 		var mainKeyO, cryptKeyO, signKeyO;
 
-		step(function nicknameORMail() {
+		step(function nicknameORMail() {	
 			if (!h.isNickname(nickname)) {
+				if (nickname !== "" && nickname) {
+					regErr("nicknameInvalid");
+				}
 				nickname = null;
-				regErr("nicknameInvalid");
 			}
 
 			if (!h.isMail(mail)) {
+				if (mail !== "" && mail) {
+					regErr("mailInvalid");
+				}
 				mail = null;
-				regErr("mailInvalid");
 			}
 
 			if (!nickname && !mail) {
@@ -255,12 +260,13 @@ var Session = function Session() {
 			this();
 		}, h.sF(function checkMailUnique() {
 			if (mail) {
+				console.log("mail:" + mail);
 				User.getUser(mail, this);
 			} else {
 				this();
 			}
 		}), h.hE(function checkNicknameUnique(e) {
-			if (e) {
+			if (!e && mail) {
 				regErr("mailUsed");
 			}
 
@@ -270,35 +276,32 @@ var Session = function Session() {
 				this();
 			}
 		}, UserNotExisting), h.hE(function checkMainKey(e) {
-			if (e) {
+			if (!e && nickname) {
 				regErr("nicknameUsed");
 			}
 
-			SymKey.createWithDecryptors(mainKey, this);
-		}, UserNotExisting), h.sF(function checkCryptKey(key) {
-			mainKeyO = key;
-			EccKey.createWithDecryptors(cryptKey, this);
-		}), h.sF(function checkSignKey(key) {
-			cryptKeyO = key;
-			EccKey.createWithDecryptors(signKey, this);
-		}), h.sF(function createActualUser(key) {
-			signKeyO = key;
-			//TODO: do not do this when we have got errors!
+			this.ne();
+		}, UserNotExisting), h.sF(function createActualUser() {
 			if (result.error === true) {
 				this.last.ne(result);
-			}
+			} else {
+				var User = require("./user");
+				myUser = new User();
 
-			myUser = new User();
-			if (nickname) {
-				myUser.setNickname(view, nickname, this.parallel());
+				if (mail) {
+					myUser.setMail(view, mail, this.parallel());
+				}
+
+				if (nickname) {
+					myUser.setNickname(view, nickname, this.parallel());
+				}
+
+				myUser.setMainKey(view, mainKey, this.parallel());
+				myUser.setCryptKey(view, cryptKey, this.parallel());
+				myUser.setSignKey(view, signKey, this.parallel());
+
+				myUser.setPassword(view, password, this.parallel());
 			}
-			if (mail) {
-				myUser.setMail(view, mail, this.parallel());
-			}
-			myUser.setPassword(view, password, this.parallel());
-			myUser.setMainKey(view, mainKeyO, this.parallel());
-			myUser.setCryptKey(view, cryptKeyO, this.parallel());
-			myUser.setSignKey(view, signKeyO, this.parallel());
 		}), h.sF(function userCreation() {
 			myUser.save(view, this);
 		}), h.sF(function createS() {

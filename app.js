@@ -16,35 +16,68 @@ io.sockets.on('connection', function (socket) {
 	var HandlerCallback = require("./includes/handlerCallback");
 	var topics = require('./topics.js');
 	var step = require('step');
+	var h = require("./includes/helper");
 
 	var Session = require("./includes/session");
-
 	var session = new Session();
 
 	var View = require("./includes/view");
 	var myView = new View(socket, session);
 
-	function handle(handler, data, fn) {
-		var topics = [];
+	function handlePriorized(count, handler, data, view, cb) {
+		var resultMain;
+		var p = handler.priorized;
+
+		step(function hp1() {
+			if (typeof p !== "object" || !(p instanceof Array) || !p[count]) {
+				this.last.ne({});
+			} else if (data[p[count]]) {
+				if (typeof handler[p[count]] === "function") {
+					handler[p[count]](data, new HandlerCallback(this.ne), view);
+				} else {
+					throw "can not priorize a branch yet.";
+				}
+			} else {
+				handlePriorized(count + 1, handler, data, view, cb);
+			}
+		}, h.sF(function hp2(result) {
+			resultMain = result;
+
+			handlePriorized(count + 1, handler, data, view, this);
+		}), h.sF(function hp3(result) {
+			result[p[count]] = resultMain;
+
+			this.ne(result);
+		}), cb);
+	}
+
+	function handle(handler, data, fn, view) {
+		var topics = [], prioRes = {};
 		step(function () {
+			handlePriorized(0, handler, data, view, this);
+		}, h.sF(function (priorizedResults) {
+			prioRes = priorizedResults;
 			if (typeof handler === "function") {
-				handler(data, new HandlerCallback(this.last.ne));
+				handler(data, new HandlerCallback(this.last.ne), view);
 			} else if (typeof handler === "object" && typeof data === "object") {
 				var topic;
 				for (topic in data) {
-					if (data.hasOwnProperty(topic) && handler[topic] !== undefined) {
+					if (data.hasOwnProperty(topic) && handler[topic] !== undefined && handler.priorized.indexOf(topic) === -1) {
 						topics.push(topic);
-						handle(handler[topic], data[topic], this.parallel());
+						handle(handler[topic], data[topic], this.parallel(), view);
 					}
 				}
 			}
-		}, function (err, results) {
+		}), function (err, results) {
 			var result = {};
 
 			var i;
 			for (i = 0; i < results.length; i += 1) {
 				result[topics[i]] = results[i];
 			}
+
+			var extend = require("xtend");
+			result = extend(result, prioRes);
 
 			this.ne(result);
 		}, fn);
