@@ -9,8 +9,34 @@ var whispeerAPI = {
 	priorized: ["addKeys"],
 	addKeys: function addKeysF(data, fn) {
 		step(function () {
-			this.ne();
-		}, fn);
+			//TODO: data.addKeys
+			var i;
+			for (i = 0; i <  data.addKeys.length; i += 1) {
+				cur = data.addKeys[i];
+
+				cur.type = cur.type.toLowerCase();
+
+				switch (cur.type) {
+					case "sym":
+						SymKey.createWithDecryptors(cur, this.parallel());
+						break;
+					case "crypt":
+						EccKey.createWithDecryptors(cur, this.parallel());
+						break;
+					case "sign":
+						EccKey.createWithDecryptors(cur, this.parallel());
+						break;
+					default:
+						fn.error.protocol();
+						return;
+				}
+			}
+
+			//TODO: data.addKeyDecryptors
+			this.parallel()();
+		}, h.sF(function (keys) {
+			
+		}), fn);
 	},
 	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
