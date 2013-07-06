@@ -8,34 +8,56 @@ require("./includes/errors.js");
 var whispeerAPI = {
 	priorized: ["addKeys"],
 	addKeys: function addKeysF(data, fn) {
+		var addedKeys, decryptorKeys;
 		step(function () {
-			//TODO: data.addKeys
-			var i;
-			for (i = 0; i <  data.addKeys.length; i += 1) {
+			var SymKey = require("./includes/crypto/symKey"),
+				EccKey = require("./includes/crypto/eccKey"),
+				i,
+				cur;
+
+			for (i = 0; i < data.addKeys.length; i += 1) {
 				cur = data.addKeys[i];
 
 				cur.type = cur.type.toLowerCase();
 
 				switch (cur.type) {
-					case "sym":
-						SymKey.createWithDecryptors(cur, this.parallel());
-						break;
-					case "crypt":
-						EccKey.createWithDecryptors(cur, this.parallel());
-						break;
-					case "sign":
-						EccKey.createWithDecryptors(cur, this.parallel());
-						break;
-					default:
-						fn.error.protocol();
-						return;
+				case "sym":
+					SymKey.createWithDecryptors(cur, this.parallel());
+					break;
+				case "crypt":
+				case "sign":
+					EccKey.createWithDecryptors(cur, this.parallel());
+					break;
+				default:
+					fn.error.protocol();
+					return;
 				}
 			}
 
 			//TODO: data.addKeyDecryptors
 			this.parallel()();
 		}, h.sF(function (keys) {
-			
+			var Key = require("./includes/crypto/key");
+			addedKeys = keys;
+			decryptorKeys = Object.keys(data.addKeyDecryptors);
+
+			Key.getKeys(decryptorKeys, this);
+
+			this.parallel();
+		}), h.sF(function (keys) {
+			var realid, curKey, curDec;
+			for (realid in keys) {
+				if (keys.hasOwnProperty(realid)) {
+					curKey = keys[realid];
+					curDec = data.addKeyDecryptors[realid];
+
+					curKey.addDecryptors(curDec, this.parallel());
+				}
+			}
+		}), h.sF(function () {
+			var result = {
+				keysAdded: addedKeys
+			};
 		}), fn);
 	},
 	nicknameFree: function isNickNameFree(data, fn) {
@@ -115,13 +137,11 @@ var whispeerAPI = {
 		}), fn);
 	},
 	register: function (data, fn, view) {
-		var myUser;
 		step(function () {
 			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, view, this);
 		}, h.sF(function (result) {
 			this.ne(result);
 		}), fn);
-		//TODO add keys
 	},
 	login: function (data, fn, view) {
 		var mySession;
@@ -129,9 +149,9 @@ var whispeerAPI = {
 			console.log(data);
 			mySession = view.getSession();
 			mySession.login(view, data.identifier, data.password, data.token, this);
-		}, h.sF(function (sid) {
+		}, h.sF(function (success) {
 			this.ne({
-				session: sid
+				login: success
 			});
 		}), fn);
 	}

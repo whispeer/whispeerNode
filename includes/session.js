@@ -183,7 +183,7 @@ var Session = function Session() {
 			}
 		}), h.sF(function (theSid) {
 			if (theSid) {
-				this.ne(theSid);
+				this.ne(true);
 			} else {
 				this.ne(false);
 			}
@@ -307,10 +307,6 @@ var Session = function Session() {
 		}), h.sF(function createS() {
 			internalLogin(myUser.getID(), this);
 		}), h.sF(function sessionF(theSid) {
-			if (theSid) {
-				result.sid = theSid;
-			}
-
 			this.ne(result);
 		}), cb);
 	};

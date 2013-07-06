@@ -101,6 +101,10 @@ io.sockets.on('connection', function (socket) {
 
 			data.logedin = logedin;
 
+			if (logedin) {
+				data.sid = view.getSession().getSID()
+			}
+
 			this(data);
 		}, fn);
 	}

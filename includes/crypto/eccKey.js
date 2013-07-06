@@ -60,8 +60,7 @@ var EccKey = function (keyRealID) {
 
 	this.addDecryptors = function addDecryptorF(data, cb) {
 		step(function () {
-			var Decryptor = require("./decryptor");
-			var i;
+			var Decryptor = require("./decryptor"), i;
 			for (i = 0; i < data.length; i += 1) {
 				Decryptor.create(keyRealID, data[i], this.parallel());
 			}
@@ -105,8 +104,9 @@ EccKey.createWithDecryptors = function createWithDecryptorsF(data, cb) {
 /** create a symmetric key */
 EccKey.create = function (keyRealID, data, cb) {
 	//TODO: check keyRealID for correctness
+	//TODO: check data.type for correctness
 	step(function () {
-		client.setnx("key:" + keyRealID, "ecckey", this);
+		client.setnx("key:" + keyRealID, data.type, this);
 	}, h.sF(function (data) {
 		if (data === 0) {
 			throw new RealIDInUse();
