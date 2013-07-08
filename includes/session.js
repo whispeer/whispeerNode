@@ -21,7 +21,7 @@ var CHECKTIME = 10 * 1000;
 var Session = function Session() {
 
 	/** session id, userid, are we loged in, time we logged in, stay forever? */
-	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser;
+	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser, session = this;
 
 	/** get a session id
 	* @param callback called with result (sid)
@@ -59,6 +59,7 @@ var Session = function Session() {
 		step(function () {
 			createSession(uid, this);
 		}, h.sF(function (sessionid) {
+			console.log("login changed");
 			userid = uid;
 			sid = sessionid;
 			logedin = true;
@@ -96,7 +97,7 @@ var Session = function Session() {
 
 	function checkLoginError(cb) {
 		step(function () {
-			this.logedin(this);
+			session.logedin(this);
 		}, h.sF(function (logedin) {
 			if (!logedin) {
 				throw new NotLogedin();

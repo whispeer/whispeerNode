@@ -8,8 +8,8 @@ require("../errors");
 
 var Key = {};
 
-var SymKey = require("./includes/crypto/symKey"),
-	EccKey = require("./includes/crypto/eccKey");
+var SymKey = require("./symKey"),
+	EccKey = require("./eccKey");
 
 Key.get = function getKF(realid, callback) {
 	step(function () {
@@ -37,3 +37,5 @@ Key.getKeys = function getKeysF(realids, callback) {
 		}
 	}, callback);
 };
+
+module.exports = Key;

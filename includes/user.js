@@ -138,7 +138,9 @@ var validKeys = {
 		},
 		post: function (data, cb) {
 			step(function () {
-				client.del("user:nickname:" + data.oldValue, this);
+				if (data.oldValue) {
+					client.del("user:nickname:" + data.oldValue, this);
+				}
 			}, cb);
 		},
 		unset: function (data, cb) {
@@ -159,17 +161,17 @@ var validKeys = {
 		read: logedinF,
 		match: /^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i,
 		pre: function (data, cb) {
-			step(function () {
+			step(function mailPre1() {
 				ownUserF(data, this);
-			}, h.sF(function () {
+			}, h.sF(function mailPre2() {
 				client.setnx("user:mail:" + data.value.toLowerCase(), data.user.getID(), this);
-			}), h.sF(function (set) {
+			}), h.sF(function mailPre3(set) {
 				if (set) {
-					this.ne();
+					this.last.ne();
 				} else {
 					client.get("user:mail:" + data.value.toLowerCase(), this);
 				}
-			}), h.sF(function (id) {
+			}), h.sF(function mailPre4(id) {
 				if (id === data.user.getID()) {
 					this.last.ne();
 				} else {
@@ -177,14 +179,16 @@ var validKeys = {
 				}
 			}), cb);
 		},
-		transform: function (data, cb) {
+		transform: function mailT1(data, cb) {
 			step(function () {
 				this.ne(data.value.toLowerCase());
 			}, cb);
 		},
 		post: function (data, cb) {
-			step(function () {
-				client.del("user:mail:" + data.oldValue.toLowerCase());
+			step(function mailP1() {
+				if (data.oldValue) {
+					client.del("user:mail:" + data.oldValue.toLowerCase());
+				}
 				this.ne();
 			}, cb);
 		},

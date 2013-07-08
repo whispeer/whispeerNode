@@ -4,6 +4,8 @@ var h = require("../helper");
 
 require("../errors");
 
+console.log("ecckey loaded!");
+
 "use strict";
 
 var EccKey = function (keyRealID) {
@@ -107,12 +109,16 @@ EccKey.create = function (keyRealID, data, cb) {
 	//TODO: check data.type for correctness
 	step(function () {
 		client.setnx("key:" + keyRealID, data.type, this);
-	}, h.sF(function (data) {
-		if (data === 0) {
+	}, h.sF(function (set) {
+		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
+		debugger;
+
 		if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve)) {
+			console.log("data missing!");
+			console.log(data);
 			throw new InvalidEccKey("Missing data");
 		}
 
@@ -123,3 +129,5 @@ EccKey.create = function (keyRealID, data, cb) {
 		this.ne(new EccKey(keyRealID));
 	}), cb);
 };
+
+module.exports = EccKey;

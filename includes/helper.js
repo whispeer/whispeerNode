@@ -150,6 +150,9 @@ ssn.helper = {
 	},
 
 	isCurve: function (data) {
+		if (data === "c256" || data === "256") {
+			return true;
+		}
 		//TODO!
 		return false;
 	},

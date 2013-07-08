@@ -72,11 +72,13 @@ SymKey.create = function (keyRealID, cb) {
 	//TODO: check keyRealID for correctness
 	step(function () {
 		client.setnx("key:" + keyRealID, "symkey", this);
-	}, h.sF(function (data) {
-		if (data === 0) {
+	}, h.sF(function (set) {
+		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
 		this.ne(new SymKey(keyRealID));
 	}), cb);
 };
+
+module.exports = SymKey;

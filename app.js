@@ -33,7 +33,7 @@ io.sockets.on('connection', function (socket) {
 				this.last.ne({});
 			} else if (data[p[count]]) {
 				if (typeof handler[p[count]] === "function") {
-					handler[p[count]](data, new HandlerCallback(this.ne), view);
+					handler[p[count]](data[p[count]], new HandlerCallback(this.ne), view);
 				} else {
 					throw "can not priorize a branch yet.";
 				}

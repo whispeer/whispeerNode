@@ -1,19 +1,30 @@
 "use strict";
 
+/* global require, UserNotExisting, module, console */
+
 var step = require("step");
 var h = require("./includes/helper");
 
-require("./includes/errors.js");
+require("./includes/errors");
+
+var SymKey = require("./includes/crypto/symKey");
+var EccKey = require("./includes/crypto/eccKey");
 
 var whispeerAPI = {
-	priorized: ["addKeys"],
-	addKeys: function addKeysF(data, fn) {
+	priorized: ["keyData"],
+	logout: function logoutF(data, fn, view) {
+		step(function () {
+			if (data === true) {
+				view.logout(this);
+			}
+		}, fn);
+	},
+	keyData: function addKeysF(data, fn) {
 		var addedKeys, decryptorKeys;
 		step(function () {
-			var SymKey = require("./includes/crypto/symKey"),
-				EccKey = require("./includes/crypto/eccKey"),
-				i,
-				cur;
+			debugger;
+
+			var i, cur;
 
 			for (i = 0; i < data.addKeys.length; i += 1) {
 				cur = data.addKeys[i];
@@ -42,8 +53,6 @@ var whispeerAPI = {
 			decryptorKeys = Object.keys(data.addKeyDecryptors);
 
 			Key.getKeys(decryptorKeys, this);
-
-			this.parallel();
 		}), h.sF(function (keys) {
 			var realid, curKey, curDec;
 			for (realid in keys) {
@@ -51,10 +60,13 @@ var whispeerAPI = {
 					curKey = keys[realid];
 					curDec = data.addKeyDecryptors[realid];
 
-					curKey.addDecryptors(curDec, this.parallel());
+					if (curKey) {
+						curKey.addDecryptors(curDec, this.parallel());
+					}
 				}
 			}
 		}), h.sF(function () {
+			console.log(addKeys);
 			var result = {
 				keysAdded: addedKeys
 			};
