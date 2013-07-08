@@ -139,8 +139,10 @@ var validKeys = {
 		post: function (data, cb) {
 			step(function () {
 				if (data.oldValue) {
-					client.del("user:nickname:" + data.oldValue, this);
+					client.del("user:nickname:" + data.oldValue);
 				}
+
+				this.ne();
 			}, cb);
 		},
 		unset: function (data, cb) {
@@ -307,6 +309,7 @@ var User = function (id) {
 			}
 		}), h.sF(function (realValue) {
 			data.value = realValue;
+			console.log("SET " + userDomain + ":" + obj2key(key) + "-" + data.value);
 			client.set(userDomain + ":" + obj2key(key), data.value, this);
 		}), h.sF(function () {
 			if (typeof attr.post === "function") {

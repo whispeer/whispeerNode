@@ -19,19 +19,20 @@ var SymKey = function (keyRealID) {
 		}, cb);
 	};
 
-	this.addDecryptor = function addDecryptorF(data, cb) {
+	this.addDecryptor = function addDecryptorF(view, data, cb) {
 		step(function () {
 			var Decryptor = require("./decryptor");
-			Decryptor.create(keyRealID, data, this);
+			Decryptor.create(view, keyRealID, data, this);
 		}, cb);
 	};
 
-	this.addDecryptors = function addDecryptorF(data, cb) {
+	this.addDecryptors = function addDecryptorF(view, data, cb) {
 		step(function () {
+			console.log(data);
 			var Decryptor = require("./decryptor");
 			var i;
 			for (i = 0; i < data.length; i += 1) {
-				Decryptor.create(keyRealID, data[i], this.parallel());
+				Decryptor.create(view, keyRealID, data[i], this.parallel());
 			}
 		}, cb);
 	};
@@ -51,7 +52,7 @@ SymKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
-SymKey.createWithDecryptors = function createWithDecryptorsF(data, cb) {
+SymKey.createWithDecryptors = function createWithDecryptorsF(view, data, cb) {
 	step(function () {
 		if (data && data.realid) {
 			SymKey.create(data.realid, this);
@@ -60,7 +61,7 @@ SymKey.createWithDecryptors = function createWithDecryptorsF(data, cb) {
 		}
 	}, h.sF(function (theKey) {
 		if (data.decryptors) {
-			theKey.addDecryptors(data.decryptors, this);
+			theKey.addDecryptors(view, data.decryptors, this);
 		} else {
 			this.ne(theKey);
 		}

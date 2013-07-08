@@ -19,7 +19,7 @@ var whispeerAPI = {
 			}
 		}, fn);
 	},
-	keyData: function addKeysF(data, fn) {
+	keyData: function addKeysF(data, fn, view) {
 		var addedKeys, decryptorKeys;
 		step(function () {
 			debugger;
@@ -33,11 +33,11 @@ var whispeerAPI = {
 
 				switch (cur.type) {
 				case "sym":
-					SymKey.createWithDecryptors(cur, this.parallel());
+					SymKey.createWithDecryptors(view, cur, this.parallel());
 					break;
 				case "crypt":
 				case "sign":
-					EccKey.createWithDecryptors(cur, this.parallel());
+					EccKey.createWithDecryptors(view, cur, this.parallel());
 					break;
 				default:
 					fn.error.protocol();
@@ -54,22 +54,29 @@ var whispeerAPI = {
 
 			Key.getKeys(decryptorKeys, this);
 		}), h.sF(function (keys) {
-			var realid, curKey, curDec;
-			for (realid in keys) {
-				if (keys.hasOwnProperty(realid)) {
-					curKey = keys[realid];
-					curDec = data.addKeyDecryptors[realid];
+			var i, curKey, curDec;
+			for (i = 0; i < keys.length; i += 1) {
+				curKey = keys[i];
+
+				if (curKey) {
+					curDec = data.addKeyDecryptors[curKey.getRealID()];
+
+					console.log(curDec + "-" + curKey.getRealID());
 
 					if (curKey) {
-						curKey.addDecryptors(curDec, this.parallel());
+						curKey.addDecryptors(view, curDec, this.parallel());
 					}
+				} else {
+					console.log("Key not found: " + decryptorKeys[i]);
 				}
 			}
 		}), h.sF(function () {
-			console.log(addKeys);
+			console.log(arguments);
 			var result = {
 				keysAdded: addedKeys
 			};
+
+			this.ne(result);
 		}), fn);
 	},
 	nicknameFree: function isNickNameFree(data, fn) {

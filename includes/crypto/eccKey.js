@@ -1,12 +1,10 @@
+"use strict";
+
 var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
 
 require("../errors");
-
-console.log("ecckey loaded!");
-
-"use strict";
 
 var EccKey = function (keyRealID) {
 	var theKey = this;
@@ -53,18 +51,18 @@ var EccKey = function (keyRealID) {
 		}, cb);
 	};
 
-	this.addDecryptor = function addDecryptorF(data, cb) {
+	this.addDecryptor = function addDecryptorF(view, data, cb) {
 		step(function () {
 			var Decryptor = require("./decryptor");
-			Decryptor.create(keyRealID, data, this);
+			Decryptor.create(view, keyRealID, data, this);
 		}, cb);
 	};
 
-	this.addDecryptors = function addDecryptorF(data, cb) {
+	this.addDecryptors = function addDecryptorF(view, data, cb) {
 		step(function () {
 			var Decryptor = require("./decryptor"), i;
 			for (i = 0; i < data.length; i += 1) {
-				Decryptor.create(keyRealID, data[i], this.parallel());
+				Decryptor.create(view, keyRealID, data[i], this.parallel());
 			}
 		}, cb);
 	};
@@ -84,7 +82,7 @@ EccKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
-EccKey.createWithDecryptors = function createWithDecryptorsF(data, cb) {
+EccKey.createWithDecryptors = function createWithDecryptorsF(view, data, cb) {
 	step(function () {
 		if (data && data.realid && data.curve && data.point) {
 			EccKey.create(data.realid, {
@@ -96,7 +94,7 @@ EccKey.createWithDecryptors = function createWithDecryptorsF(data, cb) {
 		}
 	}, h.sF(function (theKey) {
 		if (data.decryptors) {
-			theKey.addDecryptors(data.decryptors, this);
+			theKey.addDecryptors(view, data.decryptors, this);
 		} else {
 			this.ne(theKey);
 		}

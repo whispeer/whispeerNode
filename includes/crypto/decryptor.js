@@ -134,7 +134,7 @@ Decryptor.create = function (view, keyRealID, data, cb) {
 	//TODO: check keyRealID for correctness
 	step(function () {
 		userid = view.getUserID();
-		if (!data || !data.secret || !data.type || !data.decryptorid) {
+		if (!data || !data.ct || !data.type || !data.decryptorid) {
 			throw new InvalidDecryptor("secret or type or key id missing");
 		}
 
@@ -172,3 +172,5 @@ Decryptor.create = function (view, keyRealID, data, cb) {
 		this.ne(new Decryptor(keyRealID, data.decryptorid, userid));
 	}), cb);
 };
+
+module.exports = Decryptor;
