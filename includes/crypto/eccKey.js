@@ -82,31 +82,13 @@ EccKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
-EccKey.createWithDecryptors = function createWithDecryptorsF(view, data, cb) {
-	step(function () {
-		if (data && data.realid && data.curve && data.point) {
-			EccKey.create(data.realid, {
-				curve: data.curve,
-				point: data.point
-			}, this);
-		} else {
-			throw new InvalidEccKey();
-		}
-	}, h.sF(function (theKey) {
-		if (data.decryptors) {
-			theKey.addDecryptors(view, data.decryptors, this);
-		} else {
-			this.ne(theKey);
-		}
-	}), cb);
-};
 
 /** create a symmetric key */
-EccKey.create = function (keyRealID, data, cb) {
+EccKey.create = function (view, keyRealID, data, cb) {
 	//TODO: check keyRealID for correctness
 	//TODO: check data.type for correctness
 	step(function () {
-		client.setnx("key:" + keyRealID, data.type, this);
+		client.setnx("key:" + keyRealID, "ecckey", this);
 	}, h.sF(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();

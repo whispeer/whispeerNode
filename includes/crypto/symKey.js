@@ -1,10 +1,10 @@
+"use strict";
+
 var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
 
 require("../errors");
-
-"use strict";
 
 var SymKey = function (keyRealID) {
 	/** getter for keyRealID */
@@ -28,7 +28,6 @@ var SymKey = function (keyRealID) {
 
 	this.addDecryptors = function addDecryptorF(view, data, cb) {
 		step(function () {
-			console.log(data);
 			var Decryptor = require("./decryptor");
 			var i;
 			for (i = 0; i < data.length; i += 1) {
@@ -52,24 +51,8 @@ SymKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
-SymKey.createWithDecryptors = function createWithDecryptorsF(view, data, cb) {
-	step(function () {
-		if (data && data.realid) {
-			SymKey.create(data.realid, this);
-		} else {
-			throw new InvalidSymKey();
-		}
-	}, h.sF(function (theKey) {
-		if (data.decryptors) {
-			theKey.addDecryptors(view, data.decryptors, this);
-		} else {
-			this.ne(theKey);
-		}
-	}), cb);
-};
-
 /** create a symmetric key */
-SymKey.create = function (keyRealID, cb) {
+SymKey.create = function (view, keyRealID, data, cb) {
 	//TODO: check keyRealID for correctness
 	step(function () {
 		client.setnx("key:" + keyRealID, "symkey", this);

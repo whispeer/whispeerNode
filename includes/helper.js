@@ -130,6 +130,25 @@ ssn.helper = {
 		return false;
 	},
 
+	isRealID: function (data) {
+		var parts = data.split(":");
+
+		if (parts.length !== 2) {
+			return false;
+		}
+
+		if (parts[1].length !== 64) {
+			return false;
+		}
+
+		if (!ssn.helper.isNickname(parts[0]) && !ssn.helper.isMail(parts[0])) {
+			return false;
+		}
+
+		return true;
+	},
+
+
 	/** is data a valid nickname? */
 	isNickname: function (data) {
 		return (ssn.helper.isString(data) && data.length !== 0 && !!data.match(/^[A-z][A-z0-9]*$/));

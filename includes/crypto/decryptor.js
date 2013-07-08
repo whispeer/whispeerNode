@@ -1,10 +1,12 @@
+/* global require, LostDecryptor, console, module, InvalidDecryptor */
+
+"use strict";
+
 var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
 
 require("../errors");
-
-"use strict";
 
 var Decryptor = function (keyRealID, decryptorRealID, userid) {
 	var domain = "key:" + keyRealID + ":decryptor:" + decryptorRealID + ":" + userid;
@@ -130,41 +132,58 @@ Decryptor.getAll = function getAllF(keyRealID, cb) {
 
 /** create a decryptor */
 Decryptor.create = function (view, keyRealID, data, cb) {
-	var userid;
+	var userid, keyInternalID;
 	//TODO: check keyRealID for correctness
-	step(function () {
+	step(function createD1() {
 		userid = view.getUserID();
-		if (!data || !data.ct || !data.type || !data.decryptorid) {
+
+		if (!data || !data.ct || !data.type) {
+			throw new InvalidDecryptor("secret or type or key id missing");
+		}
+
+		if (data.type !== "pw" && (!data.decryptorid || !h.isRealID(data.decryptorid))) {
 			throw new InvalidDecryptor("secret or type or key id missing");
 		}
 
 		if (data.type === "symKey") {
 			var SymKey = require("./symKey.js");
 			SymKey.get(data.decryptorid, this);
-		} else if (data.type === "asymKey") {
+		} else if (data.type === "cryptKey") {
 			var EccKey = require("./eccKey.js");
 			EccKey.get(data.decryptorid, this);
-		} else if (data.type === "password") {
+		} else if (data.type === "pw") {
 			this.ne(true);
 		} else {
 			throw new InvalidDecryptor("invalid type.");
 		}
 
 		//TODO: make type checks for the given data.
-	}, h.sF(function (key) {
+	}, h.sF(function createD2(key) {
 		if (!key) {
 			throw new InvalidDecryptor("key not found.");
 		}
 
-		var domain = "key:" + keyRealID + ":decryptor:" + data.decryptorid + ":" + userid;
-		client.set(domain + ":secret", data.secret, this.parallel());
+		client.incr("key:" + keyRealID + ":decryptor:count", this);
+	}), h.sF(function createD22(count) {
+		keyInternalID = count;
+
+		var domain = "key:" + keyRealID + ":decryptor:" + count;
+		client.set(domain + ":secret", data.ct, this.parallel());
 		client.set(domain + ":type", data.type, this.parallel());
 		client.set(domain + ":decryptorid", data.decryptorid, this.parallel());
-		client.set(domain + ":userid", userid, this.parallel());
-	}), h.sF(function () {
-		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", data.decryptorid, this.parallel());
-		client.sadd("key:" + keyRealID + ":decryptor:" + data.decryptorid + ":decryptorSet", data.userid, this.parallel());
-	}), h.sF(function (success) {
+
+		if (data.iv) {
+			client.set(domain + ":iv", data.iv, this.parallel());
+		}
+
+		if (data.salt) {
+			client.set(domain + ":salt", data.salt, this.parallel());
+		}
+
+	}), h.sF(function createD3() {
+		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", keyInternalID, this);
+		//client.sadd("key:" + keyRealID + ":decryptor:" + data.decryptorid + ":decryptorSet", data.userid, this.parallel());
+	}), h.sF(function createD4(success) {
 		if (success[0] === 0 || success[1] === 0) {
 			console.err("decryptor already existing:" + data.decryptorid + "-" + userid + "-" + keyRealID);
 		}

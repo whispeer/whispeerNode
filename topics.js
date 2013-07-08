@@ -33,11 +33,11 @@ var whispeerAPI = {
 
 				switch (cur.type) {
 				case "sym":
-					SymKey.createWithDecryptors(view, cur, this.parallel());
+					SymKey.create(view, cur.realid, cur, this.parallel());
 					break;
 				case "crypt":
 				case "sign":
-					EccKey.createWithDecryptors(view, cur, this.parallel());
+					EccKey.create(view, cur.realid, cur, this.parallel());
 					break;
 				default:
 					fn.error.protocol();
@@ -60,8 +60,6 @@ var whispeerAPI = {
 
 				if (curKey) {
 					curDec = data.addKeyDecryptors[curKey.getRealID()];
-
-					console.log(curDec + "-" + curKey.getRealID());
 
 					if (curKey) {
 						curKey.addDecryptors(view, curDec, this.parallel());
