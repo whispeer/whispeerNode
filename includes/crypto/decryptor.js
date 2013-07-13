@@ -104,6 +104,10 @@ var Decryptor = function (keyRealID, decryptorRealID, userid) {
 	};
 };
 
+Decryptor.getAllWithAccess = function getAllWAF(view, keyRealID, cb) {
+
+};
+
 /** get all decryptors for a certain key id */
 Decryptor.getAll = function getAllF(keyRealID, cb) {
 	var decryptors = [];
@@ -130,13 +134,8 @@ Decryptor.getAll = function getAllF(keyRealID, cb) {
 	}), cb);
 };
 
-/** create a decryptor */
-Decryptor.create = function (view, keyRealID, data, cb) {
-	var userid, keyInternalID;
-	//TODO: check keyRealID for correctness
-	step(function createD1() {
-		userid = view.getUserID();
-
+Decryptor.validate = function validateF(data, cb) {
+	step(function validateF1() {
 		if (!data || !data.ct || !data.type) {
 			throw new InvalidDecryptor("secret or type or key id missing");
 		}
@@ -156,13 +155,24 @@ Decryptor.create = function (view, keyRealID, data, cb) {
 		} else {
 			throw new InvalidDecryptor("invalid type.");
 		}
-
-		//TODO: make type checks for the given data.
-	}, h.sF(function createD2(key) {
+	}, h.sF(function validateF2(key) {
 		if (!key) {
 			throw new InvalidDecryptor("key not found.");
 		}
 
+		this.ne();
+	}), cb);
+};
+
+/** create a decryptor */
+Decryptor.create = function (view, keyRealID, data, cb) {
+	var userid, keyInternalID;
+
+	step(function createD1() {
+		view.logedinError(this);
+	}, h.sF(function createD12() {
+		Decryptor.validate(data, cb);
+	}), h.sF(function createD2() {
 		client.incr("key:" + keyRealID + ":decryptor:count", this);
 	}), h.sF(function createD22(count) {
 		keyInternalID = count;
@@ -171,6 +181,8 @@ Decryptor.create = function (view, keyRealID, data, cb) {
 		client.set(domain + ":secret", data.ct, this.parallel());
 		client.set(domain + ":type", data.type, this.parallel());
 		client.set(domain + ":decryptorid", data.decryptorid, this.parallel());
+
+		userid = view.getUserID();
 
 		if (data.iv) {
 			client.set(domain + ":iv", data.iv, this.parallel());
@@ -182,7 +194,6 @@ Decryptor.create = function (view, keyRealID, data, cb) {
 
 	}), h.sF(function createD3() {
 		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", keyInternalID, this);
-		//client.sadd("key:" + keyRealID + ":decryptor:" + data.decryptorid + ":decryptorSet", data.userid, this.parallel());
 	}), h.sF(function createD4(success) {
 		if (success[0] === 0 || success[1] === 0) {
 			console.err("decryptor already existing:" + data.decryptorid + "-" + userid + "-" + keyRealID);
