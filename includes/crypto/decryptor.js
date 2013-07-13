@@ -136,14 +136,27 @@ Decryptor.getAll = function getAllF(keyRealID, cb) {
 
 Decryptor.validate = function validateF(data, cb) {
 	step(function validateF1() {
-		if (!data || !data.ct || !data.type) {
-			throw new InvalidDecryptor("secret or type or key id missing");
+		//data needs to be existing and ct needs to be hex
+		if (!data || !h.isHex(data.ct)) {
+			throw new InvalidDecryptor("data or secret missing");
 		}
 
+		//if not pw we need a realid.
 		if (data.type !== "pw" && (!data.decryptorid || !h.isRealID(data.decryptorid))) {
-			throw new InvalidDecryptor("secret or type or key id missing");
+			throw new InvalidDecryptor("key id missing");
 		}
 
+		// if pw or symkey, we need a hex iv
+		if ((data.type === "pw" || data.type === "symKey") && !h.isHex(data.iv)) {
+			throw new InvalidDecryptor("invalid iv");
+		}
+
+		//if pw we need a hex salt
+		if (data.type === "pw" && !h.isHex(data.salt)) {
+			throw new InvalidDecryptor("invalid salt");
+		}
+
+		//find dat key
 		if (data.type === "symKey") {
 			var SymKey = require("./symKey.js");
 			SymKey.get(data.decryptorid, this);
@@ -165,40 +178,61 @@ Decryptor.validate = function validateF(data, cb) {
 };
 
 /** create a decryptor */
-Decryptor.create = function (view, keyRealID, data, cb) {
-	var userid, keyInternalID;
+Decryptor.create = function (view, key, data, cb) {
+	var userid, keyInternalID, keyRealID = key.getRealID();
 
 	step(function createD1() {
+		//only allow key creation when logged in
 		view.logedinError(this);
 	}, h.sF(function createD12() {
+		//validate our decryptor
 		Decryptor.validate(data, cb);
 	}), h.sF(function createD2() {
+		//is there already a key like this one?
+		client.get("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, this);
+	}), h.sF(function createD22(val) {
+		if (val !== null) {
+			throw new InvalidDecryptor("already existing");
+		}
+
 		client.incr("key:" + keyRealID + ":decryptor:count", this);
-	}), h.sF(function createD22(count) {
+	}), h.sF(function createD23(count) {
 		keyInternalID = count;
 
 		var domain = "key:" + keyRealID + ":decryptor:" + count;
+
+		if (data.type !== "pw") {
+			//add the decryptors id to the list
+			client.set("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, count, this.parallel());
+		}
+
+		//set secret and type
 		client.set(domain + ":secret", data.ct, this.parallel());
 		client.set(domain + ":type", data.type, this.parallel());
-		client.set(domain + ":decryptorid", data.decryptorid, this.parallel());
 
-		userid = view.getUserID();
+		//set decryptorid if applicable
+		if (data.decryptorid) {
+			client.set(domain + ":decryptorid", data.decryptorid, this.parallel());
+		}
 
+		//set iv if applicable
 		if (data.iv) {
 			client.set(domain + ":iv", data.iv, this.parallel());
 		}
 
+		//set salt if applicable
 		if (data.salt) {
 			client.set(domain + ":salt", data.salt, this.parallel());
 		}
 
-	}), h.sF(function createD3() {
-		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", keyInternalID, this);
-	}), h.sF(function createD4(success) {
-		if (success[0] === 0 || success[1] === 0) {
-			console.err("decryptor already existing:" + data.decryptorid + "-" + userid + "-" + keyRealID);
-		}
+		//add to list. we need this to grab all decryptors.
+		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", keyInternalID, this.parallel());
 
+		//user stuff
+		userid = view.getUserID();
+
+		client.set(domain + ":owner", userid, this.parallel());
+	}), h.sF(function createD4(success) {
 		this.ne(new Decryptor(keyRealID, data.decryptorid, userid));
 	}), cb);
 };
