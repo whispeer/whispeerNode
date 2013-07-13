@@ -1,3 +1,5 @@
+/* global require, UserNotExisting, console, InvalidLogin, InvalidToken, NotLogedin */
+
 "use strict";
 
 var step = require("step");
@@ -6,6 +8,9 @@ var client = require("./redisClient");
 
 var SymKey = require("./crypto/symKey.js");
 var EccKey = require("./crypto/eccKey.js");
+
+//delete session if it was not used for 30 days.
+var SESSIONTIME = 30 * 24 * 60 * 60;
 
 require("./errors");
 
@@ -43,6 +48,7 @@ var Session = function Session() {
 			client.setnx("session:" + tempSID, id, this);
 		}), h.sF(function (set) {
 			if (set === 1) {
+				client.expire("session:" + tempSID, SESSIONTIME);
 				this.ne(tempSID);
 			} else {
 				createSession(this.last);
@@ -90,6 +96,7 @@ var Session = function Session() {
 			if (id !== userid) {
 				this.ne(false);
 			} else {
+				client.expire("session:" + tempSID, SESSIONTIME);
 				this.ne(true);
 			}
 		}), cb);
