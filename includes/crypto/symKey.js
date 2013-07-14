@@ -29,6 +29,20 @@ var SymKey = function (keyRealID) {
 	this.acessCount = key.accessCount;
 };
 
+SymKey.validate = function validateF(data, cb) {
+	step(function () {
+		if (!h.isRealID(data.realid)) {
+			throw new InvalidRealID();
+		}
+
+		if (data.type !== "sym") {
+			throw new InvalidSymKey("wrong type");	
+		}
+
+		this.ne();
+	}, cb);
+};
+
 /** get all decryptors for a certain key id */
 SymKey.get = function getF(keyRealID, cb) {
 	step(function () {
@@ -47,14 +61,15 @@ SymKey.get = function getF(keyRealID, cb) {
 };
 
 /** create a symmetric key */
-SymKey.create = function (view, keyRealID, data, cb) {
+SymKey.create = function (view, data, cb) {
+	var keyRealID;
 	step(function () {
-		if (!h.isRealID(keyRealID)) {
-			throw new InvalidRealID();
-		}
+		SymKey.validate(data, this);
+	}, h.sF(function () {
+		keyRealID = data.realid;
 
 		client.setnx("key:" + keyRealID, "symkey", this);
-	}, h.sF(function (set) {
+	}), h.sF(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}

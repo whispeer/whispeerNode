@@ -38,12 +38,15 @@ global.InvalidAttribute = addError("invalid attribute");
 global.LostDecryptor = addError("Decryptor not Found");
 global.InvalidDecryptor = addError("Decryptor data invalid");
 global.RealIDInUse = addError("RealID already in use.");
-global.InvalidRealID = addError("RealID already in use.");
+global.InvalidRealID = addError("RealID invalid.");
 
 global.NotASymKey = addError("Not a symmetric key");
 global.InvalidSymKey = addError("invalid symmetric key data");
 global.NotAEccKey = addError("Not a elliptic curve key");
 global.InvalidEccKey = addError("invalid elliptic curve key");
+
+global.InvalidKey = addError("invalid key");
+
 /** end crypto part */
 
-// StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey, 
+// StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey, InvalidKey

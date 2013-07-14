@@ -65,6 +65,22 @@ var EccKey = function (keyRealID) {
 	this.acessCount = key.accessCount;
 };
 
+EccKey.validate = function validateF(data, cb) {
+	step(function () {
+		if (!h.isRealID(data.realid)) {
+			throw new InvalidRealID();
+		}
+
+		if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve)) {
+			throw new InvalidEccKey("Missing data");
+		}
+
+		if (data.type !== "sign" && data.type !== "crypt") {
+			throw new InvalidEccKey("wrong type");	
+		}
+	});
+};
+
 /** get all decryptors for a certain key id */
 EccKey.get = function getF(keyRealID, cb) {
 	//TODO check keyRealID is a valid keyRealID!
@@ -81,21 +97,20 @@ EccKey.get = function getF(keyRealID, cb) {
 
 
 /** create a symmetric key */
-EccKey.create = function (view, keyRealID, data, cb) {
-	var domain = "key:" + keyRealID;
+EccKey.create = function (view, data, cb) {
+	var domain, keyRealID;
 
 	//TODO: check data.type for correctness
 	step(function () {
-		client.setnx("key:" + keyRealID, "ecckey", this);
-	}, h.sF(function (set) {
+		EccKey.validate(data, this);
+	}, h.sF(function () {
+		keyRealID = data.realid;
+		domain = "key:" + keyRealID;
+
+		client.setnx(domain, "ecckey", this);
+	}), h.sF(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();
-		}
-
-		if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve) || !h.isRealID(keyRealID)) {
-			console.log("data missing or invalid!");
-			console.log(data);
-			throw new InvalidEccKey("Missing data");
 		}
 
 		client.set(domain + ":curve", data.curve, this.parallel());

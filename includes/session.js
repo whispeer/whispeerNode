@@ -8,6 +8,7 @@ var client = require("./redisClient");
 
 var SymKey = require("./crypto/symKey.js");
 var EccKey = require("./crypto/eccKey.js");
+var Key = require("./crypto/Key.js");
 
 //delete session if it was not used for 30 days.
 var SESSIONTIME = 30 * 24 * 60 * 60;
@@ -304,10 +305,6 @@ var Session = function Session() {
 					myUser.setNickname(view, nickname, this.parallel());
 				}
 
-				myUser.setMainKey(view, mainKey, this.parallel());
-				myUser.setCryptKey(view, cryptKey, this.parallel());
-				myUser.setSignKey(view, signKey, this.parallel());
-
 				myUser.setPassword(view, password, this.parallel());
 			}
 		}), h.sF(function userCreation() {
@@ -315,7 +312,16 @@ var Session = function Session() {
 		}), h.sF(function createS() {
 			internalLogin(myUser.getID(), this);
 		}), h.sF(function sessionF(theSid) {
-			this.ne(result);
+
+			//TODO: add keys!
+
+			var mainKeyObj = Key.create(view, mainKey, this.parallel());
+
+			myUser.setMainKey(view, mainKey, this.parallel());
+			myUser.setCryptKey(view, cryptKey, this.parallel());
+			myUser.setSignKey(view, signKey, this.parallel());
+
+			this.ne();
 		}), cb);
 	};
 

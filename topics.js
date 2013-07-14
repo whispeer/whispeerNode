@@ -19,7 +19,7 @@ var whispeerAPI = {
 			}
 		}, fn);
 	},
-	keyData: function addKeysF(data, fn, view) {
+/*	keyData: function addKeysF(data, fn, view) {
 		var addedKeys, decryptorKeys;
 		step(function () {
 			debugger;
@@ -33,11 +33,11 @@ var whispeerAPI = {
 
 				switch (cur.type) {
 				case "sym":
-					SymKey.create(view, cur.realid, cur, this.parallel());
+					SymKey.create(view, cur, this.parallel());
 					break;
 				case "crypt":
 				case "sign":
-					EccKey.create(view, cur.realid, cur, this.parallel());
+					EccKey.create(view, cur, this.parallel());
 					break;
 				default:
 					fn.error.protocol();
@@ -45,7 +45,6 @@ var whispeerAPI = {
 				}
 			}
 
-			//TODO: data.addKeyDecryptors
 			this.parallel()();
 		}, h.sF(function (keys) {
 			var Key = require("./includes/crypto/key");
@@ -76,7 +75,7 @@ var whispeerAPI = {
 
 			this.ne(result);
 		}), fn);
-	},
+	},*/
 	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
 			if (data && data.nickname) {

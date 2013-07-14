@@ -1,4 +1,4 @@
-/* global require */
+/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey, InvalidKey  */
 
 "use strict";
 
@@ -93,6 +93,34 @@ var Key = function (keyRealID) {
 			client.scard(domain + ":access", this);
 		}, cb);
 	};
+};
+
+Key.validate = function validateF(data, callback) {
+	step(function () {
+		if (data) {
+			switch (data.type) {
+			case "sym":
+				SymKey.validate(data, this);
+				break;
+			case "sign":
+			case "crypt":
+				EccKey.validate(data, this);
+				break;
+			default:
+				throw new InvalidKey();
+			}
+		} else {
+			throw new InvalidKey();
+		}
+	});
+};
+
+Key.validateDecryptor = function validateDecryptorF(data, callback) {
+	step(function () {
+		var Decryptor = require("./decryptor");
+
+		Decryptor.validate(data, this);
+	}, callback);
 };
 
 Key.get = function getKF(realid, callback) {
