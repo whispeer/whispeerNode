@@ -1,4 +1,4 @@
-/* global require, UserNotExisting, console, InvalidLogin, InvalidToken, NotLogedin */
+/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
 
 "use strict";
 
@@ -97,7 +97,7 @@ var Session = function Session() {
 			if (id !== userid) {
 				this.ne(false);
 			} else {
-				client.expire("session:" + tempSID, SESSIONTIME);
+				client.expire("session:" + sid, SESSIONTIME);
 				this.ne(true);
 			}
 		}), cb);
@@ -209,7 +209,6 @@ var Session = function Session() {
 	* everything else is added later (profile, groups, etc.)
 	*/
 	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, view, cb) {
-		//TODO
 		//y rule 1: nickname or mail! one can be empty. check for that!
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -289,8 +288,26 @@ var Session = function Session() {
 				regErr("nicknameUsed");
 			}
 
+			SymKey.validate(mainKey, this);
+		}, UserNotExisting), h.hE(function checkCryptKey(e) {
+			if (e) {
+				regErr("invalidMainKey");
+			}
+
+			EccKey.validate(cryptKey, this);
+		}, [RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey]), h.hE(function checkSignKey(e) {
+			if (e) {
+				regErr("invalidCryptKey");
+			}
+
+			EccKey.validate(signKey, this);
+		}, [RealIDInUse, InvalidRealID, NotAEccKey, InvalidEccKey]), h.hE(function keysChecked(e) {
+			if (e) {
+				regErr("invalidSignKey");
+			}
+
 			this.ne();
-		}, UserNotExisting), h.sF(function createActualUser() {
+		}, [RealIDInUse, InvalidRealID, NotAEccKey, InvalidEccKey]), h.sF(function createActualUser() {
 			if (result.error === true) {
 				this.last.ne(result);
 			} else {
@@ -315,11 +332,13 @@ var Session = function Session() {
 
 			//TODO: add keys!
 
-			var mainKeyObj = Key.create(view, mainKey, this.parallel());
+			var mainKeyObj = SymKey.create(view, mainKey, this.parallel());
+			var signKeyObj = EccKey.create(view, signKey, this.parallel());
+			var cryptKeyObj = EccKey.create(view, cryptKey, this.parallel());
 
-			myUser.setMainKey(view, mainKey, this.parallel());
-			myUser.setCryptKey(view, cryptKey, this.parallel());
-			myUser.setSignKey(view, signKey, this.parallel());
+			myUser.setMainKey(view, mainKeyObj, this.parallel());
+			myUser.setCryptKey(view, cryptKeyObj, this.parallel());
+			myUser.setSignKey(view, signKeyObj, this.parallel());
 
 			this.ne();
 		}), cb);

@@ -1,3 +1,5 @@
+/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
+
 "use strict";
 
 var step = require("step");
@@ -46,7 +48,7 @@ var validKeys = {
 		read: ownUserF,
 		pre: function (data, cb) {
 			step(function () {
-				if (true || typeof data.value === "object" && data.value instanceof SymKey) {
+				if (typeof data.value === "object" && data.value instanceof SymKey) {
 					this.last.ne();
 				} else {
 					SymKey.get(data.value, this);
@@ -70,7 +72,7 @@ var validKeys = {
 		read: ownUserF,
 		pre: function (data, cb) {
 			step(function () {
-				if (true || typeof data.value === "object" && data.value instanceof EccKey) {
+				if (typeof data.value === "object" && data.value instanceof EccKey) {
 					this.last.ne();
 				} else {
 					EccKey.get(data.value, this);
@@ -94,7 +96,7 @@ var validKeys = {
 		read: ownUserF,
 		pre: function (data, cb) {
 			step(function () {
-				if (true || typeof data.value === "object" && data.value instanceof EccKey) {
+				if (typeof data.value === "object" && data.value instanceof EccKey) {
 					this.last.ne();
 				} else {
 					EccKey.get(data.value, this);
