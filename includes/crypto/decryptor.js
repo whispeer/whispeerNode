@@ -1,4 +1,4 @@
-/* global require, LostDecryptor, console, module, InvalidDecryptor */
+/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
 
 "use strict";
 
@@ -105,7 +105,7 @@ var Decryptor = function (keyRealID, decryptorRealID, userid) {
 };
 
 Decryptor.getAllWithAccess = function getAllWAF(view, keyRealID, cb) {
-
+	//TODO
 };
 
 /** get all decryptors for a certain key id */
@@ -173,13 +173,13 @@ Decryptor.validate = function validateF(data, cb) {
 			throw new InvalidDecryptor("key not found.");
 		}
 
-		this.ne();
+		this.ne(key);
 	}), cb);
 };
 
 /** create a decryptor */
 Decryptor.create = function (view, key, data, cb) {
-	var userid, keyInternalID, keyRealID = key.getRealID();
+	var userid, decryptorInternalID, keyRealID = key.getRealID(), parentKey;
 
 	step(function createD1() {
 		//only allow key creation when logged in
@@ -187,17 +187,26 @@ Decryptor.create = function (view, key, data, cb) {
 	}, h.sF(function createD12() {
 		//validate our decryptor
 		Decryptor.validate(data, cb);
-	}), h.sF(function createD2() {
-		//is there already a key like this one?
-		client.get("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, this);
-	}), h.sF(function createD22(val) {
+	}), h.sF(function createD2(p) {
+		parentKey = p;
+
+		key.hasAccess(view, this.parallel());
+		parentKey.hasAccess(view, this.parallel());
+	}), h.sF(function createD22(access) {
+		if (access[0] === true && access[1] === true) {
+			//is there already a key like this one?
+			client.get("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, this);
+		} else {
+			throw new AccessViolation();
+		}
+	}), h.sF(function createD23(val) {
 		if (val !== null) {
 			throw new InvalidDecryptor("already existing");
 		}
 
 		client.incr("key:" + keyRealID + ":decryptor:count", this);
-	}), h.sF(function createD23(count) {
-		keyInternalID = count;
+	}), h.sF(function createD24(count) {
+		decryptorInternalID = count;
 
 		var domain = "key:" + keyRealID + ":decryptor:" + count;
 
@@ -226,13 +235,22 @@ Decryptor.create = function (view, key, data, cb) {
 		}
 
 		//add to list. we need this to grab all decryptors.
-		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", keyInternalID, this.parallel());
+		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", decryptorInternalID, this.parallel());
 
 		//user stuff
 		userid = view.getUserID();
 
-		client.set(domain + ":owner", userid, this.parallel());
-	}), h.sF(function createD4(success) {
+		client.set(domain + ":creator", userid, this.parallel());
+	}), h.sF(function createD4() {
+		//TODO: update keys access rights. (or let the key do that?)
+
+		if (data.type === "pw") {
+			key.addAccess(decryptorInternalID, [userid], this.parallel());
+		} else {
+			parentKey.addEncryptor(keyRealID, this.parallel());
+			key.addAccess(decryptorInternalID, parentKey.getAccess(), this.parallel());
+		}
+	}), h.sF(function createD5() {
 		this.ne(new Decryptor(keyRealID, data.decryptorid, userid));
 	}), cb);
 };
