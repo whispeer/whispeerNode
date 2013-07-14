@@ -3,8 +3,6 @@
 var step = require("step");
 var h = require("./helper");
 
-require("./errors");
-
 var view = function view(socket, session) {
 	var theView = this;
 	this.getSocket = function getSocketF() {

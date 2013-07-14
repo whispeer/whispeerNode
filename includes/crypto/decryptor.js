@@ -6,8 +6,6 @@ var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
 
-require("../errors");
-
 var Decryptor = function (keyRealID, decryptorRealID, userid) {
 	var domain = "key:" + keyRealID + ":decryptor:" + decryptorRealID + ":" + userid;
 

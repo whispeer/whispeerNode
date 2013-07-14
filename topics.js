@@ -5,8 +5,6 @@
 var step = require("step");
 var h = require("./includes/helper");
 
-require("./includes/errors");
-
 var SymKey = require("./includes/crypto/symKey");
 var EccKey = require("./includes/crypto/eccKey");
 

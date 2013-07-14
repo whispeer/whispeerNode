@@ -9,6 +9,8 @@
 
 var io = require('socket.io').listen(3000);
 
+require("./includes/errors");
+
 io.sockets.on('connection', function (socket) {
 	"use strict";
 	console.log("connection received");

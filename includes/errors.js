@@ -1,3 +1,5 @@
+/* global global, require */
+
 "use strict";
 var util = require('util');
 

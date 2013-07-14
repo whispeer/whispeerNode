@@ -13,8 +13,6 @@ var Key = require("./crypto/Key.js");
 //delete session if it was not used for 30 days.
 var SESSIONTIME = 30 * 24 * 60 * 60;
 
-require("./errors");
-
 /** how long is the session id */
 var SESSIONKEYLENGTH = 30;
 

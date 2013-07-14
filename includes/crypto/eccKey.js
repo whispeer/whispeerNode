@@ -6,8 +6,6 @@ var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
 
-require("../errors");
-
 var EccKey = function (keyRealID) {
 	var Key = require("./Key");
 
