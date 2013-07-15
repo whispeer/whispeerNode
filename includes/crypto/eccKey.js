@@ -76,6 +76,8 @@ EccKey.validate = function validateF(data, cb) {
 		if (data.type !== "sign" && data.type !== "crypt") {
 			throw new InvalidEccKey("wrong type");	
 		}
+
+		this.ne();
 	});
 };
 

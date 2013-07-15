@@ -152,7 +152,7 @@ var whispeerAPI = {
 	},
 	register: function (data, fn, view) {
 		step(function () {
-			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, view, this);
+			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, data.decryptors, view, this);
 		}, h.sF(function (result) {
 			this.ne(result);
 		}), fn);

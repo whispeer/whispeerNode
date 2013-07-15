@@ -206,7 +206,7 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, view, cb) {
+	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, decryptors, view, cb) {
 		//y rule 1: nickname or mail! one can be empty. check for that!
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -214,7 +214,7 @@ var Session = function Session() {
 		//y rule 5: mail&nick valid and unique
 		//y rule 6: password valid
 		var User = require("./user.js");
-		var myUser;
+		var myUser, mySid;
 
 		var result = {
 			error: false,
@@ -327,18 +327,33 @@ var Session = function Session() {
 		}), h.sF(function createS() {
 			internalLogin(myUser.getID(), this);
 		}), h.sF(function sessionF(theSid) {
+			mySid = theSid;
 
-			//TODO: add keys!
+			SymKey.create(view, mainKey, this.parallel());
+			EccKey.create(view, cryptKey, this.parallel());
+			EccKey.create(view, signKey, this.parallel());
+		}), h.sF(function keysCreated(keys) {
+			mainKey = keys[0];
+			cryptKey = keys[1]
+			signKey = keys[2]
 
-			var mainKeyObj = SymKey.create(view, mainKey, this.parallel());
-			var signKeyObj = EccKey.create(view, signKey, this.parallel());
-			var cryptKeyObj = EccKey.create(view, cryptKey, this.parallel());
+			myUser.setMainKey(view, mainKey, this.parallel());
+			myUser.setCryptKey(view, cryptKey, this.parallel());
+			myUser.setSignKey(view, signKey, this.parallel());
+		}), h.sF(function keysAdded() {
+			//TODO: add decryptors!
 
-			myUser.setMainKey(view, mainKeyObj, this.parallel());
-			myUser.setCryptKey(view, cryptKeyObj, this.parallel());
-			myUser.setSignKey(view, signKeyObj, this.parallel());
+			console.log(decryptors);
 
-			this.ne();
+			var mainDec = decryptors[mainKey.getRealID()];
+			var cryptDec = decryptors[cryptKey.getRealID()];
+			var signDec = decryptors[signKey.getRealID()];
+
+			mainKey.addDecryptors(view, mainDec, this.parallel());
+			cryptKey.addDecryptors(view, cryptDec, this.parallel());
+			signKey.addDecryptors(view, signDec, this.parallel());
+		}), h.sF(function decryptorsAdded() {
+			this.ne(mySid);
 		}), cb);
 	};
 

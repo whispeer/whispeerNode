@@ -184,18 +184,23 @@ Decryptor.create = function (view, key, data, cb) {
 		view.logedinError(this);
 	}, h.sF(function createD12() {
 		//validate our decryptor
-		Decryptor.validate(data, cb);
+		Decryptor.validate(data, this);
 	}), h.sF(function createD2(p) {
 		parentKey = p;
 
 		key.hasAccess(view, this.parallel());
-		parentKey.hasAccess(view, this.parallel());
+
+		if (typeof parentKey === "object") {
+			parentKey.hasAccess(view, this.parallel());
+		} else {
+			this.parallel()(null, true);
+		}
 	}), h.sF(function createD22(access) {
 		if (access[0] === true && access[1] === true) {
 			//is there already a key like this one?
 			client.get("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, this);
 		} else {
-			throw new AccessViolation();
+			throw new AccessViolation("No Access here! " + access[0] + "-" + access[1]);
 		}
 	}), h.sF(function createD23(val) {
 		if (val !== null) {

@@ -25,7 +25,7 @@ var view = function view(socket, session) {
 
 			theView.logedinError(this);
 		}, h.sF(function () {
-			if (session.getUserID() === user.getUserID()) {
+			if (session.getUserID() === user.getID()) {
 				this.ne();
 			} else {
 				throw new AccessViolation();

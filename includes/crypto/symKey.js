@@ -12,6 +12,11 @@ var SymKey = function (keyRealID) {
 	var key = new Key(keyRealID);
 	var theKey = this;
 
+	/** getter for keyRealID */
+	this.getRealID = key.getRealID;
+
+	this.getOwner = key.getOwner;
+
 	this.getDecryptors = key.getDecryptors;
 
 	this.addDecryptor = key.addDecryptor;
@@ -29,6 +34,10 @@ var SymKey = function (keyRealID) {
 
 SymKey.validate = function validateF(data, cb) {
 	step(function () {
+		if (!data) {
+			throw new InvalidSymKey("no data");	
+		}
+
 		if (!h.isRealID(data.realid)) {
 			throw new InvalidRealID();
 		}

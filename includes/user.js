@@ -244,7 +244,7 @@ function validKey(key) {
 		}
 	}
 
-	return true;
+	return cur;
 }
 
 var User = function (id) {
@@ -257,7 +257,7 @@ var User = function (id) {
 
 	//TODO: match
 	/** set an attribute of this user.
-	* @param view current view (for sessione etc.)
+	* @param view current view (for session etc.)
 	* @param key key to set
 	* @param value value to set to
 	* @param cb callback
@@ -385,17 +385,30 @@ var User = function (id) {
 		step(function doRealSetAttribute() {
 			if (typeof key !== "object") {
 				key = [];
+			} else {
+				var newKey = [];
+
+				var i;
+				for (i = 0; i < key.length; i += 1) {
+					newKey.push(key[i]);
+				}
+
+				key = newKey;
 			}
 
-			var valKey, cur;
+			console.log("Current Key:" + JSON.stringify(key));
+			console.log("Current Val:" + JSON.stringify(val));
+
+			var valKey, cur, valid;
 			for (valKey in val) {
 				if (val.hasOwnProperty(valKey)) {
 					key.push(valKey);
 
 					cur = val[valKey];
-					if (validKey(key)) {
-						if (typeof cur === "object" && !(cur instanceof Array)) {
-							realSetAttribute(view, val, key, this.parallel());
+					valid = validKey(key);
+					if (valid !== false) {
+						if (typeof valid.read === "undefined") {
+							realSetAttribute(view, cur, key, this.parallel());
 						} else {
 							doSetOperation(view, key, cur, this.parallel());
 						}
@@ -568,7 +581,7 @@ var User = function (id) {
 	this.setMail = setMailF;
 
 	function setMainKeyF(view, key, cb) {
-		step(function doSetCryptKey() {
+		step(function doSetMainKey() {
 			setAttribute(view, {mainKey: key}, this);
 		}, cb);
 	}
