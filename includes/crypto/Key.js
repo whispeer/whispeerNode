@@ -62,13 +62,24 @@ var Key = function (keyRealID) {
 	};
 
 	this.getEncryptors = function getEncryptorsF(cb) {
-		//TODO
+		
 	};
 
-	this.addAccess = function addAccessF(decryptorid, userid, cb) {
+	this.addAccess = function addAccessF(decryptorid, userid, cb, added) {
 		step(function () {
-			client.sadd(domain + ":access", userid, this.parallel());
-			client.sadd(domain + ":accessVia:" + userid, decryptorid, this.parallel());
+			if (!added) {
+				added = [];
+			}
+
+			if (added.indexOf(keyRealID) > -1) {
+				console.log("loop!");
+				this.last.ne();
+			} else {
+				client.sadd(domain + ":access", userid, this.parallel());
+				client.sadd(domain + ":accessVia:" + userid, decryptorid, this.parallel());
+
+				added.push(keyRealID);
+			}
 			//TODO: add access to encryptors!
 		}, cb);
 	};
