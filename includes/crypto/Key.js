@@ -28,10 +28,12 @@ var Key = function (keyRealID) {
 		return keyRealID;
 	};
 
+	/** get the owner of this key */
 	this.getOwner = function getOwnerF(cb) {
 		getAttribute(":owner", cb);
 	};
 
+	/** get this keys decryptors */
 	this.getDecryptors = function getDecryptorsF(cb) {
 		step(function () {
 			var Decryptor = require("./decryptor");
@@ -39,6 +41,10 @@ var Key = function (keyRealID) {
 		}, cb);
 	};
 
+	/** add one decryptor
+	* @param view view
+	* @param data decryptor data
+	*/
 	this.addDecryptor = function addDecryptorF(view, data, cb) {
 		step(function () {
 			var Decryptor = require("./decryptor");
@@ -46,6 +52,10 @@ var Key = function (keyRealID) {
 		}, cb);
 	};
 
+	/** add decryptors
+	* @param view view
+	* @param data decryptor data
+	*/
 	this.addDecryptors = function addDecryptorF(view, data, cb) {
 		step(function () {
 			var Decryptor = require("./decryptor"), i;
@@ -55,12 +65,19 @@ var Key = function (keyRealID) {
 		}, cb);
 	};
 
+	/** add a key which is encrypted by this key
+	* @param realid encrypted keys real id
+	* @param cb callback
+	*/
 	this.addEncryptor = function addEncryptorF(realid, cb) {
 		step(function () {
 			client.sadd(domain + ":encryptors", realid, this);
 		}, cb);
 	};
 
+	/** get the keys that are encrypted by this key
+	* @param cb callback
+	*/
 	this.getEncryptors = function getEncryptorsF(cb) {
 		step(function () {
 			client.smembers(domain + ":encryptors", this);
@@ -140,6 +157,7 @@ var Key = function (keyRealID) {
 		}), cb);
 	};
 
+	/** get the users who have access to this key */
 	this.getAccess = function getAccessF(cb) {
 		step(function hasAccess1() {
 			client.smembers(domain + ":access", this);
@@ -148,6 +166,7 @@ var Key = function (keyRealID) {
 		}), cb);
 	};
 
+	/** count how many users have access to this key */
 	this.acessCount = function accessCountF(cb) {
 		step(function accessCount1() {
 			client.scard(domain + ":access", this);
@@ -155,6 +174,7 @@ var Key = function (keyRealID) {
 	};
 };
 
+/** validate key data. Does no duplicate check. */
 Key.validate = function validateF(data, callback) {
 	step(function () {
 		if (data) {
@@ -175,6 +195,7 @@ Key.validate = function validateF(data, callback) {
 	});
 };
 
+/** validate a decryptor. No Duplicate check. */
 Key.validateDecryptor = function validateDecryptorF(data, callback) {
 	step(function () {
 		var Decryptor = require("./decryptor");
@@ -183,6 +204,9 @@ Key.validateDecryptor = function validateDecryptorF(data, callback) {
 	}, callback);
 };
 
+/** get a key
+* @param realid keys real id
+*/
 Key.get = function getKF(realid, callback) {
 	step(function () {
 		client.get("key:" + realid, this);
@@ -201,6 +225,7 @@ Key.get = function getKF(realid, callback) {
 	}), callback);
 };
 
+/** get multiple keys */
 Key.getKeys = function getKeysF(realids, callback) {
 	step(function () {
 		var i;
