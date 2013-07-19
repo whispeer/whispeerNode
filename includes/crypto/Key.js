@@ -62,28 +62,66 @@ var Key = function (keyRealID) {
 	};
 
 	this.getEncryptors = function getEncryptorsF(cb) {
-		
+		step(function () {
+			client.smembers(domain + ":encryptors", this);
+		}, h.sF(function (encrs) {
+			this.ne(encrs);
+		}), cb);
 	};
 
-	this.addAccess = function addAccessF(decryptorid, userid, cb, added) {
+	/** add access for users to this key
+	* @param decryptorid decryptor who gives access
+	* @param userids users to give access
+	* @param cb callback
+	* @param added helper for keys already added. prevents loops
+	*/
+	this.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 		step(function () {
+			var i, internal = [];
 			if (!added) {
 				added = [];
+			} else {
+				for (i = 0; i < added.length; i += 1) {
+					internal.push(added[i]);
+				}
+
+				added = internal;
+			}
+
+			if (userids.length === 0) {
+				this.last.ne();
+				return;
 			}
 
 			if (added.indexOf(keyRealID) > -1) {
 				console.log("loop!");
 				this.last.ne();
 			} else {
-				client.sadd(domain + ":access", userid, this.parallel());
-				client.sadd(domain + ":accessVia:" + userid, decryptorid, this.parallel());
+				for (i = 0; i < userids.length; i += 1) {
+					client.sadd(domain + ":access", userids, this.parallel());
+					client.sadd(domain + ":accessVia:" + userids, decryptorid, this.parallel());
+				}
 
 				added.push(keyRealID);
 			}
-			//TODO: add access to encryptors!
-		}, cb);
+		}, h.sF(function () {
+			theKey.getEncryptors(this);
+		}), h.sF(function (encryptors) {
+			var i;
+			if (encryptors.length > 0) {
+				for (i = 0; i < encryptors.length; i += 1) {
+					encryptors[i].addAccess(keyRealID, userids, this.parallel(), added);
+				}
+			} else {
+				this.last.ne();
+			}
+		}), cb);
 	};
 
+	/** checks if the current user has access to this key
+	* @param view users view
+	* @param cb callback
+	*/
 	this.hasAccess = function hasAccessF(view, cb) {
 		step(function hasAccess1() {
 			client.sismember(domain + ":access", view.getUserID(), this);
@@ -99,6 +137,14 @@ var Key = function (keyRealID) {
 			} else {
 				this.ne(false);
 			}
+		}), cb);
+	};
+
+	this.getAccess = function getAccessF(cb) {
+		step(function hasAccess1() {
+			client.smembers(domain + ":access", this);
+		}, h.sF(function hasAccess2(members) {
+			this.last.ne(members);
 		}), cb);
 	};
 

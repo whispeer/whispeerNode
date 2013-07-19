@@ -248,11 +248,16 @@ Decryptor.create = function (view, key, data, cb) {
 		//TODO: update keys access rights. (or let the key do that?)
 
 		if (data.type === "pw") {
-			key.addAccess(decryptorInternalID, [userid], this.parallel());
+			this.ne([userid]);
 		} else {
-			parentKey.addEncryptor(keyRealID, this.parallel());
-			key.addAccess(decryptorInternalID, parentKey.getAccess(), this.parallel());
+			parentKey.getAccess(this);
 		}
+	}), h.sF(function createD41(access) {
+		if (typeof parentKey === "object") {
+			parentKey.addEncryptor(keyRealID, this.parallel());
+		}
+
+		key.addAccess(decryptorInternalID, access, this.parallel());
 	}), h.sF(function createD5() {
 		this.ne(new Decryptor(keyRealID, data.decryptorid, userid));
 	}), cb);
