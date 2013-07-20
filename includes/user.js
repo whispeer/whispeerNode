@@ -542,6 +542,45 @@ var User = function (id) {
 		};
 	}
 
+	function getBranchKeys(branch, additional) {
+		var keys = [], key;
+		for (key in branch) {
+			if (branch.hasOwnProperty(key)) {
+				if (branch[key].read) {
+					keys.push(additional + key);
+				} else {
+					getBranchKeys(branch[key], additional + ":" + key);
+				}
+			}
+		}
+
+		return keys;
+	}
+
+	function getBranch(view, branch, cb) {
+		var toGet;
+		step(function doGetBranch() {
+			toGet = getBranchKeys(branch);
+
+			var i;
+			for (i = 0; i < toGet.length; i += 1) {
+				getAttribute(view, toGet[i], this.parallel());
+			}
+		}, h.sF(function doGetBranch2(data) {
+			var result = {};
+			if (data.length !== toGet.length) {
+				throw "invalid length";
+			}
+
+			var i, key;
+			for (i = 0; i < data.length; i += 1) {
+				key = key2obj(toGet[i]);
+
+				h.deepSet(result, key, data[i]);
+			}
+		}), cb);
+	}
+
 	function isSavedF() {
 		return saved;
 	}
@@ -594,6 +633,22 @@ var User = function (id) {
 	}
 	this.setMail = setMailF;
 
+	function setPublicProfileF(view, profile, cb) {
+		step(function doSetPublicProfile() {
+			setAttribute(view, {profile: profile}, this);
+		}, cb);
+	}
+
+	this.setPublicProfile = setPublicProfileF;
+
+	function getPublicProfileF(view, cb) {
+		step(function doGetPublicProfile() {
+			getBranch(view, validKeys.profile, this);
+		}, cb);
+	}
+
+	this.getPublicProfile = getPublicProfileF;
+
 	function setMainKeyF(view, key, cb) {
 		step(function doSetMainKey() {
 			setAttribute(view, {mainKey: key}, this);
@@ -615,6 +670,19 @@ var User = function (id) {
 	this.setMainKey = setMainKeyF;
 	this.setCryptKey = setCryptKeyF;
 	this.setSignKey = setSignKeyF;
+
+	this.getJSON = function () {
+		/*var toGet = {
+			profile: {
+				basic: {
+					firstname,
+					lastname
+				}
+			},
+			nickname,
+			mail
+		};*/
+	};
 
 	function generateTokenF(cb) {
 		var token;

@@ -22,6 +22,45 @@ ssn.helper = {
 		return cur;
 	},
 
+	validateObjects: function validateObjectsF(reference, data) {
+		var key;
+		for (key in data) {
+			if (data.hasOwnProperty(key)) {
+				if (!reference[key]) {
+					return false;
+				}
+
+				if (typeof reference[key] === "object") {
+					if (!ssn.helper.validateObjects(reference[key], data[key])) {
+						return false;
+					}
+				} else if (reference[key] !== true) {
+					return false;
+				} else if (typeof reference[key] === "function") {
+					if (!reference[key](data[key])) {
+						return false;
+					}
+				}
+			}
+		}
+
+		return true;
+	},
+
+	deepSet: function (obj, key, val) {
+		var i;
+		var cur = obj;
+		for (i = 0; i < key.length - 1; i += 1) {
+			if (!cur[key[i]]) {
+				cur[key[i]] = {};
+			}
+
+			cur = cur[key[i]];
+		}
+
+		cur[key[key.length - 1]] = val;
+	},
+
 	/** chars for a sid */
 	codeChars: ["Q", "W", "E", "R", "T", "Z", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Y", "X", "C", "V", "B", "N", "M", "q", "w", "e", "r", "t", "z", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "y", "x", "c", "v", "b", "n", "m", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
 	/** get a random sid of given length 

@@ -98,10 +98,25 @@ var whispeerAPI = {
 		}), fn);
 	},
 	register: function (data, fn, view) {
+		var res;
 		step(function () {
 			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, data.decryptors, view, this);
 		}, h.sF(function (result) {
-			this.ne(result);
+			console.log(result);
+			res = result;
+			if (result.error) {
+				this.last.ne(res);
+			} else {
+				view.getSession().getOwnUser(this);
+			}
+		}), h.sF(function (myUser) {
+			if (data.profile && data.profile.pub) {
+				myUser.setPublicProfile(view, data.profile.pub, this);
+			} else {
+				this.ne();
+			}
+		}), h.sF(function () {
+			this.ne(res);
 		}), fn);
 	},
 	login: function (data, fn, view) {
