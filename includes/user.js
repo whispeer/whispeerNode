@@ -1,5 +1,3 @@
-/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
-
 "use strict";
 
 var step = require("step");
@@ -39,6 +37,18 @@ var EccKey = require("./crypto/eccKey");
 var SymKey = require("./crypto/symKey");
 
 var validKeys = {
+	profile: {
+		basic: {
+			firstname: {
+				read: logedinF,
+				pre: ownUserF
+			},
+			lastname: {
+				read: logedinF,
+				pre: ownUserF
+			}
+		}
+	},
 	password: {
 		read: trueF,
 		match: /^[A-Fa-f0-9]{10}$/,
@@ -383,6 +393,10 @@ var User = function (id) {
 
 	function realSetAttribute(view, val, key, cb) {
 		step(function doRealSetAttribute() {
+			if (typeof val === "undefined") {
+				this.last.ne();
+			}
+
 			if (typeof key !== "object") {
 				key = [];
 			} else {
@@ -609,8 +623,9 @@ var User = function (id) {
 			random.getRandomInt(0, 999999999999999, this);
 		}, h.sF(function (random) {
 			token = random;
+			//TODO expire
 			//client.set(userDomain + ":token:" + random, 'true', 'NX', 'EX', 60 * 5, this);
-			client.setnx(userDomain + ":token:" + random, 'true', this);
+			client.setnx(userDomain + ":token:" + random, "true", this);
 		}), h.sF(function (set) {
 			if (set) {
 				this.ne(token);

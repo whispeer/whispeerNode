@@ -1,15 +1,19 @@
 "use strict";
 
-/* global require, UserNotExisting, module, console */
-
 var step = require("step");
 var h = require("./includes/helper");
 
-var SymKey = require("./includes/crypto/symKey");
-var EccKey = require("./includes/crypto/eccKey");
-
 var whispeerAPI = {
 	priorized: ["keyData"],
+	getKeyChain: function getKeyChainF(data, fn, view) {
+
+	},
+	getUser: function getUserF(data, fn, view) {
+
+	},
+	ownData: function getOwnDataF(data, fn, view) {
+
+	},
 	logout: function logoutF(data, fn, view) {
 		step(function () {
 			if (data === true) {
@@ -17,63 +21,6 @@ var whispeerAPI = {
 			}
 		}, fn);
 	},
-/*	keyData: function addKeysF(data, fn, view) {
-		var addedKeys, decryptorKeys;
-		step(function () {
-			debugger;
-
-			var i, cur;
-
-			for (i = 0; i < data.addKeys.length; i += 1) {
-				cur = data.addKeys[i];
-
-				cur.type = cur.type.toLowerCase();
-
-				switch (cur.type) {
-				case "sym":
-					SymKey.create(view, cur, this.parallel());
-					break;
-				case "crypt":
-				case "sign":
-					EccKey.create(view, cur, this.parallel());
-					break;
-				default:
-					fn.error.protocol();
-					return;
-				}
-			}
-
-			this.parallel()();
-		}, h.sF(function (keys) {
-			var Key = require("./includes/crypto/key");
-			addedKeys = keys;
-			decryptorKeys = Object.keys(data.addKeyDecryptors);
-
-			Key.getKeys(decryptorKeys, this);
-		}), h.sF(function (keys) {
-			var i, curKey, curDec;
-			for (i = 0; i < keys.length; i += 1) {
-				curKey = keys[i];
-
-				if (curKey) {
-					curDec = data.addKeyDecryptors[curKey.getRealID()];
-
-					if (curKey) {
-						curKey.addDecryptors(view, curDec, this.parallel());
-					}
-				} else {
-					console.log("Key not found: " + decryptorKeys[i]);
-				}
-			}
-		}), h.sF(function () {
-			console.log(arguments);
-			var result = {
-				keysAdded: addedKeys
-			};
-
-			this.ne(result);
-		}), fn);
-	},*/
 	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
 			if (data && data.nickname) {

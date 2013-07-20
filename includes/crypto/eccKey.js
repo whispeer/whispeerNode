@@ -19,6 +19,14 @@ var EccKey = function (keyRealID) {
 		}, cb);
 	}
 
+	this.isSymKey = function () {
+		return false;
+	};
+
+	this.isEccKey = function () {
+		return true;
+	};
+
 	/** getter for keyRealID */
 	this.getRealID = key.getRealID;
 

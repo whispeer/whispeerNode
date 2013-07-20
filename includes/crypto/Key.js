@@ -1,5 +1,3 @@
-/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey, InvalidKey  */
-
 "use strict";
 
 var step = require("step");
@@ -192,7 +190,7 @@ Key.validate = function validateF(data, callback) {
 		} else {
 			throw new InvalidKey();
 		}
-	});
+	}, callback);
 };
 
 /** validate a decryptor. No Duplicate check. */

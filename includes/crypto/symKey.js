@@ -12,6 +12,14 @@ var SymKey = function (keyRealID) {
 	var key = new Key(keyRealID);
 	var theKey = this;
 
+	this.isSymKey = function () {
+		return true;
+	};
+
+	this.isEccKey = function () {
+		return false;
+	};
+
 	/** getter for keyRealID */
 	this.getRealID = key.getRealID;
 

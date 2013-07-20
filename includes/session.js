@@ -341,10 +341,6 @@ var Session = function Session() {
 			myUser.setCryptKey(view, cryptKey, this.parallel());
 			myUser.setSignKey(view, signKey, this.parallel());
 		}), h.sF(function keysAdded() {
-			//TODO: add decryptors!
-
-			console.log(decryptors);
-
 			var mainDec = decryptors[mainKey.getRealID()];
 			var cryptDec = decryptors[cryptKey.getRealID()];
 			var signDec = decryptors[signKey.getRealID()];

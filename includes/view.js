@@ -25,11 +25,23 @@ var view = function view(socket, session) {
 
 			theView.logedinError(this);
 		}, h.sF(function () {
-			if (session.getUserID() === user.getID()) {
-				this.ne();
+			if (typeof user === "object") {
+				if (session.getUserID() !== user.getID()) {
+					throw new AccessViolation();
+				}
+			} else if (typeof user === "string") {
+				if (session.getUserID() !== parseInt(user, 10)) {
+					throw new AccessViolation();
+				}
+			} else if (typeof user === "number") {
+				if (session.getUserID() !== user) {
+					throw new AccessViolation();
+				}
 			} else {
 				throw new AccessViolation();
 			}
+
+			this.ne();
 		}), cb);
 	};
 

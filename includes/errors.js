@@ -1,14 +1,14 @@
 /* global global, require */
 
 "use strict";
-var util = require('util');
+var util = require("util");
 
 var AbstractError = function (msg, constr) {
 	Error.captureStackTrace(this, constr || this);
-	this.message = msg || 'Error';
+	this.message = msg || "Error";
 };
 util.inherits(AbstractError, Error);
-AbstractError.prototype.name = 'Abstract Error';
+AbstractError.prototype.name = "Abstract Error";
 
 function addError(desc) {
 	var err = function (msg, inner) {
@@ -34,6 +34,9 @@ global.MailInUse = addError("Mail already in use");
 global.NicknameInUse = addError("Nickname already in use");
 global.InvalidPassword = addError("INvalid Password");
 global.InvalidAttribute = addError("invalid attribute");
+
+global.InvalidProfile = addError("Invalid Profile");
+
 /** end user part */
 
 /** crypto part */
@@ -50,5 +53,3 @@ global.InvalidEccKey = addError("invalid elliptic curve key");
 global.InvalidKey = addError("invalid key");
 
 /** end crypto part */
-
-// StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey, InvalidKey

@@ -30,7 +30,7 @@ ssn.helper = {
 	* @callback (error, sid)
 	*/
 	code: function (length, callback) {
-		var random = require('secure_random');
+		var random = require("secure_random");
 
 		step(function generateRandom() {
 			if (length <= 0) {
@@ -61,13 +61,13 @@ ssn.helper = {
 
 	/** get a file names extension */
 	getExtension: function (filename) {
-		var i = filename.lastIndexOf('.');
-		return (i < 0) ? '' : filename.substr(i);
+		var i = filename.lastIndexOf(".");
+		return (i < 0) ? "" : filename.substr(i);
 	},
 
 	/** get a filenames name */
 	getName: function (filename) {
-		var i = filename.lastIndexOf('.');
+		var i = filename.lastIndexOf(".");
 		return (i < 0) ? filename : filename.substr(0, i);
 	},
 
