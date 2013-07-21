@@ -641,6 +641,18 @@ var User = function (id) {
 
 	this.setPublicProfile = setPublicProfileF;
 
+	function createPrivateProfileF(view, data, cb) {
+		step(function doCreatePP1() {
+			view.ownUserError(id);
+		}, h.sF(function doCreatePP2() {
+			var Profile = require("./profile");
+			Profile.create(view, data, this);
+		}), cb);
+	}
+	this.createPrivateProfile = createPrivateProfileF;
+
+	//this.getPrivateProfiles = getPrivateProfilesF;
+
 	function getPublicProfileF(view, cb) {
 		step(function doGetPublicProfile() {
 			getBranch(view, validKeys.profile, this);
