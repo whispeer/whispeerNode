@@ -238,9 +238,7 @@ var Session = function Session() {
 			result.error = true;
 		}
 
-		var mainKeyO, cryptKeyO, signKeyO;
-
-		step(function nicknameORMail() {	
+		step(function nicknameORMail() {
 			if (!h.isNickname(nickname)) {
 				if (nickname !== "" && nickname) {
 					regErr("nicknameInvalid");
@@ -334,8 +332,8 @@ var Session = function Session() {
 			EccKey.create(view, signKey, this.parallel());
 		}), h.sF(function keysCreated(keys) {
 			mainKey = keys[0];
-			cryptKey = keys[1]
-			signKey = keys[2]
+			cryptKey = keys[1];
+			signKey = keys[2];
 
 			myUser.setMainKey(view, mainKey, this.parallel());
 			myUser.setCryptKey(view, cryptKey, this.parallel());

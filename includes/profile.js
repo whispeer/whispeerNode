@@ -1,7 +1,5 @@
 "use strict";
 
-//TODO: move key to own attribute!
-
 var Key = require("./crypto/Key");
 
 var step = require("step");
@@ -90,7 +88,11 @@ var Profile = function (userid, profileid) {
 
 	this.hasAccess = function hasAccessF(view, cb) {
 		step(function () {
-			theProfile.getKey(view, this);
+			if (view.getUserID() === userid) {
+				this.last.ne(true);
+			} else {
+				theProfile.getKey(view, this);
+			}
 		}, h.sF(function (key) {
 			key.hasAccess(view, this);
 		}), cb);
@@ -130,10 +132,14 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 	step(function () {
 		getAllProfiles(view, userid, this);
 	}, h.sF(function (p) {
-		profiles = p;
-		var i;
-		for (i = 0; i < profiles.length; i += 1) {
-			profiles.hasAccess(view, this.parallel());
+		if (view.getUserID() === userid) {
+			this.last.ne(p);
+		} else {
+			profiles = p;
+			var i;
+			for (i = 0; i < profiles.length; i += 1) {
+				profiles.hasAccess(view, this.parallel());
+			}
 		}
 	}), h.sF(function (acc) {
 		var i, result = [];
@@ -156,37 +162,31 @@ Profile.validate = function validateF(data) {
 		return false;
 	}
 
-	if (!h.isHex(data.iv) || !h.isRealID(data.key) || !h.isHex(data.signature)) {
+	if (!data.iv || !data.key || !data.signature) {
 		return false;
 	}
 
 	return true;
 };
 
-Profile.create = function createF(view, key, data, cb) {
+Profile.create = function createF(view, data, cb) {
 	var profile, userID, profileID;
-	step(function () {
+	step(function createP1() {
 		view.logedinError(this);
-	}, h.sF(function () {
+	}, h.sF(function createP2() {
 		if (!Profile.validate(data)) {
 			throw new InvalidProfile();
 		}
 
-		data = true;
-
-		if (typeof key !== "object") {
-			Key.get(key, this);
-		} else {
-			this.ne(key);
-		}
-	}), h.sF(function (key) {
+		Key.get(data.key, this);
+	}), h.sF(function createP3(key) {
 		userID = view.getUserID();
-		if (key.isSymKey()) {
+		if (key && key.isSymKey()) {
 			client.incr("user:" + userID + ":profileCount", this);
 		} else {
 			throw new NotASymKey();
 		}
-	}), h.sF(function (id) {
+	}), h.sF(function createP4(id) {
 		profileID = id;
 		client.sadd("user:" + userID + ":profiles", profileID, this);
 	}), h.sF(function () {
@@ -196,3 +196,5 @@ Profile.create = function createF(view, key, data, cb) {
 		this.ne(profile);
 	}), cb);
 };
+
+module.exports = Profile;

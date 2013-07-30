@@ -1,7 +1,5 @@
 "use strict";
 
-/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
-
 var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
@@ -84,11 +82,11 @@ EccKey.validate = function validateF(data, cb) {
 		}
 
 		if (data.type !== "sign" && data.type !== "crypt") {
-			throw new InvalidEccKey("wrong type");	
+			throw new InvalidEccKey("wrong type");
 		}
 
 		this.ne();
-	});
+	}, cb);
 };
 
 /** get all decryptors for a certain key id */

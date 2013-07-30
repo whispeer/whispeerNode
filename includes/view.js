@@ -19,7 +19,7 @@ var view = function view(socket, session) {
 
 	this.ownUserError = function ownUserErrorF(user, cb) {
 		step(function () {
-			if (!user.isSaved()) {
+			if (typeof user === "object" && !user.isSaved()) {
 				this.last.ne();
 			}
 

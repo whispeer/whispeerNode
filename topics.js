@@ -110,11 +110,17 @@ var whispeerAPI = {
 				view.getSession().getOwnUser(this);
 			}
 		}), h.sF(function (myUser) {
-			if (data.profile && data.profile.pub) {
-				myUser.setPublicProfile(view, data.profile.pub, this);
-			} else {
-				this.ne();
+			if (data.profile) {
+				if (data.profile.pub) {
+					myUser.setPublicProfile(view, data.profile.pub, this.parallel());
+				}
+
+				if (data.profile.priv) {
+					myUser.createPrivateProfile(view, data.profile.priv, this.parallel());
+				}
 			}
+
+			this.parallel()();
 		}), h.sF(function () {
 			this.ne(res);
 		}), fn);
