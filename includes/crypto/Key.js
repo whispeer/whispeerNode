@@ -202,6 +202,10 @@ Key.validateDecryptor = function validateDecryptorF(data, callback) {
 	}, callback);
 };
 
+Key.isKey = function isKeyF(key) {
+	return key instanceof SymKey || key instanceof EccKey;
+}
+
 /** get a key
 * @param realid keys real id
 */

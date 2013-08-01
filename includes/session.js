@@ -1,5 +1,3 @@
-/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
-
 "use strict";
 
 var step = require("step");
@@ -8,16 +6,12 @@ var client = require("./redisClient");
 
 var SymKey = require("./crypto/symKey.js");
 var EccKey = require("./crypto/eccKey.js");
-var Key = require("./crypto/Key.js");
 
 //delete session if it was not used for 30 days.
 var SESSIONTIME = 30 * 24 * 60 * 60;
 
 /** how long is the session id */
 var SESSIONKEYLENGTH = 30;
-
-/** how long till automatic logout */
-var ONLINETIME = 10 * 60;
 
 /** recheck online status every 10 seconds */
 var CHECKTIME = 10 * 1000;
@@ -177,11 +171,11 @@ var Session = function Session() {
 			myUser.getPassword(view, this);
 		}), h.sF(function (internalPassword) {
 
-			var crypto = require('crypto');
+			var crypto = require("crypto");
 
-			var shasum = crypto.createHash('sha256');
+			var shasum = crypto.createHash("sha256");
 			shasum.update(internalPassword + token);
-			var internalHash = shasum.digest('hex');
+			var internalHash = shasum.digest("hex");
 
 			if (externalHash === internalHash) {
 				internalLogin(myUser.getID(), this);
@@ -206,7 +200,7 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, decryptors, view, cb) {
+	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, view, cb) {
 		//y rule 1: nickname or mail! one can be empty. check for that!
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -327,9 +321,9 @@ var Session = function Session() {
 		}), h.sF(function sessionF(theSid) {
 			mySid = theSid;
 
-			SymKey.create(view, mainKey, this.parallel());
-			EccKey.create(view, cryptKey, this.parallel());
-			EccKey.create(view, signKey, this.parallel());
+			SymKey.createWDecryptors(view, mainKey, this.parallel());
+			EccKey.createWDecryptors(view, cryptKey, this.parallel());
+			EccKey.createWDecryptors(view, signKey, this.parallel());
 		}), h.sF(function keysCreated(keys) {
 			mainKey = keys[0];
 			cryptKey = keys[1];
@@ -338,14 +332,6 @@ var Session = function Session() {
 			myUser.setMainKey(view, mainKey, this.parallel());
 			myUser.setCryptKey(view, cryptKey, this.parallel());
 			myUser.setSignKey(view, signKey, this.parallel());
-		}), h.sF(function keysAdded() {
-			var mainDec = decryptors[mainKey.getRealID()];
-			var cryptDec = decryptors[cryptKey.getRealID()];
-			var signDec = decryptors[signKey.getRealID()];
-
-			mainKey.addDecryptors(view, mainDec, this.parallel());
-			cryptKey.addDecryptors(view, cryptDec, this.parallel());
-			signKey.addDecryptors(view, signDec, this.parallel());
 		}), h.sF(function decryptorsAdded() {
 			this.ne(mySid);
 		}), cb);

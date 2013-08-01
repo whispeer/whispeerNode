@@ -12,7 +12,7 @@ AbstractError.prototype.name = "Abstract Error";
 
 function addError(desc) {
 	var err = function (msg, inner) {
-		err.super_.call(this, msg, this.constructor);
+		err.super_.call(this, desc + "\r\n" + msg, this.constructor);
 		this.inner = inner;
 	};
 	util.inherits(err, AbstractError);

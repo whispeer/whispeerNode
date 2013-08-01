@@ -526,11 +526,14 @@ var User = function (id) {
 				client.setnx("user:id:" + id, id, this);
 			}), h.sF(function (set) {
 				if (!set) {
-					console.error("id for user already in use: " + id);
+					console.error("id for user already in use (dafuq!): " + id);
+					throw "id for user already in use!";
 				}
 				setAttribute = setAttributeF;
 				getAttribute = realGetAttribute;
 				unsetAttribute = realUnsetAttribute;
+				client.sadd("user:list", id, this);
+			}), h.sF(function () {
 				setAttribute(view, vals, this);
 			}), function saveDone(e) {
 				if (e) {
@@ -645,12 +648,12 @@ var User = function (id) {
 
 	this.setPublicProfile = setPublicProfileF;
 
-	function createPrivateProfileF(view, data, cb) {
+	function createPrivateProfileF(view, key, data, cb) {
 		step(function doCreatePP1() {
 			view.ownUserError(id, this);
 		}, h.sF(function doCreatePP2() {
 			var Profile = require("./profile");
-			Profile.create(view, data, this);
+			Profile.create(view, key, data, this);
 		}), cb);
 	}
 	this.createPrivateProfile = createPrivateProfileF;

@@ -14,7 +14,6 @@ var structure = {
 	},
 	iv: h.isHex,
 	signature: h.isHex,
-	key: h.isRealID
 };
 
 var Profile = function (userid, profileid) {
@@ -25,6 +24,7 @@ var Profile = function (userid, profileid) {
 			client.get(domain + ":data", this);
 		}, h.sF(function (profileData) {
 			var profile = JSON.parse(profileData);
+
 			if (Profile.validate(profile)) {
 				this.ne(profile);
 			} else {
@@ -33,29 +33,24 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
-	this.setData = function setDataF(view, data, cb) {
+	this.setData = function setDataF(view, data, cb, overwrite) {
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
-			theProfile.getData(this);
+			if (!overwrite) {
+				theProfile.getData(this);
+			} else {
+				this.ne({});
+			}
 		}), h.sF(function (oldData) {
-			var extend = require("xtend");
-			data = extend(oldData, data);
-
-			if (Profile.validate(data)) {
-				Key.get(data.key, this);
-			} else {
-				throw new InvalidProfile();
+			if (!overwrite) {
+				var extend = require("xtend");
+				data = extend(oldData, data);
 			}
-		}), h.sF(function (key) {
-			if (key.isSymKey()) {
-				delete data.key;
 
-				client.set(domain + ":data", JSON.stringify(data), this.parallel());
-				client.set(domain + ":key", key.getRealID(), this.parallel());
-			} else {
-				throw new InvalidProfile();
-			}
+			Profile.validate(data);
+
+			client.set(domain + ":data", JSON.stringify(data), this.parallel());
 		}), cb);
 	};
 
@@ -69,7 +64,7 @@ var Profile = function (userid, profileid) {
 			if (branch && branch[attribute]) {
 				delete branch[attribute];
 
-				theProfile.setData(view, oldData, this);
+				theProfile.setData(view, oldData, this, true);
 			} else {
 				this.last.ne(true);
 			}
@@ -159,26 +154,32 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 
 Profile.validate = function validateF(data) {
 	if (!h.validateObjects(structure, data)) {
+		console.log("wrong structure");
 		return false;
 	}
 
-	if (!data.iv || !data.key || !data.signature) {
+	if (!data.iv || !data.signature) {
 		return false;
 	}
 
 	return true;
 };
 
-Profile.create = function createF(view, data, cb) {
+Profile.create = function createF(view, key, data, cb) {
 	var profile, userID, profileID;
 	step(function createP1() {
 		view.logedinError(this);
 	}, h.sF(function createP2() {
-		if (!Profile.validate(data)) {
-			throw new InvalidProfile();
-		}
+		Profile.validate(data);
 
-		Key.get(data.key, this);
+		if (typeof key !== "object") {
+			Key.get(key, this);
+		} else if (!Key.isKey(key)) {
+			var SymKey = require("./crypto/symKey");
+			SymKey.createWDecryptors(view, key, this);
+		} else {
+			this.ne(key);
+		}
 	}), h.sF(function createP3(key) {
 		userID = view.getUserID();
 		if (key && key.isSymKey()) {
@@ -191,7 +192,7 @@ Profile.create = function createF(view, data, cb) {
 		client.sadd("user:" + userID + ":profiles", profileID, this);
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
-		profile.setData(view, data, this);
+		profile.setData(view, data, this, true);
 	}), h.sF(function () {
 		this.ne(profile);
 	}), cb);

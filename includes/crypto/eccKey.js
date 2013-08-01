@@ -103,10 +103,20 @@ EccKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
+EccKey.createWDecryptors = function (view, data, cb) {
+	step(function () {
+		if (!data.decryptors || data.decryptors.length === 0) {
+			throw new InvalidEccKey();
+		}
+
+		EccKey.create(view, data, this);
+	}, cb);
+};
+
 
 /** create a symmetric key */
 EccKey.create = function (view, data, cb) {
-	var domain, keyRealID;
+	var domain, keyRealID, theKey;
 
 	//TODO: check data.type for correctness
 	step(function () {
@@ -126,7 +136,14 @@ EccKey.create = function (view, data, cb) {
 		client.set(domain + ":point:y", data.point.y, this.parallel());
 		client.set(domain + ":owner", view.getUserID(), this.parallel());
 	}), h.sF(function () {
-		this.ne(new EccKey(keyRealID));
+		theKey = new EccKey(keyRealID);
+		if (data.decryptors) {
+			theKey.addDecryptors(view, data.decryptors, this);
+		} else {
+			this.last.ne(theKey);
+		}
+	}), h.sF(function () {
+		this.ne(theKey);
 	}), cb);
 };
 

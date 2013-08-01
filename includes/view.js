@@ -17,6 +17,15 @@ var view = function view(socket, session) {
 		return session.getUserID();
 	};
 
+	this.getOwnUser = function getOwnUserF(cb) {
+		step(function () {
+			theView.logedinError(this);
+		}, h.sF(function () {
+			var User = require("./user.js");
+			User.getUser(this.getUserID(), this);
+		}), cb);
+	};
+
 	this.ownUserError = function ownUserErrorF(user, cb) {
 		step(function () {
 			if (typeof user === "object" && !user.isSaved()) {
