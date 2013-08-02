@@ -54,6 +54,32 @@ var EccKey = function (keyRealID) {
 		}), cb);
 	};
 
+	this.getData = function getDataF(cb, wDecryptors) {
+		var result;
+		step(function () {
+			this.parallel.unflatten();
+			theKey.getPoint(this.parallel());
+			theKey.getCurve(this.parallel());
+			theKey.getBasicData(this.parallel(), wDecryptors);
+		}, h.sF(function (point, curve, basic) {
+			result = basic;
+			result.point = point;
+			result.curve = curve;
+
+			if (wDecryptors) {
+				this.getDecryptors(this);
+			} else {
+				this.last.ne(result);
+			}
+		}), h.sF(function (decryptors) {
+			result.decryptors = decryptors;
+
+			this.last.ne(result);
+		}), cb);
+	};
+
+	this.getBasicData = key.getBasicData;
+
 	this.getDecryptors = key.getDecryptors;
 
 	this.addDecryptor = key.addDecryptor;
@@ -133,6 +159,7 @@ EccKey.create = function (view, data, cb) {
 		client.set(domain + ":curve", data.curve, this.parallel());
 		client.set(domain + ":point:x", data.point.x, this.parallel());
 		client.set(domain + ":point:y", data.point.y, this.parallel());
+		client.set(domain + ":type", data.type, this.parallel());
 		client.set(domain + ":owner", view.getUserID(), this.parallel());
 	}), h.sF(function () {
 		theKey = new EccKey(keyRealID);

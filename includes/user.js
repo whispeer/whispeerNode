@@ -598,6 +598,10 @@ var User = function (id) {
 	}
 	this.getID = getIDF;
 
+	this.isOwnUser = function isOwnUserF(view) {
+		return view.getUserID() === id;
+	};
+
 	function getNicknameF(view, cb) {
 		step(function doGetNickname() {
 			getAttribute(view, "nickname", this);

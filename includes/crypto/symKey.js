@@ -99,6 +99,7 @@ SymKey.create = function (view, data, cb) {
 		}
 
 		client.set("key:" + keyRealID + ":owner", view.getUserID(), this.parallel());
+		client.set("key:" + keyRealID + ":type", data.type, this.parallel());
 	}), h.sF(function () {
 		theKey = new SymKey(keyRealID);
 		if (data.decryptors) {
