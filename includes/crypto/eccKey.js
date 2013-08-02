@@ -66,14 +66,6 @@ var EccKey = function (keyRealID) {
 			result.point = point;
 			result.curve = curve;
 
-			if (wDecryptors) {
-				this.getDecryptors(this);
-			} else {
-				this.last.ne(result);
-			}
-		}), h.sF(function (decryptors) {
-			result.decryptors = decryptors;
-
 			this.last.ne(result);
 		}), cb);
 	};

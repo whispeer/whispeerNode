@@ -40,6 +40,8 @@ var Key = function (keyRealID) {
 			if (wDecryptors) {
 				result.decryptors = decryptors;
 			}
+
+			this.ne(result);
 		}), cb);
 	};
 
@@ -51,6 +53,10 @@ var Key = function (keyRealID) {
 	/** get the owner of this key */
 	this.getOwner = function getOwnerF(cb) {
 		getAttribute(":owner", cb);
+	};
+
+	this.getType = function getTypeF(cb) {
+		getAttribute(":type", cb);
 	};
 
 	/** get this keys decryptors */
@@ -68,6 +74,11 @@ var Key = function (keyRealID) {
 			var i;
 			for (i = 0; i < decryptors.length; i += 1) {
 				decryptors[i].getJSON(this.parallel());
+			}
+
+			if (decryptors.length === 0) {
+				console.error("no decryptors for a key!");
+				this.last.ne();
 			}
 		}), cb);
 	};
@@ -198,7 +209,7 @@ var Key = function (keyRealID) {
 	};
 
 	/** count how many users have access to this key */
-	this.acessCount = function accessCountF(cb) {
+	this.accessCount = function accessCountF(cb) {
 		step(function accessCount1() {
 			client.scard(domain + ":access", this);
 		}, cb);

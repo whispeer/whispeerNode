@@ -1,99 +1,93 @@
-/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
-
 "use strict";
 
 var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
 
-var Decryptor = function (keyRealID, decryptorRealID, userid) {
-	var domain = "key:" + keyRealID + ":decryptor:" + decryptorRealID + ":" + userid;
+var Decryptor = function (keyRealID, count) {
+	var domain = "key:" + keyRealID + ":decryptor:" + count;
 
-	/** getter for keyRealID */
-	this.getRealID = function getRealIDF() {
-		return keyRealID;
-	};
-
-	/** getter for counter attribute */
-	this.getDecryptorRealID = function getDecryptorRealIDF() {
-		return decryptorRealID;
-	};
+	function getAttribute(attr, cb) {
+		step(function () {
+			client.get(domain + attr, this);
+		}, cb);
+	}
 
 	/** getter for counter attribute */
-	this.getUser = function getUserIDF() {
-		return userid;
+	this.getID = function getIDF() {
+		return count;
 	};
 
-	var type, secret, theDecryptor = this;
+	var theDecryptor = this;
+
+	this.getDecryptorID = function getRealIDF(cb) {
+		getAttribute(":decryptorid", cb);
+	};
+
+	this.getIV = function getIVF(cb) {
+		getAttribute(":iv", cb);
+	};
+
+	this.getSalt = function getSaltF(cb) {
+		getAttribute(":salt", cb);
+	};
+
+	this.getCreator = function getCreatorF(cb) {
+		getAttribute(":creator", cb);
+	};
 
 	/** get the type of this decryptor */
 	this.getType = function getTypeF(cb) {
-		step(function () {
-			if (type) {
-				this.last.ne(type);
-			} else {
-				client.get(domain + ":type", this);
-			}
-		}, h.sF(function (theType) {
-			if (!theType) {
-				throw new LostDecryptor();
-			}
-
-			type = theType;
-
-			this.last.ne(type);
-		}), cb);
+		getAttribute(":type", cb);
 	};
 
 	/** get the secret */
 	this.getSecret = function getSecretF(cb) {
-		step(function () {
-			if (secret) {
-				this.last.ne(secret);
-			} else {
-				client.get(domain + ":secret", this);
-			}
-		}, h.sF(function (theSecret) {
-			if (!theSecret) {
-				throw new LostDecryptor();
-			}
-
-			secret = theSecret;
-
-			this.last.ne(secret);
-		}), cb);
+		getAttribute(":secret", cb);
 	};
 
 	/** get the json data for this decryptor */
 	this.getJSON = function getJSONF(cb) {
+		var result = {};
 		step(function getDecryptorData() {
+			this.parallel.unflatten();
 			theDecryptor.getSecret(this.parallel());
 			theDecryptor.getType(this.parallel());
-		}, h.sF(function theDecryptorData(result) {
-			var jsonData;
-			if (result[1]) {
-				jsonData = {
-					secret: result[0],
-					decryptorid: decryptorRealID,
-					decryptortype: result[1]
-				};
-			} else {
-				jsonData = {
-					secret: result[0],
-					decryptortype: result[1]
-				};
+			theDecryptor.getCreator(this.parallel());
+
+			theDecryptor.getDecryptorID(this.parallel());
+			theDecryptor.getIV(this.parallel());
+			theDecryptor.getSalt(this.parallel());
+		}, h.sF(function theDecryptorData(ct, type, creator, decryptorid, iv, salt) {
+			result.ct = ct;
+			result.type = type;
+			result.creator = creator;
+		
+			if (decryptorid) {
+				result.decryptorid = decryptorid;
 			}
 
-			this.ne(jsonData);
+			if (iv) {
+				result.iv = iv;
+			}
+
+			if (salt) {
+				result.salt = salt;
+			}
+
+			this.ne(result);
 		}), cb);
 	};
 
 	/** delete this decryptor */
 	this.del = function delF(cb) {
 		step(function () {
-			client.sdel("key:" + keyRealID + ":decryptor:decryptorSet", decryptorRealID, this.parallel());
-			client.sdel("key:" + keyRealID + ":decryptor:" + decryptorRealID + ":decryptorSet", userid, this.parallel());
+			client.sdel("key:" + keyRealID + ":decryptor:decryptorSet", count, this.parallel());
+
 			client.del(domain + ":secret", this.parallel());
+			client.del(domain + ":salt", this.parallel());
+			client.del(domain + ":iv", this.parallel());
+			client.del(domain + ":decryptorid", this.parallel());
 			client.del(domain + ":type", this.parallel());
 		}, h.sF(function () {
 			//do not pass out results.
@@ -108,25 +102,16 @@ Decryptor.getAllWithAccess = function getAllWAF(view, keyRealID, cb) {
 
 /** get all decryptors for a certain key id */
 Decryptor.getAll = function getAllF(keyRealID, cb) {
-	var decryptors = [];
 	//TODO check keyRealID is a valid keyRealID!
 	step(function () {
 		client.smembers("key:" + keyRealID + ":decryptor:decryptorSet", this);
 	}, h.sF(function (decryptorSet) {
+		var results = [];
 		var i;
 		for (i = 0; i < decryptorSet.length; i += 1) {
-			client.smembers("key:" + keyRealID + ":decryptor:" + decryptorSet[i] + ":decryptorSet", this.parallel());
-			decryptors.push(keyRealID);
+			results.push(new Decryptor(keyRealID, decryptorSet[i]));
 		}
-	}), h.sF(function (decryptorSet) {
-		var results = [];
 
-		var i, j;
-		for (i = 0; i < decryptorSet.length; i += 1) {
-			for (j = 0; j < decryptorSet[i].length; j += 1) {
-				results.push(new Decryptor(keyRealID, decryptors[i], decryptorSet[i][j]));
-			}
-		}
 
 		this.ne(results);
 	}), cb);
@@ -259,7 +244,7 @@ Decryptor.create = function (view, key, data, cb) {
 
 		key.addAccess(decryptorInternalID, access, this.parallel());
 	}), h.sF(function createD5() {
-		this.ne(new Decryptor(keyRealID, data.decryptorid, userid));
+		this.ne(new Decryptor(keyRealID, data.decryptorid));
 	}), cb);
 };
 
