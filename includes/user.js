@@ -783,7 +783,6 @@ var User = function (id) {
 			cryptKey.getData(this.parallel(), true);
 			signKey.getData(this.parallel(), true);
 		}), h.sF(function (mainKey, cryptKey, signKey) {
-			debugger;
 			result.mainKey = mainKey;
 			result.cryptKey = cryptKey;
 			result.signKey = signKey;
