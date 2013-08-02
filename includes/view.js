@@ -11,9 +11,13 @@ var view = function view(socket, session) {
 		return socket;
 	};
 
-	this.getSession = function getSessionF() {
+	function getSessionF() {
 		return session;
-	};
+	}
+
+	this.getSession = getSessionF;
+
+	this.session = getSessionF;
 
 	this.getUserID = function getUserIDF() {
 		return session.getUserID();
@@ -55,7 +59,7 @@ var view = function view(socket, session) {
 			theView.logedinError(this);
 		}, h.sF(function () {
 			var User = require("./user.js");
-			User.getUser(this.getUserID(), this);
+			User.getUser(theView.getUserID(), this);
 		}), cb);
 	};
 

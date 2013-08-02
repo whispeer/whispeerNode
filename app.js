@@ -130,8 +130,15 @@ io.sockets.on("connection", function (socket) {
 			step(function () {
 				console.log("Received data:");
 				console.log(data);
+
+				if (myView.session().getSID() !== data.sid) {
+					myView.session().setSID(data.sid, this);
+				} else {
+					this.ne();
+				}
+			}, h.sF(function () {
 				handle(handler, data, this, myView);
-			}, function (e, result) {
+			}), function (e, result) {
 				always(myView, result, fn);
 			});
 		};

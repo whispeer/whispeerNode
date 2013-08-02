@@ -108,11 +108,11 @@ var Profile = function (userid, profileid) {
 };
 
 function getAllProfiles(view, userid, cb) {
-	step(function () {
+	step(function getAP1() {
 		view.logedinError(this);
-	}, h.sF(function () {
+	}, h.sF(function getAP2() {
 		client.smembers("user:" + userid + ":profiles", this);
-	}), h.sF(function (profiles) {
+	}), h.sF(function getAP3(profiles) {
 		var result = [];
 		var i;
 		for (i = 0; i < profiles.length; i += 1) {

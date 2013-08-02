@@ -119,10 +119,13 @@ var Session = function Session() {
 	this.setSID = function (theSID, cb) {
 		step(function () {
 			lastChecked = time();
-			client.get(theSID, this);
+			client.get("session:" + theSID, this);
 		}, h.sF(function (results) {
 			if (results && h.isID(results)) {
 				userid = results;
+				sid = theSID;
+				logedin = true;
+
 				this.last.ne(true);
 			} else {
 				this.last.ne(false);

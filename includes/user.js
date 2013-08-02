@@ -550,13 +550,19 @@ var User = function (id) {
 	}
 
 	function getBranchKeys(branch, additional) {
-		var keys = [], key;
+		var keys = [], key, cur;
 		for (key in branch) {
 			if (branch.hasOwnProperty(key)) {
-				if (branch[key].read) {
-					keys.push(additional + key);
+				if (additional) {
+					cur = additional + ":" + key;
 				} else {
-					getBranchKeys(branch[key], additional + ":" + key);
+					cur = key;
+				}
+
+				if (branch[key].read) {
+					keys.push(cur);
+				} else {
+					keys = keys.concat(getBranchKeys(branch[key], cur));
 				}
 			}
 		}
@@ -564,10 +570,10 @@ var User = function (id) {
 		return keys;
 	}
 
-	function getBranch(view, branch, cb) {
+	function getBranch(view, branch, additional, cb) {
 		var toGet;
 		step(function doGetBranch() {
-			toGet = getBranchKeys(branch);
+			toGet = getBranchKeys(branch, additional);
 
 			var i;
 			for (i = 0; i < toGet.length; i += 1) {
@@ -581,10 +587,14 @@ var User = function (id) {
 
 			var i, key;
 			for (i = 0; i < data.length; i += 1) {
-				key = key2obj(toGet[i]);
+				if (data[i] !== null) {
+					key = key2obj(toGet[i]);
 
-				h.deepSet(result, key, data[i]);
+					h.deepSet(result, key, data[i]);
+				}
 			}
+
+			this.last.ne(result);
 		}), cb);
 	}
 
@@ -662,17 +672,26 @@ var User = function (id) {
 	}
 	this.createPrivateProfile = createPrivateProfileF;
 
-	function getPrivateProfilesF(view, cb) {
+	function getPrivateProfilesF(view, cb, json) {
 		step(function getPP1() {
 			var Profile = require("./profile");
-			Profile.getAccessed(view, id, this);
-		}, cb);
+			if (json) {
+				Profile.getAccessed(view, id, this);
+			} else {
+				Profile.getAccessed(view, id, this.last);
+			}
+		}, h.sF(function (p) {
+			var i;
+			for (i = 0; i < p.length; i += 1) {
+				p[i].getData(this.parallel());
+			}
+		}), cb);
 	}
 	this.getPrivateProfiles = getPrivateProfilesF;
 
 	function getPublicProfileF(view, cb) {
 		step(function doGetPublicProfile() {
-			getBranch(view, validKeys.profile, this);
+			getBranch(view, validKeys.profile, "profile", this);
 		}, cb);
 	}
 
@@ -700,20 +719,20 @@ var User = function (id) {
 	this.setCryptKey = setCryptKeyF;
 	this.setSignKey = setSignKeyF;
 
-	function getMainKeyF(view, key, cb) {
-		step(function doSetMainKey() {
+	function getMainKeyF(view, cb) {
+		step(function doGetMainKey() {
 			getAttribute(view, "mainKey", this);
 		}, cb);
 	}
 
-	function getCryptKeyF(view, key, cb) {
-		step(function doSetCryptKey() {
+	function getCryptKeyF(view, cb) {
+		step(function doGetCryptKey() {
 			getAttribute(view, "cryptKey", this);
 		}, cb);
 	}
 
-	function getSignKeyF(view, key, cb) {
-		step(function doSetSignKey() {
+	function getSignKeyF(view, cb) {
+		step(function doGetSignKey() {
 			getAttribute(view, "signKey", this);
 		}, cb);
 	}
@@ -725,13 +744,13 @@ var User = function (id) {
 	this.getData = function (view, cb) {
 		var result;
 		step(function () {
-			view.logedinError();
+			view.logedinError(this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
 
 			theUser.getNickname(view, this.parallel());
 			theUser.getPublicProfile(view, this.parallel());
-			theUser.getPrivateProfiles(view, this.parallel());
+			theUser.getPrivateProfiles(view, this.parallel(), true);
 			if (theUser.isOwnUser(view)) {
 				theUser.getEMail(view, this.parallel());
 				theUser.getMainKey(view, this.parallel());
@@ -759,18 +778,18 @@ var User = function (id) {
 				this.last.ne(result);
 			}
 		}), h.sF(function (mainKey, cryptKey, signKey) {
-			
+			this.parallel.unflatten();
+			mainKey.getData(this.parallel(), true);
+			cryptKey.getData(this.parallel(), true);
+			signKey.getData(this.parallel(), true);
+		}), h.sF(function (mainKey, cryptKey, signKey) {
+			debugger;
+			result.mainKey = mainKey;
+			result.cryptKey = cryptKey;
+			result.signKey = signKey;
+
+			this.last.ne(result);
 		}), cb);
-		/*var toGet = {
-			profile: {
-				basic: {
-					firstname,
-					lastname
-				}
-			},
-			nickname,
-			mail
-		};*/
 	};
 
 	function generateTokenF(cb) {

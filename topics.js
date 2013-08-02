@@ -25,26 +25,13 @@ var whispeerAPI = {
 	ownData: function getOwnDataF(data, fn, view) {
 		step(function () {
 			view.getOwnUser(this);
-		}, h.sF(function (user) {
-			/*
-				what do we want here?
-				{
-					nickName,
-					mail,
-					publicProfile,
-					privateProfiles,
-					mainKey,
-					signKey,
-					cryptKey
-
-				}
-			*/
-			fn.error.protocol();
+		}, h.sF(function (ownUser) {
+			ownUser.getData(view, this);
 		}), fn);
 	},
 	logout: function logoutF(data, fn, view) {
 		step(function () {
-			if (data === true) {
+			if (data && data.logout === true) {
 				view.logout(this);
 			}
 		}, fn);
