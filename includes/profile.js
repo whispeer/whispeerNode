@@ -34,7 +34,9 @@ var Profile = function (userid, profileid) {
 	};
 
 	this.listen = function doListenF(view, cb) {
-		view.sub("user:" + userid + ":profile:" + profileid, cb);
+		view.sub(domain, function (data) {
+			cb(JSON.parse(data));
+		});
 	};
 
 	this.setData = function setDataF(view, data, cb, overwrite) {
@@ -55,6 +57,7 @@ var Profile = function (userid, profileid) {
 			Profile.validate(data);
 
 			client.set(domain + ":data", JSON.stringify(data), this.parallel());
+			client.publish(domain, JSON.stringify(data));
 		}), cb);
 	};
 
