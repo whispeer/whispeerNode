@@ -118,7 +118,6 @@ EccKey.createWDecryptors = function (view, data, cb) {
 EccKey.create = function (view, data, cb) {
 	var domain, keyRealID, theKey;
 
-	//TODO: check data.type for correctness
 	step(function () {
 		EccKey.validate(data, this);
 	}, h.sF(function () {
