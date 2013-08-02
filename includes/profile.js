@@ -1,7 +1,5 @@
 "use strict";
 
-//TODO: move key to own attribute!
-
 var Key = require("./crypto/Key");
 
 var step = require("step");
@@ -16,7 +14,6 @@ var structure = {
 	},
 	iv: h.isHex,
 	signature: h.isHex,
-	key: h.isRealID
 };
 
 var Profile = function (userid, profileid) {
@@ -27,6 +24,7 @@ var Profile = function (userid, profileid) {
 			client.get(domain + ":data", this);
 		}, h.sF(function (profileData) {
 			var profile = JSON.parse(profileData);
+
 			if (Profile.validate(profile)) {
 				this.ne(profile);
 			} else {
@@ -35,29 +33,28 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
-	this.setData = function setDataF(view, data, cb) {
+	this.listen = function doListenF(view, cb) {
+		view.sub("user:" + userid + ":profile:" + profileid, cb);
+	};
+
+	this.setData = function setDataF(view, data, cb, overwrite) {
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
-			theProfile.getData(this);
+			if (!overwrite) {
+				theProfile.getData(this);
+			} else {
+				this.ne({});
+			}
 		}), h.sF(function (oldData) {
-			var extend = require("xtend");
-			data = extend(oldData, data);
-
-			if (Profile.validate(data)) {
-				Key.get(data.key, this);
-			} else {
-				throw new InvalidProfile();
+			if (!overwrite) {
+				var extend = require("xtend");
+				data = extend(oldData, data);
 			}
-		}), h.sF(function (key) {
-			if (key.isSymKey()) {
-				delete data.key;
 
-				client.set(domain + ":data", JSON.stringify(data), this.parallel());
-				client.set(domain + ":key", key.getRealID(), this.parallel());
-			} else {
-				throw new InvalidProfile();
-			}
+			Profile.validate(data);
+
+			client.set(domain + ":data", JSON.stringify(data), this.parallel());
 		}), cb);
 	};
 
@@ -71,7 +68,7 @@ var Profile = function (userid, profileid) {
 			if (branch && branch[attribute]) {
 				delete branch[attribute];
 
-				theProfile.setData(view, oldData, this);
+				theProfile.setData(view, oldData, this, true);
 			} else {
 				this.last.ne(true);
 			}
@@ -90,7 +87,11 @@ var Profile = function (userid, profileid) {
 
 	this.hasAccess = function hasAccessF(view, cb) {
 		step(function () {
-			theProfile.getKey(view, this);
+			if (view.getUserID() === userid) {
+				this.last.ne(true);
+			} else {
+				theProfile.getKey(view, this);
+			}
 		}, h.sF(function (key) {
 			key.hasAccess(view, this);
 		}), cb);
@@ -130,10 +131,14 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 	step(function () {
 		getAllProfiles(view, userid, this);
 	}, h.sF(function (p) {
-		profiles = p;
-		var i;
-		for (i = 0; i < profiles.length; i += 1) {
-			profiles.hasAccess(view, this.parallel());
+		if (view.getUserID() === userid) {
+			this.last.ne(p);
+		} else {
+			profiles = p;
+			var i;
+			for (i = 0; i < profiles.length; i += 1) {
+				profiles.hasAccess(view, this.parallel());
+			}
 		}
 	}), h.sF(function (acc) {
 		var i, result = [];
@@ -153,10 +158,11 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 
 Profile.validate = function validateF(data) {
 	if (!h.validateObjects(structure, data)) {
+		console.log("wrong structure");
 		return false;
 	}
 
-	if (!h.isHex(data.iv) || !h.isRealID(data.key) || !h.isHex(data.signature)) {
+	if (!data.iv || !data.signature) {
 		return false;
 	}
 
@@ -165,34 +171,35 @@ Profile.validate = function validateF(data) {
 
 Profile.create = function createF(view, key, data, cb) {
 	var profile, userID, profileID;
-	step(function () {
+	step(function createP1() {
 		view.logedinError(this);
-	}, h.sF(function () {
-		if (!Profile.validate(data)) {
-			throw new InvalidProfile();
-		}
-
-		data = true;
+	}, h.sF(function createP2() {
+		Profile.validate(data);
 
 		if (typeof key !== "object") {
 			Key.get(key, this);
+		} else if (!Key.isKey(key)) {
+			var SymKey = require("./crypto/symKey");
+			SymKey.createWDecryptors(view, key, this);
 		} else {
 			this.ne(key);
 		}
-	}), h.sF(function (key) {
+	}), h.sF(function createP3(key) {
 		userID = view.getUserID();
-		if (key.isSymKey()) {
+		if (key && key.isSymKey()) {
 			client.incr("user:" + userID + ":profileCount", this);
 		} else {
 			throw new NotASymKey();
 		}
-	}), h.sF(function (id) {
+	}), h.sF(function createP4(id) {
 		profileID = id;
 		client.sadd("user:" + userID + ":profiles", profileID, this);
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
-		profile.setData(view, data, this);
+		profile.setData(view, data, this, true);
 	}), h.sF(function () {
 		this.ne(profile);
 	}), cb);
 };
+
+module.exports = Profile;

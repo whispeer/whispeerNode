@@ -5,6 +5,17 @@ var h = require("./includes/helper");
 
 var whispeerAPI = {
 	priorized: ["keyData"],
+	logedin: function isLogedinF(data, fn, view) {
+		step(function () {
+			if (data === true) {
+				view.logedin(this);
+			} else {
+				fn.error.protocol();
+			}
+		}, h.sF(function (logedin) {
+			this.ne(logedin);
+		}), fn);
+	},
 	getKeyChain: function getKeyChainF(data, fn, view) {
 
 	},
@@ -12,7 +23,24 @@ var whispeerAPI = {
 
 	},
 	ownData: function getOwnDataF(data, fn, view) {
+		step(function () {
+			view.getOwnUser(this);
+		}, h.sF(function (user) {
+			/*
+				what do we want here?
+				{
+					nickName,
+					mail,
+					publicProfile,
+					privateProfiles,
+					mainKey,
+					signKey,
+					cryptKey
 
+				}
+			*/
+			fn.error.protocol();
+		}), fn);
 	},
 	logout: function logoutF(data, fn, view) {
 		step(function () {
@@ -100,7 +128,7 @@ var whispeerAPI = {
 	register: function (data, fn, view) {
 		var res;
 		step(function () {
-			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, data.decryptors, view, this);
+			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, view, this);
 		}, h.sF(function (result) {
 			console.log(result);
 			res = result;
@@ -110,11 +138,17 @@ var whispeerAPI = {
 				view.getSession().getOwnUser(this);
 			}
 		}), h.sF(function (myUser) {
-			if (data.profile && data.profile.pub) {
-				myUser.setPublicProfile(view, data.profile.pub, this);
-			} else {
-				this.ne();
+			if (data.profile) {
+				if (data.profile.pub) {
+					myUser.setPublicProfile(view, data.profile.pub, this.parallel());
+				}
+
+				if (data.profile.priv && data.profileKey) {
+					myUser.createPrivateProfile(view, data.profileKey, data.profile.priv, this.parallel());
+				}
 			}
+
+			this.parallel()();
 		}), h.sF(function () {
 			this.ne(res);
 		}), fn);

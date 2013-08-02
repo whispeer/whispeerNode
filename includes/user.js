@@ -47,6 +47,11 @@ var validKeys = {
 				read: logedinF,
 				pre: ownUserF
 			}
+		},
+		signature: {
+			read: logedinF,
+			pre: ownUserF,
+			match: /^[A-Fa-f0-9]*$/
 		}
 	},
 	password: {
@@ -265,7 +270,6 @@ var User = function (id) {
 
 	var setAttribute, saved;
 
-	//TODO: match
 	/** set an attribute of this user.
 	* @param view current view (for session etc.)
 	* @param key key to set
@@ -522,11 +526,14 @@ var User = function (id) {
 				client.setnx("user:id:" + id, id, this);
 			}), h.sF(function (set) {
 				if (!set) {
-					console.error("id for user already in use: " + id);
+					console.error("id for user already in use (dafuq!): " + id);
+					throw "id for user already in use!";
 				}
 				setAttribute = setAttributeF;
 				getAttribute = realGetAttribute;
 				unsetAttribute = realUnsetAttribute;
+				client.sadd("user:list", id, this);
+			}), h.sF(function () {
 				setAttribute(view, vals, this);
 			}), function saveDone(e) {
 				if (e) {
@@ -591,6 +598,10 @@ var User = function (id) {
 	}
 	this.getID = getIDF;
 
+	this.isOwnUser = function isOwnUserF(view) {
+		return view.getUserID() === id;
+	};
+
 	function getNicknameF(view, cb) {
 		step(function doGetNickname() {
 			getAttribute(view, "nickname", this);
@@ -641,17 +652,23 @@ var User = function (id) {
 
 	this.setPublicProfile = setPublicProfileF;
 
-	function createPrivateProfileF(view, data, cb) {
+	function createPrivateProfileF(view, key, data, cb) {
 		step(function doCreatePP1() {
-			view.ownUserError(id);
+			view.ownUserError(id, this);
 		}, h.sF(function doCreatePP2() {
 			var Profile = require("./profile");
-			Profile.create(view, data, this);
+			Profile.create(view, key, data, this);
 		}), cb);
 	}
 	this.createPrivateProfile = createPrivateProfileF;
 
-	//this.getPrivateProfiles = getPrivateProfilesF;
+	function getPrivateProfilesF(view, cb) {
+		step(function getPP1() {
+			var Profile = require("./profile");
+			Profile.getAccessed(view, id, this);
+		}, cb);
+	}
+	this.getPrivateProfiles = getPrivateProfilesF;
 
 	function getPublicProfileF(view, cb) {
 		step(function doGetPublicProfile() {
@@ -683,7 +700,67 @@ var User = function (id) {
 	this.setCryptKey = setCryptKeyF;
 	this.setSignKey = setSignKeyF;
 
-	this.getJSON = function () {
+	function getMainKeyF(view, key, cb) {
+		step(function doSetMainKey() {
+			getAttribute(view, "mainKey", this);
+		}, cb);
+	}
+
+	function getCryptKeyF(view, key, cb) {
+		step(function doSetCryptKey() {
+			getAttribute(view, "cryptKey", this);
+		}, cb);
+	}
+
+	function getSignKeyF(view, key, cb) {
+		step(function doSetSignKey() {
+			getAttribute(view, "signKey", this);
+		}, cb);
+	}
+
+	this.getMainKey = getMainKeyF;
+	this.getCryptKey = getCryptKeyF;
+	this.getSignKey = getSignKeyF;
+
+	this.getData = function (view, cb) {
+		var result;
+		step(function () {
+			view.logedinError();
+		}, h.sF(function () {
+			this.parallel.unflatten();
+
+			theUser.getNickname(view, this.parallel());
+			theUser.getPublicProfile(view, this.parallel());
+			theUser.getPrivateProfiles(view, this.parallel());
+			if (theUser.isOwnUser(view)) {
+				theUser.getEMail(view, this.parallel());
+				theUser.getMainKey(view, this.parallel());
+				theUser.getCryptKey(view, this.parallel());
+				theUser.getSignKey(view, this.parallel());
+			}
+		}), h.sF(function (nick, pubProf, privProf, mail, mainKey, cryptKey, signKey) {
+			result = {
+				nickname: nick,
+				profile: {
+					pub: pubProf,
+					priv: privProf
+				}
+			};
+
+			if (theUser.isOwnUser(view)) {
+				var Key = require("./crypto/Key");
+				this.parallel.unflatten();
+
+				result.mail = mail;
+				Key.get(mainKey, this.parallel());
+				Key.get(cryptKey, this.parallel());
+				Key.get(signKey, this.parallel());
+			} else {
+				this.last.ne(result);
+			}
+		}), h.sF(function (mainKey, cryptKey, signKey) {
+			
+		}), cb);
 		/*var toGet = {
 			profile: {
 				basic: {

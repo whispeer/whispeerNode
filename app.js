@@ -1,5 +1,5 @@
-/*process.on('uncaughtException', function (err) {
-    console.error('An uncaughtException was found, the program will end.');
+/*process.on("uncaughtException", function (err) {
+    console.error("An uncaughtException was found, the program will end.");
     //hopefully do some logging.
 
 	console.error(err);
@@ -7,17 +7,31 @@
     process.exit(1);
 });*/
 
-var io = require('socket.io').listen(3000);
+"use strict";
+
+var io = require("socket.io").listen(3000);
+
+io.configure("production", function(){
+	console.log("Production Mode started!");
+	io.disable("browser client");
+	io.set("log level", 1);
+
+	io.set("transports", ["websocket", "flashsocket", "htmlfile", "xhr-polling"]);
+});
+
+io.configure("development", function(){
+	console.log("Dev Mode started!");
+	io.set("transports", ["websocket"]);
+});
 
 require("./includes/errors");
 
-io.sockets.on('connection', function (socket) {
-	"use strict";
+io.sockets.on("connection", function (socket) {
 	console.log("connection received");
 
 	var HandlerCallback = require("./includes/handlerCallback");
-	var topics = require('./topics.js');
-	var step = require('step');
+	var topics = require("./topics.js");
+	var step = require("step");
 	var h = require("./includes/helper");
 
 	var Session = require("./includes/session");
@@ -104,7 +118,7 @@ io.sockets.on('connection', function (socket) {
 			data.logedin = logedin;
 
 			if (logedin) {
-				data.sid = view.getSession().getSID()
+				data.sid = view.getSession().getSID();
 			}
 
 			this(data);
@@ -114,6 +128,8 @@ io.sockets.on('connection', function (socket) {
 	function handleF(handler) {
 		return function handleF(data, fn) {
 			step(function () {
+				console.log("Received data:");
+				console.log(data);
 				handle(handler, data, this, myView);
 			}, function (e, result) {
 				always(myView, result, fn);
@@ -130,11 +146,12 @@ io.sockets.on('connection', function (socket) {
 
 	socket.on("data", handleF(topics));
 
-	socket.on('error', function () {
+	socket.on("error", function () {
 		console.error(arguments);
 	});
 
-	socket.on('disconnect', function () {
+	socket.on("disconnect", function () {
+		myView.destroy();
 		//unregister listener
 		console.log("client disconnected");
 	});

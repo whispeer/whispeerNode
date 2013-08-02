@@ -1,7 +1,5 @@
 "use strict";
 
-/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
-
 var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
@@ -10,7 +8,6 @@ var SymKey = function (keyRealID) {
 	var Key = require("./Key");
 
 	var key = new Key(keyRealID);
-	var theKey = this;
 
 	this.isSymKey = function () {
 		return true;
@@ -45,7 +42,7 @@ var SymKey = function (keyRealID) {
 SymKey.validate = function validateF(data, cb) {
 	step(function () {
 		if (!data) {
-			throw new InvalidSymKey("no data");	
+			throw new InvalidSymKey("no data");
 		}
 
 		if (!h.isRealID(data.realid)) {
@@ -53,7 +50,7 @@ SymKey.validate = function validateF(data, cb) {
 		}
 
 		if (data.type !== "sym") {
-			throw new InvalidSymKey("wrong type");	
+			throw new InvalidSymKey("wrong type");
 		}
 
 		this.ne();
@@ -77,9 +74,19 @@ SymKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
+SymKey.createWDecryptors = function (view, data, cb) {
+	step(function () {
+		if (!data.decryptors || data.decryptors.length === 0) {
+			throw new InvalidSymKey("no decryptors given");
+		}
+
+		SymKey.create(view, data, this);
+	}, cb);
+};
+
 /** create a symmetric key */
 SymKey.create = function (view, data, cb) {
-	var keyRealID;
+	var keyRealID, theKey;
 	step(function () {
 		SymKey.validate(data, this);
 	}, h.sF(function () {
@@ -92,8 +99,16 @@ SymKey.create = function (view, data, cb) {
 		}
 
 		client.set("key:" + keyRealID + ":owner", view.getUserID(), this.parallel());
+		client.set("key:" + keyRealID + ":type", data.type, this.parallel());
 	}), h.sF(function () {
-		this.ne(new SymKey(keyRealID));
+		theKey = new SymKey(keyRealID);
+		if (data.decryptors) {
+			theKey.addDecryptors(view, data.decryptors, this);
+		} else {
+			this.last.ne(theKey);
+		}
+	}), h.sF(function () {
+		this.last.ne(theKey);
 	}), cb);
 };
 

@@ -21,6 +21,21 @@ var Key = function (keyRealID) {
 		}, cb);
 	}
 
+	this.getBasicData = function getBasicDataF(cb, wDecryptors) {
+		var result = {};
+		step(function () {
+			this.parallel.unflatten();
+			result.realid = theKey.getRealID();
+
+			theKey.accessCount(this.parallel());
+			theKey.getType(this.parallel());
+
+			if (wDecryptors) {
+				theKey.getDecryptors(this.parallel());
+			}
+		}, cb);
+	};
+
 	/** getter for keyRealID */
 	this.getRealID = function getRealIDF() {
 		return keyRealID;
@@ -200,6 +215,10 @@ Key.validateDecryptor = function validateDecryptorF(data, callback) {
 
 		Decryptor.validate(data, this);
 	}, callback);
+};
+
+Key.isKey = function isKeyF(key) {
+	return key instanceof SymKey || key instanceof EccKey;
 };
 
 /** get a key

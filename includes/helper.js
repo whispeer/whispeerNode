@@ -34,12 +34,12 @@ ssn.helper = {
 					if (!ssn.helper.validateObjects(reference[key], data[key])) {
 						return false;
 					}
-				} else if (reference[key] !== true) {
-					return false;
 				} else if (typeof reference[key] === "function") {
 					if (!reference[key](data[key])) {
 						return false;
 					}
+				} else if (reference[key] !== true) {
+					return false;
 				}
 			}
 		}

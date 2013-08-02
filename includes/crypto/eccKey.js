@@ -1,7 +1,5 @@
 "use strict";
 
-/* global require, module, console, StepError, NotLogedin, InvalidLogin, AccessViolation, InvalidToken, UserNotExisting, MailInUse, NicknameInUse, InvalidPassword, InvalidAttribute, LostDecryptor, InvalidDecryptor, RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey, NotAEccKey, InvalidEccKey,  */
-
 var step = require("step");
 var client = require("../redisClient");
 var h = require("../helper");
@@ -56,6 +54,32 @@ var EccKey = function (keyRealID) {
 		}), cb);
 	};
 
+	this.getData = function getDataF(cb, wDecryptors) {
+		var result;
+		step(function () {
+			this.parallel.unflatten();
+			theKey.getPoint(this.parallel());
+			theKey.getCurve(this.parallel());
+			theKey.getBasicData(this.parallel(), wDecryptors);
+		}, h.sF(function (point, curve, basic) {
+			result = basic;
+			result.point = point;
+			result.curve = curve;
+
+			if (wDecryptors) {
+				this.getDecryptors(this);
+			} else {
+				this.last.ne(result);
+			}
+		}), h.sF(function (decryptors) {
+			result.decryptors = decryptors;
+
+			this.last.ne(result);
+		}), cb);
+	};
+
+	this.getBasicData = key.getBasicData;
+
 	this.getDecryptors = key.getDecryptors;
 
 	this.addDecryptor = key.addDecryptor;
@@ -84,11 +108,11 @@ EccKey.validate = function validateF(data, cb) {
 		}
 
 		if (data.type !== "sign" && data.type !== "crypt") {
-			throw new InvalidEccKey("wrong type");	
+			throw new InvalidEccKey("wrong type");
 		}
 
 		this.ne();
-	});
+	}, cb);
 };
 
 /** get all decryptors for a certain key id */
@@ -105,12 +129,21 @@ EccKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
+EccKey.createWDecryptors = function (view, data, cb) {
+	step(function () {
+		if (!data.decryptors || data.decryptors.length === 0) {
+			throw new InvalidEccKey();
+		}
+
+		EccKey.create(view, data, this);
+	}, cb);
+};
+
 
 /** create a symmetric key */
 EccKey.create = function (view, data, cb) {
-	var domain, keyRealID;
+	var domain, keyRealID, theKey;
 
-	//TODO: check data.type for correctness
 	step(function () {
 		EccKey.validate(data, this);
 	}, h.sF(function () {
@@ -126,9 +159,17 @@ EccKey.create = function (view, data, cb) {
 		client.set(domain + ":curve", data.curve, this.parallel());
 		client.set(domain + ":point:x", data.point.x, this.parallel());
 		client.set(domain + ":point:y", data.point.y, this.parallel());
+		client.set(domain + ":type", data.type, this.parallel());
 		client.set(domain + ":owner", view.getUserID(), this.parallel());
 	}), h.sF(function () {
-		this.ne(new EccKey(keyRealID));
+		theKey = new EccKey(keyRealID);
+		if (data.decryptors) {
+			theKey.addDecryptors(view, data.decryptors, this);
+		} else {
+			this.last.ne(theKey);
+		}
+	}), h.sF(function () {
+		this.ne(theKey);
 	}), cb);
 };
 

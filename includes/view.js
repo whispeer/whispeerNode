@@ -2,9 +2,11 @@
 
 var step = require("step");
 var h = require("./helper");
+var client = require("./redisClient");
 
 var view = function view(socket, session) {
-	var theView = this;
+	var theView = this, toDestroy = [];
+
 	this.getSocket = function getSocketF() {
 		return socket;
 	};
@@ -17,9 +19,49 @@ var view = function view(socket, session) {
 		return session.getUserID();
 	};
 
+	this.addToDestroy = function addToDestroyF(func) {
+		toDestroy.push(func);
+	};
+
+	this.destroy = function doDestroy() {
+		var i;
+		for (i = 0; i < toDestroy.length; i += 1) {
+			try {
+				toDestroy[i]();
+			} catch (e) {
+				console.error(e);
+			}
+		}
+	};
+
+	this.sub = function subF(channel, cb) {
+		var end = client.sub(channel, function (message) {
+			cb(message);
+		});
+
+		theView.addToDestroy(end);
+	};
+
+	this.psub = function subF(channel, cb) {
+		var end = client.psub(channel, function (channel, message) {
+			cb(channel, message);
+		});
+
+		theView.addToDestroy(end);
+	};
+
+	this.getOwnUser = function getOwnUserF(cb) {
+		step(function () {
+			theView.logedinError(this);
+		}, h.sF(function () {
+			var User = require("./user.js");
+			User.getUser(this.getUserID(), this);
+		}), cb);
+	};
+
 	this.ownUserError = function ownUserErrorF(user, cb) {
 		step(function () {
-			if (!user.isSaved()) {
+			if (typeof user === "object" && !user.isSaved()) {
 				this.last.ne();
 			}
 
