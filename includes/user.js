@@ -700,7 +700,67 @@ var User = function (id) {
 	this.setCryptKey = setCryptKeyF;
 	this.setSignKey = setSignKeyF;
 
-	this.getJSON = function () {
+	function getMainKeyF(view, key, cb) {
+		step(function doSetMainKey() {
+			getAttribute(view, "mainKey", this);
+		}, cb);
+	}
+
+	function getCryptKeyF(view, key, cb) {
+		step(function doSetCryptKey() {
+			getAttribute(view, "cryptKey", this);
+		}, cb);
+	}
+
+	function getSignKeyF(view, key, cb) {
+		step(function doSetSignKey() {
+			getAttribute(view, "signKey", this);
+		}, cb);
+	}
+
+	this.getMainKey = getMainKeyF;
+	this.getCryptKey = getCryptKeyF;
+	this.getSignKey = getSignKeyF;
+
+	this.getData = function (view, cb) {
+		var result;
+		step(function () {
+			view.logedinError();
+		}, h.sF(function () {
+			this.parallel.unflatten();
+
+			theUser.getNickname(view, this.parallel());
+			theUser.getPublicProfile(view, this.parallel());
+			theUser.getPrivateProfiles(view, this.parallel());
+			if (theUser.isOwnUser(view)) {
+				theUser.getEMail(view, this.parallel());
+				theUser.getMainKey(view, this.parallel());
+				theUser.getCryptKey(view, this.parallel());
+				theUser.getSignKey(view, this.parallel());
+			}
+		}), h.sF(function (nick, pubProf, privProf, mail, mainKey, cryptKey, signKey) {
+			result = {
+				nickname: nick,
+				profile: {
+					pub: pubProf,
+					priv: privProf
+				}
+			};
+
+			if (theUser.isOwnUser(view)) {
+				var Key = require("./crypto/Key");
+				this.parallel.unflatten();
+
+				result.mail = mail;
+				Key.get(mainKey, this.parallel());
+				Key.get(cryptKey, this.parallel());
+				Key.get(signKey, this.parallel());
+			} else {
+				this.last.ne(result);
+			}
+		}), h.sF(function (mainKey, cryptKey, signKey) {
+			
+		}), cb);
 		/*var toGet = {
 			profile: {
 				basic: {

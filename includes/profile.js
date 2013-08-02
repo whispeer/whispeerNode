@@ -33,6 +33,10 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
+	this.listen = function doListenF(view, cb) {
+		view.sub("user:" + userid + ":profile:" + profileid, cb);
+	};
+
 	this.setData = function setDataF(view, data, cb, overwrite) {
 		step(function () {
 			view.ownUserError(userid, this);
