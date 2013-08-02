@@ -144,10 +144,18 @@ io.sockets.on("connection", function (socket) {
 		};
 	}
 
-	var topic;
+	var topic, subtopic, cur;
 	for (topic in topics) {
 		if (topics.hasOwnProperty(topic)) {
-			socket.on(topic, handleF(topics[topic]));
+			cur = topics[topic];
+			socket.on(topic, handleF(cur));
+			if (typeof cur === "object") {
+				for (subtopic in cur) {
+					if (cur.hasOwnProperty(subtopic)) {
+						socket.on(topic + "." + subtopic, handleF(topics[topic][subtopic]));
+					}
+				}
+			}
 		}
 	}
 

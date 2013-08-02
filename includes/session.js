@@ -82,11 +82,13 @@ var Session = function Session() {
 					this.last.ne(true);
 				}
 			} else {
+				console.log("Not logged in");
 				this.last.ne(false);
 			}
 		}, h.sF(function (id) {
 			lastChecked = time();
-			if (id !== userid) {
+			if (parseInt(id, 10) !== parseInt(userid, 10)) {
+				console.log("Logout: " + id + " - " + userid);
 				this.ne(false);
 			} else {
 				client.expire("session:" + sid, SESSIONTIME);

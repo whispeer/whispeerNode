@@ -17,7 +17,7 @@ var SymKey = function (keyRealID) {
 		return false;
 	};
 
-	this.getData = key.getBasicData;
+	this.getKData = key.getBasicData;
 
 	/** getter for keyRealID */
 	this.getRealID = key.getRealID;

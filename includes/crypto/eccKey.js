@@ -54,13 +54,13 @@ var EccKey = function (keyRealID) {
 		}), cb);
 	};
 
-	this.getData = function getDataF(cb, wDecryptors) {
+	this.getKData = function getKDataF(view, cb, wDecryptors) {
 		var result;
 		step(function () {
 			this.parallel.unflatten();
 			theKey.getPoint(this.parallel());
 			theKey.getCurve(this.parallel());
-			theKey.getBasicData(this.parallel(), wDecryptors);
+			theKey.getBasicData(view, this.parallel(), wDecryptors);
 		}, h.sF(function (point, curve, basic) {
 			result = basic;
 			result.point = point;

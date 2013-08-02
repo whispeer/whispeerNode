@@ -19,7 +19,7 @@ var structure = {
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
-	this.getData = function getDataF(cb) {
+	this.getPData = function getPDataF(cb) {
 		step(function () {
 			client.get(domain + ":data", this);
 		}, h.sF(function (profileData) {
@@ -44,7 +44,7 @@ var Profile = function (userid, profileid) {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
 			if (!overwrite) {
-				theProfile.getData(this);
+				theProfile.getPData(this);
 			} else {
 				this.ne({});
 			}
@@ -63,7 +63,7 @@ var Profile = function (userid, profileid) {
 
 	this.removeAttribute = function removeAttributeF(view, attr, cb) {
 		step(function () {
-			theProfile.getData(this);
+			theProfile.getPData(this);
 		}, h.sF(function (oldData) {
 			var attribute = attr.pop();
 			var branch = h.deepGet(oldData, attr);
@@ -140,7 +140,7 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 			profiles = p;
 			var i;
 			for (i = 0; i < profiles.length; i += 1) {
-				profiles.hasAccess(view, this.parallel());
+				profiles[i].hasAccess(view, this.parallel());
 			}
 		}
 	}), h.sF(function (acc) {
@@ -196,7 +196,8 @@ Profile.create = function createF(view, key, data, cb) {
 		}
 	}), h.sF(function createP4(id) {
 		profileID = id;
-		client.sadd("user:" + userID + ":profiles", profileID, this);
+		client.sadd("user:" + userID + ":profiles", profileID, this.parallel());
+		client.set("user:" + userID + ":profile:" + profileID + ":key", key.realid, this.parallel());
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
 		profile.setData(view, data, this, true);

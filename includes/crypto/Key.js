@@ -21,21 +21,28 @@ var Key = function (keyRealID) {
 		}, cb);
 	}
 
-	this.getBasicData = function getBasicDataF(cb, wDecryptors) {
+	this.getBasicData = function getBasicDataF(view, cb, wDecryptors) {
 		var result = {};
 		step(function () {
 			this.parallel.unflatten();
 			result.realid = theKey.getRealID();
 
-			theKey.accessCount(this.parallel());
+			theKey.hasAccess(view, this.parallel());
 			theKey.getType(this.parallel());
-
-			if (wDecryptors) {
-				theKey.getDecryptorsJSON(this.parallel());
-			}
-		}, h.sF(function (accessCount, type, decryptors) {
-			result.accessCount = accessCount;
+		}, h.sF(function getBD2(access, type) {
 			result.type = type;
+
+			if (access) {
+				theKey.accessCount(this.parallel());
+
+				if (wDecryptors) {
+					theKey.getDecryptorsJSON(this.parallel());
+				}
+			} else {
+				this.last.ne(result);
+			}
+		}), h.sF(function (accessCount, decryptors) {
+			result.accessCount = accessCount;
 
 			if (wDecryptors) {
 				result.decryptors = decryptors;

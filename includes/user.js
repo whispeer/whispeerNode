@@ -680,11 +680,13 @@ var User = function (id) {
 			} else {
 				Profile.getAccessed(view, id, this.last);
 			}
-		}, h.sF(function (p) {
+		}, h.sF(function getPP2(p) {
 			var i;
 			for (i = 0; i < p.length; i += 1) {
-				p[i].getData(this.parallel());
+				p[i].getPData(this.parallel());
 			}
+
+			this.parallel()();
 		}), cb);
 	}
 	this.getPrivateProfiles = getPrivateProfilesF;
@@ -741,7 +743,7 @@ var User = function (id) {
 	this.getCryptKey = getCryptKeyF;
 	this.getSignKey = getSignKeyF;
 
-	this.getData = function (view, cb) {
+	this.getUData = function (view, cb) {
 		var result;
 		step(function () {
 			view.logedinError(this);
@@ -751,13 +753,14 @@ var User = function (id) {
 			theUser.getNickname(view, this.parallel());
 			theUser.getPublicProfile(view, this.parallel());
 			theUser.getPrivateProfiles(view, this.parallel(), true);
+			theUser.getCryptKey(view, this.parallel());
+			theUser.getSignKey(view, this.parallel());
+
 			if (theUser.isOwnUser(view)) {
 				theUser.getEMail(view, this.parallel());
 				theUser.getMainKey(view, this.parallel());
-				theUser.getCryptKey(view, this.parallel());
-				theUser.getSignKey(view, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, mail, mainKey, cryptKey, signKey) {
+		}), h.sF(function (nick, pubProf, privProf, cryptKey, signKey, mail, mainKey) {
 			result = {
 				nickname: nick,
 				profile: {
@@ -766,26 +769,32 @@ var User = function (id) {
 				}
 			};
 
-			if (theUser.isOwnUser(view)) {
-				var Key = require("./crypto/Key");
-				this.parallel.unflatten();
+			var Key = require("./crypto/Key");
+			this.parallel.unflatten();
 
+			Key.get(cryptKey, this.parallel());
+			Key.get(signKey, this.parallel());
+
+			if (theUser.isOwnUser(view)) {
 				result.mail = mail;
 				Key.get(mainKey, this.parallel());
-				Key.get(cryptKey, this.parallel());
-				Key.get(signKey, this.parallel());
-			} else {
-				this.last.ne(result);
 			}
-		}), h.sF(function (mainKey, cryptKey, signKey) {
+		}), h.sF(function (cryptKey, signKey, mainKey) {
 			this.parallel.unflatten();
-			mainKey.getData(this.parallel(), true);
-			cryptKey.getData(this.parallel(), true);
-			signKey.getData(this.parallel(), true);
-		}), h.sF(function (mainKey, cryptKey, signKey) {
-			result.mainKey = mainKey;
+
+			cryptKey.getKData(view, this.parallel(), true);
+			signKey.getKData(view, this.parallel(), true);
+
+			if (mainKey) {
+				mainKey.getKData(view, this.parallel(), true);
+			}
+		}), h.sF(function (cryptKey, signKey, mainKey) {
 			result.cryptKey = cryptKey;
 			result.signKey = signKey;
+
+			if (mainKey) {
+				result.mainKey = mainKey;
+			}
 
 			this.last.ne(result);
 		}), cb);
