@@ -17,12 +17,16 @@ var SymKey = function (keyRealID) {
 		return false;
 	};
 
+	this.getData = key.getBasicData;
+
 	/** getter for keyRealID */
 	this.getRealID = key.getRealID;
 
 	this.getOwner = key.getOwner;
 
 	this.getDecryptors = key.getDecryptors;
+
+	this.getDecryptorsJSON = key.getDecryptorsJSON;
 
 	this.addDecryptor = key.addDecryptor;
 

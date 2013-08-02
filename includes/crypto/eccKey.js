@@ -78,6 +78,8 @@ var EccKey = function (keyRealID) {
 		}), cb);
 	};
 
+	this.getDecryptorsJSON = key.getDecryptorsJSON;
+
 	this.getBasicData = key.getBasicData;
 
 	this.getDecryptors = key.getDecryptors;

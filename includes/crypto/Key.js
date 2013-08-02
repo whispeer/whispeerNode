@@ -31,9 +31,16 @@ var Key = function (keyRealID) {
 			theKey.getType(this.parallel());
 
 			if (wDecryptors) {
-				theKey.getDecryptors(this.parallel());
+				theKey.getDecryptorsJSON(this.parallel());
 			}
-		}, cb);
+		}, h.sF(function (accessCount, type, decryptors) {
+			result.accessCount = accessCount;
+			result.type = type;
+
+			if (wDecryptors) {
+				result.decryptors = decryptors;
+			}
+		}), cb);
 	};
 
 	/** getter for keyRealID */
@@ -52,6 +59,17 @@ var Key = function (keyRealID) {
 			var Decryptor = require("./decryptor");
 			Decryptor.getAll(keyRealID, this);
 		}, cb);
+	};
+
+	this.getDecryptorsJSON = function getDecryptorsJSONF(cb) {
+		step(function () {
+			theKey.getDecryptors(this);
+		}, h.sF(function (decryptors) {
+			var i;
+			for (i = 0; i < decryptors.length; i += 1) {
+				decryptors[i].getJSON(this.parallel());
+			}
+		}), cb);
 	};
 
 	/** add one decryptor
