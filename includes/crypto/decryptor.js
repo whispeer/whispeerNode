@@ -24,6 +24,19 @@ var Decryptor = function (keyRealID, count) {
 		getAttribute(":decryptorid", cb);
 	};
 
+	this.getDecryptorKey = function getDecryptorKeyF(cb) {
+		step(function () {
+			getAttribute(":decryptorid", this);
+		}, h.sF(function (decryptorid) {
+			if (decryptorid) {
+				var Key = require("./Key");
+				Key.get(decryptorid, this);
+			} else {
+				this.last.ne();
+			}
+		}), cb);
+	};
+
 	this.getIV = function getIVF(cb) {
 		getAttribute(":iv", cb);
 	};
@@ -97,13 +110,32 @@ var Decryptor = function (keyRealID, count) {
 };
 
 Decryptor.getAllWithAccess = function getAllWAF(view, keyRealID, cb) {
-	//TODO
+	step(function () {
+		view.logedinError(this);
+	}, h.sF(function () {
+		if (!h.isRealID(keyRealID)) {
+			throw new InvalidRealID();
+		}
+
+		client.smembers("key:" + keyRealID + ":accessVia:" + view.getUserID(), this);
+	}), h.sF(function (decryptorSet) {
+		var results = [];
+		var i;
+		for (i = 0; i < decryptorSet.length; i += 1) {
+			results.push(new Decryptor(keyRealID, decryptorSet[i]));
+		}
+
+		this.ne(results);
+	}), cb);
 };
 
 /** get all decryptors for a certain key id */
 Decryptor.getAll = function getAllF(keyRealID, cb) {
-	//TODO check keyRealID is a valid keyRealID!
 	step(function () {
+		if (!h.isRealID(keyRealID)) {
+			throw new InvalidRealID();
+		}
+
 		client.smembers("key:" + keyRealID + ":decryptor:decryptorSet", this);
 	}, h.sF(function (decryptorSet) {
 		var results = [];
@@ -111,7 +143,6 @@ Decryptor.getAll = function getAllF(keyRealID, cb) {
 		for (i = 0; i < decryptorSet.length; i += 1) {
 			results.push(new Decryptor(keyRealID, decryptorSet[i]));
 		}
-
 
 		this.ne(results);
 	}), cb);

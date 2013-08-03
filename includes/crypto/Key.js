@@ -66,6 +66,50 @@ var Key = function (keyRealID) {
 		getAttribute(":type", cb);
 	};
 
+	this.getAllAccessedParents = function getAllAccessedParentsF(view, cb, maxdepth) {
+		var theKeys;
+		step(function () {
+			if (maxdepth === 0) {
+				this.last.ne();
+			} else {
+				this.getUserDecryptors(view, this);
+			}
+		}, h.sF(function (keys) {
+			theKeys = keys;
+			var i;
+			for (i = 0; i < keys.length; i += 1) {
+				keys[i].getAllAccessedParents(view, this.parallel(), maxdepth-1);
+			}
+		}), h.sF(function (parents) {
+			var i;
+			for (i = 0; i < parents.length; i += 1) {
+				theKeys = theKeys.concat(parents);
+			}
+		}), cb);
+	};
+
+	this.getUserDecryptors = function getUserDecryptorsF(view, cb) {
+		step(function () {
+			var Decryptor = require("./decryptor");
+			Decryptor.getAllWithAccess(view, keyRealID, this);
+		}, h.sF(function (decryptors) {
+			var i;
+			for (i = 0; i < decryptors.length; i += 1) {
+				decryptors[i].getDecryptorKey(this.parallel());
+			}
+			this.parallel()();
+		}), h.sF(function (keys) {
+			var i, result = [];
+			for (i = 0; i < keys.length; i += 1) {
+				if (keys[i] && typeof keys[i] === "object") {
+					result.push(keys[i]);
+				}
+			}
+
+			this.last.ne(result);
+		}), cb);
+	};
+
 	/** get this keys decryptors */
 	this.getDecryptors = function getDecryptorsF(cb) {
 		step(function () {

@@ -20,8 +20,33 @@ var whispeerAPI = {
 		}), fn);
 	},
 	getKeyChain: function getKeyChainF(data, fn, view) {
+		var theKey, result = [];
 		step(function () {
-		}, fn);
+			var Key = require("./includes/crypto/Key");
+			Key.get(data.realid, this);
+		}, h.sF(function (key) {
+			var MAXDEPTH = 20;
+
+			theKey = key;
+			theKey.getAllAccessedParents(view, this, MAXDEPTH);
+		}), h.sF(function (parents) {
+			var i;
+			if (data.loaded && Array.isArray(data.loaded)) {
+				for (i = 0; i < parents.length; i += 1) {
+					if (data.loaded.indexOf(parents[i].getRealID()) === -1) {
+						result.push(parents[i]);
+					}
+				}
+			}
+
+			result.push(theKey);
+
+			for (i = 0; i < result.length; i += 1) {
+				result[i].getData(view, this.parallel(), true);
+			}
+		}), h.sF(function (keys) {
+			this.ne({keychain: keys});
+		}), fn);
 	},
 	user: user,
 	session: session,
