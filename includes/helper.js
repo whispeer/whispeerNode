@@ -21,7 +21,7 @@ var helper = {
 		return cur;
 	},
 
-	validateObjects: function validateObjectsF(reference, data) {
+	validateObjects: function validateObjectsF(reference, data, noValueCheck) {
 		var key;
 		for (key in data) {
 			if (data.hasOwnProperty(key)) {
@@ -29,16 +29,18 @@ var helper = {
 					return false;
 				}
 
-				if (typeof reference[key] === "object") {
-					if (!helper.validateObjects(reference[key], data[key])) {
+				if (!noValueCheck) {
+					if (typeof reference[key] === "object") {
+						if (!helper.validateObjects(reference[key], data[key])) {
+							return false;
+						}
+					} else if (typeof reference[key] === "function") {
+						if (!reference[key](data[key])) {
+							return false;
+						}
+					} else if (reference[key] !== true) {
 						return false;
 					}
-				} else if (typeof reference[key] === "function") {
-					if (!reference[key](data[key])) {
-						return false;
-					}
-				} else if (reference[key] !== true) {
-					return false;
 				}
 			}
 		}
@@ -186,7 +188,6 @@ var helper = {
 		return true;
 	},
 
-
 	/** is data a valid nickname? */
 	isNickname: function (data) {
 		return (helper.isString(data) && data.length !== 0 && !!data.match(/^[A-z][A-z0-9]*$/));
@@ -233,6 +234,33 @@ var helper = {
 		return (val !== undefined && val !== null);
 	},
 
+	/** checks if an array is set and attributes in that array are set.
+	* @param arrayName the array to check
+	* @param other attributes to check for
+	* checks if arrayName[1][2][3][4]... is set where 1-inf are the given attributes.
+	* helper function
+	* @author Nilos
+	*/
+	arraySet: function (arrayName) {
+		var i = 1;
+		var memory;
+		if (helper.isset(arrayName)) {
+			memory = arrayName;
+		} else {
+			return false;
+		}
+
+		for (i = 1; i < arguments.length; i += 1) {
+			if (helper.isset(memory[arguments[i]])) {
+				memory = memory[arguments[i]];
+			} else {
+				return false;
+			}
+		}
+
+		return true;
+	},
+
 	/** step function
 	* throws given errors
 	* passes on all other stuff to given function
@@ -240,14 +268,14 @@ var helper = {
 	sF: function (cb) {
 		var mysf = function sfFunction(err) {
 			if (err) {
-				if (helper.log) {
+				if (helper.log || false) {
 					console.log(err.stack);
 				}
 				throw err;
 			}
 
 			var args = []; // empty array
-			var i = 1;
+			var i;
 			// copy all other arguments we want to "pass through"
 			for (i = 1; i < arguments.length; i += 1) {
 				args.push(arguments[i]);
@@ -313,29 +341,8 @@ var helper = {
 		return false;
 	},
 
-	/** checks if certain values in an array are set.
-	* @param arrayName array to check
-	* @param ... vals to check
-	* @return true if arrayName[val1][val2]...[valx] are all set.
-	*/
-	arraySet: function (arrayName) {
-		var i = 1;
-		var memory;
-		if (helper.isset(arrayName)) {
-			memory = arrayName;
-		} else {
-			return false;
-		}
-
-		for (i = 1; i < arguments.length; i += 1) {
-			if (helper.isset(memory[arguments[i]])) {
-				memory = memory[arguments[i]];
-			} else {
-				return false;
-			}
-		}
-
-		return true;
+	firstCapital: function (string) {
+		return string.charAt(0).toUpperCase() + string.slice(1);
 	}
 };
 
