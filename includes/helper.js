@@ -1,10 +1,9 @@
 "use strict";
-var ssn = {};
 
-var step = require("step");
+var step;
 
 /** contains general helper functions */
-ssn.helper = {
+var helper = {
 	/** to disable logging (console.log) which is necessary because logger.js depends on helper */
 	log: true,
 
@@ -31,7 +30,7 @@ ssn.helper = {
 				}
 
 				if (typeof reference[key] === "object") {
-					if (!ssn.helper.validateObjects(reference[key], data[key])) {
+					if (!helper.validateObjects(reference[key], data[key])) {
 						return false;
 					}
 				} else if (typeof reference[key] === "function") {
@@ -78,7 +77,7 @@ ssn.helper = {
 
 			var i = 0;
 			for (i = 0; i < length; i += 1) {
-				random.getRandomInt(0, ssn.helper.codeChars.length - 1, this.parallel());
+				random.getRandomInt(0, helper.codeChars.length - 1, this.parallel());
 			}
 
 			return;
@@ -91,7 +90,7 @@ ssn.helper = {
 			var result = "", i = 0;
 
 			for (i = 0; i < numbers.length; i += 1) {
-				result = result + ssn.helper.codeChars[numbers[i]];
+				result = result + helper.codeChars[numbers[i]];
 			}
 
 			callback(null, result);
@@ -139,9 +138,9 @@ ssn.helper = {
 	/** decode an EncryptedSignedMessage */
 	decodeESM: function (esm) {
 		var result = {};
-		result.m = ssn.helper.base64ToHex(esm.m);
-		result.s = ssn.helper.base64ToHex(esm.s);
-		result.iv = ssn.helper.base64ToHex(esm.iv);
+		result.m = helper.base64ToHex(esm.m);
+		result.s = helper.base64ToHex(esm.s);
+		result.iv = helper.base64ToHex(esm.iv);
 
 		return result;
 	},
@@ -160,7 +159,7 @@ ssn.helper = {
 
 	/** is data an id?*/
 	isID: function (data) {
-		if (ssn.helper.isInt(data)) {
+		if (helper.isInt(data)) {
 			data = parseInt(data, 10);
 
 			return (data > 0);
@@ -180,7 +179,7 @@ ssn.helper = {
 			return false;
 		}
 
-		if (!ssn.helper.isNickname(parts[0]) && !ssn.helper.isMail(parts[0])) {
+		if (!helper.isNickname(parts[0]) && !helper.isMail(parts[0])) {
 			return false;
 		}
 
@@ -190,21 +189,21 @@ ssn.helper = {
 
 	/** is data a valid nickname? */
 	isNickname: function (data) {
-		return (ssn.helper.isString(data) && data.length !== 0 && !!data.match(/^[A-z][A-z0-9]*$/));
+		return (helper.isString(data) && data.length !== 0 && !!data.match(/^[A-z][A-z0-9]*$/));
 	},
 
 	/** is data an e-mail? */
 	isMail: function (data) {
-		return (ssn.helper.isString(data) && data.length !== 0 && !!data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i));
+		return (helper.isString(data) && data.length !== 0 && !!data.match(/^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i));
 	},
 
 	/** is data a session Key (hex value with certain length) */
 	isSessionKey: function (data) {
-		return (ssn.helper.isset(data) && (data.length === 64 || data.length === 32) && ssn.helper.isHex(data));
+		return (helper.isset(data) && (data.length === 64 || data.length === 32) && helper.isHex(data));
 	},
 
 	isPassword: function (data) {
-		return (ssn.helper.isHex(data) && data.length === 10);
+		return (helper.isHex(data) && data.length === 10);
 	},
 
 	isCurve: function (data) {
@@ -216,7 +215,7 @@ ssn.helper = {
 	},
 
 	isHex: function (data) {
-		return (ssn.helper.isset(data) && !!data.match(/^[A-Fa-f0-9]*$/));
+		return (helper.isset(data) && !!data.match(/^[A-Fa-f0-9]*$/));
 	},
 
 	/** typeof val == object? */
@@ -241,7 +240,7 @@ ssn.helper = {
 	sF: function (cb) {
 		var mysf = function sfFunction(err) {
 			if (err) {
-				if (ssn.helper.log) {
+				if (helper.log) {
 					console.log(err.stack);
 				}
 				throw err;
@@ -322,14 +321,14 @@ ssn.helper = {
 	arraySet: function (arrayName) {
 		var i = 1;
 		var memory;
-		if (ssn.helper.isset(arrayName)) {
+		if (helper.isset(arrayName)) {
 			memory = arrayName;
 		} else {
 			return false;
 		}
 
 		for (i = 1; i < arguments.length; i += 1) {
-			if (ssn.helper.isset(memory[arguments[i]])) {
+			if (helper.isset(memory[arguments[i]])) {
 				memory = memory[arguments[i]];
 			} else {
 				return false;
@@ -340,4 +339,19 @@ ssn.helper = {
 	}
 };
 
-module.exports = ssn.helper;
+// Hook into commonJS module systems
+if (typeof module !== "undefined" && module.hasOwnProperty("exports")) {
+	module.exports = helper;
+}
+
+if (typeof require === "function") {
+	step = require("step");
+}
+
+if (typeof define !== "undefined") {
+	define(["step"], function (s) {
+		step = s;
+
+		return helper;
+	});
+}
