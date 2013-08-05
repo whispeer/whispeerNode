@@ -127,6 +127,7 @@ io.sockets.on("connection", function (socket) {
 
 	function handleF(handler) {
 		return function handleF(data, fn) {
+			var time = new Date().getTime();
 			step(function () {
 				console.log("Received data:");
 				console.log(data);
@@ -140,6 +141,7 @@ io.sockets.on("connection", function (socket) {
 				handle(handler, data, this, myView);
 			}), function (e, result) {
 				always(myView, result, fn);
+				console.log("Request handled after: " + (new Date().getTime() - time));
 			});
 		};
 	}

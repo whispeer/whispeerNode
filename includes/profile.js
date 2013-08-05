@@ -26,6 +26,7 @@ var Profile = function (userid, profileid) {
 			var profile = JSON.parse(profileData);
 
 			if (Profile.validate(profile)) {
+				profile.profileid = profileid;
 				this.ne(profile);
 			} else {
 				this.ne(false);

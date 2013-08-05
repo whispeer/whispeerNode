@@ -694,7 +694,9 @@ var User = function (id) {
 	function getPublicProfileF(view, cb) {
 		step(function doGetPublicProfile() {
 			getBranch(view, validKeys.profile, "profile", this);
-		}, cb);
+		}, h.sF(function (res) {
+			this.ne(res.profile);
+		}), cb);
 	}
 
 	this.getPublicProfile = getPublicProfileF;
@@ -762,6 +764,7 @@ var User = function (id) {
 			}
 		}), h.sF(function (nick, pubProf, privProf, cryptKey, signKey, mail, mainKey) {
 			result = {
+				id: id,
 				nickname: nick,
 				profile: {
 					pub: pubProf,
@@ -832,6 +835,12 @@ var User = function (id) {
 		}), cb);
 	}
 	this.useToken = useTokenF;
+
+	this.listen = function listenF(view, cb) {
+		view.psub(userDomain + ":*", function (channel, data) {
+			cb(channel, JSON.parse(data));
+		});
+	};
 };
 
 User.getUser = function (identifier, callback) {

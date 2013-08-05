@@ -32,6 +32,8 @@ var Key = function (keyRealID) {
 		}, h.sF(function getBD2(access, type) {
 			result.type = type;
 
+			this.parallel.unflatten();
+
 			if (access) {
 				theKey.accessCount(this.parallel());
 
@@ -131,6 +133,8 @@ var Key = function (keyRealID) {
 				console.error("no decryptors for a key!");
 				this.last.ne();
 			}
+		}), h.sF(function (result) {
+			this.ne(result);
 		}), cb);
 	};
 
