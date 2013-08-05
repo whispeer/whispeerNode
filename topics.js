@@ -42,7 +42,7 @@ var whispeerAPI = {
 			result.push(theKey);
 
 			for (i = 0; i < result.length; i += 1) {
-				result[i].getData(view, this.parallel(), true);
+				result[i].getKData(view, this.parallel(), true);
 			}
 		}), h.sF(function (keys) {
 			this.ne({keychain: keys});

@@ -69,24 +69,34 @@ var Key = function (keyRealID) {
 	};
 
 	this.getAllAccessedParents = function getAllAccessedParentsF(view, cb, maxdepth) {
-		var theKeys;
+		var theKeys = [];
 		step(function () {
 			if (maxdepth === 0) {
 				this.last.ne();
 			} else {
-				this.getUserDecryptors(view, this);
+				theKey.getUserDecryptors(view, this);
 			}
 		}, h.sF(function (keys) {
-			theKeys = keys;
-			var i;
-			for (i = 0; i < keys.length; i += 1) {
-				keys[i].getAllAccessedParents(view, this.parallel(), maxdepth-1);
+			if (keys) {
+				theKeys = keys;
+				var i;
+				for (i = 0; i < keys.length; i += 1) {
+					keys[i].getAllAccessedParents(view, this.parallel(), maxdepth-1);
+				}
+
+				this.parallel()();
+			} else {
+				this.last.ne(theKeys);
 			}
 		}), h.sF(function (parents) {
-			var i;
-			for (i = 0; i < parents.length; i += 1) {
-				theKeys = theKeys.concat(parents);
+			if (parents) {
+				var i;
+				for (i = 0; i < parents.length; i += 1) {
+					theKeys = theKeys.concat(parents[i]);
+				}
 			}
+
+			this.ne(theKeys);
 		}), cb);
 	};
 
@@ -102,9 +112,12 @@ var Key = function (keyRealID) {
 			this.parallel()();
 		}), h.sF(function (keys) {
 			var i, result = [];
-			for (i = 0; i < keys.length; i += 1) {
-				if (keys[i] && typeof keys[i] === "object") {
-					result.push(keys[i]);
+
+			if (keys) {
+				for (i = 0; i < keys.length; i += 1) {
+					if (keys[i] && typeof keys[i] === "object") {
+						result.push(keys[i]);
+					}
 				}
 			}
 

@@ -21,12 +21,15 @@ var Profile = function (userid, profileid) {
 	var domain = "user:" + userid + ":profile:" + profileid;
 	this.getPData = function getPDataF(cb) {
 		step(function () {
-			client.get(domain + ":data", this);
-		}, h.sF(function (profileData) {
+			this.parallel.unflatten();
+			client.get(domain + ":data", this.parallel());
+			client.get(domain + ":key", this.parallel());
+		}, h.sF(function (profileData, key) {
 			var profile = JSON.parse(profileData);
 
 			if (Profile.validate(profile)) {
 				profile.profileid = profileid;
+				profile.key = key;
 				this.ne(profile);
 			} else {
 				this.ne(false);

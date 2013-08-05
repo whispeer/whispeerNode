@@ -82,6 +82,8 @@ var EccKey = function (keyRealID) {
 
 	this.addEncryptor = key.addEncryptor;
 
+	this.getAllAccessedParents = key.getAllAccessedParents;
+
 	this.addAccess = key.addAccess;
 
 	this.hasAccess = key.hasAccess;
