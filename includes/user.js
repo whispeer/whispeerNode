@@ -609,6 +609,7 @@ var User = function (id) {
 	this.getID = getIDF;
 
 	this.isOwnUser = function isOwnUserF(view) {
+		console.log(view.getUserID() + "===" + id);
 		return view.getUserID() === id;
 	};
 
