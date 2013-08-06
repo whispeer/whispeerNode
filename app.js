@@ -119,6 +119,7 @@ io.sockets.on("connection", function (socket) {
 
 			if (logedin) {
 				data.sid = view.getSession().getSID();
+				data.userid = view.getSession().getUserID();
 			}
 
 			this(data);
