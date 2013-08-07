@@ -29,7 +29,9 @@ var Profile = function (userid, profileid) {
 		}, h.sF(function (profileData, key) {
 			var profile = JSON.parse(profileData);
 
-			if (validator.validateEncrypted("profile", profile)) {
+			var err = validator.validateEncrypted("profile", profile);
+
+			if (!err) {
 				profile.profileid = profileid;
 				profile.key = key;
 				this.ne(profile);
@@ -60,10 +62,14 @@ var Profile = function (userid, profileid) {
 				data = extend(oldData, data);
 			}
 
-			validator.validateEncrypted("profile", data);
+			var err = validator.validateEncrypted("profile", data);
 
-			client.set(domain + ":data", JSON.stringify(data), this.parallel());
-			client.publish(domain, JSON.stringify(data));
+			if (!err) {
+				client.set(domain + ":data", JSON.stringify(data), this.parallel());
+				client.publish(domain, JSON.stringify(data));
+			} else {
+				throw new InvalidProfile();
+			}
 		}), cb);
 	};
 
