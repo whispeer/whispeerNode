@@ -1,7 +1,7 @@
 "use strict";
 
 var step = require("step");
-var h = require("./includes/helper");
+var h = require("whispeerHelper");
 
 var user = require("./topics/tuser");
 var session = require("./topics/tsession");

@@ -4,7 +4,7 @@ var Key = require("./crypto/Key");
 
 var step = require("step");
 var client = require("./redisClient");
-var h = require("./helper");
+var h = require("whispeerHelper");
 
 var structure = {
 	basic: {

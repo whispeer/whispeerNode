@@ -1,7 +1,7 @@
 "use strict";
 
 var step = require("step");
-var h = require("./helper");
+var h = require("whispeerHelper");
 var client = require("./redisClient");
 
 var SymKey = require("./crypto/symKey.js");

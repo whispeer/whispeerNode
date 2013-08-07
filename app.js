@@ -32,7 +32,7 @@ io.sockets.on("connection", function (socket) {
 	var HandlerCallback = require("./includes/handlerCallback");
 	var topics = require("./topics.js");
 	var step = require("step");
-	var h = require("./includes/helper");
+	var h = require("whispeerHelper");
 
 	var Session = require("./includes/session");
 	var session = new Session();

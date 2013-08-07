@@ -1,7 +1,7 @@
 "use strict";
 
 var step = require("step");
-var h = require("../includes/helper");
+var h = require("whispeerHelper");
 
 var u = {
 	get: function getUserF(data, fn, view) {

@@ -2,7 +2,7 @@
 
 var step = require("step");
 var client = require("../redisClient");
-var h = require("../helper");
+var h = require("whispeerHelper");
 
 var EccKey = function (keyRealID) {
 	var Key = require("./Key");
