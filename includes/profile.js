@@ -6,6 +6,8 @@ var step = require("step");
 var client = require("./redisClient");
 var h = require("whispeerHelper");
 
+var validator = require("whispeerValidations");
+
 var structure = {
 	basic: {
 		firstname: h.isHex,
@@ -27,7 +29,7 @@ var Profile = function (userid, profileid) {
 		}, h.sF(function (profileData, key) {
 			var profile = JSON.parse(profileData);
 
-			if (Profile.validate(profile)) {
+			if (validator.validateEncrypted("profile", profile)) {
 				profile.profileid = profileid;
 				profile.key = key;
 				this.ne(profile);
@@ -58,7 +60,7 @@ var Profile = function (userid, profileid) {
 				data = extend(oldData, data);
 			}
 
-			Profile.validate(data);
+			validator.validateEncrypted("profile", data);
 
 			client.set(domain + ":data", JSON.stringify(data), this.parallel());
 			client.publish(domain, JSON.stringify(data));
