@@ -5,6 +5,8 @@ var h = require("whispeerHelper");
 
 var user = require("./topics/tuser");
 var session = require("./topics/tsession");
+var messages = require("./topics/tmessage");
+var friends = require("./topics/tfriends");
 
 var whispeerAPI = {
 	priorized: ["keyData"],
@@ -48,6 +50,8 @@ var whispeerAPI = {
 			this.ne({keychain: keys});
 		}), fn);
 	},
+	friends: friends,
+	messages: messages,
 	user: user,
 	session: session,
 	nicknameFree: function isNickNameFree(data, fn) {
