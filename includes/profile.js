@@ -8,16 +8,6 @@ var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
 
-var structure = {
-	basic: {
-		firstname: h.isHex,
-		lastname: h.isHex,
-		birthday: h.isHex
-	},
-	iv: h.isHex,
-	signature: h.isHex,
-};
-
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
@@ -172,8 +162,9 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 };
 
 Profile.validate = function validateF(data) {
-	if (!h.validateObjects(structure, data)) {
-		console.log("wrong structure");
+	var err = validator.validateEncrypted("profile", data);
+
+	if (err) {
 		return false;
 	}
 

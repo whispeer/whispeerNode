@@ -1,5 +1,7 @@
 "use strict";
 
+//TO-DO rewrite for hset/hgetall/hget
+
 var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
@@ -336,6 +338,14 @@ Key.get = function getKF(realid, callback) {
 			this.last.ne(false);
 			break;
 		}
+	}), callback);
+};
+
+Key.getWData = function getDataF(view, realid, callback, wDecryptors) {
+	step(function () {
+		Key.get(realid, this);
+	}, h.sF(function (key) {
+		key.getKData(view, this, wDecryptors);
 	}), callback);
 };
 

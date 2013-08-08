@@ -53,3 +53,10 @@ global.InvalidEccKey = addError("invalid elliptic curve key");
 global.InvalidKey = addError("invalid key");
 
 /** end crypto part */
+
+/** message part */
+
+global.InvalidTopicData = addError("invalid Message Topic");
+global.InvalidMessageData = addError("invalid Message Data");
+
+/** end message part */
