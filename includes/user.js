@@ -38,21 +38,44 @@ var SymKey = require("./crypto/symKey");
 
 var validKeys = {
 	profile: {
-		basic: {
-			firstname: {
-				read: logedinF,
-				pre: ownUserF
-			},
-			lastname: {
-				read: logedinF,
-				pre: ownUserF
-			}
+		read: logedinF,
+		readTransform: function (data, cb) {
+			step(function () {
+				var attr;
+				for (attr in data) {
+					if (data.hasOwnProperty(attr)) {
+						data[attr] = JSON.parse(data[attr]);
+					}
+				}
+
+				this.ne(data);
+			}, cb);
 		},
-		signature: {
-			read: logedinF,
-			pre: ownUserF,
-			match: /^[A-Fa-f0-9]*$/
-		}
+		pre: function (data, cb) {
+			step(function () {
+				var validator = require("whispeerValidations");
+				var err = validator.validate("profile", data);
+				if (err) {
+					throw err;
+				} else {
+					this.ne();
+				}
+			}, cb);
+		},
+		transform: function (data, cb) {
+			var val = data.value;
+			step(function () {
+				var attr;
+				for (attr in val) {
+					if (val.hasOwnProperty(attr)) {
+						val[attr] = JSON.stringify(val[attr]);
+					}
+				}
+
+				this.ne(val);
+			}, cb);
+		},
+		hash: true
 	},
 	password: {
 		read: trueF,
@@ -325,8 +348,13 @@ var User = function (id) {
 			}
 		}), h.sF(function (realValue) {
 			data.value = realValue;
-			console.log("SET " + userDomain + ":" + obj2key(key) + "-" + data.value);
-			client.set(userDomain + ":" + obj2key(key), data.value, this);
+
+			if (attr.hash) {
+				client.hmset(userDomain + ":" + obj2key(key), data.value, this);
+			} else {
+				console.log("SET " + userDomain + ":" + obj2key(key) + "-" + data.value);
+				client.set(userDomain + ":" + obj2key(key), data.value, this);
+			}
 		}), h.sF(function () {
 			if (typeof attr.post === "function") {
 				attr.post(data, this);
@@ -337,9 +365,10 @@ var User = function (id) {
 	}
 
 	function realGetAttribute(view, key, cb) {
+		var attr;
 		step(function () {
 			if (validKey(key)) {
-				var attr = h.deepGet(validKeys, key);
+				attr = h.deepGet(validKeys, key);
 
 				var data = {
 					view: view,
@@ -355,7 +384,17 @@ var User = function (id) {
 				throw new AccessViolation(obj2key(key));
 			}
 		}, h.sF(function () {
-			client.get(userDomain + ":" + obj2key(key), this);
+			if (attr.hash) {
+				client.hgetall(userDomain + ":" + obj2key(key), this);
+			} else {
+				client.get(userDomain + ":" + obj2key(key), this);
+			}
+		}), h.sF(function (res) {
+			if (typeof attr.readTransform === "function") {
+				attr.readTransform(res, this);
+			} else {
+				this.ne(res);
+			}
 		}), cb);
 	}
 
@@ -693,9 +732,9 @@ var User = function (id) {
 
 	function getPublicProfileF(view, cb) {
 		step(function doGetPublicProfile() {
-			getBranch(view, validKeys.profile, "profile", this);
+			getAttribute(view, "profile", this);
 		}, h.sF(function (res) {
-			this.ne(res.profile);
+			this.ne(res);
 		}), cb);
 	}
 
@@ -843,7 +882,7 @@ var User = function (id) {
 	};
 };
 
-User.getUser = function (identifier, callback) {
+User.getUser = function (identifier, callback, returnError) {
 	step(function () {
 		if (h.isMail(identifier)) {
 			client.get("user:mail:" + identifier, this);
@@ -858,7 +897,11 @@ User.getUser = function (identifier, callback) {
 		if (id) {
 			this.ne(new User(id));
 		} else {
-			throw new UserNotExisting(identifier);
+			if (returnError) {
+				this.ne(new UserNotExisting(identifier));
+			} else {
+				throw new UserNotExisting(identifier);
+			}
 		}
 	}), callback);
 };

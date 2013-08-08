@@ -26,10 +26,14 @@ var Session = function Session() {
 	* @callback	(err, sid) error and session id
 	* @author Nilos
 	*/
-	function createSession(id, callback) {
+	function createSession(id, callback, tries) {
 		console.log("Create Session!");
 
 		var tempSID;
+
+		if (tries < 0) {
+			console.error("session generation failed!!");
+		}
 
 		step(function generate() {
 			h.code(SESSIONKEYLENGTH, this);
@@ -44,7 +48,7 @@ var Session = function Session() {
 				client.expire("session:" + tempSID, SESSIONTIME);
 				this.ne(tempSID);
 			} else {
-				createSession(this.last);
+				createSession(id, this.last, tries-1);
 				return;
 			}
 		}), callback);
