@@ -3,6 +3,8 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
+var Topic = require("../includes/topic.js");
+
 var u = {
 	get: function getUserF(data, fn, view) {
 		step(function () {
@@ -53,10 +55,17 @@ var u = {
 		}), fn);
 	},
 	own: function getOwnDataF(data, fn, view) {
+		var userData;
 		step(function () {
 			view.getOwnUser(this);
 		}, h.sF(function (ownUser) {
 			ownUser.getUData(view, this);
+		}), h.sF(function (data) {
+			userData = data;
+			Topic.unreadCount(view, this);
+		}), h.sF(function (unreadCount) {
+			userData.unreadTopics = unreadCount;
+			this.ne(userData);
 		}), fn);
 	}
 };

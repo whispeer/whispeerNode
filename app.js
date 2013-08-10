@@ -26,6 +26,8 @@ io.configure("development", function(){
 
 require("./includes/errors");
 
+var listener = require("./includes/listener");
+
 io.sockets.on("connection", function (socket) {
 	console.log("connection received");
 
@@ -38,7 +40,7 @@ io.sockets.on("connection", function (socket) {
 	var session = new Session();
 
 	var View = require("./includes/view");
-	var myView = new View(socket, session);
+	var myView = new View(socket, session, listener);
 
 	function handlePriorized(count, handler, data, view, cb) {
 		var resultMain;
@@ -78,9 +80,11 @@ io.sockets.on("connection", function (socket) {
 			} else if (typeof handler === "object" && typeof data === "object") {
 				var topic;
 				for (topic in data) {
-					if (data.hasOwnProperty(topic) && handler[topic] !== undefined && handler.priorized.indexOf(topic) === -1) {
-						topics.push(topic);
-						handle(handler[topic], data[topic], this.parallel(), view);
+					if (data.hasOwnProperty(topic) && handler[topic] !== undefined) {
+						if (!handler.priorized || handler.priorized.indexOf(topic) === -1) {
+							topics.push(topic);
+							handle(handler[topic], data[topic], this.parallel(), view);
+						}
 					}
 				}
 			}

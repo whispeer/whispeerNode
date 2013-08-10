@@ -26,6 +26,7 @@ var Topic = function (id) {
 		return id;
 	};
 
+	/** throw an error if the current user can not access this topic */
 	function hasAccessError(view, cb) {
 		step(function () {
 			theTopic.hasAccess(view, this);
@@ -36,6 +37,7 @@ var Topic = function (id) {
 		}), cb);
 	}
 
+	/** has the current user access? */
 	this.hasAccess = function hasAccessF(view, cb) {
 		step(function () {
 			client.sismember(view.getUserID(), this);
@@ -44,6 +46,7 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	/** get receiver ids */
 	this.getReceiverIDs = function getReceiverIDsF(view, cb) {
 		step(function () {
 			hasAccessError(view, this);
@@ -52,6 +55,7 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	/** get receiver objects */
 	this.getReceiver = function getReceiverF(view, cb) {
 		step(function () {
 			theTopic.getReceiverIDs(view, this);
@@ -65,6 +69,7 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	/** get receiver user data */
 	this.getReceiverData = function getReceiverDataF(view, cb) {
 		step(function () {
 			theTopic.getReceiver(view, this);
@@ -76,6 +81,7 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	/** get topic key */
 	this.getKey = function getKeyF(view, cb) {
 		var Key = require("./crypto/Key");
 		step(function () {
@@ -87,6 +93,7 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	/** get topic full data */
 	this.getFullData = function getFullDataF(view, cb, key, receivers) {
 		var Key = require("./crypto/Key");
 		var result;
@@ -109,24 +116,179 @@ var Topic = function (id) {
 			}
 		}), h.sF(function (receiver) {
 			result.receiver = receiver;
-			//TODO: add newest message
+
+			theTopic.getUnreadMessages(view, this);
+		}), h.sF(function (unreadMessages) {
+			result.unread = unreadMessages;
+
+			if (result.newest !== 0) {
+				var Message = require("./messages");
+				var newest = new Message(result.newest);
+				newest.getFullData(view, this, true);
+			}
+		}), h.sF(function (newest) {
+			result.newest = newest;
 
 			this.ne(result);
 		}), cb);
 	};
 
+	/** is the last own message in this topic messageid? */
 	this.isLastOwn = function isLastOwnF(view, messageid, cb) {
-		//TODO
+		step(function () {
+			client.lrange(domain + ":user:" + view.getUserID() + ":messages", -1, -1);
+		}, h.sF(function (lastMessage) {
+			if (lastMessage.length === 0) {
+				this.ne(parseInt(messageid, 10) === 0);
+			} else {
+				this.ne(parseInt(messageid, 10) === parseInt(lastMessage[0], 10));
+			}
+		}), cb);
 	};
 
+	/** how many messages in this topic? */
+	this.messageCount = function messageCountF(view, cb) {
+		step(function () {
+			hasAccessError(this);
+		}, h.sF(function () {
+			client.llen(domain + ":messages", this);
+		}), cb);
+	};
+
+	/** is this topic empty? */
+	this.isEmpty = function isEmptyF(view, cb) {
+		step(function () {
+			theTopic.messageCount(this);
+		}, h.sF(function (messageCount) {
+			this.ne(messageCount === 0);
+		}), cb);
+	};
+
+	/** is this topic unread? */
+	this.isUnread = function isUnreadF(view, cb) {
+		step(function () {
+			client.llen(domain + ":user:" + view.getUserID() + ":unread", this);
+		}, h.sF(function (count) {
+			return count !== 0;
+		}), cb);
+	};
+
+	/** get unread messages ids */
+	this.getUnreadMessages = function getUnreadMessagesF(view, cb) {
+		step(function () {
+			hasAccessError(view, this);
+		}), h.sF(function () {
+			client.lrange(domain + ":user:" + view.getUserID() + ":unread", 0, -1, this);
+		}, h.sF(function (res) {
+			res.map(function (ele) {
+				return parseInt(ele, 10);
+			});
+
+			this.ne(res);
+		}), cb);
+	};
+
+	/** mark certain messages read */
+	this.markMessagesRead = function markRead(view, messages, cb) {
+		var marked = false;
+		step(function () {
+			hasAccessError(view, this);
+		}, h.sF(function () {
+			theTopic.getUnreadMessages(view, this);
+		}), h.sF(function (unread) {
+			var i;
+			for (i = 0; i < unread.length; i += 1) {
+				if (messages.indexOf(unread[i]) > -1) {
+					if (i === 0) {
+						client.srem("user:" + view.getUserID() + ":unreadTopics", id, this.parallel());
+						client.ltrim(domain + ":user:" + view.getUserID() + ":unread", 1, 0, this.parallel());
+					} else {
+						client.ltrim(domain + ":user:" + view.getUserID() + ":unread", 0, i - 1, this.parallel());
+					}
+					marked = true;
+					break;
+				}
+			}
+
+			this.parallel()();
+		}), h.sF(function () {
+			this.ne(marked);
+		}), cb);
+	};
+
+	/** add a message to this topic */
 	this.addMessage = function addMessageF(view, message, cb) {
-		//TODO
+		var theReceiver, theSender;
+		step(function () {
+			hasAccessError(view, this);
+		}, h.sF(function () {
+			//TO-DO check that all receiver have access to the messageKey
+			this.parallel.unflatten();
+
+			message.getSenderID(this.parallel());
+			theTopic.getReceiverIDs(this.parallel());
+		}), h.sF(function (senderid, receiver) {
+			theReceiver = receiver;
+			theSender = senderid;
+			var multi = client.multi();
+			var messageID = message.getID();
+
+			multi.lpush(domain + ":messages", message.getID());
+			multi.lpush(domain + ":user:" + senderid + ":messages", messageID);
+
+			var i;
+			for (i = 0; i < receiver.length; i += 1) {
+				if (receiver[i] !== theSender) {
+					multi.lpush(domain + ":user:" + receiver[i] + ":unread", messageID);
+				}
+			}
+
+			multi.sadd("user:" + view.getUserID() + ":unreadTopics", id);
+
+			multi.hset(domain + ":data", "newest", messageID);
+
+			multi.exec(this);
+		}), h.sF(function () {
+			var i;
+			for (i = 0; i < theReceiver.length; i += 1) {
+				if (theReceiver[i] !== theSender) {
+					client.publish("user:" + theReceiver[i] + ":message", message.getID(), this);
+				}
+			}
+
+			this.ne(message);
+		}), cb);
 	};
 
-	this.getMessages = function getMessagesF(view, cb) {
-		//TODO
+	/** get the messages after a certain message
+	* @param view view
+	* @param afterMessage message after which to start
+	* @param count number of messages to get
+	* @param cb cb
+	*/
+	this.getMessages = function getMessagesF(view, afterMessage, count, cb) {
+		step(function () {
+			hasAccessError(view, this);
+		}, h.sF(function () {
+			client.lindex(domain + ":messages", afterMessage, this);
+		}), h.sF(function (index) {
+			if (!index) {
+				index = 0;
+			}
+
+			client.lrange(index, index + count - 1);
+		}), h.sF(function (messageids) {
+			var Message = require("./messages");
+			var result = [], i;
+			for (i = 0; i < messageids.length; i += 1) {
+				result.push(new Message(messageids[i]));
+			}
+
+			this.ne(result);
+		}), cb);
 	};
 
+	/** get topic data */
 	this.getTData = function getTDataF(view, cb) {
 		step(function () {
 			hasAccessError(view, this);
@@ -134,6 +296,50 @@ var Topic = function (id) {
 			client.hgetall(domain + ":data", this);
 		}), cb);
 	};
+};
+
+Topic.unreadCount = function (view, cb) {
+	step(function () {
+		client.scard("user:" + view.getUserID() + ":unreadTopics", this);
+	}, cb);
+};
+
+Topic.unread = function (view, cb) {
+	step(function () {
+		client.smembers("user:" + view.getUserID() + ":unreadTopics", this);
+	}, h.sF(function (unread) {
+		var result = [], i;
+		for (i = 0; i < unread.length; i += 1) {
+			result.push(new Topic(unread[i]));
+		}
+
+		this.ne(result);
+	}), cb);
+};
+
+Topic.get = function getTopicF(view, cb) {
+	step(function () {
+
+	});
+};
+
+Topic.own = function (view, afterTopic, count, cb) {
+	step(function () {
+		client.lindex("user:" + view.getUserID() + ":topics", afterTopic, this);
+	}, h.sF(function (index) {
+		if (!index) {
+			index = 0;
+		}
+
+		client.lrange("user:" + view.getUserID() + ":topics", index, index + count - 1);
+	}), h.sF(function (topicids) {
+		var result = [], i;
+		for (i = 0; i < topicids.length; i += 1) {
+			result.push(new Topic(topicids[i]));
+		}
+
+		this.ne(result);
+	}), cb);
 };
 
 Topic.create = function (view, data, cb) {
@@ -167,17 +373,21 @@ Topic.create = function (view, data, cb) {
 		result.key = key.getRealID();
 		receiver = data.receiver;
 
-		//TODO: check all receiver have access!
+		//TO-DO: check all receiver have access!
 
 		result.creator = view.getUserID();
 
 		result.newest = 0;
-		result.unread = false;
 
 		client.incr("topic:topics", this);
 	}), h.sF(function (topicid) {
 		theTopicID = topicid;
 		result.topicid = topicid;
+
+		var i;
+		for (i = 0; i < receiver.length; i += 1) {
+			client.sadd("user:" + receiver[i] + ":topics", topicid, this.parallel());
+		}
 
 		client.hset("topic:" + topicid + ":data", result, this.parallel());
 		client.sadd("topic:" + topicid + ":receiver", receiver, this.parallel());
@@ -185,3 +395,5 @@ Topic.create = function (view, data, cb) {
 		this.ne(new Topic(theTopicID));
 	}), cb);
 };
+
+module.exports = Topic;

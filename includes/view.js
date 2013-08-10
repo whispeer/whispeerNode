@@ -4,7 +4,7 @@ var step = require("step");
 var h = require("whispeerHelper");
 var client = require("./redisClient");
 
-var view = function view(socket, session) {
+var view = function view(socket, session, listener) {
 	var theView = this, toDestroy = [];
 
 	this.getSocket = function getSocketF() {
@@ -18,6 +18,27 @@ var view = function view(socket, session) {
 	this.getSession = getSessionF;
 
 	this.session = getSessionF;
+
+	session.changeListener(function sessionChange() {
+		step(function () {
+			theView.destroy();
+
+			session.logedin(this);
+		}, h.sF(function (logedin) {
+			if (logedin) {
+				var base = "user:" + session.getUserID() + ":*";
+				theView.psub(base, function (channel, data) {
+					var subChannel = channel.substr(base.length);
+
+					if (listener[subChannel]) {
+						listener[subChannel](theView, data);
+					}
+				});
+			}
+		}), function (e) {
+			console.error(e);
+		});
+	});
 
 	this.getUserID = function getUserIDF() {
 		return session.getUserID();
@@ -48,7 +69,11 @@ var view = function view(socket, session) {
 
 	this.psub = function subF(channel, cb) {
 		var end = client.psub(channel, function (channel, message) {
-			cb(channel, message);
+			var base = "user:" + theView.getUserID();
+
+			if (channel.substring(0, base.length + 1) === base + ":") {
+				cb(channel, message);
+			}
 		});
 
 		theView.addToDestroy(end);

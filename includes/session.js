@@ -18,6 +18,8 @@ var CHECKTIME = 10 * 1000;
 
 var Session = function Session() {
 
+	var listeners = [];
+
 	/** session id, userid, are we loged in, time we logged in, stay forever? */
 	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser, session = this;
 
@@ -67,6 +69,9 @@ var Session = function Session() {
 			sid = sessionid;
 			logedin = true;
 			lastChecked = time();
+
+			callListener();
+
 			this.ne(sid);
 		}), callback);
 	}
@@ -116,6 +121,23 @@ var Session = function Session() {
 	this.logedin = checkLogin;
 	this.logedinError = checkLoginError;
 
+	function callListener() {
+		process.nextTick(function () {
+			var i;
+			for (i = 0; i < listeners.length; i += 1) {
+				try {
+					listeners[i]();
+				} catch (e) {
+					console.error(e);
+				}
+			}
+		});
+	}
+
+	this.changeListener = function changeListenerF (listener) {
+		listeners.push(listener);
+	};
+
 	/** set the session id
 	* @param cb called with results
 	* @param theSID session id to set to
@@ -131,6 +153,8 @@ var Session = function Session() {
 				userid = results;
 				sid = theSID;
 				logedin = true;
+
+				callListener();
 
 				this.last.ne(true);
 			} else {
@@ -153,6 +177,9 @@ var Session = function Session() {
 			logedin = false;
 			userid = 0;
 			sid = undefined;
+
+			callListener();
+
 			client.del("session:" + sid, this);
 		}, cb);
 	};

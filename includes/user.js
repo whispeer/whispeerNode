@@ -107,7 +107,7 @@ var validKeys = {
 		unset: falseF
 	},
 	cryptKey: {
-		read: ownUserF,
+		read: logedinF,
 		pre: function (data, cb) {
 			step(function () {
 				if (typeof data.value === "object" && data.value instanceof EccKey) {
@@ -131,7 +131,7 @@ var validKeys = {
 		unset: falseF
 	},
 	signKey: {
-		read: ownUserF,
+		read: logedinF,
 		pre: function (data, cb) {
 			step(function () {
 				if (typeof data.value === "object" && data.value instanceof EccKey) {
