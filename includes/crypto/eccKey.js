@@ -74,6 +74,8 @@ var EccKey = function (keyRealID) {
 
 	this.getBasicData = key.getBasicData;
 
+	this.getType = key.getType;
+
 	this.getDecryptors = key.getDecryptors;
 
 	this.addDecryptor = key.addDecryptor;

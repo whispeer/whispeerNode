@@ -204,19 +204,22 @@ Decryptor.create = function (view, key, data, cb) {
 	}), h.sF(function createD2(p) {
 		parentKey = p;
 
+		this.parallel.unflatten();
+
 		key.hasAccess(view, this.parallel());
 
 		if (typeof parentKey === "object") {
 			parentKey.hasAccess(view, this.parallel());
+			parentKey.getType(this.parallel());
 		} else {
 			this.parallel()(null, true);
 		}
-	}), h.sF(function createD22(access) {
-		if (access[0] === true && access[1] === true) {
+	}), h.sF(function createD22(keyAcc, parentAcc, parentType) {
+		if (keyAcc === true && (parentAcc === true || parentType === "crypt")) {
 			//is there already a key like this one?
 			client.get("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, this);
 		} else {
-			throw new AccessViolation("No Access here! " + access[0] + "-" + access[1]);
+			throw new AccessViolation("No Access here! " + keyAcc + "-" + parentAcc);
 		}
 	}), h.sF(function createD23(val) {
 		if (val !== null) {

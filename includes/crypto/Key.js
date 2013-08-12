@@ -40,7 +40,7 @@ var Key = function (keyRealID) {
 				theKey.accessCount(this.parallel());
 
 				if (wDecryptors) {
-					theKey.getDecryptorsJSON(this.parallel());
+					theKey.getDecryptorsJSON(view, this.parallel());
 				}
 			} else {
 				this.last.ne(result);
@@ -128,16 +128,16 @@ var Key = function (keyRealID) {
 	};
 
 	/** get this keys decryptors */
-	this.getDecryptors = function getDecryptorsF(cb) {
+	this.getDecryptors = function getDecryptorsF(view, cb) {
 		step(function () {
 			var Decryptor = require("./decryptor");
-			Decryptor.getAll(keyRealID, this);
+			Decryptor.getAllWithAccess(view, keyRealID, this);
 		}, cb);
 	};
 
-	this.getDecryptorsJSON = function getDecryptorsJSONF(cb) {
+	this.getDecryptorsJSON = function getDecryptorsJSONF(view, cb) {
 		step(function () {
-			theKey.getDecryptors(this);
+			theKey.getDecryptors(view, this);
 		}, h.sF(function (decryptors) {
 			var i;
 			for (i = 0; i < decryptors.length; i += 1) {
@@ -227,8 +227,8 @@ var Key = function (keyRealID) {
 				this.last.ne();
 			} else {
 				for (i = 0; i < userids.length; i += 1) {
-					client.sadd(domain + ":access", userids, this.parallel());
-					client.sadd(domain + ":accessVia:" + userids, decryptorid, this.parallel());
+					client.sadd(domain + ":access", userids[i], this.parallel());
+					client.sadd(domain + ":accessVia:" + userids[i], decryptorid, this.parallel());
 				}
 
 				added.push(keyRealID);
@@ -261,7 +261,7 @@ var Key = function (keyRealID) {
 				theKey.getOwner(this);
 			}
 		}), h.sF(function hasAccess3(owner) {
-			if (parseInt(owner, 10) === view.getUserID()) {
+			if (parseInt(owner, 10) === parseInt(view.getUserID(), 10)) {
 				this.last.ne(true);
 			} else {
 				this.ne(false);

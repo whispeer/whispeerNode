@@ -10,8 +10,9 @@ var Message = require("../includes/messages");
 /*
 
 	topic: {
-		//thinking: we need multiple ones here right?
+		createTime: (int)
 		key: key,
+		cryptKeys: [key],
 		receiver: (int),
 		creator: (int),
 		newest (int),
@@ -20,57 +21,66 @@ var Message = require("../includes/messages");
 
 	message: {
 		meta: {
-			previousOwn: (int),
-			previousOther: (int),
+			createTime: (int),
+			topicHash: (hex)
+			previousMessage: (int),
+			previousMessageHash: (hex),
+			ownHash: (hex)
 			sender: (int),
-			signature: (hex),
 			topicid: (int),
 			read: (bool)
 		}
 		content: {
 			key,
 			iv: (hex),
-			text: (hex),
-			signature: (hex)
+			text: (hex)
 		}
-
+		signature: (hex)
+		encrSignature: (hex)
 	}
 
 */
 
-var u = {
+var t = {
 	getTopics: function getTopicsF(data, fn, view) {
 		step(function () {
 			Topic.own(view, data.afterTopic, 20, this);
 		}, h.sF(function (topics) {
 			var i;
 			for (i = 0; i < topics.length; i += 1) {
-				topics[i].getFullData(view, this, true, false);
+				topics[i].getFullData(view, this.parallel(), true, false);
+			}
+
+			this.parallel()();
+		}), h.sF(function (results) {
+			if (!results) {
+				this.ne([]);
+			} else {
+				this.ne(results);
 			}
 		}), h.sF(function (results) {
-			this.ne(results);
+			this.ne({
+				topics: results
+			});
 		}), fn);
 	},
 	getTopicMessages: function getMessagesF(data, fn, view) {
 		step(function () {
-			
+			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
 			topic.getMessages(view, data.afterMessage, 20, this);
 		}), h.sF(function (messages) {
-			//TODO
+			var i;
+			for (i = 0; i < messages.length; i += 1) {
+				messages[i].getFullData(view, this.parallel());
+			}
+
+			this.parallel()();
+		}), h.sF(function (data) {
+			this.ne({
+				messages: data
+			});
 		}), fn);
-		//data.topic
-		//data.loaded
-		//data.topicData
-
-		//data.count
-		//data.after
-
-
-		//return:
-		//data.count
-		//topic:
-		//messages:
 	},
 	getUnreadCount: function getUnreadCountF(data, fn, view) {
 		step(function () {
@@ -84,6 +94,8 @@ var u = {
 			Message.create(view, data.message, this);
 		}, h.sF(function (theMessage) {
 			theMessage.getFullData(view, this);
+		}), h.sF(function (mData) {
+			this.ne({message: mData});
 		}), fn);
 		//message
 	},
@@ -97,8 +109,12 @@ var u = {
 			Message.create(view, data.message, this);
 		}), h.sF(function () {
 			topic.getFullData(view, this, false, false);
+		}), h.sF(function (data) {
+			this.ne({
+				topic: data
+			});
 		}), fn);
 	}
 };
 
-module.exports = u;
+module.exports = t;

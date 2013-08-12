@@ -10,21 +10,22 @@ var client = require("./redisClient");
 /*
 	message: {
 		meta: {
-			previousOwn: (int),
-			previousOther: (int),
+			createTime: (int),
+			topicHash: (hex)
+			previousMessage: (int),
+			previousMessageHash: (hex),
+			ownHash: (hex)
 			sender: (int),
-			signature: (hex),
 			topicid: (int),
-			read: (bool),
-			sendTime: (int)
+			read: (bool)
+			signature: (hex)
+			encrSignature: (hex)
 		}
 		content: {
 			key,
 			iv: (hex),
-			text: (hex),
-			signature: (hex)
+			text: (hex)
 		}
-
 	}
 */
 
@@ -44,6 +45,8 @@ var Message = function (id) {
 			if (access !== true) {
 				throw new AccessViolation();
 			}
+
+			this.ne();
 		}), cb);
 	}
 
@@ -53,6 +56,23 @@ var Message = function (id) {
 			theMessage.getTopic(this);
 		}, h.sF(function (theTopic) {
 			theTopic.hasAccess(view, this);
+		}), cb);
+	};
+
+	/** message send time */
+	this.getTime = function getTimeF(view, cb) {
+		step(function () {
+			client.hget(domain + ":meta", "sendTime", this);
+		}, cb);
+	};
+
+	this.getHash = function getHashF(view, cb) {
+		step(function () {
+			hasAccessError(view, this);
+		}, h.sF(function () {
+			client.hget(domain + ":meta", "ownHash", this);
+		}), h.sF(function (hash) {
+			this.ne(hash);
 		}), cb);
 	};
 
@@ -78,11 +98,11 @@ var Message = function (id) {
 	};
 
 	/** who will receive this message */
-	this.getReceiver = function getReceiverF(cb) {
+	this.getReceiver = function getReceiverF(view, cb) {
 		step(function () {
 			theMessage.getTopic(this);
 		}, h.sF(function (topic) {
-			topic.getReceiver(this);
+			topic.getReceiver(view, this);
 		}), cb);
 	};
 
@@ -98,7 +118,7 @@ var Message = function (id) {
 		step(function () {
 			theMessage.getTopicID(this);
 		}, h.sF(function (topicid) {
-			Topic.get(topicid);
+			Topic.get(topicid, this);
 		}), cb);
 	};
 
@@ -137,7 +157,7 @@ var Message = function (id) {
 	this.getFullData = function getFullDataF(view, cb, key) {
 		var result, Key = require("./crypto/Key");
 		step(function () {
-			hasAccessError(this);
+			hasAccessError(view, this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
 			theMessage.getMeta(view, this.parallel());
@@ -163,46 +183,65 @@ var Message = function (id) {
 
 Message.create = function (view, data, cb) {
 	var theTopic, theMessageID, theMessage;
+	var meta = data.meta;
 
 	step(function () {
 		var err = validator.validate("message", data);
 		if (err) {
-			throw InvalidMessageData();
+			throw new InvalidMessageData();
 		}
 
 		if (data.meta.topicid) {
 			this.parallel.unflatten();
 
 			Topic.get(data.meta.topicid, this.parallel());
-
-			if (data.meta.previousOther !== 0) {
-				Message.get(data.meta.previousOther, this.parallel());
-			}
 		} else {
-			throw InvalidMessageData();
+			throw new InvalidMessageData();
 		}
-	}, h.sF(function (topic, previousOther) {
+	}, h.sF(function (topic) {
 		theTopic = topic;
 
-		this.parallel.unflatten();
-
-		topic.isLastOwn(view, data.meta.previousOwn, this.parallel());
-
-		if (previousOther) {
-			previousOther.hasTopic(topic, this.parallel());
+		theTopic.getNewest(view, this);
+	}), h.sF(function (newest) {
+		if (newest === 0) {
+			this.ne("0", 0);
 		} else {
-			this.parallel()(true);
+			this.parallel.unflatten();
+			newest.getHash(view, this.parallel());
+			this.parallel()(null, newest.getID());
+			//TODO get newest hash!
 		}
-	}), h.sF(function (isLastOwn, validPreviousOther) {
-		if (!isLastOwn || !validPreviousOther) {
-			throw InvalidMessageData();
+	}), h.sF(function (newestHash, newestID) {
+		if (parseInt(meta.previousMessage, 10) !== parseInt(newestID, 10) || meta.previousMessageHash !== newestHash) {
+			throw new InvalidMessageData();
 		}
+
+		var toHash = {
+			meta: {
+				createTime: meta.createTime,
+				topicHash: meta.topicHash,
+				previousMessage: meta.previousMessage,
+				previousMessageHash: meta.previousMessageHash
+			},
+			content: {
+				iv: data.content.iv,
+				text: data.content.text
+			}
+		};
+
+		var chelper = require("./crypto/cHelper");
+		if (chelper.hash.hashObject(toHash) !== meta.ownHash) {
+			throw new InvalidMessageData("Invalid Hash");
+		}
+
+		toHash.meta.ownHash = meta.ownHash;
+
+		//TODO: check overall signature
+		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 
 		var SymKey = require("./crypto/symKey");
 		SymKey.createWDecryptors(view, data.content.key, this);
 	}), h.sF(function (key) {
-		//TO-DO: check meta signature
-
 		data.content.key = key.getRealID();
 		client.incr("message:messages", this);
 	}), h.sF(function (messageid) {

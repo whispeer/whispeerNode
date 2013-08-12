@@ -22,6 +22,8 @@ var SymKey = function (keyRealID) {
 	/** getter for keyRealID */
 	this.getRealID = key.getRealID;
 
+	this.getType = key.getType;
+
 	this.getOwner = key.getOwner;
 
 	this.getDecryptors = key.getDecryptors;

@@ -40,7 +40,7 @@ var u = {
 				this.last.ne();
 			} else {
 				var i;
-				for (i = 0; i < theUsers; i += 1) {
+				for (i = 0; i < theUsers.length; i += 1) {
 					if (theUsers[i] instanceof UserNotExisting) {
 						this.parallel()({userNotExisting: true});
 					} else {

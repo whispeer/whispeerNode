@@ -52,11 +52,15 @@ global.InvalidEccKey = addError("invalid elliptic curve key");
 
 global.InvalidKey = addError("invalid key");
 
+global.InvalidHexError = addError("invalid hex");
+
 /** end crypto part */
 
 /** message part */
 
 global.InvalidTopicData = addError("invalid Message Topic");
 global.InvalidMessageData = addError("invalid Message Data");
+global.TopicNotExisting = addError("topic not existing");
+global.MessageNotExisting = addError("message not existing");
 
 /** end message part */
