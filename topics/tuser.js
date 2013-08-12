@@ -5,11 +5,12 @@ var h = require("whispeerHelper");
 
 var Topic = require("../includes/topic.js");
 
+var User = require("../includes/user");
+
 var u = {
 	get: function getUserF(data, fn, view) {
 		step(function () {
 			if (data && data.identifier) {
-				var User = require("../includes/user");
 				User.getUser(data.identifier, this);
 			} else {
 				fn.error.protocol();
@@ -23,12 +24,20 @@ var u = {
 			}
 		}, UserNotExisting), fn);
 	},
+	search: function searchF(data, fn, view) {
+		step(function () {
+			User.search(data.text, this);
+		}, h.sF(function (ids) {
+			this.ne({
+				results: ids
+			});
+		}), fn);
+	},
 	getMultiple: function getAllF(data, fn, view) {
 		step(function () {
 			if (data && data.identifiers) {
 				var i;
 				for (i = 0; i < data.identifiers.length; i += 1) {
-					var User = require("../includes/user");
 					User.getUser(data.identifiers[i], this.parallel(), true);
 				}
 			} else {

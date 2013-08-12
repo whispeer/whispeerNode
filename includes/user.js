@@ -5,6 +5,8 @@ var client = require("./redisClient");
 var h = require("whispeerHelper");
 var extend = require("xtend");
 
+var search = require("./search");
+
 function logedinF(data, cb) {
 	step(function () {
 		if (data.user.isSaved()) {
@@ -696,6 +698,33 @@ var User = function (id) {
 	function setPublicProfileF(view, profile, cb) {
 		step(function doSetPublicProfile() {
 			setAttribute(view, {profile: profile}, this);
+
+			step(function () {
+				theUser.getNickname(view, this);
+			}, h.sF(function (e, nickname) {
+				var name = "";
+
+				if (profile && profile.basic) {
+					var b = JSON.parse(profile.basic);
+					if (b.firstname) {
+						name += b.firstname + " ";
+					}
+
+					if (b.lastname) {
+						name += b.lastname + " ";
+					}
+				}
+
+				if (nickname) {
+					name += nickname + " ";
+				}
+
+				name = name.substr(0, name.length - 1);
+
+				search.index(name, id);
+			}), function (e) {
+				console.error(e);
+			});
 		}, cb);
 	}
 
@@ -880,6 +909,14 @@ var User = function (id) {
 			cb(channel, JSON.parse(data));
 		});
 	};
+};
+
+User.search = function (text, cb) {
+	step(function () {
+		search.type("and").query(text, this);
+	}, h.sF(function (ids) {
+		this.ne(ids);
+	}), cb);
 };
 
 User.getUser = function (identifier, callback, returnError) {
