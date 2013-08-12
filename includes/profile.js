@@ -11,23 +11,30 @@ var validator = require("whispeerValidations");
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
-	this.getPData = function getPDataF(cb) {
+	this.getPData = function getPDataF(view, cb, wKeyData) {
+		var profile;
 		step(function () {
 			this.parallel.unflatten();
 			client.get(domain + ":data", this.parallel());
 			client.get(domain + ":key", this.parallel());
 		}, h.sF(function (profileData, key) {
-			var profile = JSON.parse(profileData);
+			profile = JSON.parse(profileData);
 
 			var err = validator.validateEncrypted("profile", profile);
 
 			if (!err) {
 				profile.profileid = profileid;
-				profile.key = key;
-				this.ne(profile);
+				if (wKeyData) {
+					Key.getWData(view, key, this, true);
+				} else {
+					this.ne(key);
+				}
 			} else {
-				this.ne(false);
+				this.last.ne(false);
 			}
+		}), h.sF(function (key) {
+			profile.key = key;
+			this.last.ne(profile);
 		}), cb);
 	};
 
@@ -42,7 +49,7 @@ var Profile = function (userid, profileid) {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
 			if (!overwrite) {
-				theProfile.getPData(this);
+				theProfile.getPData(view, this);
 			} else {
 				this.ne({});
 			}
@@ -65,7 +72,7 @@ var Profile = function (userid, profileid) {
 
 	this.removeAttribute = function removeAttributeF(view, attr, cb) {
 		step(function () {
-			theProfile.getPData(this);
+			theProfile.getPData(view, this);
 		}, h.sF(function (oldData) {
 			var attribute = attr.pop();
 			var branch = h.deepGet(oldData, attr);

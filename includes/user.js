@@ -722,7 +722,7 @@ var User = function (id) {
 		}, h.sF(function getPP2(p) {
 			var i;
 			for (i = 0; i < p.length; i += 1) {
-				p[i].getPData(this.parallel());
+				p[i].getPData(view, this.parallel(), true);
 			}
 
 			this.parallel()();

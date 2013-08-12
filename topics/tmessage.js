@@ -72,7 +72,7 @@ var t = {
 		}), h.sF(function (messages) {
 			var i;
 			for (i = 0; i < messages.length; i += 1) {
-				messages[i].getFullData(view, this.parallel());
+				messages[i].getFullData(view, this.parallel(), true);
 			}
 
 			this.parallel()();
