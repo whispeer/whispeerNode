@@ -71,6 +71,8 @@ io.sockets.on("connection", function (socket) {
 
 	function handle(handler, data, fn, view) {
 		var topics = [], prioRes = {};
+		console.log("Handling:");
+		console.log(data);
 		step(function () {
 			handlePriorized(0, handler, data, view, this);
 		}, h.sF(function (priorizedResults) {

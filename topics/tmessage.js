@@ -68,7 +68,7 @@ var t = {
 		step(function () {
 			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
-			topic.getMessages(view, data.afterMessage, 20, this);
+			topic.getMessages(view, data.afterMessage, 10, this);
 		}), h.sF(function (messages) {
 			var i;
 			for (i = 0; i < messages.length; i += 1) {
