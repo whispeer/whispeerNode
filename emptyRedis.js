@@ -1,3 +1,4 @@
+"use strict";
 var client = require("./includes/redisClient");
 
 client.flushdb(function () {
