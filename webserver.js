@@ -21,14 +21,9 @@ app.use(express.methodOverride());
 app.use(express.bodyParser());
 app.use(helmet.csp());
 app.use(helmet.xframe());
+app.use(helmet.iexss());
+app.use(helmet.cacheControl());
 
 app.use(express.static("../main/"));
 
 app.listen(80);
-
-/*var app = connect()
-	.use(connect.methodOverride())
-	.use(connect.bodyParser())
-	.use(helmet.xframe())
-    .use(connect.static("../main/"))
-    .listen(80);*/
