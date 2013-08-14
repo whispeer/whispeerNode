@@ -18,7 +18,7 @@ var listener = {
 			theTopic = topic;
 			mData = data;
 
-			theTopic.messageCount(this);
+			theTopic.messageCount(view, this);
 		}), h.sF(function (count) {
 			if (count === 1) {
 				theTopic.getFullData(view, this, true, true);

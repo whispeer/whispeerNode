@@ -10,13 +10,18 @@ var client = create();
 
 client.sub = function subF(channel, callback) {
 	var client = create();
-	client.subscribe(channel);
+
+    client.on("subscribe", function (channel, count) {
+        console.log("subscribed to: " + channel + ":" + count);
+    });
 
     client.on("message", function (channel, message) {
         console.log("client channel " + channel + ": " + message);
 
         callback(message);
     });
+
+    client.subscribe(channel);
 
     return function () {
 		client.unsubscribe();
@@ -26,13 +31,19 @@ client.sub = function subF(channel, callback) {
 
 client.psub = function subF(channel, callback) {
     var client = create();
-    client.psubscribe(channel);
 
-    client.on("message", function (channel, message) {
-        console.log("client channel " + channel + ": " + message);
+    client.on("psubscribe", function (channel, count) {
+        console.log("psubscribed to: " + channel + ":" + count);
+    });
+
+    client.on("pmessage", function (pattern, channel, message) {
+        debugger;
+        console.log("pmessage on channel " + channel + ": " + message);
 
         callback(channel, message);
     });
+
+    client.psubscribe(channel);
 
     return function () {
         client.punsubscribe();

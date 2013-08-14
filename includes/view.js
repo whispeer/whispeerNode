@@ -28,7 +28,7 @@ var view = function view(socket, session, listener) {
 			if (logedin) {
 				var base = "user:" + session.getUserID() + ":*";
 				theView.psub(base, function (channel, data) {
-					var subChannel = channel.substr(base.length);
+					var subChannel = channel.substr(base.length - 1);
 
 					if (listener[subChannel]) {
 						listener[subChannel](theView, data);
