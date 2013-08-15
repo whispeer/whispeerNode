@@ -29,7 +29,7 @@ var client = require("./redisClient");
 	}
 */
 
-var Message = function (id) {
+var Message = function (id, topic) {
 	var theMessage = this;
 	var domain = "message:" + id;
 
@@ -116,9 +116,16 @@ var Message = function (id) {
 	/** this message topic object */
 	this.getTopic = function getTopicF(cb) {
 		step(function () {
-			theMessage.getTopicID(this);
+			if (topic) {
+				this.last.ne(topic);
+			} else {
+				theMessage.getTopicID(this);
+			}
 		}, h.sF(function (topicid) {
 			Topic.get(topicid, this);
+		}), h.sF(function (theTopic) {
+			topic = theTopic;
+			this.ne(topic);
 		}), cb);
 	};
 

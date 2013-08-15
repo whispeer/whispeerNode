@@ -68,7 +68,9 @@ var t = {
 		step(function () {
 			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
-			topic.getMessages(view, data.afterMessage, 10, this);
+			this.parallel.unflatten();
+			topic.getMessages(view, data.afterMessage, 10, this.parallel());
+			//topic.remainingCount(view, data.afterMessage, 10, this.parallel());
 		}), h.sF(function (messages) {
 			var i;
 			for (i = 0; i < messages.length; i += 1) {
@@ -92,10 +94,8 @@ var t = {
 	send: function sendMessageF(data, fn, view) {
 		step(function () {
 			Message.create(view, data.message, this);
-		}, h.sF(function (theMessage) {
-			theMessage.getFullData(view, this);
-		}), h.sF(function (mData) {
-			this.ne({message: mData});
+		}, h.sF(function () {
+			this.ne({});
 		}), fn);
 		//message
 	},

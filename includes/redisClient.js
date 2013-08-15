@@ -37,7 +37,6 @@ client.psub = function subF(channel, callback) {
     });
 
     client.on("pmessage", function (pattern, channel, message) {
-        debugger;
         console.log("pmessage on channel " + channel + ": " + message);
 
         callback(channel, message);

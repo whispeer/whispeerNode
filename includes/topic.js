@@ -31,6 +31,8 @@ var Topic = function (id) {
 		return id;
 	};
 
+	var hasAccess = [];
+
 	/** throw an error if the current user can not access this topic */
 	function hasAccessError(view, cb) {
 		step(function hAE1() {
@@ -46,9 +48,16 @@ var Topic = function (id) {
 
 	/** has the current user access? */
 	this.hasAccess = function hasAccessF(view, cb) {
+		var uid;
 		step(function hA1() {
-			client.sismember(domain + ":receiver", view.getUserID(), this);
+			uid = view.getUserID();
+			if (hasAccess.indexOf(uid) > -1) {
+				this.last.ne(true);
+			}
+
+			client.sismember(domain + ":receiver", uid, this);
 		}, h.sF(function hA2(member) {
+			hasAccess.push(uid);
 			this.ne(member === 1);
 		}), cb);
 	};
@@ -251,9 +260,7 @@ var Topic = function (id) {
 		}), h.sF(function () {
 			var i;
 			for (i = 0; i < theReceiver.length; i += 1) {
-				if (theReceiver[i] !== theSender) {
-					client.publish("user:" + theReceiver[i] + ":message", messageID, this);
-				}
+				client.publish("user:" + theReceiver[i] + ":message", messageID, this);
 			}
 
 			this.ne(message);
@@ -281,6 +288,16 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	this.remainingCount = function remainingCountF(view, afterMessage, count, cb) {
+		step(function () {
+			hasAccessError(view, this);
+		}, h.sF(function () {
+			client.zrank(mDomain, afterMessage, this);
+		}), h.sF(function (index) {
+			this.ne(index - count);
+		}), cb);
+	};
+
 	/** get the messages after a certain message
 	* @param view view
 	* @param afterMessage message after which to start
@@ -302,7 +319,7 @@ var Topic = function (id) {
 			var Message = require("./messages");
 			var result = [], i;
 			for (i = 0; i < messageids.length; i += 1) {
-				result.push(new Message(messageids[i]));
+				result.push(new Message(messageids[i], theTopic));
 			}
 
 			this.ne(result);
