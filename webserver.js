@@ -9,7 +9,8 @@ var policy = {
   defaultPolicy: {
     "default-src": ["'self'", "ws://127.0.0.1:3000", "http://127.0.0.1:3000"],
     "style-src": ["'self'", "'unsafe-inline'"],
-    "script-src": ["'self'"]
+    "script-src": ["'self'"],
+    "img-src": ["'self'", "data:"]
   }
 };
 
