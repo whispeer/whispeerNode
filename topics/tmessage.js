@@ -65,13 +65,17 @@ var t = {
 		}), fn);
 	},
 	getTopicMessages: function getMessagesF(data, fn, view) {
+		var remainingCount;
 		step(function () {
 			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
+			var count = Math.min(data.maximum || 20, 20);
+
 			this.parallel.unflatten();
-			topic.getMessages(view, data.afterMessage, 10, this.parallel());
-			//topic.remainingCount(view, data.afterMessage, 10, this.parallel());
-		}), h.sF(function (messages) {
+			topic.getMessages(view, data.afterMessage, count, this.parallel());
+			topic.remainingCount(view, data.afterMessage, count, this.parallel());
+		}), h.sF(function (messages, remaining) {
+			remainingCount = remaining;
 			var i;
 			for (i = 0; i < messages.length; i += 1) {
 				messages[i].getFullData(view, this.parallel(), true);
@@ -80,6 +84,7 @@ var t = {
 			this.parallel()();
 		}), h.sF(function (data) {
 			this.ne({
+				remaining: remainingCount,
 				messages: data
 			});
 		}), fn);

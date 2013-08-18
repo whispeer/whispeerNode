@@ -294,7 +294,7 @@ var Topic = function (id) {
 		}, h.sF(function () {
 			client.zrank(mDomain, afterMessage, this);
 		}), h.sF(function (index) {
-			this.ne(index - count);
+			this.ne(Math.max(index - count, 0));
 		}), cb);
 	};
 
