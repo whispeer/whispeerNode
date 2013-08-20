@@ -10,7 +10,7 @@ var policy = {
     "default-src": ["'self'", "ws://127.0.0.1:3000", "http://127.0.0.1:3000", "ws://192.168.0.4:3000", "http://192.168.0.4:3000", "http://192.168.178.40:3000", "ws://192.168.178.40:3000"],
     "style-src": ["'self'", "'unsafe-inline'"],
     "script-src": ["'self'"],
-    "img-src": ["'self'", "data:"]
+    "img-src": ["'self'", "data:", "blob:"]
   }
 };
 
