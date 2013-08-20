@@ -25,11 +25,41 @@ var u = {
 		}, UserNotExisting), fn);
 	},
 	search: function searchF(data, fn, view) {
+		var remaining = 0;
 		step(function () {
 			User.search(data.text, this);
 		}, h.sF(function (ids) {
+			remaining = Math.max(ids.length - 20, 0);
+
+			var known = data.known || [];
+
+			known = known.map(function (e) {
+				return parseInt(e, 10);
+			});
+
+			var i;
+			for (i = 0; i < Math.min(ids.length, 20); i += 1) {
+				if (known.indexOf(parseInt(ids[i], 10)) === -1) {
+					User.getUser(ids[i], this.parallel(), true);
+				} else {
+					this.parallel()(null, ids[i]);
+				}
+			}
+		}), h.sF(function (theUsers) {
+			var i;
+			for (i = 0; i < theUsers.length; i += 1) {
+				if (theUsers[i] instanceof UserNotExisting) {
+					this.parallel()({userNotExisting: true});
+				} else if (typeof theUsers[i] === "object") {
+					theUsers[i].getUData(view, this.parallel());
+				} else {
+					this.parallel()(null, theUsers[i]);
+				}
+			}
+		}), h.sF(function (users) {
 			this.ne({
-				results: ids
+				remaining: remaining,
+				results: users
 			});
 		}), fn);
 	},
