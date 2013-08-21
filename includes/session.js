@@ -237,7 +237,7 @@ var Session = function Session() {
 	* everything else is added later (profile, groups, etc.)
 	*/
 	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, view, cb) {
-		//y rule 1: nickname or mail! one can be empty. check for that!
+		//y rule 1: nickname must be set.
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
 		//y rule 4: crypt key valid
@@ -268,7 +268,7 @@ var Session = function Session() {
 			result.error = true;
 		}
 
-		step(function nicknameORMail() {
+		step(function nicknameSet() {
 			if (!h.isNickname(nickname)) {
 				if (nickname !== "" && nickname) {
 					regErr("nicknameInvalid");
@@ -283,7 +283,7 @@ var Session = function Session() {
 				mail = null;
 			}
 
-			if (!nickname && !mail) {
+			if (!nickname) {
 				regErr("invalidIdentifier");
 			}
 
