@@ -41,3 +41,16 @@ app.use(helmet.cacheControl());
 app.use(express.static("../main/"));
 
 app.listen(80);
+
+var newsletter = express();
+
+newsletter.use(express.methodOverride());
+newsletter.use(express.bodyParser());
+newsletter.use(helmet.csp());
+newsletter.use(helmet.xframe());
+newsletter.use(helmet.iexss());
+newsletter.use(helmet.cacheControl());
+
+newsletter.use(express.static("../newsletter/"));
+
+newsletter.listen(8089);
