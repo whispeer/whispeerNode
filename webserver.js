@@ -31,6 +31,22 @@ app2.listen(8088);
 
 var app = express();
 
+var directoryParts = ["css", "js", "img", "views", "favicon.png", "favicon.ico"];
+var angular = ["user", "messages", "circles", "main", "friends", "login"];
+
+app.use(function(req, res, next) {
+  var urlParts = req.url.split("/");
+
+  if (directoryParts.indexOf(urlParts[1]) === -1) {
+    if (angular.indexOf(urlParts[1]) === -1) {
+      console.log(req.url);
+    }
+    req.url = "/";
+  }
+
+  next();
+});
+
 app.use(express.methodOverride());
 app.use(express.bodyParser());
 app.use(helmet.csp());
