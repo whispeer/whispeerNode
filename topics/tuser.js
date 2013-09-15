@@ -45,16 +45,22 @@ var u = {
 					this.parallel()(null, ids[i]);
 				}
 			}
+
+			this.parallel()();
 		}), h.sF(function (theUsers) {
-			var i;
-			for (i = 0; i < theUsers.length; i += 1) {
-				if (theUsers[i] instanceof UserNotExisting) {
-					this.parallel()({userNotExisting: true});
-				} else if (typeof theUsers[i] === "object") {
-					theUsers[i].getUData(view, this.parallel());
-				} else {
-					this.parallel()(null, theUsers[i]);
+			if (theUsers) {
+				var i;
+				for (i = 0; i < theUsers.length; i += 1) {
+					if (theUsers[i] instanceof UserNotExisting) {
+						this.parallel()({userNotExisting: true});
+					} else if (typeof theUsers[i] === "object") {
+						theUsers[i].getUData(view, this.parallel());
+					} else {
+						this.parallel()(null, theUsers[i]);
+					}
 				}
+			} else {
+				this.ne([]);
 			}
 		}), h.sF(function (users) {
 			this.ne({
