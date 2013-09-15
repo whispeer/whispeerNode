@@ -64,6 +64,18 @@ var t = {
 			});
 		}), fn);
 	},
+	markRead: function markReadF(data, fn, view) {
+		step(function () {
+			Topic.get(data.topicid, this);
+		}, h.sF(function (topic) {
+			debugger;
+			topic.markMessagesRead(view, data.beforeTime, this);
+		}), h.sF(function (stillUnread) {
+			this.ne({
+				unread: stillUnread
+			});
+		}), fn);
+	},
 	getTopicMessages: function getMessagesF(data, fn, view) {
 		var remainingCount;
 		step(function () {

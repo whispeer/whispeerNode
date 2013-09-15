@@ -181,7 +181,7 @@ var Topic = function (id) {
 		step(function () {
 			client.zcard(domain + ":user:" + view.getUserID() + ":unread", this);
 		}, h.sF(function (count) {
-			return count !== 0;
+			this.ne(count !== 0);
 		}), cb);
 	};
 
@@ -202,22 +202,26 @@ var Topic = function (id) {
 
 	/** mark certain messages read */
 	this.markMessagesRead = function markRead(view, beforeTime, cb) {
-		var marked = false;
+		var unread = false;
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
-			client.zremrangebyscore(domain + ":user:" + view.getUserID() + ":unread", "-inf", beforeTime);
+			client.zremrangebyscore(domain + ":user:" + view.getUserID() + ":unread", "-inf", beforeTime, this);
 		}), h.sF(function () {
 			theTopic.isUnread(view, this);
 		}), h.sF(function (isUnread) {
-			marked = isUnread;
+			unread = isUnread;
 			if (!isUnread) {
 				client.zrem("user:" + view.getUserID() + ":unreadTopics", id, this.parallel());
 			}
 
 			this.parallel()();
 		}), h.sF(function () {
-			this.ne(marked);
+			if (unread) {
+				theTopic.getUnreadMessages(view, this);
+			} else {
+				this.ne([]);
+			}
 		}), cb);
 	};
 
@@ -246,6 +250,7 @@ var Topic = function (id) {
 			for (i = 0; i < receiver.length; i += 1) {
 				if (receiver[i] !== theSender) {
 					multi.zadd("user:" + receiver[i] + ":unreadTopics", time, id);
+					multi.zadd(domain + ":user:" + receiver[i] + ":unread", time, messageID);
 				}
 
 				multi.zadd("user:" + receiver[i] + ":topics", time, id);
