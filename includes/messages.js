@@ -216,7 +216,6 @@ Message.create = function (view, data, cb) {
 			this.parallel.unflatten();
 			newest.getHash(view, this.parallel());
 			this.parallel()(null, newest.getID());
-			//TODO get newest hash!
 		}
 	}), h.sF(function (newestHash, newestID) {
 		if (parseInt(meta.previousMessage, 10) !== parseInt(newestID, 10) || meta.previousMessageHash !== newestHash) {
