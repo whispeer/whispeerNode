@@ -62,7 +62,6 @@ var newsletter = express();
 
 newsletter.use(express.methodOverride());
 newsletter.use(express.bodyParser());
-newsletter.use(helmet.csp());
 newsletter.use(helmet.xframe());
 newsletter.use(helmet.iexss());
 newsletter.use(helmet.cacheControl());
