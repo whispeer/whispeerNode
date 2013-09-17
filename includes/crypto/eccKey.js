@@ -90,6 +90,8 @@ var EccKey = function (keyRealID) {
 
 	this.hasAccess = key.hasAccess;
 
+	this.hasUserAccess = key.hasUserAccess;
+
 	this.getAccess = key.getAccess;
 
 	this.acessCount = key.accessCount;

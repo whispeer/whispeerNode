@@ -40,6 +40,8 @@ var SymKey = function (keyRealID) {
 
 	this.addAccess = key.addAccess;
 
+	this.hasUserAccess = key.hasUserAccess;
+
 	this.hasAccess = key.hasAccess;
 
 	this.getAccess = key.getAccess;

@@ -118,12 +118,20 @@ var Topic = function (id) {
 		}, h.sF(function (data) {
 			result = data;
 			if (key) {
-				Key.getWData(view, data.key, this, true);
+				this.parallel.unflatten();
+				Key.getWData(view, data.key, this.parallel(), true);
+				if (data.additionalKey) {
+					Key.getWData(view, data.additionalKey, this.parallel(), true);
+				}
 			} else {
 				this.ne(data.key);
 			}
-		}), h.sF(function (keyData) {
+		}), h.sF(function (keyData, additionalKey) {
 			result.key = keyData;
+
+			if (additionalKey) {
+				result.additionalKey = additionalKey;
+			}
 
 			if (receivers) {
 				theTopic.getReceiverData(view, this);
@@ -212,7 +220,7 @@ var Topic = function (id) {
 		}), h.sF(function (isUnread) {
 			unread = isUnread;
 			if (!isUnread) {
-				client.zrem("user:" + view.getUserID() + ":unreadTopics", id, this.parallel());
+				client.zrem("topic:user:" + view.getUserID() + ":unreadTopics", id, this.parallel());
 			}
 
 			this.parallel()();
@@ -249,11 +257,11 @@ var Topic = function (id) {
 			var i;
 			for (i = 0; i < receiver.length; i += 1) {
 				if (receiver[i] !== theSender) {
-					multi.zadd("user:" + receiver[i] + ":unreadTopics", time, id);
+					multi.zadd("topic:user:" + receiver[i] + ":unreadTopics", time, id);
 					multi.zadd(domain + ":user:" + receiver[i] + ":unread", time, messageID);
 				}
 
-				multi.zadd("user:" + receiver[i] + ":topics", time, id);
+				multi.zadd("topic:user:" + receiver[i] + ":topics", time, id);
 			}
 
 			multi.hmset(domain + ":data", {
@@ -265,7 +273,7 @@ var Topic = function (id) {
 		}), h.sF(function () {
 			var i;
 			for (i = 0; i < theReceiver.length; i += 1) {
-				client.publish("user:" + theReceiver[i] + ":message", messageID, this);
+				client.publish("topic:user:" + theReceiver[i] + ":message", messageID, this);
 			}
 
 			this.ne(message);
@@ -336,20 +344,28 @@ var Topic = function (id) {
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
-			client.hgetall(domain + ":data", this);
+			this.parallel.unflatten();
+			client.hgetall(domain + ":data", this.parallel());
+			client.hget(domain + ":receiverKeys", view.getUserID(), this.parallel());
+		}), h.sF(function (data, key) {
+			if (key) {
+				data.additionalKey = key;
+			}
+
+			this.ne(data);
 		}), cb);
 	};
 };
 
 Topic.unreadCount = function (view, cb) {
 	step(function () {
-		client.zcard("user:" + view.getUserID() + ":unreadTopics", this);
+		client.zcard("topic:user:" + view.getUserID() + ":unreadTopics", this);
 	}, cb);
 };
 
 Topic.unread = function (view, cb) {
 	step(function () {
-		client.zrevrange("user:" + view.getUserID() + ":unreadTopics", 0, -1, this);
+		client.zrevrange("topic:user:" + view.getUserID() + ":unreadTopics", 0, -1, this);
 	}, h.sF(function (unread) {
 		var result = [], i;
 		for (i = 0; i < unread.length; i += 1) {
@@ -362,13 +378,13 @@ Topic.unread = function (view, cb) {
 
 Topic.own = function (view, afterTopic, count, cb) {
 	step(function () {
-		client.zrank("user:" + view.getUserID() + ":topics", afterTopic, this);
+		client.zrank("topic:user:" + view.getUserID() + ":topics", afterTopic, this);
 	}, h.sF(function (index) {
 		if (index === null) {
 			index = -1;
 		}
 
-		client.zrevrange("user:" + view.getUserID() + ":topics", index + 1, index + count, this);
+		client.zrevrange("topic:user:" + view.getUserID() + ":topics", index + 1, index + count, this);
 	}), h.sF(function (topicids) {
 		var result = [], i;
 		for (i = 0; i < topicids.length; i += 1) {
@@ -395,7 +411,11 @@ Topic.create = function (view, data, cb) {
 	var SymKey = require("./crypto/symKey");
 	var User = require("./user.js");
 
-	var receiver, result = {}, theTopicID;
+	//TODO: get receiver w/o sender
+	//map keys to users
+	//check user can read their crypto key
+
+	var receiver, receiverWO = [], cryptKeys, result = {}, theTopicID;
 	step(function () {
 		var err = validator.validate("topic", data);
 
@@ -407,24 +427,43 @@ Topic.create = function (view, data, cb) {
 			throw new InvalidTopicData();
 		}
 
-		if (data.cryptKeys.length !== data.receiver.length - 1) {
-			throw new InvalidTopicData();
-		}
+		receiver = data.receiver;
 
 		var i;
-		for (i = 0; i < data.receiver.length; i += 1) {
-			User.getUser(data.receiver[i], this.parallel());
+		for (i = 0; i < receiver.length; i += 1) {
+			User.getUser(receiver[i].identifier, this.parallel());
 		}
-	}, h.sF(function () {
+	}, h.sF(function (recv) {
 		var i;
-		for (i = 0; i < data.cryptKeys.length; i += 1) {
-			SymKey.createWDecryptors(view, data.cryptKeys[i], this.parallel());
+		for (i = 0; i < receiver.length; i += 1) {
+			receiver[i].id = recv[i].getID();
 		}
-	}), h.sF(function () {
+
+		for (i = 0; i < receiver.length; i += 1) {
+			if (receiver[i].key) {
+				receiverWO.push(receiver[i]);
+				SymKey.createWDecryptors(view, receiver[i].key, this.parallel());
+			}
+		}
+	}), h.sF(function (keys) {
+		cryptKeys = keys;
+		var i;
+		for (i = 0; i < receiverWO.length; i += 1) {
+			receiverWO[i].key = cryptKeys[i].getRealID();
+			cryptKeys[i].hasUserAccess(receiverWO[i].id, this.parallel());
+		}
+	}), h.sF(function (acc) {
+		var i;
+		for (i = 0; i < acc.length; i += 1) {
+			if (!acc[i]) {
+				//TODO: clean up/rollback
+				throw new InvalidTopicData();
+			}
+		}
+
 		SymKey.createWDecryptors(view, data.key, this);
 	}), h.sF(function (key) {
 		result.key = key.getRealID();
-		receiver = data.receiver;
 
 		//TO-DO: check all receiver have access!
 
@@ -439,11 +478,14 @@ Topic.create = function (view, data, cb) {
 
 		var i;
 		for (i = 0; i < receiver.length; i += 1) {
-			client.zadd("user:" + receiver[i] + ":topics", new Date().getTime(), topicid, this.parallel());
+			client.zadd("topic:user:" + receiver[i].id + ":topics", new Date().getTime(), topicid, this.parallel());
+			if (receiver[i].key) {
+				client.hset("topic:" + topicid + ":receiverKeys", receiver[i].id, receiver[i].key, this.parallel());
+			}
 		}
 
 		client.hmset("topic:" + topicid + ":data", result, this.parallel());
-		client.sadd("topic:" + topicid + ":receiver", receiver, this.parallel());
+		client.sadd("topic:" + topicid + ":receiver", receiver.map(function (e) {return e.id;}), this.parallel());
 	}), h.sF(function () {
 		this.ne(new Topic(theTopicID));
 	}), cb);

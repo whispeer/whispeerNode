@@ -247,6 +247,24 @@ var Key = function (keyRealID) {
 		}), cb);
 	};
 
+	this.hasUserAccess = function hasUserAccessF(userid, cb) {
+		step(function hasAccess1() {
+			client.sismember(domain + ":access", userid, this);
+		}, h.sF(function hasAccess2(access) {
+			if (access === 1) {
+				this.last.ne(true);
+			} else {
+				theKey.getOwner(this);
+			}
+		}), h.sF(function hasAccess3(owner) {
+			if (parseInt(owner, 10) === parseInt(userid, 10)) {
+				this.last.ne(true);
+			} else {
+				this.ne(false);
+			}
+		}), cb);
+	};
+
 	/** checks if the current user has access to this key
 	* @param view users view
 	* @param cb callback
