@@ -7,6 +7,7 @@ var user = require("./topics/tuser");
 var session = require("./topics/tsession");
 var messages = require("./topics/tmessage");
 var friends = require("./topics/tfriends");
+var circles = require("./topics/tcircles");
 
 var whispeerAPI = {
 	priorized: ["keyData"],
@@ -50,6 +51,7 @@ var whispeerAPI = {
 			this.ne({keychain: keys});
 		}), fn);
 	},
+	circles: circles,
 	friends: friends,
 	messages: messages,
 	user: user,

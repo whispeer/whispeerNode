@@ -101,7 +101,8 @@ var view = function view(socket, session, listener) {
 					throw new AccessViolation();
 				}
 			} else if (typeof user === "string") {
-				if (session.getUserID() !== parseInt(user, 10)) {
+				if (parseInt(session.getUserID(), 10) !== parseInt(user, 10)) {
+					console.log(session.getUserID() + "-" + parseInt(user, 10));
 					throw new AccessViolation();
 				}
 			} else if (typeof user === "number") {
