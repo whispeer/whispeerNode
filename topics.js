@@ -22,34 +22,36 @@ var whispeerAPI = {
 			this.ne(logedin);
 		}), fn);
 	},
-	getKeyChain: function getKeyChainF(data, fn, view) {
-		var theKey, result = [];
-		step(function () {
-			var Key = require("./includes/crypto/Key");
-			Key.get(data.realid, this);
-		}, h.sF(function (key) {
-			var MAXDEPTH = 20;
+	key: {
+		get: function getKeyChainF(data, fn, view) {
+			var theKey, result = [];
+			step(function () {
+				var Key = require("./includes/crypto/Key");
+				Key.get(data.realid, this);
+			}, h.sF(function (key) {
+				var MAXDEPTH = 20;
 
-			theKey = key;
-			theKey.getAllAccessedParents(view, this, MAXDEPTH);
-		}), h.sF(function (parents) {
-			var i;
-			if (data.loaded && Array.isArray(data.loaded)) {
-				for (i = 0; i < parents.length; i += 1) {
-					if (data.loaded.indexOf(parents[i].getRealID()) === -1) {
-						result.push(parents[i]);
+				theKey = key;
+				theKey.getAllAccessedParents(view, this, MAXDEPTH);
+			}), h.sF(function (parents) {
+				var i;
+				if (data.loaded && Array.isArray(data.loaded)) {
+					for (i = 0; i < parents.length; i += 1) {
+						if (data.loaded.indexOf(parents[i].getRealID()) === -1) {
+							result.push(parents[i]);
+						}
 					}
 				}
-			}
 
-			result.push(theKey);
+				result.push(theKey);
 
-			for (i = 0; i < result.length; i += 1) {
-				result[i].getKData(view, this.parallel(), true);
-			}
-		}), h.sF(function (keys) {
-			this.ne({keychain: keys});
-		}), fn);
+				for (i = 0; i < result.length; i += 1) {
+					result[i].getKData(view, this.parallel(), true);
+				}
+			}), h.sF(function (keys) {
+				this.ne({keychain: keys});
+			}), fn);
+		}
 	},
 	circles: circles,
 	friends: friends,
