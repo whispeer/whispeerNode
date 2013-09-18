@@ -70,30 +70,21 @@ var EccKey = function (keyRealID) {
 		}), cb);
 	};
 
-	this.getDecryptorsJSON = key.getDecryptorsJSON;
-
 	this.getBasicData = key.getBasicData;
-
 	this.getType = key.getType;
 
 	this.getDecryptors = key.getDecryptors;
-
 	this.addDecryptor = key.addDecryptor;
-
 	this.addDecryptors = key.addDecryptors;
-
 	this.addEncryptor = key.addEncryptor;
+	this.getDecryptorsJSON = key.getDecryptorsJSON;
+	this.addFasterDecryptor = key.addFasterDecryptor;
 
 	this.getAllAccessedParents = key.getAllAccessedParents;
-
 	this.addAccess = key.addAccess;
-
 	this.hasAccess = key.hasAccess;
-
 	this.hasUserAccess = key.hasUserAccess;
-
 	this.getAccess = key.getAccess;
-
 	this.acessCount = key.accessCount;
 };
 

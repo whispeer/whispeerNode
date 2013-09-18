@@ -273,7 +273,7 @@ var Topic = function (id) {
 		}), h.sF(function () {
 			var i;
 			for (i = 0; i < theReceiver.length; i += 1) {
-				client.publish("topic:user:" + theReceiver[i] + ":message", messageID, this);
+				client.publish("user:" + theReceiver[i] + ":message", messageID, this);
 			}
 
 			this.ne(message);

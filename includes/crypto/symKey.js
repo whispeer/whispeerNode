@@ -21,31 +21,21 @@ var SymKey = function (keyRealID) {
 
 	/** getter for keyRealID */
 	this.getRealID = key.getRealID;
-
 	this.getType = key.getType;
-
 	this.getOwner = key.getOwner;
 
 	this.getDecryptors = key.getDecryptors;
-
 	this.getDecryptorsJSON = key.getDecryptorsJSON;
-
 	this.addDecryptor = key.addDecryptor;
-
 	this.addDecryptors = key.addDecryptors;
-
 	this.addEncryptor = key.addEncryptor;
+	this.addFasterDecryptor = key.addFasterDecryptor;
 
 	this.getAllAccessedParents = key.getAllAccessedParents;
-
 	this.addAccess = key.addAccess;
-
 	this.hasUserAccess = key.hasUserAccess;
-
 	this.hasAccess = key.hasAccess;
-
 	this.getAccess = key.getAccess;
-
 	this.acessCount = key.accessCount;
 };
 

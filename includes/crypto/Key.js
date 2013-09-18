@@ -23,6 +23,32 @@ var Key = function (keyRealID) {
 		}, cb);
 	}
 
+	this.addFasterDecryptor = function addFasterDecryptorF(view, decryptor, cb) {
+		step(function () {
+			console.log(theKey.getRealID());
+			theKey.getDecryptors(view, this);
+		}, h.sF(function (decryptors) {
+			var j;
+			for (j = 0; j < decryptors.length; j += 1) {
+				decryptors[j].getType(this.parallel());
+			}
+		}), h.sF(function (types) {
+			if (types.length === 0) {
+				this.last.ne(false);
+			}
+
+			var i;
+			for (i = 0; i < types.length; i += 1) {
+				if (types[i] !== "cryptKey") {
+					this.last.ne(false);
+					return;
+				}
+			}
+
+			theKey.addDecryptor(view, decryptor, this);
+		}), cb);
+	};
+
 	this.getBasicData = function getBasicDataF(view, cb, wDecryptors) {
 		var result = {};
 		step(function () {
@@ -194,7 +220,11 @@ var Key = function (keyRealID) {
 		step(function () {
 			client.smembers(domain + ":encryptors", this);
 		}, h.sF(function (encrs) {
-			this.ne(encrs);
+			if (encrs.length > 0) {
+				Key.getKeys(encrs, this);
+			} else {
+				this.ne([]);
+			}
 		}), cb);
 	};
 
@@ -239,6 +269,7 @@ var Key = function (keyRealID) {
 			var i;
 			if (encryptors.length > 0) {
 				for (i = 0; i < encryptors.length; i += 1) {
+					//TODO bugfix this!
 					encryptors[i].addAccess(keyRealID, userids, this.parallel(), added);
 				}
 			} else {

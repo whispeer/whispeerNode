@@ -51,6 +51,30 @@ var whispeerAPI = {
 			}), h.sF(function (keys) {
 				this.ne({keychain: keys});
 			}), fn);
+		},
+		addFasterDecryptors: function addFasterDecryptorF(data, fn, view) {
+			var keys;
+			step(function () {
+				var key;
+				for (key in data.keys) {
+					if (data.keys.hasOwnProperty(key)) {
+						var Key = require("./includes/crypto/Key");
+						Key.get(key, this.parallel());
+					}
+				}
+			}, h.sF(function (k) {
+				keys = k;
+				var i;
+				for (i = 0; i < keys.length; i += 1) {
+					keys[i].addFasterDecryptor(view, data.keys[keys[i].getRealID()][0], this.parallel());
+				}
+			}), h.sF(function (success) {
+				var result = {}, i;
+
+				for (i = 0; i < success.length; i += 1) {
+					result[keys[i].getRealID()] = success[i];
+				}
+			}), fn);
 		}
 	},
 	circles: circles,

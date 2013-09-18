@@ -219,7 +219,7 @@ Decryptor.create = function (view, key, data, cb) {
 			//is there already a key like this one?
 			client.get("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, this);
 		} else {
-			throw new AccessViolation("No Access here! " + keyAcc + "-" + parentAcc);
+			throw new AccessViolation("No Access here! " + keyAcc + "-" + parentAcc + "("+ keyRealID + " - " + parentKey.getRealID() + ")");
 		}
 	}), h.sF(function createD23(val) {
 		if (val !== null) {

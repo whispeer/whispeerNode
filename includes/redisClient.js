@@ -33,11 +33,11 @@ client.psub = function subF(channel, callback) {
     var client = create();
 
     client.on("psubscribe", function (channel, count) {
-        console.log("psubscribed to: " + channel + ":" + count);
+        console.log("psubscribed to: " + channel + "-" + count);
     });
 
     client.on("pmessage", function (pattern, channel, message) {
-        console.log("pmessage on channel " + channel + ": " + message);
+        console.log("pmessage on channel " + channel + "-" + message);
 
         callback(channel, message);
     });
