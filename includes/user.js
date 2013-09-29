@@ -7,6 +7,8 @@ var extend = require("xtend");
 
 var search = require("./search");
 
+var UPDATESEARCHON = ["profile", "nickname"];
+
 function logedinF(data, cb) {
 	step(function () {
 		if (data.user.isSaved()) {
@@ -295,6 +297,34 @@ var User = function (id) {
 
 	var setAttribute, saved;
 
+	function updateSearch(view) {
+		step(function () {
+			this.parallel.unflatten();
+			theUser.getNickname(view, this.parallel());
+			theUser.getPublicProfile(view, this.parallel());
+		}, h.sF(function (nickname, profile) {
+			var res = [], b;
+			if (profile && profile.basic) {
+				b = profile.basic;
+				if (b.firstname) {
+					res.push(b.firstname);
+				}
+
+				if (b.lastname) {
+					res.push(b.lastname);
+				}
+			}
+
+			if (nickname) {
+				res.push(nickname);
+			}
+
+			search.user.index(res.join(" "), id);
+		}), function (e) {
+			console.error(e);
+		});
+	}
+
 	/** set an attribute of this user.
 	* @param view current view (for session etc.)
 	* @param key key to set
@@ -437,6 +467,7 @@ var User = function (id) {
 	}
 
 	function realSetAttribute(view, val, key, cb) {
+		var doUpdateSearch = false;
 		step(function doRealSetAttribute() {
 			if (typeof val === "undefined") {
 				this.last.ne();
@@ -470,6 +501,11 @@ var User = function (id) {
 							realSetAttribute(view, cur, key, this.parallel());
 						} else {
 							doSetOperation(view, key, cur, this.parallel());
+							if (UPDATESEARCHON.indexOf(obj2key(key)) > -1) {
+								doUpdateSearch = true;
+							} else {
+								console.log("noupdatefor:" + obj2key(key));
+							}
 						}
 					} else {
 						console.log("rejected: " + obj2key(key));
@@ -481,6 +517,9 @@ var User = function (id) {
 
 			this.parallel()();
 		}, h.sF(function finishUp() {
+			if (doUpdateSearch) {
+				updateSearch(view);
+			}
 			this.ne();
 		}), cb);
 	}
@@ -590,55 +629,6 @@ var User = function (id) {
 		};
 	}
 
-	function getBranchKeys(branch, additional) {
-		var keys = [], key, cur;
-		for (key in branch) {
-			if (branch.hasOwnProperty(key)) {
-				if (additional) {
-					cur = additional + ":" + key;
-				} else {
-					cur = key;
-				}
-
-				if (branch[key].read) {
-					keys.push(cur);
-				} else {
-					keys = keys.concat(getBranchKeys(branch[key], cur));
-				}
-			}
-		}
-
-		return keys;
-	}
-
-	function getBranch(view, branch, additional, cb) {
-		var toGet;
-		step(function doGetBranch() {
-			toGet = getBranchKeys(branch, additional);
-
-			var i;
-			for (i = 0; i < toGet.length; i += 1) {
-				getAttribute(view, toGet[i], this.parallel());
-			}
-		}, h.sF(function doGetBranch2(data) {
-			var result = {};
-			if (data.length !== toGet.length) {
-				throw "invalid length";
-			}
-
-			var i, key;
-			for (i = 0; i < data.length; i += 1) {
-				if (data[i] !== null) {
-					key = key2obj(toGet[i]);
-
-					h.deepSet(result, key, data[i]);
-				}
-			}
-
-			this.last.ne(result);
-		}), cb);
-	}
-
 	function isSavedF() {
 		return saved;
 	}
@@ -698,33 +688,6 @@ var User = function (id) {
 	function setPublicProfileF(view, profile, cb) {
 		step(function doSetPublicProfile() {
 			setAttribute(view, {profile: profile}, this);
-
-			step(function () {
-				theUser.getNickname(view, this);
-			}, h.sF(function (e, nickname) {
-				var name = "";
-
-				if (profile && profile.basic) {
-					var b = JSON.parse(profile.basic);
-					if (b.firstname) {
-						name += b.firstname + " ";
-					}
-
-					if (b.lastname) {
-						name += b.lastname + " ";
-					}
-				}
-
-				if (nickname) {
-					name += nickname + " ";
-				}
-
-				name = name.substr(0, name.length - 1);
-
-				search.index(name, id);
-			}), function (e) {
-				console.error(e);
-			});
 		}, cb);
 	}
 
@@ -913,7 +876,7 @@ var User = function (id) {
 
 User.search = function (text, cb) {
 	step(function () {
-		search.type("and").query(text, this);
+		search.user.type("and").query(text, this);
 	}, h.sF(function (ids) {
 		this.ne(ids);
 	}), cb);
