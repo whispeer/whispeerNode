@@ -38,11 +38,11 @@ var search = {
 			mySearch.index(join(firstname, lastname, nickname), id);
 		};
 
-		this.updateOwn = function (friends, firstname, lastname, nickname) {
+		this.updateOwn = function (friends, name) {
 			var i, ownID = ownID();
 			for (i = 0; i < friends.length; i += 1) {
 				makeSearch(searchKey(friends[i]))
-					.index(join(firstname, lastname, nickname), ownID);
+					.index(name, ownID);
 			}
 		};
 

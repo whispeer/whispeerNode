@@ -303,7 +303,7 @@ var User = function (id) {
 			theUser.getNickname(view, this.parallel());
 			theUser.getPublicProfile(view, this.parallel());
 		}, h.sF(function (nickname, profile) {
-			var res = [], b;
+			var res = [], b, name;
 			if (profile && profile.basic) {
 				b = profile.basic;
 				if (b.firstname) {
@@ -319,7 +319,10 @@ var User = function (id) {
 				res.push(nickname);
 			}
 
-			search.user.index(res.join(" "), id);
+			name = res.join(" ");
+
+			search.user.index(name, id);
+			//TODO: search.friendsSearch(view).updateOwn(friends, name);
 		}), function (e) {
 			console.error(e);
 		});
