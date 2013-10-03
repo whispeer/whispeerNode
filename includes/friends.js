@@ -7,6 +7,7 @@ var validator = require("whispeerValidations");
 var client = require("./redisClient");
 var Key = require("./crypto/Key");
 var User = require("./user");
+var search = require("./search");
 
 /*
 	Friends: {
@@ -23,6 +24,26 @@ function mutual(uid1, uid2, cb) {
 		}), cb);
 }
 
+function getFriends(view, uid, cb) {
+	step(function () {
+		client.smembers("friends:" + uid, this);
+	}, h.sF(function (ids) {
+		this.ne(ids);
+	}), cb);
+}
+
+function addFriendName(view, user) {
+		step(function () {
+			user.getName(this);
+		}, h.sF(function (name) {
+			search.friendsSearch(view).addUser(user.getID(), name);
+		}), function (e) {
+			if (e) {
+				console.error(e);
+			}
+		});
+}
+
 var friends = {
 	getFriendsKey: function () {
 
@@ -34,6 +55,7 @@ var friends = {
 		}, h.sF(function (toAdd) {
 			toAddUser = toAdd;
 			ownID = view.getUserID();
+			uid = toAddUser.getID();
 
 			client.sismember("friends:" + ownID + ":requests", uid, this.parallel());
 			client.sismember("friends:" + ownID + ":requested", uid, this.parallel());
@@ -61,9 +83,9 @@ var friends = {
 
 			m.exec(this);
 		}), h.sF(function () {
+			addFriendName(view, toAddUser);
+			this.ne();
 		}), cb);
-		//do we already have a request from this user? if no: request->send
-		//client.sadd("")
 	},
 	myMutual: function (view, uid, cb) {
 		step(function getUIDUser() {
@@ -72,12 +94,11 @@ var friends = {
 			mutual(view.getUserID(), theUser.getID(), this);
 		}), cb);
 	},
+	getUser: function (view, uid, cb) {
+		getFriends(view, uid, cb);
+	},
 	get: function (view, cb) {
-		step(function () {
-			client.smembers("friends:" + view.getUserID(), this);
-		}, h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
+		getFriends(view, view.getUserID(), cb);
 	},
 	getRequests: function (view, cb) {
 		step(function () {

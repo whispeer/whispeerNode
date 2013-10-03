@@ -13,17 +13,6 @@ var userSearch = makeSearch("user");
 var search = {
 	user: userSearch,
 	friendsSearch: function (view) {
-		function join(additor) {
-			var i, vals = [];
-			for (i = 1; i < arguments.length; i += 1) {
-				if (arguments[i]) {
-					vals.push(arguments[i]);
-				}
-			}
-
-			return vals.join(additor);
-		}
-
 		function ownID() {
 			return view.getUserID();
 		}
@@ -34,8 +23,8 @@ var search = {
 
 		var mySearch = makeSearch(searchKey(ownID()));
 
-		this.addUser = function (id, firstname, lastname, nickname) {
-			mySearch.index(join(firstname, lastname, nickname), id);
+		this.addUser = function (id, name) {
+			mySearch.index(name, id);
 		};
 
 		this.updateOwn = function (friends, name) {

@@ -300,29 +300,10 @@ var User = function (id) {
 	function updateSearch(view) {
 		step(function () {
 			this.parallel.unflatten();
-			theUser.getNickname(view, this.parallel());
-			theUser.getPublicProfile(view, this.parallel());
-		}, h.sF(function (nickname, profile) {
-			var res = [], b, name;
-			if (profile && profile.basic) {
-				b = profile.basic;
-				if (b.firstname) {
-					res.push(b.firstname);
-				}
-
-				if (b.lastname) {
-					res.push(b.lastname);
-				}
-			}
-
-			if (nickname) {
-				res.push(nickname);
-			}
-
-			name = res.join(" ");
-
+			theUser.getName(view, this);
+		}, h.sF(function (name) {
 			search.user.index(name, id);
-			//TODO: search.friendsSearch(view).updateOwn(friends, name);
+			//search.friendsSearch(view).updateOwn(friends, name);
 		}), function (e) {
 			console.error(e);
 		});
@@ -645,6 +626,35 @@ var User = function (id) {
 	this.isOwnUser = function isOwnUserF(view) {
 		return view.getUserID() === id;
 	};
+
+	function getNameF(view, cb) {
+		step(function () {
+			this.parllel().unflatten();
+			theUser.getNickname(view, this.parallel());
+			client.hget(userDomain + ":profile", "basic", this.parallel());
+		}, h.sF(function (nickname, basicProfile) {
+			var res = [], name;
+			if (basicProfile) {
+				if (basicProfile.firstname) {
+					res.push(basicProfile.firstname);
+				}
+
+				if (basicProfile.lastname) {
+					res.push(basicProfile.lastname);
+				}
+			}
+
+			if (nickname) {
+				res.push(nickname);
+			}
+
+			name = res.join(" ");
+
+			this.ne(name);
+		}), cb);
+	}
+
+	this.getName = getNameF;
 
 	function getNicknameF(view, cb) {
 		step(function doGetNickname() {
