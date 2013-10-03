@@ -21,7 +21,7 @@ var listener = {
 			theTopic.messageCount(view, this);
 		}), h.sF(function (count) {
 			if (count === 1) {
-				theTopic.getFullData(view, this, true, true);
+				theTopic.getFullData(view, this, true, false);
 			} else {
 				this.last.ne({
 					message: mData

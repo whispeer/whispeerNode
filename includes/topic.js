@@ -80,7 +80,7 @@ var Topic = function (id) {
 
 			var i;
 			for (i = 0; i < receivers.length; i += 1) {
-				User.get(receivers[i], this.parallel());
+				User.getUser(receivers[i], this.parallel());
 			}
 		}), cb);
 	};
@@ -91,8 +91,8 @@ var Topic = function (id) {
 			theTopic.getReceiver(view, this);
 		}, h.sF(function (receivers) {
 			var i;
-			for (i = 0; i < receivers; i += 1) {
-				receivers[i].getUData(view, this);
+			for (i = 0; i < receivers.length; i += 1) {
+				receivers[i].getUData(view, this.parallel());
 			}
 		}), cb);
 	};
