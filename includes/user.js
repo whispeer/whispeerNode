@@ -40,6 +40,31 @@ function falseF(data, cb) {
 var EccKey = require("./crypto/eccKey");
 var SymKey = require("./crypto/symKey");
 
+var symKeyValidator = {
+	read: ownUserF,
+	pre: function (data, cb) {
+		step(function () {
+			if (typeof data.value === "object" && data.value instanceof SymKey) {
+				this.last.ne();
+			} else {
+				SymKey.get(data.value, this);
+			}
+		}, h.sF(function () {
+			this.ne();
+		}), cb);
+	},
+	transform: function (data, cb) {
+		step(function () {
+			if (typeof data.value === "object" && data.value instanceof SymKey) {
+				this.ne(data.value.getRealID());
+			} else {
+				this.ne(data.value);
+			}
+		}, cb);
+	},
+	unset: falseF
+};
+
 var validKeys = {
 	profile: {
 		read: logedinF,
@@ -86,30 +111,9 @@ var validKeys = {
 		match: /^[A-Fa-f0-9]{10}$/,
 		pre: ownUserF
 	},
-	mainKey: {
-		read: ownUserF,
-		pre: function (data, cb) {
-			step(function () {
-				if (typeof data.value === "object" && data.value instanceof SymKey) {
-					this.last.ne();
-				} else {
-					SymKey.get(data.value, this);
-				}
-			}, h.sF(function () {
-				this.ne();
-			}), cb);
-		},
-		transform: function (data, cb) {
-			step(function () {
-				if (typeof data.value === "object" && data.value instanceof SymKey) {
-					this.ne(data.value.getRealID());
-				} else {
-					this.ne(data.value);
-				}
-			}, cb);
-		},
-		unset: falseF
-	},
+	mainKey: symKeyValidator,
+	friendKey: symKeyValidator,
+	friendLevel2Key: symKeyValidator,
 	cryptKey: {
 		read: logedinF,
 		pre: function (data, cb) {
