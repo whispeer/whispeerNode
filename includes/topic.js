@@ -445,12 +445,20 @@ Topic.create = function (view, data, cb) {
 				SymKey.createWDecryptors(view, receiver[i].key, this.parallel());
 			}
 		}
+
+		if (receiverWO.length === 0) {
+			this.ne([]);
+		}
 	}), h.sF(function (keys) {
 		cryptKeys = keys;
 		var i;
 		for (i = 0; i < receiverWO.length; i += 1) {
 			receiverWO[i].key = cryptKeys[i].getRealID();
 			cryptKeys[i].hasUserAccess(receiverWO[i].id, this.parallel());
+		}
+
+		if (receiverWO.length === 0) {
+			this.ne([]);
 		}
 	}), h.sF(function (acc) {
 		var i;
