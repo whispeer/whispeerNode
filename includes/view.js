@@ -97,7 +97,7 @@ var view = function view(socket, session, listener) {
 			theView.logedinError(this);
 		}, h.sF(function () {
 			if (typeof user === "object") {
-				if (session.getUserID() !== user.getID()) {
+				if (parseInt(session.getUserID(), 10) !== parseInt(user.getID(), 10)) {
 					throw new AccessViolation();
 				}
 			} else if (typeof user === "string") {

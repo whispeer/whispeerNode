@@ -491,8 +491,6 @@ var User = function (id) {
 							doSetOperation(view, key, cur, this.parallel());
 							if (UPDATESEARCHON.indexOf(obj2key(key)) > -1) {
 								doUpdateSearch = true;
-							} else {
-								console.log("noupdatefor:" + obj2key(key));
 							}
 						}
 					} else {
@@ -505,7 +503,7 @@ var User = function (id) {
 
 			this.parallel()();
 		}, h.sF(function finishUp() {
-			if (doUpdateSearch) {
+			if (doUpdateSearch && saved === true) {
 				updateSearch(view);
 			}
 			this.ne();
@@ -612,7 +610,6 @@ var User = function (id) {
 					throw e;
 				}
 				saved = true;
-				updateSearch(view);
 				this.ne(true);
 			}, cb);
 		};
@@ -629,7 +626,7 @@ var User = function (id) {
 	this.getID = getIDF;
 
 	this.isOwnUser = function isOwnUserF(view) {
-		return view.getUserID() === id;
+		return parseInt(view.getUserID(), 10) === parseInt(id, 10);
 	};
 
 	function getNameF(view, cb) {
