@@ -633,7 +633,7 @@ var User = function (id) {
 
 	function getNameF(view, cb) {
 		step(function () {
-			this.parllel().unflatten();
+			this.parallel().unflatten();
 			theUser.getNickname(view, this.parallel());
 			client.hget(userDomain + ":profile", "basic", this.parallel());
 		}, h.sF(function (nickname, basicProfile) {
