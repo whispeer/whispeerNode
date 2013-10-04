@@ -612,6 +612,7 @@ var User = function (id) {
 					throw e;
 				}
 				saved = true;
+				updateSearch(view);
 				this.ne(true);
 			}, cb);
 		};
@@ -639,6 +640,7 @@ var User = function (id) {
 		}, h.sF(function (nickname, basicProfile) {
 			var res = [], name;
 			if (basicProfile) {
+				basicProfile = JSON.parse(basicProfile);
 				if (basicProfile.firstname) {
 					res.push(basicProfile.firstname);
 				}
