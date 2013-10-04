@@ -378,7 +378,7 @@ Topic.unread = function (view, cb) {
 
 Topic.own = function (view, afterTopic, count, cb) {
 	step(function () {
-		client.zrank("topic:user:" + view.getUserID() + ":topics", afterTopic, this);
+		client.zrevrank("topic:user:" + view.getUserID() + ":topics", afterTopic, this);
 	}, h.sF(function (index) {
 		if (index === null) {
 			index = -1;
