@@ -38,7 +38,7 @@ var s = {
 	register: function (data, fn, view) {
 		var res;
 		step(function () {
-			view.getSession().register(data.mail, data.nickname, data.password, data.mainKey, data.signKey, data.cryptKey, view, this);
+			view.getSession().register(data.mail, data.nickname, data.password, data.keys, view, this);
 		}, h.sF(function (result) {
 			console.log(result);
 			res = result;
@@ -53,8 +53,8 @@ var s = {
 					myUser.setPublicProfile(view, data.profile.pub, this.parallel());
 				}
 
-				if (data.profile.priv && data.profileKey) {
-					myUser.createPrivateProfile(view, data.profileKey, data.profile.priv, this.parallel());
+				if (data.profile.priv && data.keys.profile) {
+					myUser.createPrivateProfile(view, data.keys.profile, data.profile.priv, this.parallel());
 				}
 			}
 

@@ -227,6 +227,10 @@ var Session = function Session() {
 		}), cb);
 	};
 
+	var registerSymKeys = ["main", "friends", "friendsLevel2"];
+	var registerEccKeys = ["sign", "crypt"];
+	var keyName = registerSymKeys.concat(registerEccKeys);
+
 	/** register a user.
 	* @param mail users mail (compulsory or nickname)
 	* @param nickname users nickname (compulsory or mail)
@@ -236,7 +240,7 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, mainKey, signKey, cryptKey, view, cb) {
+	this.register = function registerF(mail, nickname, password, keys, view, cb) {
 		//y rule 1: nickname must be set.
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -266,6 +270,47 @@ var Session = function Session() {
 			}
 
 			result.error = true;
+		}
+
+		function createKeys(view, keys, cb) {
+			step(function () {
+				var i;
+				for (i = 0; i < registerSymKeys.length; i += 1) {
+					SymKey.createWDecryptors(view, keys[registerSymKeys[i]], this.parallel());
+				}
+
+				for (i = 0; i < registerEccKeys.length; i += 1) {
+					EccKey.createWDecryptors(view, keys[registerEccKeys[i]], this.parallel());
+				}
+			}, h.sF(function (keys) {
+				keys = h.arrayToObject(keys, function (val, index) {
+					return keyName(index);
+				});
+
+				this.ne(keys);
+			}), cb);
+		}
+
+		function validateKeys(keys, cb) {
+			step(function () {
+				var i;
+				for (i = 0; i < registerSymKeys.length; i += 1) {
+					SymKey.validateNoThrow(keys[registerSymKeys[i]], this.parallel());
+				}
+
+				for (i = 0; i < registerEccKeys.length; i += 1) {
+					EccKey.validateNoThrow(keys[registerEccKeys[i]], this.parallel());
+				}
+			}, h.sF(function (res) {
+				var i;
+				for (i = 0; i < res.length; i += 1) {
+					if (!res[i]) {
+						regErr("invalid" + keyName[i] + "Key");
+					}
+				}
+
+				this.ne();
+			}), cb);
 		}
 
 		step(function nicknameSet() {
@@ -314,26 +359,8 @@ var Session = function Session() {
 				regErr("nicknameUsed");
 			}
 
-			SymKey.validate(mainKey, this);
-		}, UserNotExisting), h.hE(function checkCryptKey(e) {
-			if (e) {
-				regErr("invalidMainKey");
-			}
-
-			EccKey.validate(cryptKey, this);
-		}, [RealIDInUse, InvalidRealID, NotASymKey, InvalidSymKey]), h.hE(function checkSignKey(e) {
-			if (e) {
-				regErr("invalidCryptKey");
-			}
-
-			EccKey.validate(signKey, this);
-		}, [RealIDInUse, InvalidRealID, NotAEccKey, InvalidEccKey]), h.hE(function keysChecked(e) {
-			if (e) {
-				regErr("invalidSignKey");
-			}
-
-			this.ne();
-		}, [RealIDInUse, InvalidRealID, NotAEccKey, InvalidEccKey]), h.sF(function createActualUser() {
+			validateKeys(keys, this);
+		}, UserNotExisting), h.sF(function createActualUser() {
 			if (result.error === true) {
 				this.last.ne(result);
 			} else {
@@ -357,17 +384,15 @@ var Session = function Session() {
 		}), h.sF(function sessionF(theSid) {
 			mySid = theSid;
 
-			SymKey.createWDecryptors(view, mainKey, this.parallel());
-			EccKey.createWDecryptors(view, cryptKey, this.parallel());
-			EccKey.createWDecryptors(view, signKey, this.parallel());
-		}), h.sF(function keysCreated(keys) {
-			mainKey = keys[0];
-			cryptKey = keys[1];
-			signKey = keys[2];
+			createKeys(view, keys, this);
+		}), h.sF(function keysCreated(theKeys) {
+			keys = theKeys;
 
-			myUser.setMainKey(view, mainKey, this.parallel());
-			myUser.setCryptKey(view, cryptKey, this.parallel());
-			myUser.setSignKey(view, signKey, this.parallel());
+			myUser.setMainKey(view, keys.main, this.parallel());
+			myUser.setFriendsKey(view, keys.friends, this.parallel());
+			myUser.setFriendsLevel2Key(view, keys.friendsLevel2, this.parallel());
+			myUser.setCryptKey(view, keys.crypt, this.parallel());
+			myUser.setSignKey(view, keys.sign, this.parallel());
 		}), h.sF(function decryptorsAdded() {
 			this.ne(mySid);
 		}), cb);

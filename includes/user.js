@@ -112,8 +112,8 @@ var validKeys = {
 		pre: ownUserF
 	},
 	mainKey: symKeyValidator,
-	friendKey: symKeyValidator,
-	friendLevel2Key: symKeyValidator,
+	friendsKey: symKeyValidator,
+	friendsLevel2Key: symKeyValidator,
 	cryptKey: {
 		read: logedinF,
 		pre: function (data, cb) {
@@ -748,6 +748,18 @@ var User = function (id) {
 
 	this.getPublicProfile = getPublicProfileF;
 
+	function setFriendsKeyF(view, key, cb) {
+		step(function doSetMainKey() {
+			setAttribute(view, {friendsKey: key}, this);
+		}, cb);
+	}
+
+	function setFriendsLevel2KeyF(view, key, cb) {
+		step(function doSetMainKey() {
+			setAttribute(view, {friendsLevel2Key: key}, this);
+		}, cb);
+	}
+
 	function setMainKeyF(view, key, cb) {
 		step(function doSetMainKey() {
 			setAttribute(view, {mainKey: key}, this);
@@ -769,21 +781,35 @@ var User = function (id) {
 	this.setMainKey = setMainKeyF;
 	this.setCryptKey = setCryptKeyF;
 	this.setSignKey = setSignKeyF;
+	this.setFriendsKey = setFriendsKeyF;
+	this.setFriendsLevel2Key = setFriendsLevel2KeyF;
+
+	function getFriendsKeyF(view, cb) {
+		step(function dogetFriendsKey() {
+			getAttribute(view, "friendsKey", this);
+		}, cb);
+	}
+
+	function getFriendsLevel2KeyF(view, cb) {
+		step(function dogetFriendsLevel2Key() {
+			getAttribute(view, "friendsLevel2Key", this);
+		}, cb);
+	}
 
 	function getMainKeyF(view, cb) {
-		step(function doGetMainKey() {
+		step(function dogetMainKey() {
 			getAttribute(view, "mainKey", this);
 		}, cb);
 	}
 
 	function getCryptKeyF(view, cb) {
-		step(function doGetCryptKey() {
+		step(function dogetCryptKey() {
 			getAttribute(view, "cryptKey", this);
 		}, cb);
 	}
 
 	function getSignKeyF(view, cb) {
-		step(function doGetSignKey() {
+		step(function dogetSignKey() {
 			getAttribute(view, "signKey", this);
 		}, cb);
 	}
@@ -791,6 +817,8 @@ var User = function (id) {
 	this.getMainKey = getMainKeyF;
 	this.getCryptKey = getCryptKeyF;
 	this.getSignKey = getSignKeyF;
+	this.getFriendsKey = getFriendsKeyF;
+	this.getFriendsLevel2Key = getFriendsLevel2KeyF;
 
 	this.getUData = function (view, cb) {
 		var result;

@@ -13,9 +13,11 @@ var f = {
 			signedRequest //signature of "friendShip:userid:nickname"
 		*/
 		step(function () {
-			Friends.add(view, data.userid, data.signedRequest, this);
-		}, h.sF(function () {
-			Friends.getFriendsKey().addDecryptor(data.fkdecryptor);
+			Friends.add(view, data.userid, data.signedRequest, data.decryptors, this);
+		}, h.sF(function (success) {
+			this.ne({
+				friendAdded: success
+			});
 		}), fn);
 	},
 	mutual: function getMutualF(data, fn, view) {
@@ -29,10 +31,18 @@ var f = {
 	},
 	getAll: function getFriends(data, fn, view) {
 		step(function () {
+			this.parallel.unflatten();
+
 			Friends.getRequests(view, this.parallel());
 			Friends.getRequested(view, this.parallel());
-			Friends.getAll(view, this.parallel());
-		}, fn);
+			Friends.get(view, this.parallel());
+		}, h.sF(function (requests, requested, friends) {
+			this.ne({
+				requests: requests,
+				requested: requested,
+				friends: friends
+			});
+		}), fn);
 	}
 };
 
