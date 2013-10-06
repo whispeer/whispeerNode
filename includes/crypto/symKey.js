@@ -39,6 +39,14 @@ var SymKey = function (keyRealID) {
 	this.acessCount = key.accessCount;
 };
 
+SymKey.validateNoThrow = function validateF(data, cb) {
+	step(function () {
+		SymKey.validate(data, this);
+	}, function (e) {
+		this.ne(!!e);
+	}, cb);
+};
+
 SymKey.validate = function validateF(data, cb) {
 	step(function () {
 		if (!data) {

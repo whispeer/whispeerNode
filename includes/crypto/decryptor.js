@@ -148,27 +148,37 @@ Decryptor.getAll = function getAllF(keyRealID, cb) {
 	}), cb);
 };
 
-Decryptor.validate = function validateF(data, cb) {
+Decryptor.validateFormat = function validateFormat(data) {
+	//data needs to be existing and ct needs to be hex
+	if (!data || !h.isHex(data.ct)) {
+		throw new InvalidDecryptor("data or secret missing");
+	}
+
+	//if not pw we need a realid.
+	if (data.type !== "pw" && (!data.decryptorid || !h.isRealID(data.decryptorid))) {
+		throw new InvalidDecryptor("key id missing");
+	}
+
+	// if pw or symkey, we need a hex iv
+	if ((data.type === "pw" || data.type === "symKey") && !h.isHex(data.iv)) {
+		throw new InvalidDecryptor("invalid iv");
+	}
+
+	//if pw we need a hex salt
+	if (data.type === "pw" && !h.isHex(data.salt)) {
+		throw new InvalidDecryptor("invalid salt");
+	}
+
+	if (["symKey", "cryptKey", "pw"].indexOf(data.type) === -1) {
+		throw new InvalidDecryptor("invalid type.");
+	}
+};
+
+Decryptor.validate = function validateF(view, data, key, cb) {
+	var keyRealID = key.getRealID();
+	var parentKey;
 	step(function validateF1() {
-		//data needs to be existing and ct needs to be hex
-		if (!data || !h.isHex(data.ct)) {
-			throw new InvalidDecryptor("data or secret missing");
-		}
-
-		//if not pw we need a realid.
-		if (data.type !== "pw" && (!data.decryptorid || !h.isRealID(data.decryptorid))) {
-			throw new InvalidDecryptor("key id missing");
-		}
-
-		// if pw or symkey, we need a hex iv
-		if ((data.type === "pw" || data.type === "symKey") && !h.isHex(data.iv)) {
-			throw new InvalidDecryptor("invalid iv");
-		}
-
-		//if pw we need a hex salt
-		if (data.type === "pw" && !h.isHex(data.salt)) {
-			throw new InvalidDecryptor("invalid salt");
-		}
+		Decryptor.validateFormat(data);
 
 		//find dat key
 		if (data.type === "symKey") {
@@ -182,27 +192,11 @@ Decryptor.validate = function validateF(data, cb) {
 		} else {
 			throw new InvalidDecryptor("invalid type.");
 		}
-	}, h.sF(function validateF2(key) {
+	}, h.sF(function validateF2(k) {
+		parentKey = k;
 		if (!key) {
 			throw new InvalidDecryptor("key not found.");
 		}
-
-		this.ne(key);
-	}), cb);
-};
-
-/** create a decryptor */
-Decryptor.create = function (view, key, data, cb) {
-	var userid, decryptorInternalID, keyRealID = key.getRealID(), parentKey;
-
-	step(function createD1() {
-		//only allow key creation when logged in
-		view.logedinError(this);
-	}, h.sF(function createD12() {
-		//validate our decryptor
-		Decryptor.validate(data, this);
-	}), h.sF(function createD2(p) {
-		parentKey = p;
 
 		this.parallel.unflatten();
 
@@ -225,6 +219,23 @@ Decryptor.create = function (view, key, data, cb) {
 		if (val !== null) {
 			throw new InvalidDecryptor("already existing");
 		}
+
+		this.ne(parentKey);
+	}), cb);
+};
+
+/** create a decryptor */
+Decryptor.create = function (view, key, data, cb) {
+	var userid, decryptorInternalID, keyRealID = key.getRealID(), parentKey;
+
+	step(function createD1() {
+		//only allow key creation when logged in
+		view.logedinError(this);
+	}, h.sF(function createD12() {
+		//validate our decryptor
+		Decryptor.validate(view, data, key, this);
+	}), h.sF(function createD2(p) {
+		parentKey = p;
 
 		client.incr("key:" + keyRealID + ":decryptor:count", this);
 	}), h.sF(function createD24(count) {

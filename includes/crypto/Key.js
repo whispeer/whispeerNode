@@ -357,11 +357,11 @@ Key.validate = function validateF(data, callback) {
 };
 
 /** validate a decryptor. No Duplicate check. */
-Key.validateDecryptor = function validateDecryptorF(data, callback) {
+Key.validateDecryptor = function validateDecryptorF(view, data, key, callback) {
 	step(function () {
 		var Decryptor = require("./decryptor");
 
-		Decryptor.validate(data, this);
+		Decryptor.validate(view, data, key, this);
 	}, callback);
 };
 
