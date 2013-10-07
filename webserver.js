@@ -31,7 +31,7 @@ app2.listen(8088);
 
 var app = express();
 
-var directoryParts = ["css", "js", "img", "views", "favicon.png", "favicon.ico"];
+var directoryParts = ["assets", "favicon.png", "favicon.ico"];
 var angular = ["user", "messages", "circles", "main", "friends", "login"];
 
 app.use(function(req, res, next) {
