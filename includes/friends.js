@@ -8,6 +8,7 @@ var Key = require("./crypto/Key");
 var User = require("./user");
 var search = require("./search");
 var Decryptor = require("./crypto/Decryptor");
+var SymKey = require("./crypto/symKey");
 
 /*
 	Friends: {
@@ -45,6 +46,40 @@ function addFriendName(view, user) {
 }
 
 var friends = {
+	areFriends: function (view, uid, cb) {
+		var ownID = view.getUserID();
+		step(function () {
+			this.parallel.unflatten();
+
+			client.sismember("friends:" + ownID, uid, this.parallel());
+			client.sismember("friends:" + uid, ownID, this.parallel());
+		}, h.sF(function (friend1, friend2) {
+			if (friend1 !== friend2) {
+				console.error("CORRUPT DATA!" + ownID + "-" + uid);
+			}
+
+			this.ne(friend1 && friend2);
+		}), cb);
+	},
+	hasOtherRequested: function (view, uid, cb) {
+		var ownID = view.getUserID();
+		step(function () {
+			client.sismember("friends:" + ownID + ":requests", uid, this);
+		}, cb);
+	},
+	hasFriendsKeyAccess: function (view, uid, cb) {
+		step(function () {
+			if (parseInt(view.getUserID(), 10) === parseInt(uid, 10)) {
+				this.last.ne(true);
+				return;
+			}
+
+			friends.areFriends(view, uid, this.parallel());
+			friends.hasOtherRequested(view, uid, this.parallel());
+		}, h.sF(function (areFriends, hasORequested) {
+			this.ne(areFriends || hasORequested);
+		}), cb);
+	},
 	getFriendsKeys: function (view, otherUser, cb) {
 		step(function () {
 			view.getOwnUser(this);
@@ -92,6 +127,8 @@ var friends = {
 		}), h.sF(function createData(hasOtherRequested) {
 			firstRequest = !hasOtherRequested;
 
+			Decryptor.validateFormat(decryptors.ownFriendsLevel2Key);
+
 			m = client.multi();
 
 			m.set("friends:" + ownID + ":signed:" + uid, signedRequest);
@@ -102,26 +139,40 @@ var friends = {
 				m.srem("friends:" + ownID + ":requests", uid);
 				m.srem("friends:" + uid + ":requested", ownID);
 
-				this.parallel.unflatten();
 
-				Decryptor.validateNoThrow(view, decryptors.ownFriendsLevel2Key, friendsLevel2Key, this.parallel());
-				Decryptor.validateNoThrow(view, decryptors.otherFriendsLevel2Key, otherFriendsLevel2Key, this.parallel());
+				Decryptor.validateFormat(decryptors.ownFriendsLevel2Key);
+				Decryptor.validateFormat(decryptors.otherFriendsLevel2Key);
 			} else {
 				m.sadd("friends:" + ownID + ":requested", uid);
 				m.sadd("friends:" + uid + ":requests", ownID);
-				this.ne(true, true);
+				this.ne();
 			}
-		}), h.sF(function validateDecryptor(validOwn, validOther) {
-			if (!validOwn || !validOther) {
+		}), h.sF(function createSymKey() {
+			SymKey.createWDecryptors(view, key, this);
+		}), h.sF(function hasOtherRequested(key) {
+			m.set("friends:key:" + uid + ":" + ownID, key.getRealID());
+
+			this.parallel.unflatten();
+
+			Decryptor.validateNoThrow(view, decryptors.friendsKey, friendsKey, this.parallel());
+
+			if (!firstRequest) {
+				Decryptor.validateNoThrow(view, decryptors.ownFriendsLevel2Key, friendsLevel2Key, this.parallel());
+				Decryptor.validateNoThrow(view, decryptors.otherFriendsLevel2Key, otherFriendsLevel2Key, this.parallel());
+			}
+		}), h.sF(function (valid1, valid2, valid3) {
+			var validLevel2 = valid2 && valid3;
+
+			//TODO: remove key;
+
+			if (!firstRequest && !validLevel2) {
 				this.last.ne(false);
 				return;
 			}
 
-			SymKey.createWDecryptors(view, key, this);
-		}), h.sF(function () {
-
-			Decryptor.validate(view, decryptors.friendsKey, friendsKey, this.parallel());
-		}), h.sF(function hasOtherRequested() {
+			if (!valid1) {
+				throw new InvalidDecryptor();
+			}
 
 			m.exec(this.parallel());
 
@@ -132,7 +183,12 @@ var friends = {
 			}
 		}), h.sF(function addFriendsName() {
 			addFriendName(view, toAddUser);
-			this.ne();
+			if (firstRequest) {
+				client.publish("user:" + uid + ":friendRequest", ownID, this);
+			} else {
+				client.publish("user:" + uid + ":friendAccept", ownID, this);
+			}
+			this.ne(true);
 		}), cb);
 	},
 	myMutual: function (view, uid, cb) {

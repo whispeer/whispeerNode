@@ -4,6 +4,15 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var listener = {
+	friendRequest: function fr(view, uid) {
+		step(function () {
+			//we definitly need to add this users friendKey here!
+			//maybe also get this users profile.
+		});
+	},
+	friendAccept: function fa(view, uid) {
+
+	},
 	message: function messageLF(view, messageid) {
 		var Message = require("./messages.js");
 		var m, mData, theTopic;

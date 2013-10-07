@@ -13,7 +13,7 @@ var f = {
 			signedRequest //signature of "friendShip:userid:nickname"
 		*/
 		step(function () {
-			Friends.add(view, data.userid, data.signedRequest, data.decryptors, this);
+			Friends.add(view, data.userid, data.signedRequest, data.key, data.decryptors, this);
 		}, h.sF(function (success) {
 			this.ne({
 				friendAdded: success

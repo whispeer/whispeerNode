@@ -29,6 +29,23 @@ function ownUserF(data, cb) {
 	}, cb);
 }
 
+function hasFriendKeyAccess(data, cb) {
+	step(function () {
+		if (data.user.isSaved()) {
+			var friends = require("./friends");
+			friends.hasFriendsKeyAccess(data.view, data.user.getID(), this);
+		} else {
+			this.last.ne();
+		}
+	}, h.sF(function (acc) {
+		if (!acc) {
+			throw new AccessViolation("No Key Access");
+		}
+
+		this.ne();
+	}), cb);
+}
+
 function trueF(data, cb) {
 	cb();
 }
@@ -40,30 +57,29 @@ function falseF(data, cb) {
 var EccKey = require("./crypto/eccKey");
 var SymKey = require("./crypto/symKey");
 
-var symKeyValidator = {
-	read: ownUserF,
-	pre: function (data, cb) {
+function checkKeyExists(keyObj) {
+	return function (data, cb) {
 		step(function () {
-			if (typeof data.value === "object" && data.value instanceof SymKey) {
+			if (typeof data.value === "object" && data.value instanceof keyObj) {
 				this.last.ne();
 			} else {
-				SymKey.get(data.value, this);
+				keyObj.get(data.value, this);
 			}
 		}, h.sF(function () {
 			this.ne();
 		}), cb);
-	},
-	transform: function (data, cb) {
-		step(function () {
-			if (typeof data.value === "object" && data.value instanceof SymKey) {
-				this.ne(data.value.getRealID());
-			} else {
-				this.ne(data.value);
-			}
-		}, cb);
-	},
-	unset: falseF
-};
+	};
+}
+
+function keyToRealID(data, cb) {
+	step(function () {
+		if (typeof data.value === "object" && typeof data.value.getRealID === "function") {
+			this.ne(data.value.getRealID());
+		} else {
+			this.ne(data.value);
+		}
+	}, cb);
+}
 
 var validKeys = {
 	profile: {
@@ -111,55 +127,34 @@ var validKeys = {
 		match: /^[A-Fa-f0-9]{10}$/,
 		pre: ownUserF
 	},
-	mainKey: symKeyValidator,
-	friendsKey: symKeyValidator,
-	friendsLevel2Key: symKeyValidator,
+	mainKey: {
+		read: ownUserF,
+		pre: checkKeyExists(SymKey),
+		transform: keyToRealID,
+		unset: falseF
+	},
+	friendsKey: {
+		read: hasFriendKeyAccess,
+		pre: checkKeyExists(SymKey),
+		transform: keyToRealID,
+		unset: falseF
+	},
+	friendsLevel2Key: {
+		read: hasFriendKeyAccess,
+		pre: checkKeyExists(SymKey),
+		transform: keyToRealID,
+		unset: falseF
+	},
 	cryptKey: {
 		read: logedinF,
-		pre: function (data, cb) {
-			step(function () {
-				if (typeof data.value === "object" && data.value instanceof EccKey) {
-					this.last.ne();
-				} else {
-					EccKey.get(data.value, this);
-				}
-			}, h.sF(function () {
-				this.ne();
-			}), cb);
-		},
-		transform: function (data, cb) {
-			step(function () {
-				if (typeof data.value === "object" && data.value instanceof EccKey) {
-					this.ne(data.value.getRealID());
-				} else {
-					this.ne(data.value);
-				}
-			}, cb);
-		},
+		pre: checkKeyExists(EccKey),
+		transform: keyToRealID,
 		unset: falseF
 	},
 	signKey: {
 		read: logedinF,
-		pre: function (data, cb) {
-			step(function () {
-				if (typeof data.value === "object" && data.value instanceof EccKey) {
-					this.last.ne();
-				} else {
-					EccKey.get(data.value, this);
-				}
-			}, h.sF(function () {
-				this.ne();
-			}), cb);
-		},
-		transform: function (data, cb) {
-			step(function () {
-				if (typeof data.value === "object" && data.value instanceof EccKey) {
-					this.ne(data.value.getRealID());
-				} else {
-					this.ne(data.value);
-				}
-			}, cb);
-		},
+		pre: checkKeyExists(EccKey),
+		transform: keyToRealID,
 		unset: falseF
 	},
 	nickname: {
@@ -820,6 +815,72 @@ var User = function (id) {
 	this.getFriendsKey = getFriendsKeyF;
 	this.getFriendsLevel2Key = getFriendsLevel2KeyF;
 
+	this.getKeys = function (view, cb) {
+		step(function () {
+			var friends = require("./friends");
+			friends.hasFriendsKeyAccess(view, theUser.getID(), this.parallel());
+		}, h.sF(function (hasAccess) {
+			this.parallel.unflatten();
+
+			theUser.getCryptKey(view, this.parallel());
+			theUser.getSignKey(view, this.parallel());
+
+			if (hasAccess) {
+				theUser.getFriendsKey(view, this.parallel());
+				theUser.getFriendsLevel2Key(view, this.parallel());
+
+				if (theUser.isOwnUser(view)) {
+					theUser.getMainKey(view, this.parallel());
+				}
+			}
+		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
+			var Key = require("./crypto/Key");
+			this.parallel.unflatten();
+
+			Key.get(cryptKey, this.parallel());
+			Key.get(signKey, this.parallel());
+
+			if (friendsKey) {
+				Key.get(friendsKey, this.parallel());
+				Key.get(friendsLevel2Key, this.parallel());
+			}
+
+			if (mainKey) {
+				Key.get(mainKey, this.parallel());
+			}
+		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
+			this.parallel.unflatten();
+
+			cryptKey.getKData(view, this.parallel(), true);
+			signKey.getKData(view, this.parallel(), true);
+
+			if (friendsKey) {
+				friendsKey.getKData(view, this.parallel(), true);
+				friendsLevel2Key.getKData(view, this.parallel(), true);
+			}
+
+			if (mainKey) {
+				mainKey.getKData(view, this.parallel(), true);
+			}
+		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
+			var res = {
+				crypt: cryptKey,
+				sign: signKey
+			};
+
+			if (friendsKey) {
+				res.friends = friendsKey;
+				res.friendsLevel2 = friendsLevel2Key;
+			}
+
+			if (mainKey) {
+				res.main = mainKey;
+			}
+
+			this.ne(res);
+		}), cb);
+	};
+
 	this.getUData = function (view, cb) {
 		var result;
 		step(function () {
@@ -830,14 +891,12 @@ var User = function (id) {
 			theUser.getNickname(view, this.parallel());
 			theUser.getPublicProfile(view, this.parallel());
 			theUser.getPrivateProfiles(view, this.parallel(), true);
-			theUser.getCryptKey(view, this.parallel());
-			theUser.getSignKey(view, this.parallel());
+			theUser.getKeys(view, this.parallel());
 
 			if (theUser.isOwnUser(view)) {
 				theUser.getEMail(view, this.parallel());
-				theUser.getMainKey(view, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, cryptKey, signKey, mail, mainKey) {
+		}), h.sF(function (nick, pubProf, privProf, keys, mail) {
 			result = {
 				id: id,
 				nickname: nick,
@@ -847,32 +906,11 @@ var User = function (id) {
 				}
 			};
 
-			var Key = require("./crypto/Key");
-			this.parallel.unflatten();
-
-			Key.get(cryptKey, this.parallel());
-			Key.get(signKey, this.parallel());
-
 			if (theUser.isOwnUser(view)) {
 				result.mail = mail;
-				Key.get(mainKey, this.parallel());
 			}
-		}), h.sF(function (cryptKey, signKey, mainKey) {
-			this.parallel.unflatten();
 
-			cryptKey.getKData(view, this.parallel(), true);
-			signKey.getKData(view, this.parallel(), true);
-
-			if (mainKey) {
-				mainKey.getKData(view, this.parallel(), true);
-			}
-		}), h.sF(function (cryptKey, signKey, mainKey) {
-			result.cryptKey = cryptKey;
-			result.signKey = signKey;
-
-			if (mainKey) {
-				result.mainKey = mainKey;
-			}
+			result.keys = keys;
 
 			this.last.ne(result);
 		}), cb);

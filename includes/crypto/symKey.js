@@ -43,7 +43,11 @@ SymKey.validateNoThrow = function validateF(data, cb) {
 	step(function () {
 		SymKey.validate(data, this);
 	}, function (e) {
-		this.ne(!!e);
+		if (e) {
+			this.ne(false);
+		} else {
+			this.ne(true);
+		}
 	}, cb);
 };
 

@@ -284,7 +284,7 @@ var Session = function Session() {
 				}
 			}, h.sF(function (keys) {
 				keys = h.arrayToObject(keys, function (val, index) {
-					return keyName(index);
+					return keyName[index];
 				});
 
 				this.ne(keys);

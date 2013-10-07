@@ -88,22 +88,42 @@ var EccKey = function (keyRealID) {
 	this.acessCount = key.accessCount;
 };
 
-EccKey.validate = function validateF(data, cb) {
+function validate(data, cb) {
 	step(function () {
 		if (!h.isRealID(data.realid)) {
-			throw new InvalidRealID();
+			this.ne(new InvalidRealID());
 		}
 
 		if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve)) {
-			throw new InvalidEccKey("Missing data");
+			this.ne(new InvalidEccKey("Missing data"));
 		}
 
 		if (data.type !== "sign" && data.type !== "crypt") {
-			throw new InvalidEccKey("wrong type");
+			this.ne(new InvalidEccKey("wrong type"));
 		}
 
 		this.ne();
 	}, cb);
+}
+
+EccKey.validate = function validateF(data, cb) {
+	step(function () {
+		validate(data, this);
+	}, h.sF(function (e) {
+		this(e);
+	}), cb);
+};
+
+EccKey.validateNoThrow = function validateF(data, cb) {
+	step(function () {
+		validate(data, this);
+	}, h.sF(function (e) {
+		if (e) {
+			this.ne(false);
+		} else {
+			this.ne(true);
+		}
+	}), cb);
 };
 
 /** get all decryptors for a certain key id */
