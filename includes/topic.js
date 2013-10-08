@@ -276,7 +276,7 @@ var Topic = function (id) {
 				client.publish("user:" + theReceiver[i] + ":message", messageID, this);
 			}
 
-			this.ne(message);
+			this.ne(true);
 		}), cb);
 	};
 
