@@ -219,7 +219,7 @@ Message.create = function (view, data, cb) {
 		}
 	}), h.sF(function (newestHash, newestID) {
 		if (parseInt(meta.previousMessage, 10) !== parseInt(newestID, 10) || meta.previousMessageHash !== newestHash) {
-			throw new InvalidMessageData();
+			this.last.ne(false);
 		}
 
 		var toHash = {

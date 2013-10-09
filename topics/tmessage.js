@@ -110,8 +110,10 @@ var t = {
 	send: function sendMessageF(data, fn, view) {
 		step(function () {
 			Message.create(view, data.message, this);
-		}, h.sF(function () {
-			this.ne({});
+		}, h.sF(function (success) {
+			this.ne({
+				success: success
+			});
 		}), fn);
 		//message
 	},
@@ -127,7 +129,8 @@ var t = {
 			topic.getFullData(view, this, false, false);
 		}), h.sF(function (data) {
 			this.ne({
-				topic: data
+				topic: data,
+				success: true
 			});
 		}), fn);
 	}
