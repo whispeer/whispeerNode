@@ -2,16 +2,42 @@
 
 var step = require("step");
 var h = require("whispeerHelper");
+var User = require("./user");
 
 var listener = {
 	friendRequest: function fr(view, uid) {
 		step(function () {
 			//we definitly need to add this users friendKey here!
 			//maybe also get this users profile.
+			User.getUser(uid, this);
+		}, h.sF(function (theUser) {
+			theUser.getUData(view, this);
+		}), function (e, data) {
+			if (!e) {
+				view.getSocket().emit("friendAccept", {
+					uid: uid,
+					user: data
+				});
+			} else {
+				console.error(e);
+			}
 		});
 	},
 	friendAccept: function fa(view, uid) {
-
+		step(function () {
+			User.getUser(uid, this);
+		}, h.sF(function (theUser) {
+			theUser.getUData(view, this);
+		}), function (e, data) {
+			if (!e) {
+				view.getSocket().emit("friendAccept", {
+					uid: uid,
+					user: data
+				});
+			} else {
+				console.error(e);
+			}
+		});
 	},
 	message: function messageLF(view, messageid) {
 		var Message = require("./messages.js");
