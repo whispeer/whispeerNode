@@ -42,7 +42,6 @@ var f = {
 				added: !!added
 			});
 		}), fn);
-		//TODO
 	},
 	add: function addCircleF(data, fn, view) {
 		step(function () {

@@ -264,8 +264,6 @@ Decryptor.create = function (view, key, data, cb) {
 
 		client.set(domain + ":creator", userid, this.parallel());
 	}), h.sF(function createD4() {
-		//TODO: update keys access rights. (or let the key do that?)
-
 		if (data.type === "pw") {
 			this.ne([userid]);
 		} else {

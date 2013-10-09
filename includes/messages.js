@@ -242,7 +242,7 @@ Message.create = function (view, data, cb) {
 
 		toHash.meta.ownHash = meta.ownHash;
 
-		//TODO: check overall signature
+		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 
 		var SymKey = require("./crypto/symKey");

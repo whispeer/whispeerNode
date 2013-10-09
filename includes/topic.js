@@ -411,9 +411,7 @@ Topic.create = function (view, data, cb) {
 	var SymKey = require("./crypto/symKey");
 	var User = require("./user.js");
 
-	//TODO: get receiver w/o sender
-	//map keys to users
-	//check user can read their crypto key
+	//TODO: check user can read their crypto key
 
 	var receiver, receiverWO = [], cryptKeys, result = {}, theTopicID;
 	step(function () {
