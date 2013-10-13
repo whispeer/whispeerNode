@@ -220,6 +220,7 @@ Message.create = function (view, data, cb) {
 	}), h.sF(function (newestHash, newestID) {
 		if (parseInt(meta.previousMessage, 10) !== parseInt(newestID, 10) || meta.previousMessageHash !== newestHash) {
 			this.last.ne(false);
+			return;
 		}
 
 		var toHash = {
