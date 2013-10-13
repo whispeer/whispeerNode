@@ -174,6 +174,18 @@ Decryptor.validateFormat = function validateFormat(data) {
 	}
 };
 
+Decryptor.validateNoThrow = function validateF(view, data, key, cb) {
+	step(function validate() {
+		Decryptor.validate(view, data, key, this);
+	}, function validate2(e) {
+		if (e) {
+			this.ne(false);
+		} else {
+			this.ne(true);
+		}
+	}, cb);
+};
+
 Decryptor.validate = function validateF(view, data, key, cb) {
 	var keyRealID = key.getRealID();
 	var parentKey;

@@ -35,9 +35,9 @@ function getFriends(view, uid, cb) {
 
 function addFriendName(view, user) {
 		step(function () {
-			user.getName(this);
+			user.getName(view, this);
 		}, h.sF(function (name) {
-			search.friendsSearch(view).addUser(user.getID(), name);
+			(new search.friendsSearch(view)).addUser(user.getID(), name);
 		}), function (e) {
 			if (e) {
 				console.error(e);
@@ -89,8 +89,8 @@ var friends = {
 			this.parallel.unflatten();
 
 			ownUser.getFriendsKey(view, this.parallel());
-			ownUser.getFriendsLevel2KeyF(view, this.parallel());
-			otherUser.getFriendsLevel2KeyF(view, this.parallel());
+			ownUser.getFriendsLevel2Key(view, this.parallel());
+			otherUser.getFriendsLevel2Key(view, this.parallel());
 		}), h.sF(function (friendsKey, friendsLevel2Key, otherFriendsLevel2Key) {
 			this.parallel.unflatten();
 
@@ -101,6 +101,8 @@ var friends = {
 	},
 	add: function (view, uid, signedRequest, key, decryptors, cb) {
 		var toAddUser, ownID, friendsKey, friendsLevel2Key, otherFriendsLevel2Key, m, firstRequest;
+		var friendsKeyDecryptor, friendsLevel2KeyDecryptor, otherFriendsLevel2KeyDecryptor;
+
 		step(function getUser() {
 			User.getUser(uid, this);
 		}, h.sF(function checkAlreadyRequested(toAdd) {
@@ -123,11 +125,13 @@ var friends = {
 			friendsLevel2Key = fKeyL2;
 			otherFriendsLevel2Key = oFKeyL2;
 
-			client.sismember("friends:" + ownID + ":requests", uid, this.parallel());
+			friendsKeyDecryptor = decryptors[friendsKey.getRealID()][0];
+
+			client.sismember("friends:" + ownID + ":requests", uid, this);
 		}), h.sF(function createData(hasOtherRequested) {
 			firstRequest = !hasOtherRequested;
 
-			Decryptor.validateFormat(decryptors.ownFriendsLevel2Key);
+			Decryptor.validateFormat(friendsKeyDecryptor);
 
 			m = client.multi();
 
@@ -140,8 +144,11 @@ var friends = {
 				m.srem("friends:" + uid + ":requested", ownID);
 
 
-				Decryptor.validateFormat(decryptors.ownFriendsLevel2Key);
-				Decryptor.validateFormat(decryptors.otherFriendsLevel2Key);
+				friendsLevel2KeyDecryptor = decryptors[friendsLevel2Key.getRealID()][0];
+				otherFriendsLevel2KeyDecryptor = decryptors[otherFriendsLevel2Key.getRealID()][0];
+
+				Decryptor.validateFormat(friendsLevel2KeyDecryptor);
+				Decryptor.validateFormat(otherFriendsLevel2KeyDecryptor);
 			} else {
 				m.sadd("friends:" + ownID + ":requested", uid);
 				m.sadd("friends:" + uid + ":requests", ownID);
@@ -149,16 +156,16 @@ var friends = {
 			}
 		}), h.sF(function createSymKey() {
 			SymKey.createWDecryptors(view, key, this);
-		}), h.sF(function hasOtherRequested(key) {
+		}), h.sF(function keyCreated(key) {
 			m.set("friends:key:" + uid + ":" + ownID, key.getRealID());
 
 			this.parallel.unflatten();
 
-			Decryptor.validateNoThrow(view, decryptors.friendsKey, friendsKey, this.parallel());
+			Decryptor.validateNoThrow(view, friendsKeyDecryptor, friendsKey, this.parallel());
 
 			if (!firstRequest) {
-				Decryptor.validateNoThrow(view, decryptors.ownFriendsLevel2Key, friendsLevel2Key, this.parallel());
-				Decryptor.validateNoThrow(view, decryptors.otherFriendsLevel2Key, otherFriendsLevel2Key, this.parallel());
+				Decryptor.validateNoThrow(view, friendsLevel2KeyDecryptor, friendsLevel2Key, this.parallel());
+				Decryptor.validateNoThrow(view, otherFriendsLevel2KeyDecryptor, otherFriendsLevel2Key, this.parallel());
 			}
 		}), h.sF(function (valid1, valid2, valid3) {
 			var validLevel2 = valid2 && valid3;
@@ -176,12 +183,13 @@ var friends = {
 
 			m.exec(this.parallel());
 
-			friendsKey.addDecryptor(view, decryptors.friendsKey, this.parallel());
+			friendsKey.addDecryptor(view, friendsKeyDecryptor, this.parallel());
 			if (!firstRequest) {
-				friendsLevel2Key.addDecryptor(view, decryptors.ownFriendsLevel2Key, this.parallel());
-				otherFriendsLevel2Key.addDecryptor(view, decryptors.otherFriendsLevel2Key, this.parallel());
+				friendsLevel2Key.addDecryptor(view, friendsLevel2KeyDecryptor, this.parallel());
+				otherFriendsLevel2Key.addDecryptor(view, otherFriendsLevel2KeyDecryptor, this.parallel());
 			}
 		}), h.sF(function addFriendsName() {
+			debugger;
 			addFriendName(view, toAddUser);
 			if (firstRequest) {
 				client.publish("user:" + uid + ":friendRequest", ownID, this);
