@@ -220,6 +220,7 @@ Message.create = function (view, data, cb) {
 	}), h.sF(function (newestHash, newestID) {
 		if (parseInt(meta.previousMessage, 10) !== parseInt(newestID, 10) || meta.previousMessageHash !== newestHash) {
 			this.last.ne(false);
+			return;
 		}
 
 		var toHash = {
@@ -242,7 +243,7 @@ Message.create = function (view, data, cb) {
 
 		toHash.meta.ownHash = meta.ownHash;
 
-		//TODO: check overall signature
+		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 
 		var SymKey = require("./crypto/symKey");

@@ -128,9 +128,12 @@ EccKey.validateNoThrow = function validateF(data, cb) {
 
 /** get all decryptors for a certain key id */
 EccKey.get = function getF(keyRealID, cb) {
-	//TODO check keyRealID is a valid keyRealID!
 	step(function () {
-		client.get("key:" + keyRealID, this);
+		if (h.isRealID(keyRealID)) {
+			client.get("key:" + keyRealID, this);
+		} else {
+			throw InvalidRealID(keyRealID);
+		}
 	}, h.sF(function (keyData) {
 		if (keyData === "ecckey") {
 			this.ne(new EccKey(keyRealID));
