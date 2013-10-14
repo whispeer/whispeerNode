@@ -6,6 +6,10 @@ var h = require("whispeerHelper");
 var extend = require("xtend");
 
 var search = require("./search");
+var KeyApi = require("./crypto/KeyApi");
+
+var EccKey = require("./crypto/eccKey");
+var SymKey = require("./crypto/symKey");
 
 var UPDATESEARCHON = ["profile", "nickname"];
 
@@ -53,9 +57,6 @@ function trueF(data, cb) {
 function falseF(data, cb) {
 	cb(new AccessViolation());
 }
-
-var EccKey = require("./crypto/eccKey");
-var SymKey = require("./crypto/symKey");
 
 function checkKeyExists(keyObj) {
 	return function (data, cb) {
@@ -834,19 +835,18 @@ var User = function (id) {
 				}
 			}
 		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
-			var Key = require("./crypto/Key");
 			this.parallel.unflatten();
 
-			Key.get(cryptKey, this.parallel());
-			Key.get(signKey, this.parallel());
+			KeyApi.get(cryptKey, this.parallel());
+			KeyApi.get(signKey, this.parallel());
 
 			if (friendsKey) {
-				Key.get(friendsKey, this.parallel());
-				Key.get(friendsLevel2Key, this.parallel());
+				KeyApi.get(friendsKey, this.parallel());
+				KeyApi.get(friendsLevel2Key, this.parallel());
 			}
 
 			if (mainKey) {
-				Key.get(mainKey, this.parallel());
+				KeyApi.get(mainKey, this.parallel());
 			}
 		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
 			this.parallel.unflatten();

@@ -8,6 +8,7 @@ var session = require("./topics/tsession");
 var messages = require("./topics/tmessage");
 var friends = require("./topics/tfriends");
 var circles = require("./topics/tcircles");
+var KeyApi = require("./includes/crypto/KeyApi");
 
 var whispeerAPI = {
 	priorized: ["keyData"],
@@ -26,8 +27,7 @@ var whispeerAPI = {
 		get: function getKeyChainF(data, fn, view) {
 			var theKey, result = [];
 			step(function () {
-				var Key = require("./includes/crypto/Key");
-				Key.get(data.realid, this);
+				KeyApi.get(data.realid, this);
 			}, h.sF(function (key) {
 				var MAXDEPTH = 20;
 
@@ -58,8 +58,7 @@ var whispeerAPI = {
 				var key;
 				for (key in data.keys) {
 					if (data.keys.hasOwnProperty(key)) {
-						var Key = require("./includes/crypto/Key");
-						Key.get(key, this.parallel());
+						KeyApi.get(key, this.parallel());
 					}
 				}
 			}, h.sF(function (k) {

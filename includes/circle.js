@@ -5,7 +5,7 @@ var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
 var client = require("./redisClient");
-var Key = require("./crypto/Key");
+var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 
 /*
@@ -34,7 +34,7 @@ var Circle = function (userid, id) {
 			result.userid = userid;
 
 			if (key) {
-				Key.getWData(view, result.key, this, true);
+				KeyApi.getWData(view, result.key, this, true);
 			} else {
 				this.ne(result.key);
 			}
@@ -51,7 +51,7 @@ var Circle = function (userid, id) {
 		}, h.sF(function () {
 			client.hget(domain, "key", this);
 		}), h.sF(function (keyid) {
-			Key.get(keyid, this);
+			KeyApi.get(keyid, this);
 		}), cb);
 	};
 

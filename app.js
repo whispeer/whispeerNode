@@ -28,18 +28,18 @@ require("./includes/errors");
 
 var listener = require("./includes/listener");
 
+var HandlerCallback = require("./includes/handlerCallback");
+var topics = require("./topics.js");
+var step = require("step");
+var h = require("whispeerHelper");
+var View = require("./includes/view");
+var Session = require("./includes/session");
+var extend = require("xtend");
+
 io.sockets.on("connection", function (socket) {
 	console.log("connection received");
-
-	var HandlerCallback = require("./includes/handlerCallback");
-	var topics = require("./topics.js");
-	var step = require("step");
-	var h = require("whispeerHelper");
-
-	var Session = require("./includes/session");
 	var session = new Session();
 
-	var View = require("./includes/view");
 	var myView = new View(socket, session, listener);
 
 	function handlePriorized(count, handler, data, view, cb) {
@@ -98,7 +98,6 @@ io.sockets.on("connection", function (socket) {
 				result[topics[i]] = results[i];
 			}
 
-			var extend = require("xtend");
 			result = extend(result, prioRes);
 
 			this.ne(result);

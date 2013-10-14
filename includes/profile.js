@@ -1,12 +1,15 @@
 "use strict";
 
-var Key = require("./crypto/Key");
+var KeyApi = require("./crypto/KeyApi");
+var SymKey = require("./crypto/symKey");
 
 var step = require("step");
 var client = require("./redisClient");
 var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
+
+var extend = require("xtend");
 
 var Profile = function (userid, profileid) {
 	var theProfile = this;
@@ -25,7 +28,7 @@ var Profile = function (userid, profileid) {
 			if (!err) {
 				profile.profileid = profileid;
 				if (wKeyData) {
-					Key.getWData(view, key, this, true);
+					KeyApi.getWData(view, key, this, true);
 				} else {
 					this.ne(key);
 				}
@@ -55,7 +58,6 @@ var Profile = function (userid, profileid) {
 			}
 		}), h.sF(function (oldData) {
 			if (!overwrite) {
-				var extend = require("xtend");
 				data = extend(oldData, data);
 			}
 
@@ -93,7 +95,7 @@ var Profile = function (userid, profileid) {
 		}, h.sF(function () {
 			client.get(domain + ":key", this);
 		}), h.sF(function (keyRealID) {
-			Key.get(keyRealID, this);
+			KeyApi.get(keyRealID, this);
 		}), cb);
 	};
 
@@ -190,9 +192,8 @@ Profile.create = function createF(view, key, data, cb) {
 		Profile.validate(data);
 
 		if (typeof key !== "object") {
-			Key.get(key, this);
-		} else if (!Key.isKey(key)) {
-			var SymKey = require("./crypto/symKey");
+			KeyApi.get(key, this);
+		} else if (!KeyApi.isKey(key)) {
 			SymKey.createWDecryptors(view, key, this);
 		} else {
 			this.ne(key);

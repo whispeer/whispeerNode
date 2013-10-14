@@ -7,6 +7,8 @@ var h = require("whispeerHelper");
 var validator = require("whispeerValidations");
 var client = require("./redisClient");
 
+var KeyApi = require("./crypto/KeyApi");
+
 //maximum difference: 5 minutes.
 var MAXTIME = 5 * 60 * 1000;
 
@@ -99,19 +101,17 @@ var Topic = function (id) {
 
 	/** get topic key */
 	this.getKey = function getKeyF(view, cb) {
-		var Key = require("./crypto/Key");
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
 			client.hget(domain + ":data", "key", this);
 		}), h.sF(function (realid) {
-			Key.get(realid, this);
+			KeyApi.get(realid, this);
 		}), cb);
 	};
 
 	/** get topic full data */
 	this.getFullData = function getFullDataF(view, cb, key, receivers) {
-		var Key = require("./crypto/Key");
 		var result;
 		step(function () {
 			theTopic.getTData(view, this);
@@ -119,9 +119,9 @@ var Topic = function (id) {
 			result = data;
 			if (key) {
 				this.parallel.unflatten();
-				Key.getWData(view, data.key, this.parallel(), true);
+				KeyApi.getWData(view, data.key, this.parallel(), true);
 				if (data.additionalKey) {
-					Key.getWData(view, data.additionalKey, this.parallel(), true);
+					KeyApi.getWData(view, data.additionalKey, this.parallel(), true);
 				}
 			} else {
 				this.ne(data.key);

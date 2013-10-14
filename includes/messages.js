@@ -6,6 +6,12 @@ var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
 var client = require("./redisClient");
+var KeyApi = require("./crypto/KeyApi");
+
+var chelper = require("./crypto/cHelper");
+var SymKey = require("./crypto/symKey");
+
+var User = require("./user");
 
 /*
 	message: {
@@ -92,7 +98,6 @@ var Message = function (id, topic) {
 		step(function () {
 			theMessage.getSenderID(view, this);
 		}, h.sF(function (senderid) {
-			var User = require("./user");
 			User.get(senderid, this);
 		}), cb);
 	};
@@ -162,7 +167,7 @@ var Message = function (id, topic) {
 
 	/** get the full data of this message */
 	this.getFullData = function getFullDataF(view, cb, key) {
-		var result, Key = require("./crypto/Key");
+		var result;
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
@@ -176,7 +181,7 @@ var Message = function (id, topic) {
 			};
 
 			if (key) {
-				Key.getWData(view, result.content.key, this, true);
+				KeyApi.getWData(view, result.content.key, this, true);
 			} else {
 				this.ne(result.content.key);
 			}
@@ -236,7 +241,6 @@ Message.create = function (view, data, cb) {
 			}
 		};
 
-		var chelper = require("./crypto/cHelper");
 		if (chelper.hash.hashObject(toHash) !== meta.ownHash) {
 			throw new InvalidMessageData("Invalid Hash");
 		}
@@ -245,8 +249,6 @@ Message.create = function (view, data, cb) {
 
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
-
-		var SymKey = require("./crypto/symKey");
 		SymKey.createWDecryptors(view, data.content.key, this);
 	}), h.sF(function (key) {
 		data.content.key = key.getRealID();

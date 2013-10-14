@@ -3,89 +3,68 @@
 var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
+var Key = require("./Key");
 
 var EccKey = function (keyRealID) {
-	var Key = require("./Key");
-
-	var key = new Key(keyRealID);
-	var theKey = this;
-	var domain = "key:" + keyRealID;
-
-	function getAttribute(attr, cb) {
-		step(function () {
-			client.get(domain + attr, this);
-		}, cb);
+	if (!h.isRealID(keyRealID)) {
+		throw new InvalidRealID();
 	}
 
-	this.isSymKey = function () {
-		return false;
-	};
+	this._realid = keyRealID;
+	this._domain = "key:" + keyRealID;
 
-	this.isEccKey = function () {
-		return true;
-	};
+};
 
-	/** getter for keyRealID */
-	this.getRealID = key.getRealID;
+EccKey.prototype = new Key();
 
-	this.getOwner = key.getOwner;
+EccKey.prototype.isSymKey = function () {
+	return false;
+};
 
-	this.getCurve = function getCurveF(cb) {
-		getAttribute(":curve", cb);
-	};
+EccKey.prototype.isEccKey = function () {
+	return true;
+};
 
-	this.getPointX = function getPointXF(cb) {
-		getAttribute(":point:x", cb);
-	};
+EccKey.prototype.getCurve = function getCurveF(cb) {
+	this._getAttribute(":curve", cb);
+};
 
-	this.getPointY = function getPointYF(cb) {
-		getAttribute(":point:y", cb);
-	};
+EccKey.prototype.getPointX = function getPointXF(cb) {
+	this._getAttribute(":point:x", cb);
+};
 
-	this.getPoint = function getPointF(cb) {
-		step(function () {
-			theKey.getPointX(this.parallel());
-			theKey.getPointY(this.parallel());
-		}, h.sF(function (data) {
-			this.ne({
-				x: data[0],
-				y: data[1]
-			});
-		}), cb);
-	};
+EccKey.prototype.getPointY = function getPointYF(cb) {
+	this._getAttribute(":point:y", cb);
+};
 
-	this.getKData = function getKDataF(view, cb, wDecryptors) {
-		var result;
-		step(function () {
-			this.parallel.unflatten();
-			theKey.getPoint(this.parallel());
-			theKey.getCurve(this.parallel());
-			theKey.getBasicData(view, this.parallel(), wDecryptors);
-		}, h.sF(function (point, curve, basic) {
-			result = basic;
-			result.point = point;
-			result.curve = curve;
+EccKey.prototype.getPoint = function getPointF(cb) {
+	var theKey = this;
+	step(function () {
+		theKey.getPointX(this.parallel());
+		theKey.getPointY(this.parallel());
+	}, h.sF(function (data) {
+		this.ne({
+			x: data[0],
+			y: data[1]
+		});
+	}), cb);
+};
 
-			this.last.ne(result);
-		}), cb);
-	};
+EccKey.prototype.getKData = function getKDataF(view, cb, wDecryptors) {
+	var theKey = this;
+	var result;
+	step(function () {
+		this.parallel.unflatten();
+		theKey.getPoint(this.parallel());
+		theKey.getCurve(this.parallel());
+		theKey.getBasicData(view, this.parallel(), wDecryptors);
+	}, h.sF(function (point, curve, basic) {
+		result = basic;
+		result.point = point;
+		result.curve = curve;
 
-	this.getBasicData = key.getBasicData;
-	this.getType = key.getType;
-
-	this.getDecryptors = key.getDecryptors;
-	this.addDecryptor = key.addDecryptor;
-	this.addDecryptors = key.addDecryptors;
-	this.addEncryptor = key.addEncryptor;
-	this.getDecryptorsJSON = key.getDecryptorsJSON;
-	this.addFasterDecryptor = key.addFasterDecryptor;
-
-	this.getAllAccessedParents = key.getAllAccessedParents;
-	this.addAccess = key.addAccess;
-	this.hasAccess = key.hasAccess;
-	this.hasUserAccess = key.hasUserAccess;
-	this.getAccess = key.getAccess;
-	this.acessCount = key.accessCount;
+		this.last.ne(result);
+	}), cb);
 };
 
 function validate(data, cb) {

@@ -51,12 +51,8 @@ var t = {
 				topics[i].getFullData(view, this.parallel(), true, false);
 			}
 
-			this.parallel()();
-		}), h.sF(function (results) {
-			if (!results) {
+			if (topics.length === 0) {
 				this.ne([]);
-			} else {
-				this.ne(results);
 			}
 		}), h.sF(function (results) {
 			this.ne({

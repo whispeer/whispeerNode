@@ -29,8 +29,8 @@ var Decryptor = function (keyRealID, count) {
 			getAttribute(":decryptorid", this);
 		}, h.sF(function (decryptorid) {
 			if (decryptorid) {
-				var Key = require("./Key");
-				Key.get(decryptorid, this);
+				var KeyApi = require("./KeyApi");
+				KeyApi.get(decryptorid, this);
 			} else {
 				this.last.ne();
 			}
@@ -211,7 +211,6 @@ Decryptor.validate = function validateF(view, data, key, cb) {
 		}
 
 		this.parallel.unflatten();
-
 		key.hasAccess(view, this.parallel());
 
 		if (typeof parentKey === "object") {
@@ -225,7 +224,7 @@ Decryptor.validate = function validateF(view, data, key, cb) {
 			//is there already a key like this one?
 			client.get("key:" + keyRealID + ":decryptor:map:" + data.decryptorid, this);
 		} else {
-			throw new AccessViolation("No Access here! " + keyAcc + "-" + parentAcc + "("+ keyRealID + " - " + parentKey.getRealID() + ")");
+			throw new AccessViolation("No Access here! " + keyAcc + "-" + parentAcc + "("+ keyRealID + " - " + (parentKey.getRealID ? parentKey.getRealID() : "") + ")");
 		}
 	}), h.sF(function createD23(val) {
 		if (val !== null) {

@@ -4,40 +4,28 @@ var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 
+var Key = require("./Key");
+
 var SymKey = function (keyRealID) {
-	var Key = require("./Key");
+	if (!h.isRealID(keyRealID)) {
+		throw new InvalidRealID();
+	}
 
-	var key = new Key(keyRealID);
-
-	this.isSymKey = function () {
-		return true;
-	};
-
-	this.isEccKey = function () {
-		return false;
-	};
-
-	this.getKData = key.getBasicData;
-
-	/** getter for keyRealID */
-	this.getRealID = key.getRealID;
-	this.getType = key.getType;
-	this.getOwner = key.getOwner;
-
-	this.getDecryptors = key.getDecryptors;
-	this.getDecryptorsJSON = key.getDecryptorsJSON;
-	this.addDecryptor = key.addDecryptor;
-	this.addDecryptors = key.addDecryptors;
-	this.addEncryptor = key.addEncryptor;
-	this.addFasterDecryptor = key.addFasterDecryptor;
-
-	this.getAllAccessedParents = key.getAllAccessedParents;
-	this.addAccess = key.addAccess;
-	this.hasUserAccess = key.hasUserAccess;
-	this.hasAccess = key.hasAccess;
-	this.getAccess = key.getAccess;
-	this.acessCount = key.accessCount;
+	this._realid = keyRealID;
+	this._domain = "key:" + keyRealID;
 };
+
+SymKey.prototype = new Key();
+
+SymKey.prototype.isSymKey = function () {
+	return true;
+};
+
+SymKey.prototype.isEccKey = function () {
+	return false;
+};
+
+SymKey.prototype.getKData = Key.prototype.getBasicData;
 
 SymKey.validateNoThrow = function validateF(data, cb) {
 	step(function () {
@@ -81,7 +69,7 @@ SymKey.get = function getF(keyRealID, cb) {
 		if (keyData === "symkey") {
 			this.ne(new SymKey(keyRealID));
 		} else {
-			throw new NotASymKey();
+			throw new NotASymKey(keyRealID);
 		}
 	}), cb);
 };

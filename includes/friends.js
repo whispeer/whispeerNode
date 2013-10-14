@@ -4,7 +4,7 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var client = require("./redisClient");
-var Key = require("./crypto/Key");
+var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 var search = require("./search");
 var Decryptor = require("./crypto/Decryptor");
@@ -94,9 +94,9 @@ var friends = {
 		}), h.sF(function (friendsKey, friendsLevel2Key, otherFriendsLevel2Key) {
 			this.parallel.unflatten();
 
-			Key.get(friendsKey, this.parallel());
-			Key.get(friendsLevel2Key, this.parallel());
-			Key.get(otherFriendsLevel2Key, this.parallel());
+			KeyApi.get(friendsKey, this.parallel());
+			KeyApi.get(friendsLevel2Key, this.parallel());
+			KeyApi.get(otherFriendsLevel2Key, this.parallel());
 		}), cb);
 	},
 	add: function (view, uid, signedRequest, key, decryptors, cb) {
@@ -149,6 +149,8 @@ var friends = {
 
 				Decryptor.validateFormat(friendsLevel2KeyDecryptor);
 				Decryptor.validateFormat(otherFriendsLevel2KeyDecryptor);
+
+				this.ne();
 			} else {
 				m.sadd("friends:" + ownID + ":requested", uid);
 				m.sadd("friends:" + uid + ":requests", ownID);
@@ -189,7 +191,6 @@ var friends = {
 				otherFriendsLevel2Key.addDecryptor(view, otherFriendsLevel2KeyDecryptor, this.parallel());
 			}
 		}), h.sF(function addFriendsName() {
-			debugger;
 			addFriendName(view, toAddUser);
 			if (firstRequest) {
 				client.publish("user:" + uid + ":friendRequest", ownID, this);
