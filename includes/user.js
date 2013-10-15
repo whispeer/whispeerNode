@@ -881,6 +881,15 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.getMutualFriends = function (view, cb) {
+		var friends = require("./friends");
+		if (theUser.isOwnUser(view)) {
+			cb(null, []);
+		} else {
+			friends.myMutual(view, id, cb);
+		}
+	};
+
 	this.getUData = function (view, cb) {
 		var result;
 		step(function () {
@@ -892,11 +901,12 @@ var User = function (id) {
 			theUser.getPublicProfile(view, this.parallel());
 			theUser.getPrivateProfiles(view, this.parallel(), true);
 			theUser.getKeys(view, this.parallel());
+			theUser.getMutualFriends(view, this.parallel());
 
 			if (theUser.isOwnUser(view)) {
 				theUser.getEMail(view, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, keys, mail) {
+		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, mail) {
 			result = {
 				id: id,
 				nickname: nick,
@@ -911,6 +921,8 @@ var User = function (id) {
 			}
 
 			result.keys = keys;
+
+			result.mutualFriends = mutualFriends;
 
 			this.last.ne(result);
 		}), cb);

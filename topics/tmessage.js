@@ -42,6 +42,13 @@ var Message = require("../includes/messages");
 */
 
 var t = {
+	getTopic: function getTopicF(data, fn, view) {
+		step(function () {
+			Topic.get(data.topicid, this);
+		}, h.sF(function (topic) {
+			topic.getFullData(view, this.parallel(), true, false);
+		}), fn);
+	},
 	getTopics: function getTopicsF(data, fn, view) {
 		step(function () {
 			Topic.own(view, data.afterTopic, 20, this);
