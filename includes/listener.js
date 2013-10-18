@@ -14,7 +14,7 @@ var listener = {
 			theUser.getUData(view, this);
 		}), function (e, data) {
 			if (!e) {
-				view.getSocket().emit("friendAccept", {
+				view.getSocket().emit("friendRequest", {
 					uid: uid,
 					user: data
 				});
