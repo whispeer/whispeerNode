@@ -145,14 +145,18 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 	step(function () {
 		getAllProfiles(view, userid, this);
 	}, h.sF(function (p) {
+		profiles = p;
 		if (view.getUserID() === userid) {
 			this.last.ne(p);
 		} else {
-			profiles = p;
 			var i;
 			for (i = 0; i < profiles.length; i += 1) {
 				profiles[i].hasAccess(view, this.parallel());
 			}
+		}
+
+		if (profiles.length === 0) {
+			this.ne([]);
 		}
 	}), h.sF(function (acc) {
 		var i, result = [];
