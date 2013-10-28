@@ -303,7 +303,7 @@ var User = function (id) {
 			theUser.getName(view, this);
 		}, h.sF(function (name) {
 			search.user.index(name, id);
-			//search.friendsSearch(view).updateOwn(friends, name);
+			//TO-DO: search.friendsSearch(view).updateOwn(friends, name);
 		}), function (e) {
 			console.error(e);
 		});
@@ -702,7 +702,6 @@ var User = function (id) {
 			setAttribute(view, {profile: profile}, this);
 		}, cb);
 	}
-
 	this.setPublicProfile = setPublicProfileF;
 
 	function createPrivateProfileF(view, key, data, cb) {
@@ -779,6 +778,7 @@ var User = function (id) {
 	this.setSignKey = setSignKeyF;
 	this.setFriendsKey = setFriendsKeyF;
 	this.setFriendsLevel2Key = setFriendsLevel2KeyF;
+	this.getFriendShipKey = getFriendShipKeyF;
 
 	function getFriendsKeyF(view, cb) {
 		step(function dogetFriendsKey() {
@@ -790,6 +790,14 @@ var User = function (id) {
 		step(function dogetFriendsLevel2Key() {
 			getAttribute(view, "friendsLevel2Key", this);
 		}, cb);
+	}
+
+	function getFriendShipKeyF(view, cb) {
+		step(function getFSKF() {
+			view.logedinError(this);
+		}, h.sF(function () {
+			client.get("friends:" + view.getUserID() + ":" + id, this);
+		}), cb);
 	}
 
 	function getMainKeyF(view, cb) {
@@ -832,6 +840,9 @@ var User = function (id) {
 
 				if (theUser.isOwnUser(view)) {
 					theUser.getMainKey(view, this.parallel());
+				} else {
+					//TO-DO think about a better way how to do this correctly
+					theUser.getFriendShipKey(view, this.parallel());
 				}
 			}
 		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
@@ -874,10 +885,26 @@ var User = function (id) {
 			}
 
 			if (mainKey) {
-				res.main = mainKey;
+				if (theUser.isOwnUser(view)) {
+					res.main = mainKey;
+				} else {
+					res.friendShip = mainKey;
+				}
 			}
 
 			this.ne(res);
+		}), cb);
+	};
+
+	this.searchFriends = function (view, text, cb) {
+		step(function () {
+			//TO-DO make other users friends also searchable. but this should be configurable by the user.
+			view.ownUserError(theUser, this);
+		}, h.sF(function () {
+			var fSearch = new search.friendsSearch(id);
+			fSearch.findFriend(text, this);
+		}), h.sF(function (ids) {
+			this.ne(ids);
 		}), cb);
 	};
 
@@ -970,8 +997,15 @@ var User = function (id) {
 
 User.search = function (text, cb) {
 	step(function () {
-		search.user.type("and").query(text, this);
-	}, h.sF(function (ids) {
+		search.user.type("and").query(text, this.parallel());
+		User.getUser(text, this.parallel(), true);
+	}, h.sF(function (ids, user) {
+		if (user instanceof User) {
+			//TODO:
+			//ids.prepend(user.getID());
+			//h.uniq(ids);
+		}
+
 		this.ne(ids);
 	}), cb);
 };
@@ -985,7 +1019,11 @@ User.getUser = function (identifier, callback, returnError) {
 		} else if (h.isID(identifier)) {
 			client.get("user:id:" + identifier, this);
 		} else {
-			throw new UserNotExisting(identifier);
+			if (returnError) {
+				this.last.ne(new UserNotExisting(identifier));
+			} else {
+				throw new UserNotExisting(identifier);
+			}
 		}
 	}, h.sF(function (id) {
 		if (id) {

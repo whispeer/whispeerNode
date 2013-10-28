@@ -24,6 +24,17 @@ var u = {
 			}
 		}, UserNotExisting), fn);
 	},
+	searchFriends: function searchFriends(data, fn, view) {
+		var remaining = 0;
+		step(function () {
+			view.getOwnUser(this);
+		}, h.sF(function (ownUser) {
+			ownUser.searchFriends(view, data.text, this);
+		}), h.sF(function (ids) {
+			
+		}));
+		//TODO
+	},
 	search: function searchF(data, fn, view) {
 		var remaining = 0;
 		step(function () {

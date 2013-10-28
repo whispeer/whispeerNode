@@ -12,30 +12,26 @@ var userSearch = makeSearch("user");
 
 var search = {
 	user: userSearch,
-	friendsSearch: function (view) {
-		function ownID() {
-			return view.getUserID();
-		}
-
+	friendsSearch: function (userid) {
 		function searchKey(uid) {
 			return "friends:" + uid + ":search";
 		}
 
-		var mySearch = makeSearch(searchKey(ownID()));
+		var mySearch = makeSearch(searchKey(userid));
 
 		this.addUser = function (id, name) {
 			mySearch.index(name, id);
 		};
 
 		this.updateOwn = function (friends, name) {
-			var i, ownID = ownID();
+			var i;
 			for (i = 0; i < friends.length; i += 1) {
 				makeSearch(searchKey(friends[i]))
-					.index(name, ownID);
+					.index(name, userid);
 			}
 		};
 
-		this.search = function (query, cb) {
+		this.findFriend = function (query, cb) {
 			mySearch.type("and").query(query, cb);
 		};
 	}
