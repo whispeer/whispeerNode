@@ -37,8 +37,8 @@ function addFriendName(view, user) {
 		step(function () {
 			user.getName(view, this);
 		}, h.sF(function (name) {
-			var search = new search.friendsSearch(view.getUserID());
-			search.addUser(user.getID(), name);
+			var searchF = new search.friendsSearch(view.getUserID());
+			searchF.addUser(user.getID(), name);
 		}), function (e) {
 			if (e) {
 				console.error(e);
