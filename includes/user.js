@@ -997,6 +997,7 @@ var User = function (id) {
 
 User.search = function (text, cb) {
 	step(function () {
+		this.parallel.unflatten();
 		search.user.type("and").query(text, this.parallel());
 		User.getUser(text, this.parallel(), true);
 	}, h.sF(function (ids, user) {

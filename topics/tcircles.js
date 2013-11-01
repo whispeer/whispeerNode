@@ -36,8 +36,10 @@ var f = {
 	},
 	addUser: function addUserF(data, fn, view) {
 		step(function () {
-			Circle.addUser(view, data.add, this);
-		}, h.sF(function (added) {
+			Circle.get(view, data.add.circleid, this);
+		}, h.sF(function (circle) {
+			circle.addUser(view, data.add.userid, data.add.decryptor, this);
+		}), h.sF(function (added) {
 			this.ne({
 				added: !!added
 			});

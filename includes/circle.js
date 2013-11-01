@@ -55,22 +55,25 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
-	this.addUser = function addUserF(view, data, cb) {
+	this.addUser = function addUserF(view, toAddID, decryptor, cb) {
 		//data needs to have:
 		//userid
 		//and a new decryptor
-		var userid;
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
-			theCircle.getKey(view, this.parallel());
-			User.getUser(data.userid, this.parallel());
-		}), h.sF(function (key, user) {
-			userid = user.getID();
-			key.addDecryptor(view, data.decryptor, this);
+			User.getUser(toAddID, this.parallel());
+		}), h.sF(function (user) {
+			toAddID = user.getID();
+			client.sismember(domain + ":user", toAddID, this);
 		}), h.sF(function () {
-			client.sadd(domain + ":user", data.userid, this);
+			theCircle.getKey(view, this.parallel());
+		}), h.sF(function (key) {
+			key.addDecryptor(view, decryptor, this);
+		}), h.sF(function () {
+			client.sadd(domain + ":user", toAddID, this);
+			//todo view.notifyOwnClients("circle", {circleid: id, addUser: {uid: toAddID}})
 		}), cb);
 	};
 
