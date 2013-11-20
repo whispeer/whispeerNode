@@ -68,7 +68,7 @@ var Circle = function (userid, id) {
 			toAddID = user.getID();
 			client.sismember(domain + ":user", toAddID, this);
 		}), h.sF(function () {
-			theCircle.getKey(view, this.parallel());
+			theCircle.getKey(view, this);
 		}), h.sF(function (key) {
 			key.addDecryptor(view, decryptor, this);
 		}), h.sF(function () {

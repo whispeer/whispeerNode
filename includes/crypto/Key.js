@@ -180,6 +180,10 @@ Key.prototype.getDecryptorsJSON = function getDecryptorsJSONF(view, cb) {
 Key.prototype.addDecryptor = function addDecryptorF(view, data, cb) {
 	var theKey = this;
 	step(function () {
+		if (data[theKey.getRealID()]) {
+			data = data[theKey.getRealID()];
+		}
+
 		Decryptor.create(view, theKey, data, this);
 	}, cb);
 };
