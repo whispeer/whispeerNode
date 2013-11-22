@@ -796,7 +796,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			view.logedinError(this);
 		}, h.sF(function () {
-			client.get("friends:key:" + view.getUserID() + ":" + id, this);
+			client.get("friends:key:" + id + ":" + view.getUserID(), this);
 		}), cb);
 	}
 
