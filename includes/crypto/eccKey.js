@@ -154,6 +154,7 @@ EccKey.create = function (view, data, cb) {
 		client.set(domain + ":point:y", data.point.y, this.parallel());
 		client.set(domain + ":type", data.type, this.parallel());
 		client.set(domain + ":owner", view.getUserID(), this.parallel());
+		client.set(domain + ":comment", data.comment || "", this.parallel());
 	}), h.sF(function () {
 		theKey = new EccKey(keyRealID);
 		if (data.decryptors) {
