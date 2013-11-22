@@ -125,7 +125,7 @@ Circle.getAll = function (view, cb) {
 };
 
 Circle.create = function (view, data, cb) {
-	var SymKey = require("./crypto/symKey");
+	var SymKey = require("./crypto/symKey"), userids;
 
 	var result = {}, theCircleID, userid = view.getUserID();
 	step(function () {
@@ -135,8 +135,23 @@ Circle.create = function (view, data, cb) {
 			throw new InvalidCircleData();
 		}
 
+		if (data.user && data.user.length !== data.key.decryptors.length - 1) {
+			throw new InvalidCircleData("not enough decryptors");
+		}
+
+		if (data.user) {
+			var i;
+			for (i = 0; i < data.user.length; i += 1) {
+				User.getUser(data.user[i], this.parallel());
+			}
+		} else {
+			this.ne([]);
+		}
+	}, h.sF(function (users) {
+		userids = users.map(function (e) {return e.getID();});
+
 		SymKey.createWDecryptors(view, data.key, this);
-	}, h.sF(function (key) {
+	}), h.sF(function (key) {
 		result.key = key.getRealID();
 		result.name = data.name;
 
@@ -150,6 +165,7 @@ Circle.create = function (view, data, cb) {
 
 		multi.sadd(domain + ":circles", circleid);
 		multi.hmset(domain + ":circle:" + circleid, result);
+		multi.sadd(domain + ":circle:" + circleid + ":user", userids);
 
 		multi.exec(this);
 	}), h.sF(function () {
