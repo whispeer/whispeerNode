@@ -55,7 +55,7 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
-	this.addUser = function addUserF(view, toAddID, decryptor, cb) {
+	this.addUsers = function addUsersF(view, toAddIDs, decryptors, cb) {
 		//data needs to have:
 		//userid
 		//and a new decryptor
@@ -63,16 +63,23 @@ var Circle = function (userid, id) {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
-			User.getUser(toAddID, this.parallel());
-		}), h.sF(function (user) {
-			toAddID = user.getID();
-			client.sismember(domain + ":user", toAddID, this);
+
+			var i;
+			for (i = 0; i < toAddIDs.length; i += 1) {
+				User.getUser(toAddIDs[i], this.parallel());
+			}
+		}), h.sF(function (users) {
+			var currentStep = this;
+			toAddIDs = users.map(function (e) {
+				client.sismember(domain + ":user", e.getID(), currentStep.parallel());
+				return e.getID();
+			});
 		}), h.sF(function () {
 			theCircle.getKey(view, this);
 		}), h.sF(function (key) {
-			key.addDecryptor(view, decryptor, this);
+			key.addDecryptors(view, decryptors, this);
 		}), h.sF(function () {
-			client.sadd(domain + ":user", toAddID, this);
+			client.sadd(domain + ":user", toAddIDs, this);
 			//todo view.notifyOwnClients("circle", {circleid: id, addUser: {uid: toAddID}})
 		}), cb);
 	};

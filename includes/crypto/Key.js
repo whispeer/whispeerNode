@@ -195,6 +195,10 @@ Key.prototype.addDecryptor = function addDecryptorF(view, data, cb) {
 Key.prototype.addDecryptors = function addDecryptorF(view, data, cb) {
 	var theKey = this;
 	step(function () {
+		if (data[theKey.getRealID()]) {
+			data = data[theKey.getRealID()];
+		}
+
 		var i;
 		for (i = 0; i < data.length; i += 1) {
 			Decryptor.create(view, theKey, data[i], this.parallel());

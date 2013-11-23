@@ -34,11 +34,11 @@ var f = {
 			});
 		}), fn);
 	},
-	addUser: function addUserF(data, fn, view) {
+	addUsers: function addUserF(data, fn, view) {
 		step(function () {
 			Circle.get(view, data.add.circleid, this);
 		}, h.sF(function (circle) {
-			circle.addUser(view, data.add.userid, data.add.decryptor, this);
+			circle.addUsers(view, data.add.userids, data.add.decryptors, this);
 		}), h.sF(function (added) {
 			this.ne({
 				added: !!added
