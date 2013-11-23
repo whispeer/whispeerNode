@@ -146,7 +146,7 @@ Circle.create = function (view, data, cb) {
 			throw new InvalidCircleData("not enough decryptors");
 		}
 
-		if (data.user) {
+		if (data.user && data.user.length > 0) {
 			var i;
 			for (i = 0; i < data.user.length; i += 1) {
 				User.getUser(data.user[i], this.parallel());
