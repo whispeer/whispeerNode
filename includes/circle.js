@@ -8,6 +8,8 @@ var client = require("./redisClient");
 var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 
+var SymKey = require("./crypto/symKey"), userids;
+
 /*
 	circle: {
 		key,
@@ -100,8 +102,61 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
-	this.removeUser = function removeUserF() {
-		//TO-DO
+	this.remove = function removeCircleF(view, cb) {
+		step(function () {
+			view.ownUserError(userid, this);
+		}, h.sF(function () {
+			client.multi()
+				.srem("user:" + userid + ":circles", id)
+				.sadd("user:" + userid + ":deletedCircles", id)
+				.exec(this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
+	};
+
+	this.removeUser = function removeUserF(view, key, oldKeyDecryptor, toKeep, toRemove, cb) {
+		var userids, realID;
+		step(function () {
+			view.ownUserError(userid, this);
+		}, h.sF(function () {
+			//addBasicData(key, toKeep, this);
+			//addDecryptor(key, oldKeyDecryptor);
+
+			var i;
+			for (i = 0; i < toKeep.length; i += 1) {
+				User.getUser(toKeep[i], this.parallel());
+			}
+		}), h.sF(function (users) {
+			userids = users.map(function (e) {return e.getID();});
+
+			theCircle.getUser(view, this);
+		}), h.sF(function (circleUsers) {
+			var i;
+			var localUsers = toKeep.concat(toRemove);
+			if (circleUsers.length === localUsers.length) {
+				for (i = 0; i < localUsers.length; i += 1) {
+					if (circleUsers.indexOf(localUsers[i]) === -1) {
+						this.last.ne(false);
+						return;
+					}
+				}
+
+				SymKey.createWDecryptors(view, key, this);
+			} else {
+				this.last.ne(false);
+			}
+		}), h.sF(function (key) {
+			realID = key.getRealID();
+			theCircle.getKey().addDecryptor(oldKeyDecryptor, this);
+		}), h.sF(function () {
+			client.multi()
+				.srem(domain + ":user", toRemove)
+				.hset(domain, "key", realID)
+				.exec(this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
 	};
 };
 
@@ -131,8 +186,6 @@ Circle.getAll = function (view, cb) {
 };
 
 Circle.create = function (view, data, cb) {
-	var SymKey = require("./crypto/symKey"), userids;
-
 	var result = {}, theCircleID, userid = view.getUserID();
 	step(function () {
 		var err = validator.validate("circle", data);

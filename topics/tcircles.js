@@ -23,6 +23,25 @@ var f = {
 			});
 		}), fn);
 	},
+	removeUser: function removeUserF(data, fn, view) {
+		step(function () {
+			Circle.get(view, data.remove.circleid, this);
+		}, h.sF(function (circle) {
+			circle.removeUser(view, circle.key, circle.oldKeyDecryptor, circle.user, circle.remove, this);
+		}), h.sF(function (success) {
+			this.ne({
+				removed: success
+			});
+		}), fn);
+
+		/**
+						circle: {
+							key: keyData,
+							remove: uids,
+							user: userIDs,
+						}
+		*/
+	},
 	get: function get(data, fn, view) {
 		step(function () {
 			Circle.get(view, data.circleid, this);

@@ -6,6 +6,7 @@ var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 var Decryptor = require("./decryptor");
+var util = require("util");
 
 var Key = function () {};
 
@@ -182,6 +183,14 @@ Key.prototype.addDecryptor = function addDecryptorF(view, data, cb) {
 	step(function () {
 		if (data[theKey.getRealID()]) {
 			data = data[theKey.getRealID()];
+		}
+
+		if (util.isArray(data)) {
+			if (data.length === 1) {
+				data = data[0];
+			} else {
+				throw new InvalidDecryptor("multiple to add");
+			}
 		}
 
 		Decryptor.create(view, theKey, data, this);
