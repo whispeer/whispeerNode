@@ -8,7 +8,7 @@ var client = require("./redisClient");
 var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 
-var SymKey = require("./crypto/symKey"), userids;
+var SymKey = require("./crypto/symKey");
 
 /*
 	circle: {
@@ -186,7 +186,7 @@ Circle.getAll = function (view, cb) {
 };
 
 Circle.create = function (view, data, cb) {
-	var result = {}, theCircleID, userid = view.getUserID();
+	var result = {}, theCircleID, userid = view.getUserID(), userids;
 	step(function () {
 		var err = validator.validate("circle", data);
 
