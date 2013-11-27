@@ -109,7 +109,6 @@ Circle.get = function (view, circleid, cb) {
 	step(function () {
 		client.exists("user:" + view.getUserID() + ":circle:" + circleid, this);
 	}, h.sF(function (exists) {
-		console.log("test");
 		if (exists === 1) {
 			this.ne(new Circle(view.getUserID(), circleid));
 		} else {
