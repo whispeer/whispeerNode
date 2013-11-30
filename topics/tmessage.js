@@ -46,7 +46,11 @@ var t = {
 		step(function () {
 			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
-			topic.getFullData(view, this.parallel(), true, false);
+			topic.getFullData(view, this, true, false);
+		}), h.sF(function (topicData) {
+			this.ne({
+				topic: topicData
+			});
 		}), fn);
 	},
 	getTopics: function getTopicsF(data, fn, view) {
@@ -64,6 +68,15 @@ var t = {
 		}), h.sF(function (results) {
 			this.ne({
 				topics: results
+			});
+		}), fn);
+	},
+	getUserTopic: function (data, fn, view) {
+		step(function () {
+			Topic.getUserTopicID(view, data.userid, this);
+		}, h.sF(function (topicid) {
+			this.ne({
+				topicid: topicid
 			});
 		}), fn);
 	},

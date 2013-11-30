@@ -407,6 +407,18 @@ Topic.get = function (topicid, cb) {
 	}), cb);
 };
 
+Topic.getUserTopicID = function (view, userid, cb) {
+	step(function () {
+		client.get("topic:user:" + view.getUserID() + ":single:" + userid, this);
+	}, h.sF(function (topicid) {
+		if (topicid) {
+			this.ne(topicid);
+		} else {
+			this.ne(false);
+		}
+	}), cb);
+};
+
 Topic.create = function (view, data, cb) {
 	var SymKey = require("./crypto/symKey");
 	var User = require("./user.js");
@@ -482,16 +494,25 @@ Topic.create = function (view, data, cb) {
 		theTopicID = topicid;
 		result.topicid = topicid;
 
+		var multi = client.multi();
+
 		var i;
 		for (i = 0; i < receiver.length; i += 1) {
-			client.zadd("topic:user:" + receiver[i].id + ":topics", new Date().getTime(), topicid, this.parallel());
+			multi.zadd("topic:user:" + receiver[i].id + ":topics", new Date().getTime(), topicid);
 			if (receiver[i].key) {
-				client.hset("topic:" + topicid + ":receiverKeys", receiver[i].id, receiver[i].key, this.parallel());
+				multi.hset("topic:" + topicid + ":receiverKeys", receiver[i].id, receiver[i].key);
 			}
 		}
 
-		client.hmset("topic:" + topicid + ":data", result, this.parallel());
-		client.sadd("topic:" + topicid + ":receiver", receiver.map(function (e) {return e.id;}), this.parallel());
+		if (receiver.length === 2) {
+			multi.set("topic:user:" + receiver[0].id + ":single:" + receiver[1].id, topicid);
+			multi.set("topic:user:" + receiver[1].id + ":single:" + receiver[0].id, topicid);
+		}
+
+		multi.hmset("topic:" + topicid + ":data", result);
+		multi.sadd("topic:" + topicid + ":receiver", receiver.map(function (e) {return e.id;}));
+
+		multi.exec(this);
 	}), h.sF(function () {
 		this.ne(new Topic(theTopicID));
 	}), cb);
