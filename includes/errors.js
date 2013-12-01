@@ -64,3 +64,9 @@ global.TopicNotExisting = addError("topic not existing");
 global.MessageNotExisting = addError("message not existing");
 
 /** end message part */
+
+/** post part */
+
+global.InvalidPost = addError("invalid post");
+
+/** end post part */
