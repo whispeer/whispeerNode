@@ -55,7 +55,7 @@ var t = {
 	},
 	getTopics: function getTopicsF(data, fn, view) {
 		step(function () {
-			Topic.own(view, data.afterTopic, 20, this);
+			Topic.own(view, data.afterTopic, 10, this);
 		}, h.sF(function (topics) {
 			var i;
 			for (i = 0; i < topics.length; i += 1) {
