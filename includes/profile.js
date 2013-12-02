@@ -15,18 +15,20 @@ var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
 	this.getPData = function getPDataF(view, cb, wKeyData) {
-		var profile;
+		var result = {};
 		step(function () {
 			this.parallel.unflatten();
 			client.get(domain + ":data", this.parallel());
 			client.get(domain + ":key", this.parallel());
-		}, h.sF(function (profileData, key) {
-			profile = JSON.parse(profileData);
+			client.get(domain + ":signature", this.parallel());
+		}, h.sF(function (profileData, key, signature) {
+			result.profile = JSON.parse(profileData);
 
-			var err = validator.validateEncrypted("profile", profile);
+			var err = validator.validateEncrypted("profile", result.profile);
 
 			if (!err) {
-				profile.profileid = profileid;
+				result.profileid = profileid;
+				result.signature = signature;
 				if (wKeyData) {
 					KeyApi.getWData(view, key, this, true);
 				} else {
@@ -36,8 +38,8 @@ var Profile = function (userid, profileid) {
 				this.last.ne(false);
 			}
 		}), h.sF(function (key) {
-			profile.key = key;
-			this.last.ne(profile);
+			result.profile.key = key;
+			this.last.ne(result);
 		}), cb);
 	};
 
@@ -175,17 +177,9 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 };
 
 Profile.validate = function validateF(data) {
-	var err = validator.validateEncrypted("profile", data);
+	var err = validator.validateEncrypted("profile", data.profile);
 
-	if (err) {
-		return false;
-	}
-
-	if (!data.iv || !data.signature) {
-		return false;
-	}
-
-	return true;
+	return !err && data.signature;
 };
 
 Profile.create = function createF(view, key, data, cb) {
@@ -193,7 +187,10 @@ Profile.create = function createF(view, key, data, cb) {
 	step(function createP1() {
 		view.logedinError(this);
 	}, h.sF(function createP2() {
-		Profile.validate(data);
+		if (!Profile.validate(data)) {
+			this.last.ne(false);
+			return;
+		}
 
 		if (typeof key !== "object") {
 			KeyApi.get(key, this);
@@ -213,9 +210,10 @@ Profile.create = function createF(view, key, data, cb) {
 		profileID = id;
 		client.sadd("user:" + userID + ":profiles", profileID, this.parallel());
 		client.set("user:" + userID + ":profile:" + profileID + ":key", key.realid, this.parallel());
+		client.set("user:" + userID + ":profile:" + profileID + ":signature", data.signature, this.parallel());
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
-		profile.setData(view, data, this, true);
+		profile.setData(view, data.profile, this, true);
 	}), h.sF(function () {
 		this.ne(profile);
 	}), cb);
