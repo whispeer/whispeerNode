@@ -21,7 +21,8 @@ var Profile = function (userid, profileid) {
 			client.get(domain + ":data", this.parallel());
 			client.get(domain + ":key", this.parallel());
 			client.get(domain + ":signature", this.parallel());
-		}, h.sF(function (profileData, key, signature) {
+			client.get(domain + ":hashObject", this.parallel());
+		}, h.sF(function (profileData, key, signature, hashObject) {
 			result.profile = JSON.parse(profileData);
 
 			var err = validator.validateEncrypted("profile", result.profile);
@@ -29,6 +30,7 @@ var Profile = function (userid, profileid) {
 			if (!err) {
 				result.profileid = profileid;
 				result.signature = signature;
+				result.hashObject = JSON.parse(hashObject);
 				if (wKeyData) {
 					KeyApi.getWData(view, key, this, true);
 				} else {
@@ -179,7 +181,7 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 Profile.validate = function validateF(data) {
 	var err = validator.validateEncrypted("profile", data.profile);
 
-	return !err && data.signature;
+	return !err && data.signature && data.hashObject;
 };
 
 Profile.create = function createF(view, key, data, cb) {
@@ -211,6 +213,7 @@ Profile.create = function createF(view, key, data, cb) {
 		client.sadd("user:" + userID + ":profiles", profileID, this.parallel());
 		client.set("user:" + userID + ":profile:" + profileID + ":key", key.realid, this.parallel());
 		client.set("user:" + userID + ":profile:" + profileID + ":signature", data.signature, this.parallel());
+		client.set("user:" + userID + ":profile:" + profileID + ":hashObject", JSON.stringify(data.hashObject), this.parallel());
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
 		profile.setData(view, data.profile, this, true);
