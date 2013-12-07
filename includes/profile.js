@@ -51,44 +51,23 @@ var Profile = function (userid, profileid) {
 		});
 	};
 
-	this.setData = function setDataF(view, data, cb, overwrite) {
+	this.setData = function setDataF(view, data, cb) {
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
-			if (!overwrite) {
-				theProfile.getPData(view, this);
-			} else {
-				this.ne({});
-			}
-		}), h.sF(function (oldData) {
-			if (!overwrite) {
-				data = extend(oldData, data);
-			}
+			var err = validator.validateEncrypted("profile", data.profile);
 
-			var err = validator.validateEncrypted("profile", data);
-
-			if (!err) {
-				client.set(domain + ":data", JSON.stringify(data), this.parallel());
-				client.publish(domain, JSON.stringify(data));
-			} else {
+			if (!data.signature || !data.hashObject) {
 				throw new InvalidProfile();
 			}
-		}), cb);
-	};
 
-	this.removeAttribute = function removeAttributeF(view, attr, cb) {
-		step(function () {
-			theProfile.getPData(view, this);
-		}, h.sF(function (oldData) {
-			var attribute = attr.pop();
-			var branch = h.deepGet(oldData, attr);
-
-			if (branch && branch[attribute]) {
-				delete branch[attribute];
-
-				theProfile.setData(view, oldData, this, true);
+			if (!err) {
+				client.set(domain + ":signature", data.signature, this.parallel());
+				client.set(domain + ":hashObject", JSON.stringify(data.hashObject), this.parallel());
+				client.set(domain + ":data", JSON.stringify(data.profile), this.parallel());
+				client.publish(domain, JSON.stringify(data.profile));
 			} else {
-				this.last.ne(true);
+				throw new InvalidProfile();
 			}
 		}), cb);
 	};
@@ -137,6 +116,18 @@ function getAllProfiles(view, userid, cb) {
 		this.ne(result);
 	}), cb);
 }
+
+Profile.get = function get(view, profileid, cb) {
+	step(function () {
+		client.sismember("user:" + view.getUserID() + ":profiles", profileid, this);
+	}, h.sF(function (exists) {
+		if (exists) {
+			this.ne(new Profile(view.getUserID(), profileid));
+		} else {
+			this.ne(false);
+		}
+	}), cb);
+};
 
 Profile.getOwn = function getOwnF(view, cb) {
 	step(function () {
@@ -212,11 +203,9 @@ Profile.create = function createF(view, key, data, cb) {
 		profileID = id;
 		client.sadd("user:" + userID + ":profiles", profileID, this.parallel());
 		client.set("user:" + userID + ":profile:" + profileID + ":key", key.realid, this.parallel());
-		client.set("user:" + userID + ":profile:" + profileID + ":signature", data.signature, this.parallel());
-		client.set("user:" + userID + ":profile:" + profileID + ":hashObject", JSON.stringify(data.hashObject), this.parallel());
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
-		profile.setData(view, data.profile, this, true);
+		profile.setData(view, data, this, true);
 	}), h.sF(function () {
 		this.ne(profile);
 	}), cb);

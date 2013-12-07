@@ -6,6 +6,7 @@ var h = require("whispeerHelper");
 var Topic = require("../includes/topic.js");
 
 var User = require("../includes/user");
+var Profile = require("../includes/profile");
 
 function makeSearchUserData(view, cb, ids, known) {
 	var remaining;
@@ -112,6 +113,54 @@ var u = {
 		}, UserNotExisting), h.sF(function (users) {
 			this.ne({
 				users: users
+			});
+		}), fn);
+	},
+	profileChange: function changeProfilesF(data, fn, view) {
+		var myUser;
+		step(function () {
+			view.getOwnUser(this);
+		}, h.sF(function (user) {
+			myUser = user;
+			if (data.priv) {
+				var i;
+				for (i = 0; i < data.priv.length; i += 1) {
+					Profile.get(view, data.priv[i].id, this.parallel());
+				}
+				//myUser.createPrivateProfile(view, data.keys.profile, data.profile.priv, this.parallel());
+			}
+		}), h.sF(function (privateProfiles) {
+			if (data.pub) {
+				myUser.setPublicProfile(view, data.pub, this.parallel());
+			} else {
+				this.parallel()(null, true);
+			}
+
+			if (privateProfiles.length !== data.priv.length) {
+				throw "bug!";
+			}
+
+			var i, cur;
+			for (i = 0; i < privateProfiles.length; i += 1) {
+				cur = data.priv[i];
+				privateProfiles[i].setData(view, cur, this.parallel());
+			}
+		}), h.sF(function (result) {
+			var i, allok = result[0], errors = {
+				pub: result[0],
+				priv: []
+			};
+
+			for (i = 1; i < result.length; i += 1) {
+				if (!result[i]) {
+					allok = false;
+					errors.priv.push(data.priv[i].id);
+				}
+			}
+
+			this.ne({
+				allok: allok,
+				errors: errors
 			});
 		}), fn);
 	},
