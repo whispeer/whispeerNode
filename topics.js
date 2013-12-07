@@ -29,6 +29,9 @@ var whispeerAPI = {
 			step(function () {
 				KeyApi.get(data.realid, this);
 			}, h.sF(function (key) {
+				if (!key) {
+					throw "could not load key:" + data.realid;
+				}
 				var MAXDEPTH = 20;
 
 				theKey = key;
