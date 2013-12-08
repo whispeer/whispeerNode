@@ -9,6 +9,7 @@ var messages = require("./topics/tmessage");
 var friends = require("./topics/tfriends");
 var circles = require("./topics/tcircles");
 var KeyApi = require("./includes/crypto/KeyApi");
+var settings = require("./includes/settings");
 
 var whispeerAPI = {
 	priorized: ["keyData"],
@@ -76,6 +77,26 @@ var whispeerAPI = {
 				for (i = 0; i < success.length; i += 1) {
 					result[keys[i].getRealID()] = success[i];
 				}
+			}), fn);
+		}
+	},
+	settings: {
+		getSettings: function (data, fn, view) {
+			step(function () {
+				settings.getOwnSettings(view, this);
+			}, h.sF(function (settings) {
+				this.ne({
+					settings: settings
+				});
+			}), fn);
+		},
+		setSettings: function (data, fn, view) {
+			step(function () {
+				settings.setOwnSettings(view, data.settings, this);
+			}, h.sF(function (result) {
+				this.ne({
+					success: result
+				});
 			}), fn);
 		}
 	},
