@@ -82,7 +82,7 @@ var Circle = function (userid, id) {
 			key.addDecryptors(view, decryptors, this);
 		}), h.sF(function () {
 			client.sadd(domain + ":user", toAddIDs, this);
-			//todo view.notifyOwnClients("circle", {circleid: id, addUser: {uid: toAddID}})
+			view.notifyOwnClients("circle", {circleid: id, addUsers: toAddIDs});
 		}), cb);
 	};
 

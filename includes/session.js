@@ -174,13 +174,12 @@ var Session = function Session() {
 	*/
 	this.logout = function (cb) {
 		step(function () {
+			client.del("session:" + sid, this);
 			logedin = false;
 			userid = 0;
 			sid = undefined;
 
 			callListener();
-
-			client.del("session:" + sid, this);
 		}, cb);
 	};
 

@@ -32,6 +32,8 @@ var view = function view(socket, session, listener) {
 
 					if (listener[subChannel]) {
 						listener[subChannel](theView, data);
+					} else {
+						theView.getSocket().emit("notify." + subChannel, JSON.parse(data));
 					}
 				});
 			}
@@ -65,6 +67,11 @@ var view = function view(socket, session, listener) {
 		});
 
 		theView.addToDestroy(end);
+	};
+
+	this.notifyOwnClients = function (channel, message) {
+		message = JSON.stringify(message);
+		client.publish("user:" + theView.getUserID() + ":" + channel, message, this);
 	};
 
 	this.psub = function subF(channel, cb) {
