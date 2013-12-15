@@ -38,7 +38,7 @@ var s = {
 	register: function (data, fn, view) {
 		var res;
 		step(function () {
-			view.getSession().register(data.mail, data.nickname, data.password, data.keys, view, this);
+			view.getSession().register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
 		}, h.sF(function (result) {
 			console.log(result);
 			res = result;

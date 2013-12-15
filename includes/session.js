@@ -7,6 +7,8 @@ var client = require("./redisClient");
 var SymKey = require("./crypto/symKey.js");
 var EccKey = require("./crypto/eccKey.js");
 
+var settingsService = require("./settings");
+
 //delete session if it was not used for 30 days.
 var SESSIONTIME = 30 * 24 * 60 * 60;
 
@@ -239,7 +241,7 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, keys, view, cb) {
+	this.register = function registerF(mail, nickname, password, keys, settings, view, cb) {
 		//y rule 1: nickname must be set.
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -257,7 +259,8 @@ var Session = function Session() {
 				invalidIdentifier: false,
 				invalidPassword: false,
 				nicknameInvalid: false,
-				mailInvalid: false
+				mailInvalid: false,
+				settingsInvalid: false
 			}
 		};
 
@@ -359,7 +362,13 @@ var Session = function Session() {
 			}
 
 			validateKeys(keys, this);
-		}, UserNotExisting), h.sF(function createActualUser() {
+		}, UserNotExisting), h.sF(function validateSettings() {
+			if (!settings || !settings.iv || !settings.ct) {
+				regErr("settingsInvalid");
+			}
+
+			this.ne();
+		}), h.sF(function createActualUser() {
 			if (result.error === true) {
 				this.last.ne(result);
 			} else {
@@ -392,6 +401,7 @@ var Session = function Session() {
 			myUser.setFriendsLevel2Key(view, keys.friendsLevel2, this.parallel());
 			myUser.setCryptKey(view, keys.crypt, this.parallel());
 			myUser.setSignKey(view, keys.sign, this.parallel());
+			settingsService.setOwnSettings(view, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
 			this.ne(mySid);
 		}), cb);
