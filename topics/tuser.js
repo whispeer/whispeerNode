@@ -125,7 +125,7 @@ var u = {
 			if (data.priv) {
 				var i;
 				for (i = 0; i < data.priv.length; i += 1) {
-					Profile.get(view, data.priv[i].id, this.parallel());
+					Profile.get(view, data.priv[i].profileid, this.parallel());
 				}
 				//myUser.createPrivateProfile(view, data.keys.profile, data.profile.priv, this.parallel());
 			}
