@@ -1001,14 +1001,13 @@ User.search = function (text, cb) {
 		search.user.type("and").query(text, this.parallel());
 		User.getUser(text, this.parallel(), true);
 	}, h.sF(function (ids, user) {
+		var position;
 		if (user instanceof User) {
-			if (ids.indexOf(user.getID()) !== -1) {
-				
+			position = ids.indexOf(user.getID());
+			if (position !== -1) {
+				ids.splice(position, 1);
 			}
 			ids.unshift(user.getID());
-			//TODO:
-			//ids.prepend(user.getID());
-			//h.uniq(ids);
 		}
 
 		this.ne(ids);

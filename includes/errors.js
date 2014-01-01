@@ -2,6 +2,7 @@
 
 "use strict";
 var util = require("util");
+var possibleErrors = [];
 
 var AbstractError = function (msg, constr) {
 	Error.captureStackTrace(this, constr || this);
@@ -18,8 +19,21 @@ function addError(desc) {
 	util.inherits(err, AbstractError);
 	err.prototype.message = desc;
 
+	possibleErrors.push(err);
+
 	return err;
 }
+
+global.isOwnError = function (err) {
+	var i;
+	for (i = 0; i < possibleErrors.length; i += 1) {
+		if (err instanceof possibleErrors[i]) {
+			return true;
+		}
+	}
+
+	return false;
+};
 
 global.StepError = addError("Step Error");
 global.NotLogedin = addError("Session invalid");
@@ -68,5 +82,6 @@ global.MessageNotExisting = addError("message not existing");
 /** post part */
 
 global.InvalidPost = addError("invalid post");
+global.InvalidFilter  = addError("invalid filter");
 
 /** end post part */
