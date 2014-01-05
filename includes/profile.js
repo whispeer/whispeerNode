@@ -9,8 +9,6 @@ var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
 
-var extend = require("xtend");
-
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
@@ -25,7 +23,7 @@ var Profile = function (userid, profileid) {
 		}, h.sF(function (profileData, key, signature, hashObject) {
 			result.profile = JSON.parse(profileData);
 
-			var err = validator.validateEncrypted("profile", result.profile);
+			var err = validator.validate("profileEncrypted", result.profile, 1);
 
 			if (!err) {
 				result.profileid = profileid;
@@ -55,7 +53,7 @@ var Profile = function (userid, profileid) {
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
-			var err = validator.validateEncrypted("profile", data.profile);
+			var err = validator.validate("profileEncrypted", data.profile, 1);
 
 			if (!data.signature || !data.hashObject) {
 				throw new InvalidProfile();
@@ -170,7 +168,7 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 };
 
 Profile.validate = function validateF(data) {
-	var err = validator.validateEncrypted("profile", data.profile);
+	var err = validator.validate("profileEncrypted", data.profile, 1);
 
 	return !err && data.signature && data.hashObject;
 };

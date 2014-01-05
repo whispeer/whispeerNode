@@ -4,9 +4,11 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
+
 var client = require("./redisClient");
 var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
+var Friends = require("./friends");
 
 /*
 	signature is of meta without signature.
@@ -31,9 +33,9 @@ var User = require("./user");
 
 */
 
-var Post = function (userid, id) {
-	var domain = "user:" + userid + ":posts:" + id, thePost = this;
-	this.getData = function getDataF(view, cb, key) {
+var Post = function (postid) {
+	var domain = "posts:" + postid, thePost = this;
+	this.getPostData = function getDataF(view, cb, key) {
 	};
 
 	this.throwUserAccess = function throwUserAccessF(view, cb) {
@@ -58,20 +60,12 @@ var Post = function (userid, id) {
 	};
 };
 
-Post.get = function (view, circleid, cb) {
-};
-
-var contains = {
-	"friendsoffriends": ["allfriends"],
-	"everyone": ["friendsoffriends", "allfriends"]
-};
-
 function getUserIDsFromUserFilter(filter, cb) {
 	step(function () {
 		if (filter.length > 0) {
 			var i;
 			for (i = 0; i < filter.length; i += 1) {
-				User.getUser(filter[i], this.parallel());
+				User.getUser(filter[i], this.parallel(), true);
 			}
 		} else {
 			this.last.ne([]);
@@ -88,32 +82,62 @@ function getUserIDsFromUserFilter(filter, cb) {
 	}), cb);
 }
 
-//TODO!
-function getUserIDsFromAlwaysFilter(filter, cb) {
-	step(function () {
-		var i;
-		for (i = 0; i < filter.length; i += 1) {
-			switch (filter) {
-				case "allfriends":
-					break;
-				case "friendsoffriends":
-					break;
-				case "everyone":
-					break;
-				default:
-					throw new InvalidFilter("unknown always value");
-			}
-		}
+function removeDoubleFilter(filter) {
+	var currentFilter, currentFilterOrder = 0;
+	var filterOrder = {
+		allfriends: 1,
+		friendsoffriends: 2,
+		everyone: 3
+	};
 
-		this.last.ne([]);
+	var i, cur;
+	for (i = 0; i < filter.length; i += 1) {
+		cur = filter[i];
+		if (currentFilterOrder > filterOrder[cur]) {
+			currentFilter = cur;
+			currentFilterOrder = filterOrder[cur];
+		}
+	}
+
+	return currentFilter;
+}
+
+function getAllFriendsIDs(view, cb) {
+	step(function () {
+		Friends.get(view, this);
 	}, cb);
 }
 
-function getUserIDsForFilter(filter, cb) {
+function getFriendsOfFriendsIDs(view, cb) {
+	step(function () {
+		Friends.getFriendsOfFriends(view, this);
+	}, cb);
+}
+
+//TODO!
+function getUserIDsFromAlwaysFilter(view, filters, cb) {
+	var theFilter = removeDoubleFilter(filters);
+
+	switch (theFilter) {
+		case "allfriends":
+			getAllFriendsIDs(view, cb);
+			break;
+		case "friendsoffriends":
+			getFriendsOfFriendsIDs(view, cb);
+			break;
+		case "everyone":
+			//TODO: how do we want to do this? who is "everyone"? -> most likely add some "share lists" for friendsoffriends
+			break;
+		default:
+			throw new InvalidFilter("unknown always value");
+	}
+}
+
+function getUserIDsForFilter(view, filter, cb) {
 	//filter.user
 	//filter.meta
-		//allFriends
-		//friendsOfFriends
+		//allfriends
+		//friendsoffriends
 
 	//get everyone I might be interested in also considering filter criteria
 	var alwaysFilter = [], userFilter = [];
@@ -140,7 +164,7 @@ function getUserIDsForFilter(filter, cb) {
 	step(function () {
 		this.parallel.unflatten();
 
-		getUserIDsFromAlwaysFilter(alwaysFilter, this.parallel());
+		getUserIDsFromAlwaysFilter(view, alwaysFilter, this.parallel());
 		getUserIDsFromUserFilter(userFilter, this.parallel());
 	}, function (alwaysUserIDs, userUserIDs) {
 		//unique!
@@ -158,7 +182,7 @@ Post.getTimeline = function (view, filter, cb) {
 	var unionKey;
 
 	step(function () {
-		getUserIDsForFilter(filter, this);
+		getUserIDsForFilter(view, filter, this);
 	}, h.sF(function (userids) {
 		var postKeys = userids.map(function (userid) {
 			return "user:" + userid + ":posts";
@@ -177,35 +201,39 @@ Post.getTimeline = function (view, filter, cb) {
 	}), cb);
 };
 
-Post.getUserWall = function (view, userid, cb) {
-	client.zrevrange("user:" + userid + ":wall", 0, 19, cb);
+Post.getUserWall = function (view, userid, start, count, cb) {
+	step(function () {
+		start = start || 1;
+		count = Math.max(20, parseInt(count, 10));
+
+		client.zrevrange("user:" + userid + ":wall", start - 1, start + count - 1, this);
+	}, cb);
 };
 
 Post.validateFormat = function (data) {
-	if (!data.content) {
-		throw new InvalidPost("content missing");
-	}
+	step(function () {
+		if (!data.content) {
+			throw new InvalidPost("content missing");
+		}
 
-	if (!data.key && data.readers || data.key && !data.readers) {
-		throw new InvalidPost("readers and keys need each other");
-	}
+		if (!data.key && data.readers || data.key && !data.readers) {
+			throw new InvalidPost("readers and keys need each other");
+		}
 
-	//TODO: add those functions/rename
-	if (data.key && KeyApi.InvalidKeyData(data.key)) {
-		throw new InvalidPost("invalid key");
-	}
+		//TODO: check time is not too long ago
 
-	if (data.readers && !h.isNumberArray(data.readers)) {
-		throw new InvalidPost("invalid readers");
-	}
+		//TODO: add those functions/rename
+		if (data.key && KeyApi.InvalidKeyData(data.key)) {
+			throw new InvalidPost("invalid key");
+		}
+	});
 };
 
 Post.create = function (view, data, cb) {
 	var SymKey = require("./crypto/symKey");
 
 	step(function () {
-		//TODO: check time is not to long ago
-		Post.validateFormat(data);
+		Post.validateFormat(data, this);
 	}, h.sF(function () {
 		var id = 0;
 		var readers = data.readers;
@@ -232,7 +260,8 @@ Post.create = function (view, data, cb) {
 		multi.set("post:" + id + ":content", data.content);
 
 		//notify every reader? NOPE
-		//or collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrank)
+		//or collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrange)
+
 		//anyhow:
 		//notify wall user and mentioned users.
 	}), cb);

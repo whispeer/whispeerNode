@@ -208,10 +208,25 @@ var friends = {
 			mutual(view.getUserID(), theUser.getID(), this);
 		}), cb);
 	},
+	getFriendsOfFriends: function (view, cb) {
+		step(function () {
+			getFriends(view, view.getUserID(), this);
+		}, h.sF(function (ids) {
+			var keys = ids.map(function (id) {
+				return "friends:" + id;
+			});
+
+			client.sunion(keys, this);
+		}), h.sF(function (ids) {
+			this.ne(ids);
+		}), cb);
+	},
 	getUser: function (view, uid, cb) {
 		getFriends(view, uid, cb);
 	},
 	get: function (view, cb) {
+		friends.getFriendsOfFriends(view, function () {
+		});
 		getFriends(view, view.getUserID(), cb);
 	},
 	getRequests: function (view, cb) {
