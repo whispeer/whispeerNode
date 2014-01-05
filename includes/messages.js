@@ -199,6 +199,7 @@ Message.create = function (view, data, cb) {
 
 	step(function () {
 		var err = validator.validate("message", data);
+
 		if (err) {
 			throw new InvalidMessageData();
 		}

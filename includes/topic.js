@@ -145,7 +145,7 @@ var Topic = function (id) {
 		}), h.sF(function (unreadMessages) {
 			result.unread = unreadMessages;
 
-			if (result.newest !== 0) {
+			if (h.parseDecimal(result.newest) !== 0) {
 				var Message = require("./messages");
 				var newest = new Message(result.newest);
 				newest.getFullData(view, this, true);
@@ -402,7 +402,7 @@ Topic.get = function (topicid, cb) {
 		if (exists === 1) {
 			this.ne(new Topic(topicid));
 		} else {
-			throw new TopicNotExisting();
+			throw new TopicNotExisting(topicid);
 		}
 	}), cb);
 };
@@ -507,6 +507,8 @@ Topic.create = function (view, data, cb) {
 		if (receiver.length === 2) {
 			multi.set("topic:user:" + receiver[0].id + ":single:" + receiver[1].id, topicid);
 			multi.set("topic:user:" + receiver[1].id + ":single:" + receiver[0].id, topicid);
+		} else if (receiver.length === 1) {
+			multi.set("topic:user:" + receiver[0].id + ":single:" + receiver[0].id, topicid);
 		}
 
 		multi.hmset("topic:" + topicid + ":data", result);
