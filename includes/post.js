@@ -39,19 +39,46 @@ var SymKey = require("./crypto/symKey");
 var Post = function (postid) {
 	var domain = "posts:" + postid, thePost = this;
 	this.getPostData = function getDataF(view, cb, key) {
+		step(function () {
+			this.parallel.unflatten();
+
+			client.hgetall(domain + ":meta", this.parallel());
+			client.get(domain + ":content", this.parallel());
+		}, h.sF(function (meta, content) {
+			var result = {
+				meta: meta,
+				content: content
+			};
+
+			this.ne(result);
+		}), cb);
+	};
+
+	this.hasUserAccess = function (userid, cb) {
+		step(function () {
+			client.hget(domain, "key", this);
+		}, h.sF(function (keyRealID) {
+			client.sismember("key:" + keyRealID + ":access", userid, this);
+		}), cb);
 	};
 
 	this.throwUserAccess = function throwUserAccessF(view, cb) {
-		//access is determined how?
-		//maybe just key access?
+		var that = this;
+		step(function () {
+			that.hasUserAccess(this);
+		}, h.sF(function (access) {
+			if (!access) {
+				throw new AccessViolation("user has no access to post");
+			}
+
+			this.ne();
+		}), cb);
 	};
 
 	this.getKey = function getKeyF(view, cb) {
 		step(function () {
-			thePost.throwUserAccess(view, this);
-		}, h.sF(function () {
 			client.hget(domain, "key", this);
-		}), cb);
+		}, cb);
 	};
 
 	this.getContent = function getContentF(view, cb) {
@@ -138,8 +165,8 @@ function getUserIDsFromAlwaysFilter(view, filters, cb) {
 function getUserIDsForFilter(view, filter, cb) {
 	//filter.user
 	//filter.meta
-		//allfriends
-		//friendsoffriends
+	//allfriends
+	//friendsoffriends
 
 	//get everyone I might be interested in also considering filter criteria
 	var alwaysFilter = [], userFilter = [];
@@ -219,6 +246,7 @@ Post.getUserWall = function (view, userid, start, count, cb) {
 		var paginator = new Paginator(start, count);
 		client.zrevrange("user:" + userid + ":wall", paginator.rangeBegin(), paginator.rangeEnd(), this);
 	}, h.sF(function () {
+		//TODO
 	}), cb);
 };
 
@@ -230,7 +258,11 @@ Post.validateFormat = function (data) {
 			throw new InvalidPost(err);
 		}
 
-		//TODO: check time is not too long ago
+		var current = new Date().getTime();
+
+		if (Math.abs(data.time - current) > 10 * 1000) {
+			throw new InvalidPost("time too old");
+		}
 
 		if (data.meta.key) {
 			KeyApi.validate(data.key);
@@ -313,6 +345,7 @@ Post.create = function (view, data, cb) {
 		}
 
 		multi.hmset("post:" + id + ":meta", data.meta);
+		multi.set("post:" + id, id);
 		multi.set("post:" + id + ":content", data.content);
 
 		removeOldNewPosts(multi, view.getUserID());
@@ -324,6 +357,24 @@ Post.create = function (view, data, cb) {
 
 		//collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrangebyscore)
 		this.ne(new Post(postID));
+	}), cb);
+};
+
+//we need this if someone links directly to a post.
+Post.get = function (view, postid, cb) {
+	var thePost;
+	step(function () {
+		if (h.isInt(postid)) {
+			client.get("post:" + postid);
+		} else {
+			throw new AccessViolation();
+		}
+	}, h.sF(function (id) {
+		thePost = new Post(id);
+
+		thePost.throwUserAccess(this);
+	}), h.sF(function () {
+		this.ne(thePost);
 	}), cb);
 };
 
