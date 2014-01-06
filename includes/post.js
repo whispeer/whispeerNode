@@ -10,6 +10,9 @@ var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 var Friends = require("./friends");
 
+var Paginator = require("./paginator");
+var SymKey = require("./crypto/symKey");
+
 /*
 	signature is of meta without signature.
 
@@ -114,7 +117,6 @@ function getFriendsOfFriendsIDs(view, cb) {
 	}, cb);
 }
 
-//TODO!
 function getUserIDsFromAlwaysFilter(view, filters, cb) {
 	var theFilter = removeDoubleFilter(filters);
 
@@ -168,12 +170,12 @@ function getUserIDsForFilter(view, filter, cb) {
 		getUserIDsFromUserFilter(userFilter, this.parallel());
 	}, function (alwaysUserIDs, userUserIDs) {
 		//unique!
-		var result = h.arrayUnique(alwaysUserIDs.concat(userUserIDs));
+		var result = h.arrayUnique(alwaysUserIDs.concat(userUserIDs).map(h.parseDecimal));
 		this.ne(result);
 	}, cb);
 }
 
-Post.getTimeline = function (view, filter, cb) {
+Post.getTimeline = function (view, filter, start, count, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
 	//zinterstore
@@ -196,8 +198,16 @@ Post.getTimeline = function (view, filter, cb) {
 		if (count === 0) {
 			this.last.ne([]);
 		} else {
-			client.zrevrange("temp:" + view.getUserID() + ":" + unionKey, 0, 19);
+			var paginator = new Paginator(start, count);
+			client.zrevrange("post:union:" + view.getUserID() + ":" + unionKey, paginator.rangeBegin(), paginator.rangeEnd(), this);
+			client.expire("post:union" + view.getUserID() + ":" + unionKey, 120);
 		}
+	}), h.sF(function (ids) {
+		var result = [], i;
+		for (i = 0; i < ids.length; i += 1) {
+			result.push(new Post(ids[i]));
+		}
+		this.ne(result);
 	}), cb);
 };
 
@@ -206,64 +216,114 @@ Post.getUserWall = function (view, userid, start, count, cb) {
 		start = start || 1;
 		count = Math.max(20, parseInt(count, 10));
 
-		client.zrevrange("user:" + userid + ":wall", start - 1, start + count - 1, this);
-	}, cb);
+		var paginator = new Paginator(start, count);
+		client.zrevrange("user:" + userid + ":wall", paginator.rangeBegin(), paginator.rangeEnd(), this);
+	}, h.sF(function () {
+	}), cb);
 };
 
 Post.validateFormat = function (data) {
 	step(function () {
-		if (!data.content) {
-			throw new InvalidPost("content missing");
-		}
+		var err = validator.validate("post", data);
 
-		if (!data.key && data.readers || data.key && !data.readers) {
-			throw new InvalidPost("readers and keys need each other");
+		if (err) {
+			throw new InvalidPost(err);
 		}
 
 		//TODO: check time is not too long ago
 
-		//TODO: add those functions/rename
-		if (data.key && KeyApi.InvalidKeyData(data.key)) {
-			throw new InvalidPost("invalid key");
+		if (data.meta.key) {
+			KeyApi.validate(data.key);
 		}
 	});
 };
 
+function processWallUser(userid, cb) {
+	if (userid) {
+		step(function () {
+			User.get(userid, this);
+		}, h.sF(function (user) {
+			this.ne(user.getID());
+		}), cb);
+	} else {
+		cb();
+	}
+}
+
+function processKey(view, keyData, cb) {
+	if (keyData) {
+		step(function () {
+			SymKey.createWDecryptors(view, keyData, this);
+		}, h.sF(function (keyid) {
+			this.ne(keyid);
+		}), cb);
+	} else {
+		cb();
+	}
+}
+
+function processMetaInformation(view, meta, cb) {
+	step(function () {
+		this.parallel.unflatten();
+
+		processWallUser(meta.walluser, this.parallel());
+		processKey(meta.key, this.parallel());
+	}, h.sF(function (userid, keyid) {
+		meta.walluser = userid;
+		meta.key = keyid;
+
+		this.ne();
+	}), cb);
+}
+
+function removeOldNewPosts(multi, userid) {
+	var minTime = new Date().getTime() - 2 * 60 * 1000;
+	multi.zremrangebyscore("user:" + userid + ":newPosts", "-inf", minTime);
+}
+
 Post.create = function (view, data, cb) {
-	var SymKey = require("./crypto/symKey");
+	/*
+	post: {
+		meta: {
+			contentHash,
+			time,
+			signature,
+			(key),
+			(walluser), //for a wallpost
+		}
+		content //padded!
+	}
+	*/
+
+	var postID;
 
 	step(function () {
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
-		var id = 0;
-		var readers = data.readers;
-
-		//TODO: what are the readers? shouldn't they only be defined by the keys used?
-		if (!readers) {
-			//set readers to all friends.
-			//they will not need a key to decrypt this post
-			readers = ["always:allfriends"];
-		}
-
-		if (data.meta.key) {
-			SymKey.createWDecryptors(view, data.meta.key);
-		}
-
+		processMetaInformation(view, data.meta, this);
+	}), h.sF(function () {
+		client.incr("posts", this);
+	}), h.sF(function (id) {
+		postID = id;
 		var multi = client.multi();
 		multi.zadd("user:" + view.getUserID() + ":posts", data.time, id);
 
-		if (data.receiver) {
-			multi.zadd("user:" + data.receiver + ":wall", data.time, id);
+		if (data.meta.walluser) {
+			multi.zadd("user:" + data.meta.walluser + ":wall", data.time, id);
 		}
 
 		multi.hmset("post:" + id + ":meta", data.meta);
 		multi.set("post:" + id + ":content", data.content);
 
-		//notify every reader? NOPE
-		//or collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrange)
+		removeOldNewPosts(multi, view.getUserID());
+		multi.zadd("user:" + view.getUserID() + ":newPosts", data.time, id);
 
-		//anyhow:
-		//notify wall user and mentioned users.
+		multi.exec(this);
+	}), h.sF(function () {
+		//TODO: notify wall user and mentioned users.
+
+		//collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrangebyscore)
+		this.ne(new Post(postID));
 	}), cb);
 };
 
