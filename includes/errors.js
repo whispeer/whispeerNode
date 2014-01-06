@@ -85,3 +85,5 @@ global.InvalidPost = addError("invalid post");
 global.InvalidFilter  = addError("invalid filter");
 
 /** end post part */
+
+global.InvalidCircleData = addError("invalid circle data");
