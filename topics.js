@@ -8,6 +8,7 @@ var session = require("./topics/tsession");
 var messages = require("./topics/tmessage");
 var friends = require("./topics/tfriends");
 var circles = require("./topics/tcircles");
+var posts = require("./topics/tposts");
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
 
@@ -105,6 +106,7 @@ var whispeerAPI = {
 	messages: messages,
 	user: user,
 	session: session,
+	posts: posts,
 	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
 			if (data && data.nickname) {
