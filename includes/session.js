@@ -25,6 +25,41 @@ var Session = function Session() {
 	/** session id, userid, are we loged in, time we logged in, stay forever? */
 	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser, session = this;
 
+	/** get a random sid of given length 
+	* @param length length of sid
+	* @param callback callback
+	* @callback (error, sid)
+	*/
+	function code(length, callback) {
+		var random = require("secure_random");
+
+		step(function generateRandom() {
+			if (length <= 0) {
+				throw new Error("length not long enough");
+			}
+
+			var i = 0;
+			for (i = 0; i < length; i += 1) {
+				random.getRandomInt(0, h.codeChars.length - 1, this.parallel());
+			}
+
+			return;
+		}, function (err, numbers) {
+			if (err) {
+				callback(err);
+				return;
+			}
+
+			var result = "", i = 0;
+
+			for (i = 0; i < numbers.length; i += 1) {
+				result = result + h.codeChars[numbers[i]];
+			}
+
+			callback(null, result);
+		});
+	}
+
 	/** get a session id
 	* @param callback called with result (sid)
 	* @callback	(err, sid) error and session id
@@ -40,7 +75,7 @@ var Session = function Session() {
 		}
 
 		step(function generate() {
-			h.code(SESSIONKEYLENGTH, this);
+			code(SESSIONKEYLENGTH, this);
 		}, h.sF(function (theSID) {
 			console.log("Generated SID:" + theSID);
 
