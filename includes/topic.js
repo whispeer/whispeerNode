@@ -301,16 +301,6 @@ var Topic = function (id) {
 		}), cb);
 	};
 
-	this.remainingCount = function remainingCountF(view, afterMessage, count, cb) {
-		step(function () {
-			hasAccessError(view, this);
-		}, h.sF(function () {
-			client.zrank(mDomain, afterMessage, this);
-		}), h.sF(function (index) {
-			this.ne(Math.max(index - count, 0));
-		}), cb);
-	};
-
 	/** get the messages after a certain message
 	* @param view view
 	* @param afterMessage message after which to start
@@ -318,14 +308,20 @@ var Topic = function (id) {
 	* @param cb cb
 	*/
 	this.getMessages = function getMessagesF(view, afterMessage, count, cb) {
+		var remaining = 0;
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
-			client.zrevrank(mDomain, afterMessage, this);
-		}), h.sF(function (index) {
+			this.parallel.unflatten();
+
+			client.zrevrank(mDomain, afterMessage, this.parallel());
+			client.zcard(mDomain, this.parallel());
+		}), h.sF(function (index, card) {
 			if (index === null) {
 				index = -1;
 			}
+
+			remaining = card - index - count;
 
 			client.zrevrange(mDomain, index + 1, index + count, this);
 		}), h.sF(function (messageids) {
@@ -335,7 +331,10 @@ var Topic = function (id) {
 				result.push(new Message(messageids[i], theTopic));
 			}
 
-			this.ne(result);
+			this.ne({
+				messages: result,
+				remaining: remaining > 0 ? remaining : 0
+			});
 		}), cb);
 	};
 

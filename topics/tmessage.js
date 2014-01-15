@@ -98,11 +98,10 @@ var t = {
 		}, h.sF(function (topic) {
 			var count = Math.min(data.maximum || 20, 20);
 
-			this.parallel.unflatten();
-			topic.getMessages(view, data.afterMessage, count, this.parallel());
-			topic.remainingCount(view, data.afterMessage, count, this.parallel());
-		}), h.sF(function (messages, remaining) {
-			remainingCount = remaining;
+			topic.getMessages(view, data.afterMessage, count, this);
+		}), h.sF(function (data) {
+			remainingCount = data.remaining;
+			var messages = data.messages;
 			var i;
 			for (i = 0; i < messages.length; i += 1) {
 				messages[i].getFullData(view, this.parallel(), true);
