@@ -69,3 +69,15 @@ newsletter.use(helmet.cacheControl());
 newsletter.use(express.static("../newsletter/"));
 
 newsletter.listen(8089);
+
+var styleguide = express();
+
+styleguide.use(express.methodOverride());
+styleguide.use(express.bodyParser());
+styleguide.use(helmet.xframe());
+styleguide.use(helmet.iexss());
+styleguide.use(helmet.cacheControl());
+
+styleguide.use(express.static("../styleguide/"));
+
+styleguide.listen(8090);
