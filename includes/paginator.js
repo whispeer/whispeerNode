@@ -14,11 +14,11 @@ var Paginator = function (start, count) {
 	}
 
 	this.rangeBegin = function () {
-		return start - 1;
+		return Math.max(start - 1, 0);
 	};
 
 	this.rangeEnd = function () {
-		return start + count - 1;
+		return Math.max(start + count - 1, 0);
 	};
 };
 

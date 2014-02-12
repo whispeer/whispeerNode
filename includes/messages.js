@@ -150,6 +150,11 @@ var Message = function (id, topic) {
 		}, h.sF(function () {
 			client.hgetall(domain + ":meta", this);
 		}), h.sF(function (data) {
+			data.createTime = parseInt(data.createTime, 10);
+			data.previousMessage = parseInt(data.previousMessage, 10);
+			data.sender = parseInt(data.sender, 10);
+			data.topicid = parseInt(data.topicid, 10);
+
 			this.ne(data);
 		}), cb);
 	};

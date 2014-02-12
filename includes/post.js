@@ -123,7 +123,7 @@ function removeDoubleFilter(filter) {
 	var i, cur;
 	for (i = 0; i < filter.length; i += 1) {
 		cur = filter[i];
-		if (currentFilterOrder > filterOrder[cur]) {
+		if (currentFilterOrder < filterOrder[cur]) {
 			currentFilter = cur;
 			currentFilterOrder = filterOrder[cur];
 		}
