@@ -37,15 +37,16 @@ var SymKey = require("./crypto/symKey");
 */
 
 var Post = function (postid) {
-	var domain = "posts:" + postid, thePost = this;
+	var domain = "post:" + postid, thePost = this;
 	this.getPostData = function getDataF(view, cb, key) {
 		step(function () {
 			this.parallel.unflatten();
 
 			client.hgetall(domain + ":meta", this.parallel());
-			client.get(domain + ":content", this.parallel());
+			client.hgetall(domain + ":content", this.parallel());
 		}, h.sF(function (meta, content) {
 			var result = {
+				id: postid,
 				meta: meta,
 				content: content
 			};
@@ -195,11 +196,12 @@ function getUserIDsForFilter(view, filter, cb) {
 
 		getUserIDsFromAlwaysFilter(view, alwaysFilter, this.parallel());
 		getUserIDsFromUserFilter(userFilter, this.parallel());
-	}, function (alwaysUserIDs, userUserIDs) {
+	}, h.sF(function (alwaysUserIDs, userUserIDs) {
+		alwaysUserIDs.push(view.getUserID());
 		//unique!
 		var result = h.arrayUnique(alwaysUserIDs.concat(userUserIDs).map(h.parseDecimal));
 		this.ne(result);
-	}, cb);
+	}), cb);
 }
 
 Post.getTimeline = function (view, filter, start, count, cb) {
@@ -218,9 +220,11 @@ Post.getTimeline = function (view, filter, start, count, cb) {
 		});
 
 		unionKey = userids.sort().join(",");
-		postKeys.unshift("temp:" + view.getUserID() + ":" + unionKey);
+		postKeys.unshift(postKeys.length);
+		postKeys.unshift("post:union:" + view.getUserID() + ":" + unionKey);
+		postKeys.push(this);
 
-		client.zunionstore(postKeys);
+		client.zunionstore.apply(client, postKeys);
 	}), h.sF(function (count) {
 		if (count === 0) {
 			this.last.ne([]);
@@ -250,7 +254,7 @@ Post.getUserWall = function (view, userid, start, count, cb) {
 	}), cb);
 };
 
-Post.validateFormat = function (data) {
+Post.validateFormat = function (data, cb) {
 	step(function () {
 		var err = validator.validate("post", data);
 
@@ -260,14 +264,16 @@ Post.validateFormat = function (data) {
 
 		var current = new Date().getTime();
 
-		if (Math.abs(data.time - current) > 10 * 1000) {
+		if (Math.abs(data.meta.time - current) > 20 * 1000) {
 			throw new InvalidPost("time too old");
 		}
 
 		if (data.meta.key) {
-			KeyApi.validate(data.key);
+			KeyApi.validate(data.meta.key, this);
+		} else {
+			this();
 		}
-	});
+	}, cb);
 };
 
 function processWallUser(userid, cb) {
@@ -286,8 +292,8 @@ function processKey(view, keyData, cb) {
 	if (keyData) {
 		step(function () {
 			SymKey.createWDecryptors(view, keyData, this);
-		}, h.sF(function (keyid) {
-			this.ne(keyid);
+		}, h.sF(function (key) {
+			this.ne(key.getRealID());
 		}), cb);
 	} else {
 		cb();
@@ -299,7 +305,7 @@ function processMetaInformation(view, meta, cb) {
 		this.parallel.unflatten();
 
 		processWallUser(meta.walluser, this.parallel());
-		processKey(meta.key, this.parallel());
+		processKey(view, meta.key, this.parallel());
 	}, h.sF(function (userid, keyid) {
 		meta.walluser = userid;
 		meta.key = keyid;
@@ -334,22 +340,22 @@ Post.create = function (view, data, cb) {
 	}, h.sF(function () {
 		processMetaInformation(view, data.meta, this);
 	}), h.sF(function () {
-		client.incr("posts", this);
+		client.incr("post", this);
 	}), h.sF(function (id) {
 		postID = id;
 		var multi = client.multi();
-		multi.zadd("user:" + view.getUserID() + ":posts", data.time, id);
+		multi.zadd("user:" + view.getUserID() + ":posts", data.meta.time, id);
 
 		if (data.meta.walluser) {
-			multi.zadd("user:" + data.meta.walluser + ":wall", data.time, id);
+			multi.zadd("user:" + data.meta.walluser + ":wall", data.meta.time, id);
 		}
 
 		multi.hmset("post:" + id + ":meta", data.meta);
 		multi.set("post:" + id, id);
-		multi.set("post:" + id + ":content", data.content);
+		multi.hmset("post:" + id + ":content", data.content);
 
 		removeOldNewPosts(multi, view.getUserID());
-		multi.zadd("user:" + view.getUserID() + ":newPosts", data.time, id);
+		multi.zadd("user:" + view.getUserID() + ":newPosts", data.meta.time, id);
 
 		multi.exec(this);
 	}), h.sF(function () {
