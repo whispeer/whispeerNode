@@ -35,6 +35,10 @@ var p = {
 		step(function () {
 			Post.getTimeline(view, data.filter, data.start, data.count, this);
 		}, h.sF(function (posts) {
+			if (posts.length === 0) {
+				this.ne([]);
+			}
+
 			var i;
 			for (i = 0; i < posts.length; i += 1) {
 				posts[i].getPostData(view, this.parallel(), data.addKey);

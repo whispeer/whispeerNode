@@ -336,6 +336,8 @@ Post.create = function (view, data, cb) {
 	var postID;
 
 	step(function () {
+		data.meta.sender = view.getUserID();
+
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
 		processMetaInformation(view, data.meta, this);
