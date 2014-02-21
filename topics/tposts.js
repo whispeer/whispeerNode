@@ -33,7 +33,7 @@ var p = {
 	},
 	getTimeline: function (data, fn, view) {
 		step(function () {
-			Post.getTimeline(view, data.filter, data.start, data.count, this);
+			Post.getTimeline(view, data.filter, data.afterID, data.count, this);
 		}, h.sF(function (posts) {
 			if (posts.length === 0) {
 				this.ne([]);
@@ -52,13 +52,17 @@ var p = {
 	},
 	getWall: function (data, fn, view) {
 		step(function () {
-			Post.getUserWall(view, data.userid, data.start, data.count, this);
+			Post.getUserWall(view, data.userid, data.afterID, data.count, this);
 		}, h.sF(function (posts) {
+			if (posts.length === 0) {
+				this.ne([]);
+			}
+
 			var i;
 			for (i = 0; i < posts.length; i += 1) {
 				posts[i].getPostData(view, this.parallel(), data.addKey);
 			}
-		}), h.sF(function () {
+		}), h.sF(function (data) {
 			this.ne({
 				posts: data
 				//TODO: remaining: false|true

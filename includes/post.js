@@ -10,7 +10,7 @@ var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 var Friends = require("./friends");
 
-var Paginator = require("./paginator");
+var SortedSetPaginator = require("./SortedSetPaginator");
 var SymKey = require("./crypto/symKey");
 
 /*
@@ -204,7 +204,10 @@ function getUserIDsForFilter(view, filter, cb) {
 	}), cb);
 }
 
-Post.getTimeline = function (view, filter, start, count, cb) {
+// Problem:
+// we get more posts than applicable for us, not removing those we can not read
+
+Post.getTimeline = function (view, filter, afterID, count, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
 	//zinterstore
@@ -219,38 +222,46 @@ Post.getTimeline = function (view, filter, start, count, cb) {
 			return "user:" + userid + ":posts";
 		});
 
-		unionKey = userids.sort().join(",");
+		unionKey = "post:union:" + view.getUserID() + ":" + userids.sort().join(",");
 		postKeys.unshift(postKeys.length);
-		postKeys.unshift("post:union:" + view.getUserID() + ":" + unionKey);
+		postKeys.unshift(unionKey);
 		postKeys.push(this);
 
 		client.zunionstore.apply(client, postKeys);
-	}), h.sF(function (count) {
-		if (count === 0) {
+	}), h.sF(function (resultLength) {
+		if (resultLength === 0) {
 			this.last.ne([]);
 		} else {
-			var paginator = new Paginator(start, count);
-			client.zrevrange("post:union:" + view.getUserID() + ":" + unionKey, paginator.rangeBegin(), paginator.rangeEnd(), this);
-			client.expire("post:union" + view.getUserID() + ":" + unionKey, 120);
+			var paginator = new SortedSetPaginator(unionKey, count);
+			client.expire(unionKey, 120);
+
+			paginator.getRangeAfterID(afterID, this, function (id, cb) {
+				step(function () {
+					client.hget("post:" + id + ":meta", "key", this);
+				}, h.sF(function (key) {
+					client.sismember("key:" + key + ":access", view.getUserID(), this);
+				}), cb);
+			});
 		}
 	}), h.sF(function (ids) {
-		var result = [], i;
-		for (i = 0; i < ids.length; i += 1) {
-			result.push(new Post(ids[i]));
-		}
+		var result = ids.map(h.newElement(Post));
 		this.ne(result);
 	}), cb);
 };
 
-Post.getUserWall = function (view, userid, start, count, cb) {
+Post.getUserWall = function (view, userid, afterID, count, cb) {
 	step(function () {
-		start = start || 1;
-		count = Math.max(20, parseInt(count, 10));
-
-		var paginator = new Paginator(start, count);
-		client.zrevrange("user:" + userid + ":wall", paginator.rangeBegin(), paginator.rangeEnd(), this);
-	}, h.sF(function () {
-		//TODO
+		var paginator = new SortedSetPaginator("user:" + userid + ":wall", count);
+		paginator.getRangeAfterID(afterID, this, function (id, cb) {
+			step(function () {
+				client.hget("post:" + id + ":meta", "key", this);
+			}, h.sF(function (key) {
+				client.sismember("key:" + key + ":access", view.getUserID(), this);
+			}), cb);
+		});
+	}, h.sF(function (ids) {
+		var result = ids.map(h.newElement(Post));
+		this.ne(result);
 	}), cb);
 };
 
@@ -357,6 +368,7 @@ Post.create = function (view, data, cb) {
 		multi.hmset("post:" + id + ":content", data.content);
 
 		removeOldNewPosts(multi, view.getUserID());
+		multi.zadd("user:" + view.getUserID() + ":wall", data.meta.time, id);
 		multi.zadd("user:" + view.getUserID() + ":newPosts", data.meta.time, id);
 
 		multi.exec(this);
