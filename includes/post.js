@@ -148,6 +148,11 @@ function getFriendsOfFriendsIDs(view, cb) {
 function getUserIDsFromAlwaysFilter(view, filters, cb) {
 	var theFilter = removeDoubleFilter(filters);
 
+	if (!theFilter) {
+		cb(null, []);
+		return;
+	}
+
 	switch (theFilter) {
 		case "allfriends":
 			getAllFriendsIDs(view, cb);
