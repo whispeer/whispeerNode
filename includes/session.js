@@ -447,7 +447,7 @@ var Session = function Session() {
 	* @author Nilos
 	*/
 	this.getUserID = function () {
-		return userid;
+		return h.parseDecimal(userid);
 	};
 
 	this.getOwnUser = function (cb) {
