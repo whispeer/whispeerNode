@@ -216,6 +216,8 @@ var friends = {
 				return "friends:" + id;
 			});
 
+			keys.push("friends:" + view.getUserID());
+
 			client.sunion(keys, this);
 		}), h.sF(function (ids) {
 			this.ne(ids);
