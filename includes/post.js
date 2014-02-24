@@ -37,18 +37,28 @@ var SymKey = require("./crypto/symKey");
 */
 
 var Post = function (postid) {
-	var domain = "post:" + postid, thePost = this;
-	this.getPostData = function getDataF(view, cb, key) {
+	var domain = "post:" + postid, thePost = this, metaData, contentData;
+	this.getPostData = function getDataF(view, cb) {
 		step(function () {
 			this.parallel.unflatten();
 
 			client.hgetall(domain + ":meta", this.parallel());
 			client.hgetall(domain + ":content", this.parallel());
 		}, h.sF(function (meta, content) {
+			metaData = meta;
+			contentData = content;
+
+			metaData.sender = h.parseDecimal(metaData.sender);
+			metaData.time = h.parseDecimal(metaData.time);
+
+			KeyApi.getWData(view, meta.key, this, true);
+		}), h.sF(function (keyData) {
+			metaData.key = keyData;
+
 			var result = {
 				id: postid,
-				meta: meta,
-				content: content
+				meta: metaData,
+				content: contentData
 			};
 
 			this.ne(result);
