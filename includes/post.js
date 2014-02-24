@@ -333,7 +333,10 @@ function processMetaInformation(view, meta, cb) {
 		processWallUser(meta.walluser, this.parallel());
 		processKey(view, meta.key, this.parallel());
 	}, h.sF(function (userid, keyid) {
-		meta.walluser = userid;
+		if (userid) {
+			meta.walluser = userid;
+		}
+
 		meta.key = keyid;
 
 		this.ne();
