@@ -64,8 +64,6 @@ var Circle = function (userid, id) {
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
-			this.parallel.unflatten();
-
 			var i;
 			for (i = 0; i < toAddIDs.length; i += 1) {
 				User.getUser(toAddIDs[i], this.parallel());
@@ -115,7 +113,7 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
-	this.removeUser = function removeUserF(view, key, oldKeyDecryptor, toKeep, toRemove, cb) {
+	this.removeUsers = function removeUserF(view, key, oldKeyDecryptor, toKeep, toRemove, cb) {
 		var userids, realID;
 		step(function () {
 			view.ownUserError(userid, this);
@@ -132,6 +130,8 @@ var Circle = function (userid, id) {
 
 			theCircle.getUser(view, this);
 		}), h.sF(function (circleUsers) {
+			circleUsers = circleUsers.map(h.parseDecimal);
+
 			var i;
 			var localUsers = toKeep.concat(toRemove);
 			if (circleUsers.length === localUsers.length) {
@@ -148,7 +148,9 @@ var Circle = function (userid, id) {
 			}
 		}), h.sF(function (key) {
 			realID = key.getRealID();
-			theCircle.getKey().addDecryptor(oldKeyDecryptor, this);
+			theCircle.getKey(view, this);
+		}), h.sF(function (circleKey) {
+			circleKey.addDecryptor(view, oldKeyDecryptor, this);
 		}), h.sF(function () {
 			client.multi()
 				.srem(domain + ":user", toRemove)
