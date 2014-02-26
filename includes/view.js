@@ -71,7 +71,7 @@ var view = function view(socket, session, listener) {
 
 	this.notifyOwnClients = function (channel, message) {
 		message = JSON.stringify(message);
-		client.publish("user:" + theView.getUserID() + ":" + channel, message, this);
+		client.publish("user:" + theView.getUserID() + ":" + channel, message);
 	};
 
 	this.psub = function subF(channel, cb) {

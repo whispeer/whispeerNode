@@ -29,6 +29,15 @@ var f = {
 			});
 		}), fn);
 	},
+	getUser: function getUserFriends(data, fn, view) {
+		step(function () {
+			Friends.getUser(view, data.userid, this);
+		}, h.sF(function (userFriends) {
+			this.ne({
+				friends: userFriends
+			});
+		}), fn);
+	},
 	getAll: function getFriends(data, fn, view) {
 		step(function () {
 			this.parallel.unflatten();
