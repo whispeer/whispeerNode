@@ -7,7 +7,7 @@ var client = require("./redisClient");
 var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 var search = require("./search");
-var Decryptor = require("./crypto/Decryptor");
+var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
 /*
