@@ -226,7 +226,10 @@ Circle.create = function (view, data, cb) {
 
 		multi.sadd(domain + ":circles", circleid);
 		multi.hmset(domain + ":circle:" + circleid, result);
-		multi.sadd(domain + ":circle:" + circleid + ":user", userids);
+
+		if (userids.length > 0) {
+			multi.sadd(domain + ":circle:" + circleid + ":user", userids);
+		}
 
 		multi.exec(this);
 	}), h.sF(function () {
