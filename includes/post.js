@@ -10,7 +10,7 @@ var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
 var Friends = require("./friends");
 
-var SortedSetPaginator = require("./SortedSetPaginator");
+var SortedSetPaginator = require("./sortedSetPaginator");
 var SymKey = require("./crypto/symKey");
 
 /*
