@@ -50,6 +50,10 @@ var Post = function (postid) {
 
 			metaData.sender = h.parseDecimal(metaData.sender);
 			metaData.time = h.parseDecimal(metaData.time);
+			
+			if (metaData.walluser) {
+				metaData.walluser = h.parseDecimal(metaData.walluser);
+			}
 
 			KeyApi.getWData(view, meta.key, this, true);
 		}), h.sF(function (keyData) {
@@ -335,6 +339,8 @@ function processMetaInformation(view, meta, cb) {
 	}, h.sF(function (userid, keyid) {
 		if (userid) {
 			meta.walluser = userid;
+		} else {
+			delete meta.walluser;
 		}
 
 		meta.key = keyid;

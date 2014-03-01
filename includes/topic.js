@@ -139,7 +139,7 @@ var Topic = function (id) {
 				theTopic.getReceiverIDs(view, this);
 			}
 		}), h.sF(function (receiver) {
-			result.receiver = receiver;
+			result.receiver = receiver.map(h.parseDecimal);
 
 			theTopic.getUnreadMessages(view, this);
 		}), h.sF(function (unreadMessages) {
@@ -266,7 +266,7 @@ var Topic = function (id) {
 
 			multi.hmset(domain + ":data", {
 				"newest": messageID,
-				"time": time
+				"newestTime": time
 			});
 
 			multi.exec(this);
@@ -350,6 +350,9 @@ var Topic = function (id) {
 			if (key) {
 				data.additionalKey = key;
 			}
+
+			data.createTime = h.parseDecimal(data.createTime);
+			data.creator = h.parseDecimal(data.creator);
 
 			this.ne(data);
 		}), cb);
@@ -481,6 +484,7 @@ Topic.create = function (view, data, cb) {
 		SymKey.createWDecryptors(view, data.key, this);
 	}), h.sF(function (key) {
 		result.key = key.getRealID();
+		result.createTime = data.createTime;
 
 		//TO-DO: check all receiver have access!
 
