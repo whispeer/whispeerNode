@@ -131,7 +131,7 @@ io.sockets.on("connection", function (socket) {
 		}, fn);
 	}
 
-	function handleF(handler) {
+	function handleF(handler, channel) {
 		return function handleF(data, fn) {
 			var time = new Date().getTime();
 			step(function () {
@@ -147,7 +147,7 @@ io.sockets.on("connection", function (socket) {
 				handle(handler, data, this, myView);
 			}), function (e, result) {
 				always(myView, result, fn);
-				console.log("Request handled after: " + (new Date().getTime() - time));
+				console.log("Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
 			});
 		};
 	}
@@ -156,18 +156,18 @@ io.sockets.on("connection", function (socket) {
 	for (topic in topics) {
 		if (topics.hasOwnProperty(topic)) {
 			cur = topics[topic];
-			socket.on(topic, handleF(cur));
+			socket.on(topic, handleF(cur, topic));
 			if (typeof cur === "object") {
 				for (subtopic in cur) {
 					if (cur.hasOwnProperty(subtopic)) {
-						socket.on(topic + "." + subtopic, handleF(topics[topic][subtopic]));
+						socket.on(topic + "." + subtopic, handleF(topics[topic][subtopic], topic + "." + subtopic));
 					}
 				}
 			}
 		}
 	}
 
-	socket.on("data", handleF(topics));
+	socket.on("data", handleF(topics, "data"));
 
 	socket.on("error", function () {
 		console.error(arguments);

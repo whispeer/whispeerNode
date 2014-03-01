@@ -429,7 +429,7 @@ Topic.create = function (view, data, cb) {
 
 	var receiver, receiverWO = [], cryptKeys, result = {}, theTopicID;
 	step(function () {
-		var err = validator.validate("topic", data);
+		var err = validator.validate("topicCreate", data);
 
 		if (err) {
 			throw new InvalidTopicData();
