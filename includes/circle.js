@@ -125,6 +125,10 @@ var Circle = function (userid, id) {
 			for (i = 0; i < toKeep.length; i += 1) {
 				User.getUser(toKeep[i], this.parallel());
 			}
+
+			if (toKeep.length === 0) {
+				this.ne([]);
+			}
 		}), h.sF(function (users) {
 			userids = users.map(function (e) {return e.getID();});
 
