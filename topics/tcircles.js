@@ -23,6 +23,15 @@ var f = {
 			});
 		}), fn);
 	},
+	removeCircle: function removeCircleF(data, fn, view) {
+		step(function () {
+			Circle.get(view, data.remove.circleid, this);
+		}, h.sF(function (circle) {
+			circle.remove(view, this);
+		}), h.sF(function (success) {
+			this.ne({remove: success});
+		}), fn);
+	},
 	removeUsers: function removeUsersF(data, fn, view) {
 		step(function () {
 			Circle.get(view, data.remove.circleid, this);

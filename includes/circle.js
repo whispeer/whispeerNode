@@ -57,6 +57,20 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
+	this.update = function updateF(view, data, cb) {
+		//TODO
+	};
+
+	this.remove = function removeF(view, cb) {
+		step(function () {
+			view.ownUserError(userid, this);
+		}, h.sF(function () {
+			client.srem("user:" + view.getUserID() + ":circles", id, this);
+		}), h.sF(function (res) {
+			this.ne(res === 1);
+		}), cb);
+	};
+
 	this.addUsers = function addUsersF(view, toAddIDs, decryptors, cb) {
 		//data needs to have:
 		//userid
