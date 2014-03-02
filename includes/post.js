@@ -309,7 +309,7 @@ Post.validateFormat = function (data, cb) {
 function processWallUser(userid, cb) {
 	if (userid) {
 		step(function () {
-			User.get(userid, this);
+			User.getUser(userid, this);
 		}, h.sF(function (user) {
 			this.ne(user.getID());
 		}), cb);
