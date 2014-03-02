@@ -23,7 +23,9 @@ var settings = {
 	setOwnSettings: function (view, settings, cb) {
 		step(function () {
 			client.set("user:" + view.getUserID() + ":settings", JSON.stringify(settings), this);
-		}, cb);
+		}, h.sF(function (res) {
+			this.ne(res === "OK");
+		}), cb);
 	}
 };
 
