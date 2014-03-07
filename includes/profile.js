@@ -8,31 +8,27 @@ var client = require("./redisClient");
 var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
+var jsonFields = ["profile", "hashObject", "metaData"];
 
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
 	this.getPData = function getPDataF(view, cb, wKeyData) {
-		var result = {};
+		var result;
 		step(function () {
-			this.parallel.unflatten();
-			client.get(domain + ":data", this.parallel());
-			client.get(domain + ":key", this.parallel());
-			client.get(domain + ":signature", this.parallel());
-			client.get(domain + ":hashObject", this.parallel());
-		}, h.sF(function (profileData, key, signature, hashObject) {
-			result.profile = JSON.parse(profileData);
+			client.hgetall(domain, this);
+		}, h.sF(function (profileData) {
+			result = h.unStringifyCertainAttributes(profileData, jsonFields);
+
+			result.profileid = profileid;
 
 			var err = validator.validate("profileEncrypted", result.profile, 1);
 
 			if (!err) {
-				result.profileid = profileid;
-				result.signature = signature;
-				result.hashObject = JSON.parse(hashObject);
 				if (wKeyData) {
-					KeyApi.getWData(view, key, this, true);
+					KeyApi.getWData(view, result.key, this, true);
 				} else {
-					this.ne(key);
+					this.ne(result.key);
 				}
 			} else {
 				this.last.ne(false);
@@ -59,11 +55,11 @@ var Profile = function (userid, profileid) {
 				throw new InvalidProfile();
 			}
 
+			data = h.stringifyCertainAttributes(data, jsonFields);
+
 			if (!err) {
-				client.set(domain + ":signature", data.signature, this.parallel());
-				client.set(domain + ":hashObject", JSON.stringify(data.hashObject), this.parallel());
-				client.set(domain + ":data", JSON.stringify(data.profile), this.parallel());
-				client.publish(domain, JSON.stringify(data.profile));
+				client.hmset(domain, data, this);
+				client.publish(domain, data.profile);
 			} else {
 				throw new InvalidProfile();
 			}
@@ -74,7 +70,7 @@ var Profile = function (userid, profileid) {
 		step(function () {
 			view.logedinError(this);
 		}, h.sF(function () {
-			client.get(domain + ":key", this);
+			client.hget(domain, "key", this);
 		}), h.sF(function (keyRealID) {
 			KeyApi.get(keyRealID, this);
 		}), cb);
@@ -88,6 +84,10 @@ var Profile = function (userid, profileid) {
 				theProfile.getKey(view, this);
 			}
 		}, h.sF(function (key) {
+			if (!key) {
+				throw new Error("key not existing");
+			}
+
 			key.hasAccess(view, this);
 		}), cb);
 	};
@@ -200,7 +200,7 @@ Profile.create = function createF(view, key, data, cb) {
 	}), h.sF(function createP4(id) {
 		profileID = id;
 		client.sadd("user:" + userID + ":profiles", profileID, this.parallel());
-		client.set("user:" + userID + ":profile:" + profileID + ":key", key.realid, this.parallel());
+		client.hset("user:" + userID + ":profile:" + profileID, "key", key.realid, this.parallel());
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
 		profile.setData(view, data, this, true);
