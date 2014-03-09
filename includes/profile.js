@@ -173,7 +173,7 @@ Profile.validate = function validateF(data) {
 	return !err && data.signature && data.hashObject;
 };
 
-Profile.create = function createF(view, key, data, cb) {
+Profile.create = function createF(view, data, cb) {
 	var profile, userID, profileID;
 	step(function createP1() {
 		view.logedinError(this);
@@ -183,24 +183,27 @@ Profile.create = function createF(view, key, data, cb) {
 			return;
 		}
 
-		if (typeof key !== "object") {
-			KeyApi.get(key, this);
+		if (typeof data.profile.key !== "object") {
+			KeyApi.get(data.profile.key, this);
 		} else if (!KeyApi.isKey(key)) {
-			SymKey.createWDecryptors(view, key, this);
+			SymKey.createWDecryptors(view, data.profile.key, this);
 		} else {
-			this.ne(key);
+			this.ne(data.profile.key);
 		}
 	}), h.sF(function createP3(key) {
 		userID = view.getUserID();
 		if (key && key.isSymKey()) {
+			data.profile.key = key.getRealID();
 			client.incr("user:" + userID + ":profileCount", this);
 		} else {
 			throw new NotASymKey();
 		}
 	}), h.sF(function createP4(id) {
 		profileID = id;
-		client.sadd("user:" + userID + ":profiles", profileID, this.parallel());
-		client.hset("user:" + userID + ":profile:" + profileID, "key", key.realid, this.parallel());
+		client.multi()
+			.sadd("user:" + userID + ":profiles", profileID)
+			.hset("user:" + userID + ":profile:" + profileID, "key", data.profile.key)
+			.exec(this);
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
 		profile.setData(view, data, this, true);

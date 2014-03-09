@@ -704,12 +704,12 @@ var User = function (id) {
 	}
 	this.setPublicProfile = setPublicProfileF;
 
-	function createPrivateProfileF(view, key, data, cb) {
+	function createPrivateProfileF(view, data, cb) {
 		step(function doCreatePP1() {
 			view.ownUserError(id, this);
 		}, h.sF(function doCreatePP2() {
 			var Profile = require("./profile");
-			Profile.create(view, key, data, this);
+			Profile.create(view, data, this);
 		}), cb);
 	}
 	this.createPrivateProfile = createPrivateProfileF;

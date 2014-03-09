@@ -127,7 +127,6 @@ var u = {
 				for (i = 0; i < data.priv.length; i += 1) {
 					Profile.get(view, data.priv[i].profileid, this.parallel());
 				}
-				//myUser.createPrivateProfile(view, data.keys.profile, data.profile.priv, this.parallel());
 			}
 		}), h.sF(function (privateProfiles) {
 			if (data.pub) {

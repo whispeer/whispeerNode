@@ -40,7 +40,6 @@ var s = {
 		step(function () {
 			view.getSession().register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
 		}, h.sF(function (result) {
-			console.log(result);
 			res = result;
 			if (result.error) {
 				this.last.ne(res);
@@ -54,7 +53,10 @@ var s = {
 				}
 
 				if (data.profile.priv && data.keys.profile) {
-					myUser.createPrivateProfile(view, data.keys.profile, data.profile.priv, this.parallel());
+					var i;
+					for (i = 0; i < data.profile.priv.length; i += 1) {
+						myUser.createPrivateProfile(view, data.profile.priv[i], this.parallel());
+					}
 				}
 			}
 

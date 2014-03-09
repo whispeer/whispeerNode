@@ -263,7 +263,7 @@ var Session = function Session() {
 		}), cb);
 	};
 
-	var registerSymKeys = ["main", "friends", "friendsLevel2"];
+	var registerSymKeys = ["main", "friends", "friendsLevel2", "profile"];
 	var registerEccKeys = ["sign", "crypt"];
 	var keyName = registerSymKeys.concat(registerEccKeys);
 
