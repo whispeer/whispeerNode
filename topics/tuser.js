@@ -127,7 +127,7 @@ var u = {
 
 			this.parallel()();
 		}), h.sF(function (results) {
-			result = {
+			var result = {
 				success: results
 			};
 		}), fn);
