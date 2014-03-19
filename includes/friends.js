@@ -47,6 +47,24 @@ function addFriendName(view, user) {
 }
 
 var friends = {
+	notifyAllFriends: function (view, channel, content) {
+		step(function () {
+			friends.getOnline(view, this);
+		}, h.sF(function (online) {
+			online = Object.keys(online);
+
+			var i, currentChannel;
+			for (i = 0; i < online.length; i += 1) {
+				currentChannel = "user:" + online[i] + ":friends:" + view.getUserID() + ":" + channel;
+
+				client.publish(currentChannel, content);
+			}
+
+			this.ne();
+		}), function (e) {
+			console.error(e);
+		});
+	},
 	areFriends: function (view, uid, cb) {
 		var ownID = view.getUserID();
 		step(function () {
@@ -67,7 +85,7 @@ var friends = {
 		step(function () {
 			client.sinter("friends:" + view.getUserID(), "user:online", this);
 		}, h.sF(function (friends) {
-			onlineFriends = friends;
+			onlineFriends = friends || [];
 			var i;
 			for (i = 0; i < friends.length; i += 1) {
 				client.get("user:" + friends[i] + ":recentActivity", this.parallel());
@@ -76,6 +94,7 @@ var friends = {
 			this.parallel()();
 		}), h.sF(function (recentActivity) {
 			var result = {};
+			recentActivity = recentActivity || [];
 			h.assert(recentActivity.length === onlineFriends.length);
 
 			var i;
@@ -222,9 +241,9 @@ var friends = {
 		}), h.sF(function addFriendsName() {
 			addFriendName(view, toAddUser);
 			if (firstRequest) {
-				client.publish("user:" + uid + ":friendRequest", ownID, this);
+				client.publish("user:" + uid + ":friendRequest", ownID);
 			} else {
-				client.publish("user:" + uid + ":friendAccept", ownID, this);
+				client.publish("user:" + uid + ":friendAccept", ownID);
 			}
 			this.ne(true);
 		}), cb);

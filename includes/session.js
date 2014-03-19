@@ -213,12 +213,12 @@ var Session = function Session() {
 	*/
 	this.logout = function (cb) {
 		step(function () {
+			callListener(false);
+
 			client.del("session:" + sid, this);
 			logedin = false;
 			userid = 0;
 			sid = undefined;
-
-			callListener(logedin);
 		}, cb);
 	};
 
