@@ -109,7 +109,9 @@ io.sockets.on("connection", function (socket) {
 	*/
 	function always(view, data, fn) {
 		step(function () {
-			view.logedin(this);
+			this.parallel.unflatten();
+			view.logedin(this.parallel());
+			view.recentActivity(this.parallel());
 		}, function (e, logedin) {
 			if (e) {
 				console.error(e);

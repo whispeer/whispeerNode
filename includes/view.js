@@ -4,6 +4,8 @@ var step = require("step");
 var h = require("whispeerHelper");
 var client = require("./redisClient");
 
+var onlineStatusUpdater = require("./onlineStatus");
+
 var view = function view(socket, session, listener) {
 	var theView = this, toDestroy = [];
 
@@ -19,12 +21,10 @@ var view = function view(socket, session, listener) {
 
 	this.session = getSessionF;
 
-	session.changeListener(function sessionChange() {
+	session.changeListener(function sessionChange(logedin) {
 		step(function () {
 			theView.destroy();
 
-			session.logedin(this);
-		}, h.sF(function (logedin) {
 			if (logedin) {
 				var base = "user:" + session.getUserID() + ":*";
 				theView.psub(base, function (channel, data) {
@@ -37,7 +37,7 @@ var view = function view(socket, session, listener) {
 					}
 				});
 			}
-		}), function (e) {
+		}, function (e) {
 			console.error(e);
 		});
 	});
@@ -146,6 +146,12 @@ var view = function view(socket, session, listener) {
 				this.ne();
 			}
 		}), cb);
+	};
+
+	var statusUpdater = new onlineStatusUpdater(this, session);
+
+	this.recentActivity = function (cb) {
+		statusUpdater.recentActivity(cb);
 	};
 };
 

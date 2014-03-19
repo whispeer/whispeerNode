@@ -62,6 +62,34 @@ var friends = {
 			this.ne(friend1 && friend2);
 		}), cb);
 	},
+	getOnline: function (view, cb) {
+		var onlineFriends = [];
+		step(function () {
+			client.sinter("friends:" + view.getUserID(), "user:online", this);
+		}, h.sF(function (friends) {
+			onlineFriends = friends;
+			var i;
+			for (i = 0; i < friends.length; i += 1) {
+				client.get("user:" + friends[i] + ":recentActivity", this.parallel());
+			}
+
+			this.parallel()();
+		}), h.sF(function (recentActivity) {
+			var result = {};
+			h.assert(recentActivity.length === onlineFriends.length);
+
+			var i;
+			for (i = 0; i < onlineFriends.length; i += 1) {
+				if (recentActivity[i]) {
+					result[onlineFriends[i]] = 2;
+				} else {
+					result[onlineFriends[i]] = 1;
+				}
+			}
+
+			this.ne(result);
+		}), cb);
+	},
 	hasOtherRequested: function (view, uid, cb) {
 		var ownID = view.getUserID();
 		step(function () {

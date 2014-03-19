@@ -20,6 +20,15 @@ var f = {
 			});
 		}), fn);
 	},
+	getOnline: function getOnlineF(data, fn, view) {
+		step(function () {
+			Friends.getOnline(view, this);
+		}, h.sF(function (ids) {
+			this.ne({
+				online: ids
+			});
+		}), fn);
+	},
 	mutual: function getMutualF(data, fn, view) {
 		step(function () {
 			Friends.myMutual(view, data.uid, this);

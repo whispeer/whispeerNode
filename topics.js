@@ -25,6 +25,13 @@ var whispeerAPI = {
 			this.ne(logedin);
 		}), fn);
 	},
+	ping: function (data, fn) {
+		step(function () {
+			this.ne({
+				pong: true
+			});
+		}, fn);
+	},
 	key: {
 		get: function getKeyChainF(data, fn, view) {
 			var theKey, result = [];

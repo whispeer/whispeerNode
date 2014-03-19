@@ -107,7 +107,7 @@ var Session = function Session() {
 			logedin = true;
 			lastChecked = time();
 
-			callListener();
+			callListener(logedin);
 
 			this.ne(sid);
 		}), callback);
@@ -158,12 +158,12 @@ var Session = function Session() {
 	this.logedin = checkLogin;
 	this.logedinError = checkLoginError;
 
-	function callListener() {
+	function callListener(logedin) {
 		process.nextTick(function () {
 			var i;
 			for (i = 0; i < listeners.length; i += 1) {
 				try {
-					listeners[i]();
+					listeners[i](logedin);
 				} catch (e) {
 					console.error(e);
 				}
@@ -185,13 +185,15 @@ var Session = function Session() {
 		step(function () {
 			lastChecked = time();
 			client.get("session:" + theSID, this);
-		}, h.sF(function (results) {
-			if (results && h.isID(results)) {
-				userid = results;
-				sid = theSID;
-				logedin = true;
+		}, h.sF(function (result) {
+			if (result && h.isID(result)) {
+				if (!logedin || userid != result) {
+					userid = result;
+					sid = theSID;
+					logedin = true;
 
-				callListener();
+					callListener(logedin);
+				}
 
 				this.last.ne(true);
 			} else {
@@ -216,7 +218,7 @@ var Session = function Session() {
 			userid = 0;
 			sid = undefined;
 
-			callListener();
+			callListener(logedin);
 		}, cb);
 	};
 

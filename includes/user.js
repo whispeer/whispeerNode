@@ -975,6 +975,24 @@ var User = function (id) {
 	}
 	this.generateToken = generateTokenF;
 
+	function getOnlineStatusF(cb) {
+		step(function () {
+			client.scard(userDomain + ":sockets", this.parallel());
+			client.get(userDomain + ":recentActivity", this.parallel());
+		}, h.sF(function (socketCount, activity) {
+			if (socketCount > 0) {
+				if (activity) {
+					this.ne(2);
+				} else {
+					this.ne(1);
+				}
+			} else {
+				this.ne(0);
+			}
+		}), cb);
+	}
+	this.getOnlineStatus = getOnlineStatusF;
+
 	function useTokenF(token, cb) {
 		step(function () {
 			client.del(userDomain + ":token:" + token, this);
