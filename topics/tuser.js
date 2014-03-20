@@ -121,8 +121,12 @@ var u = {
 			view.getOwnUser(this);
 		}, h.sF(function (myUser) {
 			var i;
-			for (i = 0; i < data.privateProfiles.length; i += 1) {
-				myUser.createPrivateProfile(view, data.privateProfiles[i], this.parallel());
+			if (typeof data.privateProfiles === "object" && data.privateProfiles instanceof Array) {
+				for (i = 0; i < data.privateProfiles.length; i += 1) {
+					myUser.createPrivateProfile(view, data.privateProfiles[i], this.parallel());
+				}
+			} else {
+				fn.error.protocol();
 			}
 
 			this.parallel()();
@@ -130,24 +134,34 @@ var u = {
 			var result = {
 				success: results
 			};
+
+			this.ne(result);
 		}), fn);
 	},
 	deletePrivateProfiles: function deletePrivateProfilesF(data, fn, view) {
 		step(function () {
-			view.getOwnUser(this);	
+			view.getOwnUser(this);
 		}, h.sF(function (myUser) {
-			var i;
-			for (i = 0; i < data.profilesToDelete.length; i += 1) {
-				myUser.deletePrivateProfile(view, data.profilesToDelete[i], this.parallel());
-			}
+			if (typeof data.profilesToDelete === "object" && data.profilesToDelete instanceof Array) {
+				var i;
+				for (i = 0; i < data.profilesToDelete.length; i += 1) {
+					myUser.deletePrivateProfile(view, data.profilesToDelete[i], this.parallel());
+				}
 
-			this.parallel()();
+				this.parallel()();
+			} else {
+				fn.error.protocol();
+			}
 		}), h.sF(function (results) {
-			result = {
+			results = results || [];
+
+			var result = {
 				success: h.arrayToObject(results, function (e, i) {
 					return data.profilesToDelete[i];
 				})
 			};
+
+			this.ne(result);
 		}), fn);
 	},
 	profileChange: function changeProfilesF(data, fn, view) {

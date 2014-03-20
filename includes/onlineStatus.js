@@ -59,7 +59,8 @@ function onlineStatusUpdater(view, session) {
 		if (userid) {
 			client.multi()
 					.set("user:" + userid + ":recentActivity", "1")
-					.expire("user:" + userid + ":recentActivity", 10*60, cb);
+					.expire("user:" + userid + ":recentActivity", 10*60)
+					.exec(cb);
 		} else {
 			cb();
 		}
