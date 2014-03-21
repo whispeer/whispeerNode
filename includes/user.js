@@ -724,7 +724,7 @@ var User = function (id) {
 				throw new Error("profile not existing");
 			}
 
-			profile.remove(this);
+			profile.remove(view, this);
 		}), cb);
 	}
 	this.deletePrivateProfile = deletePrivateProfileF;
