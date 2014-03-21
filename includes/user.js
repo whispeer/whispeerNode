@@ -714,6 +714,21 @@ var User = function (id) {
 	}
 	this.createPrivateProfile = createPrivateProfileF;
 
+	function deletePrivateProfileF(view, profileID, cb) {
+		step(function removePP1() {
+			view.ownUserError(id, this);
+		}, h.sF(function removePP2() {
+			require("./profile").get(view, profileID, this);
+		}), h.sF(function removePP3(profile) {
+			if (!profile) {
+				throw new Error("profile not existing");
+			}
+
+			profile.remove(this);
+		}), cb);
+	}
+	this.deletePrivateProfile = deletePrivateProfileF;
+
 	function getPrivateProfilesF(view, cb, json) {
 		step(function getPP1() {
 			var Profile = require("./profile");

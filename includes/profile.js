@@ -92,10 +92,12 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
-	this.remove = function removeF() {
-		//TODO
-		//client.sadd("user:" + userid + ":profiles", profileid, this.parallel());
-		//client.del(domain + ":data", this.parallel());
+	this.remove = function removeF(view, cb) {
+		step(function () {
+			view.ownUserError(userid, this);
+		}, h.sF(function () {
+			client.srem("user:" + userid + ":profiles", profileid, this);
+		}), cb)
 	};
 };
 
