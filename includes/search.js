@@ -1,6 +1,6 @@
 "use strict";
 var rs = require("redis-search");
-var client = require("redisClient");
+var client = require("./redisClient");
 
 function makeSearch(key) {
 	return rs.createSearch({
