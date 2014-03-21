@@ -46,24 +46,61 @@ function addFriendName(view, user) {
 		});
 }
 
+function getUserOnlineFriends(uid, cb) {
+	var onlineFriends = [];
+	step(function () {
+		client.sinter("friends:" + uid, "user:online", this);
+	}, h.sF(function (friends) {
+		onlineFriends = friends || [];
+		var i;
+		for (i = 0; i < friends.length; i += 1) {
+			client.get("user:" + friends[i] + ":recentActivity", this.parallel());
+		}
+
+		this.parallel()();
+	}), h.sF(function (recentActivity) {
+		var result = {};
+		recentActivity = recentActivity || [];
+		h.assert(recentActivity.length === onlineFriends.length);
+
+		var i;
+		for (i = 0; i < onlineFriends.length; i += 1) {
+			if (recentActivity[i]) {
+				result[onlineFriends[i]] = 2;
+			} else {
+				result[onlineFriends[i]] = 1;
+			}
+		}
+
+		this.ne(result);
+	}), cb);
+}
+
 var friends = {
-	notifyAllFriends: function (view, channel, content) {
+	notifyUsersFriends: function (uid, channel, content) {
 		step(function () {
-			friends.getOnline(view, this);
+			getUserOnlineFriends(uid, this);
 		}, h.sF(function (online) {
 			online = Object.keys(online);
 
 			var i, currentChannel;
 			for (i = 0; i < online.length; i += 1) {
-				currentChannel = "user:" + online[i] + ":friends:" + view.getUserID() + ":" + channel;
+				currentChannel = "user:" + online[i] + ":friends:" + channel;
 
-				client.publish(currentChannel, content);
+				client.publish(currentChannel, JSON.stringify({
+					sender: uid,
+					receiver: online[i],
+					content: content
+				}));
 			}
 
 			this.ne();
 		}), function (e) {
 			console.error(e);
 		});
+	},
+	notifyAllFriends: function (view, channel, content) {
+		friends.notifyUsersFriends(view.getUserID(), channel, content);
 	},
 	areFriends: function (view, uid, cb) {
 		var ownID = view.getUserID();
@@ -81,33 +118,7 @@ var friends = {
 		}), cb);
 	},
 	getOnline: function (view, cb) {
-		var onlineFriends = [];
-		step(function () {
-			client.sinter("friends:" + view.getUserID(), "user:online", this);
-		}, h.sF(function (friends) {
-			onlineFriends = friends || [];
-			var i;
-			for (i = 0; i < friends.length; i += 1) {
-				client.get("user:" + friends[i] + ":recentActivity", this.parallel());
-			}
-
-			this.parallel()();
-		}), h.sF(function (recentActivity) {
-			var result = {};
-			recentActivity = recentActivity || [];
-			h.assert(recentActivity.length === onlineFriends.length);
-
-			var i;
-			for (i = 0; i < onlineFriends.length; i += 1) {
-				if (recentActivity[i]) {
-					result[onlineFriends[i]] = 2;
-				} else {
-					result[onlineFriends[i]] = 1;
-				}
-			}
-
-			this.ne(result);
-		}), cb);
+		getUserOnlineFriends(view.getUserID(), cb);
 	},
 	hasOtherRequested: function (view, uid, cb) {
 		var ownID = view.getUserID();

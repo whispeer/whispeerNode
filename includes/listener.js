@@ -5,6 +5,13 @@ var h = require("whispeerHelper");
 var User = require("./user");
 
 var listener = {
+	"friends:online": function fo(view, data) {
+		data = JSON.parse(data);
+		view.getSocket().emit("friendOnlineChange", {
+			uid: data.sender,
+			status: data.content
+		});
+	},
 	friendRequest: function fr(view, uid) {
 		step(function () {
 			//we definitly need to add this users friendKey here!
