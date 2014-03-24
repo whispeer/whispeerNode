@@ -11,7 +11,9 @@
 
 var fs = require("fs");
 
-var config = JSON.parse(fs.readFileSync("./config.json"));
+var path = require("path");
+
+var config = JSON.parse(fs.readFileSync(path.resolve(__dirname, "config.json")));
 
 var io = require("socket.io").listen(config.wsPort);
 
