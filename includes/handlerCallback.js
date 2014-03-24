@@ -19,7 +19,8 @@ var HandlerCallback = function (fn) {
 
 			fn(result);
 		} else {
-			throw new Error("double callback");
+			console.error("double callback");
+			//throw new Error("double callback");
 		}
 	};
 

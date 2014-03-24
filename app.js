@@ -9,20 +9,26 @@
 
 "use strict";
 
-var io = require("socket.io").listen(3000);
+var fs = require("fs");
 
-io.configure("production", function(){
+var config = JSON.parse(fs.readFileSync("./config.json"));
+
+var io = require("socket.io").listen(config.wsPort);
+
+if (!config.debug) {
+	io.set("log level", 1);
+} else {
+	console.log("Verbose Mode started!");
+}
+
+if (config.production) {
 	console.log("Production Mode started!");
 	io.disable("browser client");
-	io.set("log level", 1);
-
 	io.set("transports", ["websocket", "flashsocket", "htmlfile", "xhr-polling"]);
-});
-
-io.configure("development", function(){
+} else {
 	console.log("Dev Mode started!");
 	io.set("transports", ["websocket"]);
-});
+}
 
 require("./includes/errors");
 
@@ -33,8 +39,11 @@ var client = require("./includes/redisClient");
 var onSocketConnection = require("./onSocketConnection");
 
 step(function () {
+	console.log("Database selected: " + config.dbNumber || 0);
+	client.select(config.dbNumber || 0, this);
+}, h.sF(function () {
 	client.smembers("user:online", this);
-}, h.sF(function (onlineUsers) {
+}), h.sF(function (onlineUsers) {
 	console.log("User Sockets Removed from " + onlineUsers.length + " users");
 
 	var i;
