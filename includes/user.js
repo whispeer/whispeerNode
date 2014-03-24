@@ -366,7 +366,7 @@ var User = function (id) {
 			data.value = realValue;
 
 			if (attr.hash) {
-				client.hmset(userDomain + ":" + obj2key(key), data.value, this);
+				client.multi().del(userDomain + ":" + obj2key(key)).hmset(userDomain + ":" + obj2key(key), data.value).exec(this);
 			} else {
 				console.log("SET " + userDomain + ":" + obj2key(key) + "-" + data.value);
 				client.set(userDomain + ":" + obj2key(key), data.value, this);

@@ -52,6 +52,42 @@ function makeSearchUserData(view, cb, ids, known) {
 	}), cb);
 }
 
+function setPrivateProfiles(view, privateProfiles, cb) {
+	step(function () {
+		if (privateProfiles && privateProfiles.length > 0) {
+			var i;
+			for (i = 0; i < privateProfiles.length; i += 1) {
+				Profile.get(view, privateProfiles[i].profileid, this.parallel());
+			}
+		} else {
+			this.last.ne([]);
+		}
+	}, h.sF(function (profiles) {
+		if (profiles.length !== privateProfiles.length) {
+			throw "bug!";
+		}
+
+		var i;
+		for (i = 0; i < privateProfiles.length; i += 1) {
+			profiles[i].setData(view, privateProfiles[i], this.parallel());
+		}
+	}), h.sF(function (success) {
+		this.ne(success);
+	}), cb);
+}
+
+function setPublicProfile(view, publicProfile, cb) {
+	step(function () {
+		if (publicProfile) {
+			view.getOwnUser(this);
+		} else {
+			this.last.ne(true);
+		}
+	}, h.sF(function (myUser) {
+		myUser.setPublicProfile(view, publicProfile, this);
+	}), cb);
+}
+
 var u = {
 	get: function getUserF(data, fn, view) {
 		step(function () {
@@ -165,45 +201,28 @@ var u = {
 		}), fn);
 	},
 	profileChange: function changeProfilesF(data, fn, view) {
-		var myUser;
 		step(function () {
-			view.getOwnUser(this);
-		}, h.sF(function (user) {
-			myUser = user;
-			if (data.priv) {
-				var i;
-				for (i = 0; i < data.priv.length; i += 1) {
-					Profile.get(view, data.priv[i].profileid, this.parallel());
-				}
-			}
-		}), h.sF(function (privateProfiles) {
-			if (data.pub) {
-				myUser.setPublicProfile(view, data.pub, this.parallel());
-			} else {
-				this.parallel()(null, true);
+			if (!data) {
+				this.last.ne({});
 			}
 
-			if (privateProfiles.length !== data.priv.length) {
-				throw "bug!";
-			}
+			this.parallel.unflatten();
 
-			var i, cur;
-			for (i = 0; i < privateProfiles.length; i += 1) {
-				cur = data.priv[i];
-				privateProfiles[i].setData(view, cur, this.parallel());
-			}
-		}), h.sF(function (result) {
-			var i, allok = result[0], errors = {
-				pub: result[0],
+			setPublicProfile(view, data.pub, this.parallel());
+			setPrivateProfiles(view, data.priv, this.parallel());
+		}, h.sF(function (successPub, successPriv) {
+			var allok = successPub;
+			var errors = {
+				pub: successPub,
 				priv: []
 			};
 
-			for (i = 1; i < result.length; i += 1) {
-				if (!result[i]) {
+			successPriv.map(function (value, index) {
+				if (!value) {
 					allok = false;
-					errors.priv.push(data.priv[i].id);
+					errors.priv.push(data.priv[index].id);
 				}
-			}
+			});
 
 			this.ne({
 				allok: allok,
