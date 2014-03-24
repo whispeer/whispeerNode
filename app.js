@@ -10,12 +10,20 @@
 "use strict";
 
 var fs = require("fs");
-
 var path = require("path");
-
 var config = JSON.parse(fs.readFileSync(path.resolve(__dirname, "config.json")));
 
-var io = require("socket.io").listen(config.wsPort);
+var options = {};
+
+if (config.https) {
+	options = {
+		key: fs.readFileSync(config.https.keyPath),
+		cert: fs.readFileSync(config.https.certPath),
+		ca: fs.readFileSync(config.https.caPath)
+	};
+}
+
+var io = require("socket.io").listen(config.wsPort, options);
 
 if (!config.debug) {
 	io.set("log level", 1);
@@ -26,6 +34,7 @@ if (!config.debug) {
 if (config.production) {
 	console.log("Production Mode started!");
 	io.disable("browser client");
+	io.set("flash policy port", config.wsPort);
 	io.set("transports", ["websocket", "flashsocket", "htmlfile", "xhr-polling"]);
 } else {
 	console.log("Dev Mode started!");
