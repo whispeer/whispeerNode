@@ -49,7 +49,7 @@ app.use(function(req, res, next) {
 
 app.use(express.methodOverride());
 app.use(express.bodyParser());
-app.use(helmet.csp());
+//app.use(helmet.csp());
 app.use(helmet.xframe());
 app.use(helmet.iexss());
 app.use(helmet.cacheControl());
