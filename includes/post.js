@@ -294,7 +294,7 @@ Post.validateFormat = function (data, cb) {
 
 		var current = new Date().getTime();
 
-		if (Math.abs(data.meta.time - current) > 20 * 1000) {
+		if (Math.abs(data.meta.time - current) > 5 * 60 * 1000) {
 			throw new InvalidPost("time too old");
 		}
 
