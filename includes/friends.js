@@ -120,6 +120,26 @@ var friends = {
 	getOnline: function (view, cb) {
 		getUserOnlineFriends(view.getUserID(), cb);
 	},
+	isOnline: function (view, uid, cb) {
+		step(function () {
+			var ownID = view.getUserID();
+
+			this.parallel.unflatten();
+			client.sismember("friends:" + ownID, uid, this.parallel());
+			client.sismember("user:online", uid, this.parallel());
+			client.get("user:" + uid + ":recentActivity", this.parallel());
+		}, h.sF(function (isFriend, isOnline, recentActivity) {
+			if (!isFriend) {
+				this.ne(-1);
+			} else if (!isOnline) {
+				this.ne(0);
+			} else if (!recentActivity) {
+				this.ne(2);
+			} else {
+				this.ne(1);
+			}
+		}), cb);
+	},
 	hasOtherRequested: function (view, uid, cb) {
 		var ownID = view.getUserID();
 		step(function () {

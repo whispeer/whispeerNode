@@ -12,11 +12,16 @@ var f = {
 			fkdecryptor, //is added to our friend key
 			signedRequest //signature of "friendShip:userid:nickname"
 		*/
+		var wasSuccess = false;
 		step(function () {
 			Friends.add(view, data.userid, data.signedRequest, data.key, data.decryptors, this);
 		}, h.sF(function (success) {
+			wasSuccess = success;
+			Friends.isOnline(view, data.userid, this);
+		}), h.sF(function (online) {
 			this.ne({
-				friendAdded: success
+				friendOnline: online,
+				friendAdded: wasSuccess
 			});
 		}), fn);
 	},
@@ -24,6 +29,7 @@ var f = {
 		step(function () {
 			Friends.getOnline(view, this);
 		}, h.sF(function (ids) {
+			ids[view.getUserID()] = -1;
 			this.ne({
 				online: ids
 			});
