@@ -5,7 +5,7 @@ var h = require("whispeerHelper");
 
 var friends = require("./friends");
 
-var awayTimeout = 30*1000;
+var awayTimeout = 10*60*1000;
 
 setInterval(function () {
 	var time = new Date().getTime();
