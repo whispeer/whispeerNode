@@ -12,6 +12,8 @@ var posts = require("./topics/tposts");
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
 
+var MAXDEPTH = 20;
+
 var whispeerAPI = {
 	priorized: ["keyData"],
 	logedin: function isLogedinF(data, fn, view) {
@@ -33,6 +35,40 @@ var whispeerAPI = {
 		}, fn);
 	},
 	key: {
+		getMultiple: function (data, fn, view) {
+			var keys, result = [];
+			step(function () {
+				data.realids.forEach(function (e) {
+					KeyApi.get(e, this.parallel());
+				}, this);
+			}, h.sF(function (theKeys) {
+				keys = theKeys;
+				keys.forEach(function (e) {
+					if (e) {
+						e.getAllAccessedParents(view, this.parallel(), MAXDEPTH);
+					}
+				}, this);
+			}), h.sF(function (parents) {
+				var loaded = data.loaded || [];
+				parents = h.array.flatten(parents);
+
+				function addNotLoaded(e) {
+					if (!h.array.contains(loaded, e.getRealID())) {
+						result.push(e);
+						loaded.push(e.getRealID());
+					}
+				}
+
+				parents.forEach(addNotLoaded);
+				keys.forEach(addNotLoaded);
+
+				result.forEach(function (e) {
+					e.getKData(view, this.parallel(), true);
+				}, this);
+			}), h.sF(function (keys) {
+				this.ne({keys: keys});
+			}), fn);
+		},
 		get: function getKeyChainF(data, fn, view) {
 			var theKey, result = [];
 			step(function () {
@@ -41,7 +77,6 @@ var whispeerAPI = {
 				if (!key) {
 					throw "could not load key:" + data.realid;
 				}
-				var MAXDEPTH = 20;
 
 				theKey = key;
 				theKey.getAllAccessedParents(view, this, MAXDEPTH);

@@ -12,7 +12,6 @@ setInterval(function () {
 	step(function () {
 		client.zrangebyscore("user:awayCheck", "-inf", time, this);
 	}, h.sF(function (awayUsers) {
-		console.log("remove: " + awayUsers.length);
 		awayUsers.map(function (userid) {
 			friends.notifyUsersFriends(userid, "online", 1);
 		});
