@@ -1,5 +1,11 @@
 "use strict";
 
+/* @refactor */
+//this code is totally slugish
+//it needs a BIG refactoring!
+//first of all: uniquify all keys in one hset
+//second of all: define key visibility in an easier way!
+
 var step = require("step");
 var client = require("./redisClient");
 var h = require("whispeerHelper");
@@ -759,33 +765,23 @@ var User = function (id) {
 	this.getPublicProfile = getPublicProfileF;
 
 	function setFriendsKeyF(view, key, cb) {
-		step(function doSetMainKey() {
-			setAttribute(view, {friendsKey: key}, this);
-		}, cb);
+		setAttribute(view, {friendsKey: key}, cb);
 	}
 
 	function setFriendsLevel2KeyF(view, key, cb) {
-		step(function doSetMainKey() {
-			setAttribute(view, {friendsLevel2Key: key}, this);
-		}, cb);
+		setAttribute(view, {friendsLevel2Key: key}, cb);
 	}
 
 	function setMainKeyF(view, key, cb) {
-		step(function doSetMainKey() {
-			setAttribute(view, {mainKey: key}, this);
-		}, cb);
+		setAttribute(view, {mainKey: key}, cb);
 	}
 
 	function setCryptKeyF(view, key, cb) {
-		step(function doSetCryptKey() {
-			setAttribute(view, {cryptKey: key}, this);
-		}, cb);
+		setAttribute(view, {cryptKey: key}, cb);
 	}
 
 	function setSignKeyF(view, key, cb) {
-		step(function doSetSignKey() {
-			setAttribute(view, {signKey: key}, this);
-		}, cb);
+		setAttribute(view, {signKey: key}, cb);
 	}
 
 	this.setMainKey = setMainKeyF;
@@ -796,15 +792,11 @@ var User = function (id) {
 	this.getFriendShipKey = getFriendShipKeyF;
 
 	function getFriendsKeyF(view, cb) {
-		step(function dogetFriendsKey() {
-			getAttribute(view, "friendsKey", this);
-		}, cb);
+		getAttribute(view, "friendsKey", cb);
 	}
 
 	function getFriendsLevel2KeyF(view, cb) {
-		step(function dogetFriendsLevel2Key() {
-			getAttribute(view, "friendsLevel2Key", this);
-		}, cb);
+		getAttribute(view, "friendsLevel2Key", cb);
 	}
 
 	function getFriendShipKeyF(view, cb) {
@@ -816,21 +808,15 @@ var User = function (id) {
 	}
 
 	function getMainKeyF(view, cb) {
-		step(function dogetMainKey() {
-			getAttribute(view, "mainKey", this);
-		}, cb);
+		getAttribute(view, "mainKey", cb);
 	}
 
 	function getCryptKeyF(view, cb) {
-		step(function dogetCryptKey() {
-			getAttribute(view, "cryptKey", this);
-		}, cb);
+		getAttribute(view, "cryptKey", cb);
 	}
 
 	function getSignKeyF(view, cb) {
-		step(function dogetSignKey() {
-			getAttribute(view, "signKey", this);
-		}, cb);
+		getAttribute(view, "signKey", cb);
 	}
 
 	this.getMainKey = getMainKeyF;

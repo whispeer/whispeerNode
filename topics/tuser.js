@@ -1,5 +1,7 @@
 "use strict";
 
+/* @refactor */
+
 var step = require("step");
 var h = require("whispeerHelper");
 
