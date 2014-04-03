@@ -232,6 +232,17 @@ var u = {
 			});
 		}), fn);
 	},
+	setMigrationState: function (data, fn, view) {
+		step(function () {
+			view.getOwnUser(this);
+		}, h.sF(function (ownUser) {
+			ownUser.setMigrationState(view, data.migrationState, this);
+		}), h.sF(function () {
+			this.ne({
+				success: true
+			});
+		}), fn);
+	},
 	own: function getOwnDataF(data, fn, view) {
 		var userData;
 		step(function () {

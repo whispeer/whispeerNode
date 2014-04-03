@@ -129,6 +129,10 @@ var validKeys = {
 		},
 		hash: true
 	},
+	migrationState: {
+		read: ownUserF,
+		pre: ownUserF
+	},
 	password: {
 		read: trueF,
 		match: /^[A-Fa-f0-9]{10}$/,
@@ -764,6 +768,14 @@ var User = function (id) {
 
 	this.getPublicProfile = getPublicProfileF;
 
+	this.setMigrationState = function (view, state, cb) {
+		setAttribute(view, {migrationState: state}, cb);
+	};
+
+	this.getMigrationState = function (view, cb) {
+		getAttribute(view, "migrationState", cb);
+	};
+
 	function setFriendsKeyF(view, key, cb) {
 		setAttribute(view, {friendsKey: key}, cb);
 	}
@@ -932,9 +944,10 @@ var User = function (id) {
 			theUser.getMutualFriends(view, this.parallel());
 
 			if (theUser.isOwnUser(view)) {
+				theUser.getMigrationState(view, this.parallel());
 				theUser.getEMail(view, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, mail) {
+		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, migrationState, mail) {
 			result = {
 				id: id,
 				nickname: nick,
@@ -945,6 +958,7 @@ var User = function (id) {
 			};
 
 			if (theUser.isOwnUser(view)) {
+				result.migrationState = migrationState;
 				result.mail = mail;
 			}
 
