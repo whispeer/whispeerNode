@@ -65,7 +65,11 @@ var whispeerAPI = {
 				result.forEach(function (e) {
 					e.getKData(view, this.parallel(), true);
 				}, this);
+
+				this.parallel()();
 			}), h.sF(function (keys) {
+				keys = keys || [];
+
 				this.ne({keys: keys});
 			}), fn);
 		},
