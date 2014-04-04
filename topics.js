@@ -38,6 +38,12 @@ var whispeerAPI = {
 		getMultiple: function (data, fn, view) {
 			var keys, result = [];
 			step(function () {
+				if (data.realids.length === 0) {
+					this.last.ne({
+						keys: []
+					});
+				}
+
 				data.realids.forEach(function (e) {
 					KeyApi.get(e, this.parallel());
 				}, this);

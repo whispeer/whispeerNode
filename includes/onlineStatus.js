@@ -77,13 +77,13 @@ function onlineStatusUpdater(view, session) {
 				}
 			})
 			.sadd("user:" + userid + ":sockets", view.getSocket().id)
-			.getset("user:" + userid + ":recentActivity", "1", function (oldValue) {
+			.getset("user:" + userid + ":recentActivity", "1", function (error, oldValue) {
 				if (!oldValue && !alreadyNotified) {
 					friends.notifyAllFriends(view, "online", 2);
 				}
 			})
 			.zadd("user:awayCheck", new Date().getTime() + awayTimeout, userid)
-			.expire("user:" + userid + ":recentActivity", awayTimeout)
+			.expire("user:" + userid + ":recentActivity", awayTimeout / 1000)
 			.exec(function (e) {
 				if (e) {
 					console.error(e);
