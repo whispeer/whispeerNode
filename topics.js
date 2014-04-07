@@ -49,23 +49,20 @@ var whispeerAPI = {
 				}, this);
 			}, h.sF(function (theKeys) {
 				keys = theKeys;
-				keys.forEach(function (e) {
-					if (e) {
-						e.getAllAccessedParents(view, this.parallel(), MAXDEPTH);
-					}
-				}, this);
-			}), h.sF(function (parents) {
+
 				var loaded = data.loaded || [];
-				parents = h.array.flatten(parents);
 
 				function addNotLoaded(e) {
+					if (!e) {
+						debugger;
+					}
+
 					if (!h.array.contains(loaded, e.getRealID())) {
 						result.push(e);
 						loaded.push(e.getRealID());
 					}
 				}
 
-				parents.forEach(addNotLoaded);
 				keys.forEach(addNotLoaded);
 
 				result.forEach(function (e) {

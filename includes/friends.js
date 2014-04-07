@@ -153,6 +153,8 @@ var friends = {
 				return;
 			}
 
+			this.parallel.unflatten();
+
 			friends.areFriends(view, uid, this.parallel());
 			friends.hasOtherRequested(view, uid, this.parallel());
 		}, h.sF(function (areFriends, hasORequested) {

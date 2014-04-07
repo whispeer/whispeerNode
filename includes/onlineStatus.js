@@ -14,11 +14,18 @@ setInterval(function () {
 	}, h.sF(function (awayUsers) {
 		awayUsers.map(function (userid) {
 			friends.notifyUsersFriends(userid, "online", 1);
+			client.del("user:" + userid + ":recentActivity", function (e)  {
+				if (e) {
+					console.error(e);
+				}
+			});
 		});
 
 		client.zremrangebyscore("user:awayCheck", "-inf", time, this);
 	}), function (e) {
-		console.error(e);
+		if (e) {
+			console.error(e);
+		}
 	});
 
 }, 10*1000);

@@ -801,7 +801,6 @@ var User = function (id) {
 	this.setSignKey = setSignKeyF;
 	this.setFriendsKey = setFriendsKeyF;
 	this.setFriendsLevel2Key = setFriendsLevel2KeyF;
-	this.getFriendShipKey = getFriendShipKeyF;
 
 	function getFriendsKeyF(view, cb) {
 		getAttribute(view, "friendsKey", cb);
@@ -816,6 +815,14 @@ var User = function (id) {
 			view.logedinError(this);
 		}, h.sF(function () {
 			client.get("friends:key:" + id + ":" + view.getUserID(), this);
+		}), cb);
+	}
+
+	function getReverseFriendShipKeyF(view, cb) {
+		step(function getFSKF() {
+			view.logedinError(this);
+		}, h.sF(function () {
+			client.get("friends:key:" + view.getUserID() + ":" + id, this);
 		}), cb);
 	}
 
@@ -836,76 +843,107 @@ var User = function (id) {
 	this.getSignKey = getSignKeyF;
 	this.getFriendsKey = getFriendsKeyF;
 	this.getFriendsLevel2Key = getFriendsLevel2KeyF;
+	this.getFriendShipKey = getFriendShipKeyF;
+	this.getReverseFriendShipKey = getReverseFriendShipKeyF;
+
+	function getArrayKeys(view, arr, cb) {
+		step(function () {
+			var i;
+			for (i = 0; i < arr.length; i += 1) {
+				getAttribute(view, arr[i], this.parallel());
+			}
+		}, h.sF(function (keys) {
+			var i, result = {};
+			for (i = 0; i < keys.length; i += 1) {
+				result[arr[i]] = keys[i];
+			}
+
+			this.ne(result);
+		}), cb);
+	}
+
+	this.getFriendShipKeys = function (view, cb) {
+		step(function () {
+			this.parallel.unflatten();
+
+			theUser.getFriendShipKey(view, this.parallel());
+			theUser.getReverseFriendShipKey(view, this.parallel());
+		}, h.sF(function (friendShipKey, reverseFriendShipKey) {
+			var result = {};
+
+			if (friendShipKey) {
+				result.friendShipKey = friendShipKey;
+			}
+
+			if (reverseFriendShipKey) {
+				result.reverseFriendShipKey = reverseFriendShipKey;
+			}
+
+			this.ne(result);
+		}), cb);
+	};
+
+	var ownKeys = ["mainKey"];
+	this.getOwnKeys = function (view, cb) {
+		getArrayKeys(view, ownKeys, cb);
+	};
+
+	var publicKeys = ["cryptKey", "signKey"];
+	this.getPublicKeys = function (view, cb) {
+		getArrayKeys(view, publicKeys, cb);
+	};
+
+	var friendsKeys = ["friendsKey", "friendsLevel2Key"];
+	this.getFriendsKeys = function (view, cb) {
+		getArrayKeys(view, friendsKeys, cb);
+	};
+
+	function loadMultipleNamedKeys(view, keys, cb) {
+		var names = Object.keys(keys);
+
+		step(function () {
+			names.forEach(function (name) {
+				KeyApi.get(keys[name], this.parallel());
+			}, this);
+		}, h.sF(function (keyObjs) {
+			keyObjs.forEach(function (key, index) {
+				if (!key) {
+					console.log("Key not found for " + names[index] + " with id " + keys[names[index]]);
+					throw new Error("key not found!");
+				}
+
+				key.getKData(view, this.parallel(), true);
+			}, this);
+		}), h.sF(function (keyData) {
+			var result = {};
+
+			keyData.forEach(function (data, index) {
+				result[names[index]] = data;
+			});
+
+			this.ne(result);
+		}), cb);
+	}
 
 	this.getKeys = function (view, cb) {
 		step(function () {
 			var friends = require("./friends");
-			friends.hasFriendsKeyAccess(view, theUser.getID(), this.parallel());
+			friends.hasFriendsKeyAccess(view, theUser.getID(), this);
 		}, h.sF(function (hasAccess) {
-			this.parallel.unflatten();
-
-			theUser.getCryptKey(view, this.parallel());
-			theUser.getSignKey(view, this.parallel());
+			theUser.getPublicKeys(view, this.parallel());
 
 			if (hasAccess) {
-				theUser.getFriendsKey(view, this.parallel());
-				theUser.getFriendsLevel2Key(view, this.parallel());
+				theUser.getFriendsKeys(view, this.parallel());
 
 				if (theUser.isOwnUser(view)) {
-					theUser.getMainKey(view, this.parallel());
+					theUser.getOwnKeys(view, this.parallel());
 				} else {
-					//TO-DO think about a better way how to do this correctly
-					theUser.getFriendShipKey(view, this.parallel());
+					theUser.getFriendShipKeys(view, this.parallel());
 				}
 			}
-		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
-			this.parallel.unflatten();
-
-			KeyApi.get(cryptKey, this.parallel());
-			KeyApi.get(signKey, this.parallel());
-
-			if (friendsKey) {
-				KeyApi.get(friendsKey, this.parallel());
-				KeyApi.get(friendsLevel2Key, this.parallel());
-			}
-
-			if (mainKey) {
-				KeyApi.get(mainKey, this.parallel());
-			}
-		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
-			this.parallel.unflatten();
-
-			cryptKey.getKData(view, this.parallel(), true);
-			signKey.getKData(view, this.parallel(), true);
-
-			if (friendsKey) {
-				friendsKey.getKData(view, this.parallel(), true);
-				friendsLevel2Key.getKData(view, this.parallel(), true);
-			}
-
-			if (mainKey) {
-				mainKey.getKData(view, this.parallel(), true);
-			}
-		}), h.sF(function (cryptKey, signKey, friendsKey, friendsLevel2Key, mainKey) {
-			var res = {
-				crypt: cryptKey,
-				sign: signKey
-			};
-
-			if (friendsKey) {
-				res.friends = friendsKey;
-				res.friendsLevel2 = friendsLevel2Key;
-			}
-
-			if (mainKey) {
-				if (theUser.isOwnUser(view)) {
-					res.main = mainKey;
-				} else {
-					res.friendShip = mainKey;
-				}
-			}
-
-			this.ne(res);
+		}), h.sF(function (keys) {
+			keys = h.object.multipleFlatJoin(keys);
+			loadMultipleNamedKeys(view, keys, this);
 		}), cb);
 	};
 
