@@ -31,10 +31,35 @@ var p = {
 			});
 		}), fn);
 	},
+	getNewestTimeline: function (data, fn, view) {
+		var remainingPosts = false;
+		step(function () {
+			Post.getNewestPosts(view, data.filter, data.beforeID, data.count, data.lastRequestTime, this);
+		}, h.sF(function (posts, remaining) {
+			remainingPosts = remaining;
+
+			if (posts.length === 0) {
+				this.ne([]);
+			}
+
+			posts.forEach(function (e) {
+				e.getPostData(view, this.parallel(), data.addKey);
+			}, this)
+		}), h.sF(function (data) {
+			this.ne({
+				posts: data,
+				remaining: remainingPosts
+			});
+		}), fn);
+	},
 	getTimeline: function (data, fn, view) {
+		var remainingPosts;
+
 		step(function () {
 			Post.getTimeline(view, data.filter, data.afterID, data.count, this);
-		}, h.sF(function (posts) {
+		}, h.sF(function (posts, remaining) {
+			remainingPosts = remaining;
+
 			if (posts.length === 0) {
 				this.ne([]);
 			}
@@ -45,8 +70,8 @@ var p = {
 			}
 		}), h.sF(function (data) {
 			this.ne({
-				posts: data
-				//TODO: remaining: false|true
+				posts: data,
+				remaining: remainingPosts
 			});
 		}), fn);
 	},

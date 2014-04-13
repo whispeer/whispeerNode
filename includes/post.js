@@ -226,6 +226,16 @@ function getUserIDsForFilter(view, filter, cb) {
 // Problem:
 // we get more posts than applicable for us, not removing those we can not read
 
+function accessablePostFilter(view) {
+	return function (id, cb) {
+		step(function () {
+			client.hget("post:" + id + ":meta", "key", this);
+		}, h.sF(function (key) {
+			client.sismember("key:" + key + ":access", view.getUserID(), this);
+		}), cb);
+	};
+}
+
 Post.getTimeline = function (view, filter, afterID, count, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
@@ -254,17 +264,46 @@ Post.getTimeline = function (view, filter, afterID, count, cb) {
 			var paginator = new SortedSetPaginator(unionKey, count);
 			client.expire(unionKey, 120);
 
-			paginator.getRangeAfterID(afterID, this, function (id, cb) {
-				step(function () {
-					client.hget("post:" + id + ":meta", "key", this);
-				}, h.sF(function (key) {
-					client.sismember("key:" + key + ":access", view.getUserID(), this);
-				}), cb);
-			});
-		}
-	}), h.sF(function (ids) {
+			paginator.getRangeAfterID(afterID, this, accessablePostFilter(view));
+		}		
+	}), h.sF(function (ids, remaining) {
 		var result = ids.map(h.newElement(Post));
-		this.ne(result);
+		this.ne(result, remaining);
+	}), cb);
+};
+
+Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, cb) {
+	var unionKey;
+
+	step(function () {
+		if (new Date().getTime() - h.parseDecimal(lastRequestTime) > newPostsExpireTime * 1000) {
+			throw new TimeSpanExceeded();
+		} else {
+			getUserIDsForFilter(view, filter, this);
+		}
+	}, h.sF(function (userids) {
+		var postKeys = userids.map(function (userid) {
+			return "user:" + userid + ":newPosts";
+		});
+
+		unionKey = "post:union:" + view.getUserID() + ":newPosts:" + userids.sort().join(",");
+		postKeys.unshift(postKeys.length);
+		postKeys.unshift(unionKey);
+		postKeys.push(this);
+
+		client.zunionstore.apply(client, postKeys);
+	}), h.sF(function (resultLength) {
+		if (resultLength === 0) {
+			this.last.ne([]);
+		} else {
+			var paginator = new SortedSetPaginator(unionKey, count, true);
+			client.expire(unionKey, 120);
+
+			paginator.getRangeAfterID(beforeID, this, accessablePostFilter(view));
+		}		
+	}), h.sF(function (ids, remaining) {
+		var result = ids.reverse().map(h.newElement(Post));
+		this.ne(result, remaining);
 	}), cb);
 };
 
@@ -349,8 +388,10 @@ function processMetaInformation(view, meta, cb) {
 	}), cb);
 }
 
+var newPostsExpireTime = 10 * 60;
+
 function removeOldNewPosts(multi, userid) {
-	var minTime = new Date().getTime() - 2 * 60 * 1000;
+	var minTime = new Date().getTime() - newPostsExpireTime * 1000;
 	multi.zremrangebyscore("user:" + userid + ":newPosts", "-inf", minTime);
 }
 
@@ -394,6 +435,7 @@ Post.create = function (view, data, cb) {
 		removeOldNewPosts(multi, view.getUserID());
 		multi.zadd("user:" + view.getUserID() + ":wall", data.meta.time, id);
 		multi.zadd("user:" + view.getUserID() + ":newPosts", data.meta.time, id);
+		multi.expire("user:" + view.getUserID() + ":newPosts", newPostsExpireTime);
 
 		multi.exec(this);
 	}), h.sF(function () {
