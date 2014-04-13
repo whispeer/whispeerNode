@@ -100,6 +100,7 @@ module.exports = function (socket) {
 			if (logedin) {
 				data.sid = view.getSession().getSID();
 				data.userid = view.getSession().getUserID();
+				data.serverTime = new Date().getTime();
 			}
 
 			this(data);
