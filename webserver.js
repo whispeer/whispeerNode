@@ -35,7 +35,7 @@ var directoryParts = ["assets", "favicon.png", "favicon.ico", "changelog.json"];
 var angular = ["user", "messages", "circles", "main", "friends", "login"];
 
 app.use(function(req, res, next) {
-  var urlParts = req.url.split("/");
+  var urlParts = req.url.split(/\/|\?/);
 
   if (directoryParts.indexOf(urlParts[1]) === -1) {
     if (angular.indexOf(urlParts[1]) === -1) {

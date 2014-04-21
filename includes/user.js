@@ -846,16 +846,36 @@ var User = function (id) {
 	this.getFriendShipKey = getFriendShipKeyF;
 	this.getReverseFriendShipKey = getReverseFriendShipKeyF;
 
-	function getArrayKeys(view, arr, cb) {
+	function keyIDsToObjects(keys, cb) {
+		step(function () {
+			keys.forEach(function (key) {
+				KeyApi.get(key, this.parallel());
+			}, this);
+		}, cb);
+	}
+
+	function getArrayKeys(view, arr, cb, options) {
+		options = options || {};
+
 		step(function () {
 			var i;
 			for (i = 0; i < arr.length; i += 1) {
 				getAttribute(view, arr[i], this.parallel());
 			}
 		}, h.sF(function (keys) {
+			if (options.keyObject) {
+				keyIDsToObjects(keys, this);
+			} else {
+				this.ne(keys);
+			}
+		}), h.sF(function (keys) {
 			var i, result = {};
 			for (i = 0; i < keys.length; i += 1) {
-				result[arr[i]] = keys[i];
+				if (options.noSuffix) {
+					result[arr[i].replace(/Key$/, "")] = keys[i];
+				} else {
+					result[arr[i]] = keys[i];
+				}
 			}
 
 			this.ne(result);
@@ -884,18 +904,18 @@ var User = function (id) {
 	};
 
 	var ownKeys = ["mainKey"];
-	this.getOwnKeys = function (view, cb) {
-		getArrayKeys(view, ownKeys, cb);
+	this.getOwnKeys = function (view, cb, options) {
+		getArrayKeys(view, ownKeys, cb, options);
 	};
 
 	var publicKeys = ["cryptKey", "signKey"];
-	this.getPublicKeys = function (view, cb) {
-		getArrayKeys(view, publicKeys, cb);
+	this.getPublicKeys = function (view, cb, options) {
+		getArrayKeys(view, publicKeys, cb, options);
 	};
 
 	var friendsKeys = ["friendsKey", "friendsLevel2Key"];
-	this.getFriendsKeys = function (view, cb) {
-		getArrayKeys(view, friendsKeys, cb);
+	this.getFriendsKeys = function (view, cb, options) {
+		getArrayKeys(view, friendsKeys, cb, options);
 	};
 
 	function loadMultipleNamedKeys(view, keys, cb) {

@@ -76,6 +76,39 @@ function getUserOnlineFriends(uid, cb) {
 	}), cb);
 }
 
+function getUserLevel2Key(view, otherUser, cb) {
+	step(function () {
+		otherUser.getFriendsLevel2Key(view, this);
+	}, h.sF(function (otherFriendsLevel2Key) {
+		KeyApi.get(otherFriendsLevel2Key, this);
+	}), cb);
+}
+
+function createAcceptSpecificData(view, friendShip, multi, cb) {
+	step(function () {
+		getUserLevel2Key(view, friendShip.user, this);
+	}, h.sF(function (otherFriendsLevel2Key) {
+		var ownID = view.getUserID(), 
+			uid = friendShip.user.getID(),
+			decryptors = friendShip.decryptors;
+
+		friendShip.keys.otherFriendsLevel2 = otherFriendsLevel2Key;
+
+		multi.sadd("friends:" + uid, ownID);
+		multi.sadd("friends:" + ownID, uid);
+		multi.srem("friends:" + ownID + ":requests", uid);
+		multi.srem("friends:" + uid + ":requested", ownID);
+
+		friendShip.decryptors.friendsLevel2 = decryptors[friendShip.keys.friendsLevel2.getRealID()][0];
+		friendShip.decryptors.otherFriendsLevel2 = decryptors[otherFriendsLevel2Key.getRealID()][0];
+
+		Decryptor.validateFormat(friendShip.decryptors.friendsLevel2);
+		Decryptor.validateFormat(friendShip.decryptors.otherFriendsLevel2);
+
+		this.ne();
+	}), cb);
+}
+
 var friends = {
 	notifyUsersFriends: function (uid, channel, content) {
 		step(function () {
@@ -161,35 +194,29 @@ var friends = {
 			this.ne(areFriends || hasORequested);
 		}), cb);
 	},
-	getFriendsKeys: function (view, otherUser, cb) {
+	getFriendsKeys: function (view, cb) {
 		step(function () {
 			view.getOwnUser(this);
 		}, h.sF(function (ownUser) {
-			//TODO check signature
-
-			this.parallel.unflatten();
-
-			ownUser.getFriendsKey(view, this.parallel());
-			ownUser.getFriendsLevel2Key(view, this.parallel());
-			otherUser.getFriendsLevel2Key(view, this.parallel());
-		}), h.sF(function (friendsKey, friendsLevel2Key, otherFriendsLevel2Key) {
-			this.parallel.unflatten();
-
-			KeyApi.get(friendsKey, this.parallel());
-			KeyApi.get(friendsLevel2Key, this.parallel());
-			KeyApi.get(otherFriendsLevel2Key, this.parallel());
+			ownUser.getFriendsKeys(view, this, {
+				noSuffix: true,
+				keyObject: true
+			});
 		}), cb);
 	},
 	add: function (view, uid, signedRequest, key, decryptors, cb) {
-		var toAddUser, ownID, friendsKey, friendsLevel2Key, otherFriendsLevel2Key, m, firstRequest;
-		var friendsKeyDecryptor, friendsLevel2KeyDecryptor, otherFriendsLevel2KeyDecryptor;
+		var m, firstRequest;
+		var friendShip = {
+			decryptors: decryptors
+		};
 
 		step(function getUser() {
 			User.getUser(uid, this);
 		}, h.sF(function checkAlreadyRequested(toAdd) {
-			toAddUser = toAdd;
-			ownID = view.getUserID();
-			uid = toAddUser.getID();
+			var ownID = view.getUserID();
+			var uid = toAdd.getID();
+
+			friendShip.user = toAdd;
 
 			this.parallel.unflatten();
 
@@ -199,56 +226,42 @@ var friends = {
 			if (haveIRequested || allreadyFriends) {
 				this.last.ne(true);
 			} else {
-				friends.getFriendsKeys(view, toAddUser, this);
+				friends.getFriendsKeys(view, this);
 			}
-		}), h.sF(function hasOtherRequested(fKey, fKeyL2, oFKeyL2) {
-			friendsKey = fKey;
-			friendsLevel2Key = fKeyL2;
-			otherFriendsLevel2Key = oFKeyL2;
+		}), h.sF(function hasOtherRequested(keys) {
+			debugger;
+			friendShip.keys = keys;
+			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 
-			friendsKeyDecryptor = decryptors[friendsKey.getRealID()][0];
-
-			client.sismember("friends:" + ownID + ":requests", uid, this);
+			client.sismember("friends:" + view.getUserID() + ":requests", friendShip.user.getID(), this);
 		}), h.sF(function createData(hasOtherRequested) {
 			firstRequest = !hasOtherRequested;
 
-			Decryptor.validateFormat(friendsKeyDecryptor);
+			Decryptor.validateFormat(friendShip.decryptors.friends);
 
 			m = client.multi();
 
-			m.set("friends:" + ownID + ":signed:" + uid, signedRequest);
+			m.set("friends:" + view.getUserID() + ":signed:" + friendShip.user.getID(), signedRequest);
 
 			if (hasOtherRequested) {
-				m.sadd("friends:" + uid, ownID);
-				m.sadd("friends:" + ownID, uid);
-				m.srem("friends:" + ownID + ":requests", uid);
-				m.srem("friends:" + uid + ":requested", ownID);
-
-
-				friendsLevel2KeyDecryptor = decryptors[friendsLevel2Key.getRealID()][0];
-				otherFriendsLevel2KeyDecryptor = decryptors[otherFriendsLevel2Key.getRealID()][0];
-
-				Decryptor.validateFormat(friendsLevel2KeyDecryptor);
-				Decryptor.validateFormat(otherFriendsLevel2KeyDecryptor);
-
-				this.ne();
+				createAcceptSpecificData(view, friendShip, m, this);
 			} else {
-				m.sadd("friends:" + ownID + ":requested", uid);
-				m.sadd("friends:" + uid + ":requests", ownID);
+				m.sadd("friends:" + view.getUserID() + ":requested", friendShip.user.getID());
+				m.sadd("friends:" + friendShip.user.getID() + ":requests", view.getUserID());
 				this.ne();
 			}
 		}), h.sF(function createSymKey() {
 			SymKey.createWDecryptors(view, key, this);
 		}), h.sF(function keyCreated(key) {
-			m.set("friends:key:" + uid + ":" + ownID, key.getRealID());
+			m.set("friends:key:" + friendShip.user.getID() + ":" + view.getUserID(), key.getRealID());
 
 			this.parallel.unflatten();
 
-			Decryptor.validateNoThrow(view, friendsKeyDecryptor, friendsKey, this.parallel());
+			Decryptor.validateNoThrow(view, friendShip.decryptors.friends, friendShip.keys.friends, this.parallel());
 
 			if (!firstRequest) {
-				Decryptor.validateNoThrow(view, friendsLevel2KeyDecryptor, friendsLevel2Key, this.parallel());
-				Decryptor.validateNoThrow(view, otherFriendsLevel2KeyDecryptor, otherFriendsLevel2Key, this.parallel());
+				Decryptor.validateNoThrow(view, friendShip.decryptors.friendsLevel2, friendShip.keys.friendsLevel2, this.parallel());
+				Decryptor.validateNoThrow(view, friendShip.decryptors.otherFriendsLevel2, friendShip.keys.otherFriendsLevel2, this.parallel());
 			}
 		}), h.sF(function (valid1, valid2, valid3) {
 			var validLevel2 = valid2 && valid3;
@@ -266,18 +279,19 @@ var friends = {
 
 			m.exec(this.parallel());
 
-			friendsKey.addDecryptor(view, friendsKeyDecryptor, this.parallel());
+			friendShip.keys.friends.addDecryptor(view, friendShip.decryptors.friends, this.parallel());
 			if (!firstRequest) {
-				friendsLevel2Key.addDecryptor(view, friendsLevel2KeyDecryptor, this.parallel());
-				otherFriendsLevel2Key.addDecryptor(view, otherFriendsLevel2KeyDecryptor, this.parallel());
+				friendShip.keys.friendsLevel2.addDecryptor(view, friendShip.decryptors.friendsLevel2, this.parallel());
+				friendShip.keys.otherFriendsLevel2.addDecryptor(view, friendShip.decryptors.otherFriendsLevel2, this.parallel());
 			}
 		}), h.sF(function addFriendsName() {
-			addFriendName(view, toAddUser);
+			addFriendName(view, friendShip.user);
 			if (firstRequest) {
-				client.publish("user:" + uid + ":friendRequest", ownID);
+				client.publish("user:" + friendShip.user.getID() + ":friendRequest", view.getUserID());
 			} else {
-				client.publish("user:" + uid + ":friendAccept", ownID);
+				client.publish("user:" + friendShip.user.getID() + ":friendAccept", view.getUserID());
 			}
+
 			this.ne(true);
 		}), cb);
 	},
