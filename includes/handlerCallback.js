@@ -1,7 +1,6 @@
 "use strict";
 
 var extend = require("xtend");
-var mailer = require("./mailer");
 
 var HandlerCallback = function (fn) {
 	var finished = false;
@@ -32,11 +31,6 @@ var HandlerCallback = function (fn) {
 			};
 
 			console.log(err);
-			try {
-				mailer.mailAdmin("An Error occured", err);
-			} catch (e) {
-				console.error(e);
-			}
 		} else {
 			result = extend(result, value);
 		}
@@ -60,7 +54,7 @@ var HandlerCallback = function (fn) {
 		finish();
 	};
 
-	return doResult;
+	return doResult
 };
 
 module.exports = HandlerCallback;

@@ -155,16 +155,4 @@ var view = function view(socket, session, listener) {
 	};
 };
 
-view.logedinViewStub = {
-	ownUserError: function (user, cb) {
-		cb();
-	},
-	logedin: function (cb) {
-		cb(null, true);
-	},
-	logedinError: function (cb) {
-		cb();
-	}
-};
-
 module.exports = view;
