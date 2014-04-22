@@ -44,8 +44,8 @@ module.exports = function (socket) {
 
 	function handle(handler, data, fn, view) {
 		var topics = [], prioRes = {};
-		console.log("Handling:");
-		console.log(data);
+		//console.log("Handling:");
+		//console.log(data);
 		step(function () {
 			handlePriorized(0, handler, data, view, this);
 		}, h.sF(function (priorizedResults) {
@@ -112,7 +112,7 @@ module.exports = function (socket) {
 			var time = new Date().getTime();
 			step(function () {
 				console.log("Received data:");
-				console.log(data);
+				//console.log(data);
 
 				if (myView.session().getSID() !== data.sid) {
 					myView.session().setSID(data.sid, this);
