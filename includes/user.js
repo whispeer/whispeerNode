@@ -480,8 +480,8 @@ var User = function (id) {
 				key = newKey;
 			}
 
-			console.log("Current Key:" + JSON.stringify(key));
-			console.log("Current Val:" + JSON.stringify(val));
+			//console.log("Current Key:" + JSON.stringify(key));
+			//console.log("Current Val:" + JSON.stringify(val));
 
 			var valKey, cur, valid;
 			for (valKey in val) {
