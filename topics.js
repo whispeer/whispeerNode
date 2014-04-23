@@ -12,10 +12,19 @@ var posts = require("./topics/tposts");
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
 
+var blob = require("./topics/tblob");
+
 var MAXDEPTH = 20;
 
 var whispeerAPI = {
 	priorized: ["keyData"],
+	upgradeStream: function (data, fn, view) {
+		step(function () {
+			view.upgradeStream(blob);
+
+			this.ne({});
+		}, fn);
+	},
 	logedin: function isLogedinF(data, fn, view) {
 		step(function () {
 			if (data === true) {
