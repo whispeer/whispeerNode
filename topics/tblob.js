@@ -17,12 +17,37 @@ var pushBlobAPI = {
 	},
 };
 
-var socketS = require("socket.io-stream");
-
 var streamAPI = {
+	preReserveID: function (data, fn) {
+		step(function () {
+			blobStorage.preReserveBlobID(this);
+		}, h.sF(function (blobid) {
+			this.ne({
+				blobid: blobid
+			});
+		}), fn);
+	},
+	fullyReserveID: function (data, fn, view) {
+		step(function () {
+			blobStorage.fullyReserveBlobID(view, data.blobid, this);
+		}, h.sF(function (blobid) {
+			this.ne({
+				blobid: blobid
+			});
+		}), fn);
+	},
+	reserveBlobID: function (data, fn, view) {
+		step(function () {
+			blobStorage.reserveBlobID(view, this);
+		}, h.sF(function (blobid) {
+			this.ne({
+				blobid: blobid
+			});
+		}), fn);
+	},
 	getBlob: function (data, fn, view) {
 		step(function () {
-			blobStorage.getBlob(data.blobid, this);
+			blobStorage.getBlob(view, data.blobid, this);
 		}, h.sF(function (blob) {
 			this.ne({
 				blob: blob.toString("base64")

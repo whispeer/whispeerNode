@@ -90,4 +90,8 @@ global.InvalidFilter  = addError("invalid filter", true);
 global.InvalidCircleData = addError("invalid circle data", true);
 global.TimeSpanExceeded  = addError("timespan has been exceeded", true);
 
+
+global.InvalidBlobID = addError("invalid blob id", true);
+global.BlobNotFound = addError("blob not found", true);
+
 module.exports = possibleErrors;
