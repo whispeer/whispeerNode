@@ -69,10 +69,13 @@ var mailer = {
 			if (userMail === challengeData.mail) {
 				client.multi()
 					.hset("mail:" + challengeData.user, challengeData.mail + ":verified", 1)
-					.sadd("mail:" + challengeData.user + ":all", challengeData.mail);
+					.sadd("mail:" + challengeData.user + ":all", challengeData.mail)
+					.exec(this);
 			} else {
 				this.last.ne(false);
 			}
+		}), h.sF(function () {
+			this.ne(true);
 		}), cb);
 	},
 	sendAcceptMail: function (user, cb) {

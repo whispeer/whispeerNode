@@ -12,10 +12,22 @@ var posts = require("./topics/tposts");
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
 
+var mailer = require("./includes/mailer");
+
 var MAXDEPTH = 20;
 
 var whispeerAPI = {
 	priorized: ["keyData"],
+	verifyMail: function verifyMailF(data, fn, view) {
+		step(function () {
+			debugger;
+			mailer.verifyUserMail(data.challenge, this);
+		}, h.sF(function (success) {
+			this.ne({
+				mailVerified: success
+			});
+		}), fn);
+	},
 	logedin: function isLogedinF(data, fn, view) {
 		step(function () {
 			if (data === true) {
