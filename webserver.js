@@ -3,6 +3,11 @@
 var express = require("express");
 var helmet = require("helmet");
 
+var APP_PORT        = process.env.WHISPEER_PORT            || 80;
+var APP2_PORT       = process.env.WHISPEER_APP2_PORT       || 8088;
+var NEWSLETTER_PORT = process.env.WHISPEER_NEWSLETTER_PORT || 8089;
+var STYLEGUIDE_PORT = process.env.WHISPEER_STYLEGUIDE_PORT || 8090;
+
 //default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'
 
 var policy = {
@@ -27,7 +32,7 @@ app2.use(helmet.cacheControl());
 
 app2.use(express.static("../app2directory-build/"));
 
-app2.listen(8088);
+app2.listen(APP2_PORT);
 
 var app = express();
 
@@ -56,7 +61,7 @@ app.use(helmet.cacheControl());
 
 app.use(express.static("../main/"));
 
-app.listen(80);
+app.listen(APP_PORT);
 
 var newsletter = express();
 
@@ -68,7 +73,7 @@ newsletter.use(helmet.cacheControl());
 
 newsletter.use(express.static("../newsletter/"));
 
-newsletter.listen(8089);
+newsletter.listen(NEWSLETTER_PORT);
 
 var styleguide = express();
 
@@ -80,4 +85,4 @@ styleguide.use(helmet.cacheControl());
 
 styleguide.use(express.static("../styleguide/"));
 
-styleguide.listen(8090);
+styleguide.listen(STYLEGUIDE_PORT);
