@@ -7,6 +7,11 @@ var config = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../config.json"
 var client = require("./redisClient");
 var viewCreator = require("./view");
 
+var step = require("step");
+var h = require("whispeerHelper");
+
+var code = require("./session").code;
+
 var mailOptions = {
     from: "Fred Foo ✔ <foo@blurdybloop.com>", // sender address
     to: "bar@blurdybloop.com, baz@blurdybloop.com", // list of receivers
@@ -34,7 +39,7 @@ function generateChallenge(cb) {
 		challenge = code;
 		client.sadd("mail:codes", challenge, this);
 	}), h.sF(function (added) {
-		if (added !== "1") {
+		if (added !== 1) {
 			generateChallenge(cb);
 		} else {
 			this.ne(challenge);
@@ -78,23 +83,27 @@ var mailer = {
 			challenge = code;
 
 			user.getEMail(viewCreator.logedinViewStub, this);
-		}), h.sF(function (mail) {
-			var m = client.multi();
-			m
-				.hmset("mail:challenges:" + challenge, {
-					user: user.getID(),
-					mail: mail
-				})
-				.expire("mail:challenges:" + challenge, 24*60);
+		}), h.sF(function (userMail) {
+			if (userMail) {
+				var m = client.multi();
+				m
+					.hmset("mail:challenges:" + challenge, {
+						user: user.getID(),
+						mail: userMail
+					})
+					.expire("mail:challenges:" + challenge, 24*60);
 
-			mail.sendMail({
-				from: defaultFrom,
-				to: mail,
-				subject: "[Whispeer] Mail Verification",
-				text: "Please Verifiy Your Mail! LINE BREAKS? HOW? Code: " + challenge
-			});
+				mail.sendMail({
+					from: defaultFrom,
+					to: mail,
+					subject: "[Whispeer] Mail Verification",
+					text: "Please Verifiy Your Mail! \r\nCode: " + challenge
+				});
 
-			m.exec(this.parallel());
+				m.exec(this);
+			} else {
+				this.last.ne();
+			}
 		}), cb);
 	},
 	sendMails: function (users, subject, text, cb) {
@@ -135,7 +144,11 @@ var mailer = {
 			text: text.toString()
 		};
 
-		mail.sendMail(mailOptions);
+		mail.sendMail(mailOptions, function (e) {
+			if (e) {
+				console.log(e);
+			}
+		});
 	}
 };
 

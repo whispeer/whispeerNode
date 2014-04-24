@@ -3,5 +3,9 @@
 	"wsPort": 3000,
 	"dbNumber": 1,
 	"production": false,
-	"debug": false
+	"debug": false,
+	"mail": {
+		"directory": "./mails"
+	},
+	"mailType": "PICKUP"
 }
