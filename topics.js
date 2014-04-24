@@ -18,13 +18,7 @@ var MAXDEPTH = 20;
 
 var whispeerAPI = {
 	priorized: ["keyData"],
-	upgradeStream: function (data, fn, view) {
-		step(function () {
-			view.upgradeStream(blob);
-
-			this.ne({});
-		}, fn);
-	},
+	blob: blob,
 	logedin: function isLogedinF(data, fn, view) {
 		step(function () {
 			if (data === true) {
