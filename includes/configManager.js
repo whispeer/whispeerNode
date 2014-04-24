@@ -1,4 +1,7 @@
-var config = {
+var fs = require("fs");
+var path = require("path");
+
+var configManager = {
 
   guessEnv: function() {
     return "development";
@@ -33,11 +36,10 @@ var config = {
     }
     config = envs[env];
     if (config === undefined) {
-      throw "Could not laod configuration named '" + env + "'. \
-        Known environments are: [" + this.availableEnvironments()  + "]" ;
+      throw "Could not laod configuration named '" + env + "'. Known environments are: [" + this.availableEnvironments() + "]" ;
     }
     return config;
   }
 };
 
-module.exports = config.get();
+module.exports = configManager;

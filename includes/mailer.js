@@ -3,7 +3,8 @@ var User = require("./user");
 
 var fs = require("fs");
 var path = require("path");
-var config = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../config.json")));
+var configManager = require("./configManager");
+var config = configManager.get();
 var client = require("./redisClient");
 var viewCreator = require("./view");
 
