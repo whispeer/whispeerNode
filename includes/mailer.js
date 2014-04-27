@@ -100,7 +100,7 @@ var mailer = {
 					from: defaultFrom,
 					to: mail,
 					subject: "[Whispeer] Mail Verification",
-					text: "Please Verifiy Your Mail! \r\nCode: " + challenge
+					text: "Please Verifiy Your Mail! \r\nAcceptcode: " + challenge + "\r\n Accept-Url: " + config.host + "/lverifyMail/" + code
 				});
 
 				m.exec(this);
@@ -109,7 +109,7 @@ var mailer = {
 			}
 		}), cb);
 	},
-	sendMails: function (users, subject, text, cb) {
+	sendMails: function (users, subject, text, cb, inReplyTo, messageID) {
 		//todo: add inReplyTo and messageID!
 		var mails;
 

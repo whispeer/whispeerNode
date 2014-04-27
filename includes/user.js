@@ -635,6 +635,12 @@ var User = function (id) {
 		return parseInt(view.getUserID(), 10) === parseInt(id, 10);
 	};
 
+	this.isOnline = function isOnlineF(cb) {
+		step(function () {
+			client.sismember("user:online", id, this);
+		}, cb);
+	};
+
 	function getNameF(view, cb) {
 		step(function () {
 			this.parallel.unflatten();
