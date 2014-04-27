@@ -155,4 +155,6 @@ var mailer = {
 	}
 };
 
+mailer.mailAdmin("Server Booted", "Test Mail to Display Server Bootup");
+
 module.exports = mailer;
