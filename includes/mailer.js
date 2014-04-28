@@ -70,6 +70,8 @@ var mailer = {
 				client.multi()
 					.hset("mail:" + challengeData.user, challengeData.mail + ":verified", 1)
 					.sadd("mail:" + challengeData.user + ":all", challengeData.mail)
+					.srem("mail:codes", challenge)
+					.del("mail:challenges:" + challenge)
 					.exec(this);
 			} else {
 				this.last.ne(false);
@@ -96,14 +98,15 @@ var mailer = {
 					})
 					.expire("mail:challenges:" + challenge, 24*60);
 
-				mail.sendMail({
+				var mailOption = {
 					from: defaultFrom,
-					to: mail,
+					to: userMail,
 					subject: "[Whispeer] Mail Verification",
-					text: "Please Verifiy Your Mail! \r\nAcceptcode: " + challenge + "\r\n Accept-Url: " + config.host + "/lverifyMail/" + code
-				});
+					text: "Please Verify Your Mail!\nAcceptcode: " + challenge + "\nAccept-Url: " + config.host + "/verifyMail/" + challenge
+				};
 
-				m.exec(this);
+				mail.sendMail(mailOption, this.parallel());
+				m.exec(this.parallel());
 			} else {
 				this.last.ne();
 			}

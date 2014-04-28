@@ -627,7 +627,7 @@ var User = function (id) {
 	this.isSaved = isSavedF;
 
 	function getIDF() {
-		return id;
+		return h.parseDecimal(id);
 	}
 	this.getID = getIDF;
 
