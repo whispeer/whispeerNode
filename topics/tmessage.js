@@ -125,9 +125,9 @@ var t = {
 	send: function sendMessageF(data, fn, view) {
 		step(function () {
 			Message.create(view, data.message, this);
-		}, h.sF(function (success) {
+		}, h.sF(function () {
 			this.ne({
-				success: success
+				success: true
 			});
 		}), fn);
 		//message

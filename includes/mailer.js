@@ -112,11 +112,23 @@ var mailer = {
 			}
 		}), cb);
 	},
+	delaySendMails: function () {
+		var args = arguments;
+		step(function () {
+			process.nextTick(this);
+		}, function () {
+			mailer.sendMails.apply(args);
+		});
+	},
 	sendMails: function (users, subject, text, cb, inReplyTo, messageID) {
 		//todo: add inReplyTo and messageID!
 		var mails;
 
 		step(function () {
+			if (users.length === 0) {
+				this.last.ne();
+			}
+
 			users.forEach(function (user) {
 				user.getEMail(viewCreator.logedinViewStub, this.parallel());
 			}, this);
@@ -124,7 +136,11 @@ var mailer = {
 			mails = theMails;
 
 			users.forEach(function (user, i) {
-				client.hget("mail:" + user.getID(), mails[i] + ":verified", this.parallel());
+				if (mails[i]) {
+					client.hget("mail:" + user.getID(), mails[i] + ":verified", this.parallel());
+				} else {
+					this.parallel()();
+				}
 			}, this);
 		}), h.sF(function (verified) {
 			//TODO: text replacements (e.g. user name!)
@@ -140,7 +156,7 @@ var mailer = {
 			});
 
 			this.ne();
-		}), cb);
+		}), (cb || h.nop));
 	},
 	mailAdmin: function (subject, text) {
 		var mailOptions = {
