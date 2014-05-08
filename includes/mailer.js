@@ -118,7 +118,7 @@ var mailer = {
 		step(function () {
 			process.nextTick(this);
 		}, function () {
-			mailer.sendMails.apply(args);
+			mailer.sendMails.apply(mailer, args);
 		});
 	},
 	sendMails: function (users, subject, text, cb, inReplyTo, messageID) {
