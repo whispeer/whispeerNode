@@ -44,7 +44,7 @@ var p = {
 
 			posts.forEach(function (e) {
 				e.getPostData(view, this.parallel(), data.addKey);
-			}, this)
+			}, this);
 		}), h.hE(function (err, data) {
 			if (err) {
 				this.ne({
@@ -56,7 +56,7 @@ var p = {
 					remaining: remainingPosts
 				});
 			}
-		}; TimeSpanExceeded), fn);
+		}, TimeSpanExceeded), fn);
 	},
 	getTimeline: function (data, fn, view) {
 		var remainingPosts;
