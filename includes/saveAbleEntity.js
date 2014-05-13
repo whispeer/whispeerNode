@@ -1,128 +1,244 @@
-var UnSavedEntity = function () {
+var h = require("whispeerHelper");
+var step = require("step");
+
+var client = require("./redisClient");
+
+function UnSavedEntity() {
 	this._saved = false;
 	this._data = {};
-};
 
-UnSavedEntity.prototype.setAttribute = function (attrs, value, cb) {
-	h.assert(!this._saved);
+	this.setAttribute = function(view, attrs, value, cb) {
+		h.assert(!this._saved);
 
-	var field = this.getFieldName(attrs, isHash);
+		var isHash = (typeof value === "object" && value.constructor === Object);
+		var field = this.getFieldName(attrs, isHash);
 
-	if (isHash) {
-		if (!this._data[field.key]) {
-			this._data[field.key] = {};
+		if (isHash) {
+			this._data[field.key] = value;
+		} else {
+			if (!this._data[field.key]) {
+				this._data[field.key] = {};
+			}
+
+			this._data[field.key][field.attr] = value;
 		}
 
-		this._data[field.key][field.attr] = value;
-	} else {
-		this._data[field.key] = value;
-	}
+		cb();
+	};
 
-	cb();
-};
+	this.getAttribute = function(view, attrs, cb, fullHash) {
+		h.assert(!this._saved);
 
-UnSavedEntity.prototype.getAttribute = function (attrs, cb, fullHash) {
-	var field = this.getFieldName(attrs, fullHash);
+		var field = this.getFieldName(attrs, fullHash);
 
-	if (fullHash) {
-		cb(null, this._data[field.key]);
-	} else {
-		cb(null, this._data[field.key][field.attr]);
-	}
-};
+		if (fullHash) {
+			cb(null, this._data[field.key]);
+		} else {
+			cb(null, this._data[field.key][field.attr]);
+		}
+	};
 
-UnSavedEntity.prototype.unsetAttribute = function (attrs, cb, fullHash) {
-	var field = this.getFieldName(attrs, fullHash);
+	this.unsetAttribute = function(view, attrs, cb, fullHash) {
+		h.assert(!this._saved);
 
-	if (fullHash) {
-		delete this._data[field.key];
-	} else {
-		delete this._data[field.key][field.attr];
-	}
-};
+		var field = this.getFieldName(attrs, fullHash);
 
-UnSavedEntity.prototype.save = function (domain, cb) {
-	if (this._saved) {
-		throw new Error("entity was already saved!");
-	}
+		if (fullHash) {
+			delete this._data[field.key];
+		} else {
+			delete this._data[field.key][field.attr];
+		}
+	};
 
+	this.save = function(view, domain, cb) {
+		h.assert(!this._saved);
+		debugger;
+
+		var that = this;
+
+		SavedEntity.call(this, domain);
+		that._saved = false;
+		that._saving = true;
+
+		step(function() {
+			h.objectEach(that._data, function(key, value) {
+				that.setAttribute(view, key, value, this.parallel());
+			}, this);
+		}, h.sF(function () {
+			that._saved = true;
+			that._saving = false;
+
+			this.ne();
+		}), cb);
+	};
+}
+
+function SavedEntity(domain) {
 	this._saved = true;
 	this._domain = domain;
 
-	SavedEntity.call(this, domain);
-};
+	this._executeHooks = function (hook, attrs, data, cb) {
+		var that = this;
 
-var SavedEntity = function (domain) {
-	this._saved = true;
-	this._domain = domain;
-};
+		step(function () {
+			var cur = that._validation;
 
-SavedEntity.prototype.getFieldName = function (attrs, fullHash) {
-	if (typeof attrs === "string") {
-		attrs = attrs.split(":");
-	}
+			attrs.forEach(function (attr) {
+				cur = cur[attr];
 
-	if (!fullHash) {
-		var value = attrs.pop();
-	}
+				if (cur[hook]) {
+					cur[hook](data, this.parallel());
+				}
+			}, this);
 
-	attrs.unshift(this._domain);
+			if (typeof data.value === "object" && cur) {
+				h.objectEach(data.value, function (attr, value) {
+					if (cur[attr] && cur[attr][hook]) {
+						cur[attr][hook]({
+							reference: data.reference,
+							view: data.view,
+							key: data.key,
+							value: value
+						}, this.parallel());
+					}
+				}, this);
+			}
 
-	return attrs.join(":");
-};
+			this.parallel()();
+		}, cb);
+	};
 
-SavedEntity.prototype.setAttribute = function (attrs, value, cb) {
-	var isHash = typeof value === "object";
-	var field = this.getFieldName(attrs, isHash);
+	this._transform = function (hook, attrs, data, cb) {
+		var cur = this._validation, hookF;
 
-	if (isHash) {
-		client.hmset(field.key, value, cb);
-	} else {
-		client.hmset(field.key, field.attr, value, cb);
-	}
-};
+		attrs.forEach(function (attr) {
+			cur = cur[attr];
 
-SavedEntity.prototype.getAttribute = function (attrs, cb, fullHash) {
-	var field = this.getFieldName(attrs, fullHash);
+			hookF = cur[hook] || hookF;
+		});
 
-	if (fullHash) {
-		client.hgetall(field.key, cb);
-	} else {
-		client.hget(field.key, field.attr, cb);
-	}
-};
+		//TODO: transform objects of value!
 
-SavedEntity.prototype.unsetAttribute = function (attrs, cb, fullHash) {
-	var field = this.getFieldName(attrs, fullHash);
-	if (fullHash) {
-		client.del(field.key, cb);
-	} else {
-		client.hdel(field.key, field.attr, cb);
-	}
-};
+		if (hookF) {
+			hookF(data, cb);
+		} else {
+			cb();
+		}
+	};
 
-var SaveAbleEntity = function (domain) {
+	this.setAttribute = function(view, attrs, value, cb) {
+		h.assert(this._saved || this._saving);
+
+		var that = this;
+
+		var isHash = (typeof value === "object" && value.constructor === Object);
+		var field = this.getFieldName(attrs, isHash);
+
+		var data = {
+			reference: this._reference,
+			isHash: isHash,
+			view: view,
+			key: field.attrs,
+			value: value
+		};
+
+		step(function() {
+			that.getAttribute(view, attrs, this);
+		}, h.sF(function (oldValue) {
+			data.oldValue = oldValue;
+
+			that._transform("transform", field.attrs, data, this);
+		}), h.sF(function (newValue) {
+			value = newValue || value;
+			data.value = value;
+
+			that._executeHooks("pre", field.attrs, data, this);
+		}), h.sF(function() {
+			if (isHash) {
+				client.multi().del(field.key).hmset(field.key, value).exec(this);
+			} else {
+				client.hmset(field.key, field.attr, value, this);
+			}
+		}), h.sF(function() {
+			that._executeHooks("post", field.attrs, data, this);
+		}), cb);
+	};
+
+	this.getAttribute = function(view, attrs, cb, fullHash) {
+		h.assert(this._saved || this._saving);
+
+		var that = this;
+
+		var field = this.getFieldName(attrs, fullHash);
+		var data = {
+			reference: this._reference,
+			view: view,
+			key: field.attrs
+		};
+
+		step(function() {
+			that._executeHooks("read", field.attrs, data, this);
+		}, h.sF(function () {
+			if (fullHash) {
+				client.hgetall(field.key, cb);
+			} else {
+				client.hget(field.key, field.attr, cb);
+			}
+		}), cb);
+	};
+
+	this.unsetAttribute = function(view, attrs, cb, fullHash) {
+		h.assert(this._saved || this._saving);
+
+		var field = this.getFieldName(attrs, fullHash);
+		if (fullHash) {
+			client.del(field.key, cb);
+		} else {
+			client.hdel(field.key, field.attr, cb);
+		}
+	};
+}
+
+function SaveAbleEntity(validation, reference, domain) {
+	this._validation = validation;
+	this._reference = reference;
+
 	if (domain) {
 		SavedEntity.call(this, domain);
 	} else {
 		UnSavedEntity.call(this);
 	}
-};
 
-SaveAbleEntity.prototype.getFieldName = function (attrs, fullHash) {
-	var value;
-	if (typeof attrs === "string") {
-		attrs = attrs.split(":");
-	}
+	this.getFieldName = function(attrs, fullHash) {
+		var value;
+		if (typeof attrs === "string") {
+			attrs = attrs.split(":");
+		}
 
-	if (!fullHash) {
-		value = attrs.pop();
-	}
+		if (attrs.length === 1 && attrs[0] === "") {
+			attrs = [];
+		}
 
-	attrs.unshift(this._domain);
+		givenAttrs = attrs.slice();
 
-	return {
-		key: attrs.join(":"),
-		attr: value
+		if (!fullHash) {
+			value = attrs.pop();
+		}
+
+		if (this._saved || this._saving) {
+			attrs.unshift(this._domain);
+		}
+
+		return {
+			key: attrs.join(":"),
+			attr: value,
+			attrs: givenAttrs
+		};
 	};
-};
+
+	this.isSaved = function() {
+		return this._saved;
+	};
+}
+
+module.exports = SaveAbleEntity;
