@@ -3,6 +3,8 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
+var mailer = require("../includes/mailer");
+
 var s = {
 	logout: function logoutF(data, fn, view) {
 		step(function () {
@@ -36,7 +38,7 @@ var s = {
 		}), fn);
 	},
 	register: function (data, fn, view) {
-		var res;
+		var res, myUser;
 		step(function () {
 			view.getSession().register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
 		}, h.sF(function (result) {
@@ -46,7 +48,8 @@ var s = {
 			} else {
 				view.getSession().getOwnUser(this);
 			}
-		}), h.sF(function (myUser) {
+		}), h.sF(function (user) {
+			myUser = user;
 			if (data.profile) {
 				if (data.profile.pub) {
 					myUser.setPublicProfile(view, data.profile.pub, this.parallel());
@@ -61,6 +64,8 @@ var s = {
 			}
 
 			this.parallel()();
+		}), h.sF(function () {
+			mailer.sendAcceptMail(myUser, this);
 		}), h.sF(function () {
 			this.ne(res);
 		}), fn);

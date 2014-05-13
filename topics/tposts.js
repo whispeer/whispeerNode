@@ -44,13 +44,19 @@ var p = {
 
 			posts.forEach(function (e) {
 				e.getPostData(view, this.parallel(), data.addKey);
-			}, this)
-		}), h.sF(function (data) {
-			this.ne({
-				posts: data,
-				remaining: remainingPosts
-			});
-		}), fn);
+			}, this);
+		}), h.hE(function (err, data) {
+			if (err) {
+				this.ne({
+					timeSpanExceeded: true
+				});
+			} else {
+				this.ne({
+					posts: data,
+					remaining: remainingPosts
+				});
+			}
+		}, TimeSpanExceeded), fn);
 	},
 	getTimeline: function (data, fn, view) {
 		var remainingPosts;

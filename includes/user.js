@@ -627,12 +627,18 @@ var User = function (id) {
 	this.isSaved = isSavedF;
 
 	function getIDF() {
-		return id;
+		return h.parseDecimal(id);
 	}
 	this.getID = getIDF;
 
 	this.isOwnUser = function isOwnUserF(view) {
 		return parseInt(view.getUserID(), 10) === parseInt(id, 10);
+	};
+
+	this.isOnline = function isOnlineF(cb) {
+		step(function () {
+			client.sismember("user:online", id, this);
+		}, cb);
 	};
 
 	function getNameF(view, cb) {
