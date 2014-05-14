@@ -297,6 +297,23 @@ var User = function (id) {
 		databaseUser.setAttribute(view, attr, value, cb);
 	}
 
+	function createAccessors(attributes) {
+		attributes.forEach(function (attribute) {
+			var accessor = h.capitaliseFirstLetter(attribute);
+
+			this["get" + accessor] = function getAttribute(view, cb) {
+				databaseUser.getAttribute(view, attribute, cb);
+			};
+
+			this["set" + accessor] = function setAttribute(view, value, cb) {
+				databaseUser.setAttribute(view, attribute, value, cb);
+			};
+		});
+	}
+
+	createAccessors(["password", "nickname", "migrationState", "email",
+					"friendsLevel2Key", "mainKey", "cryptKey", "signKey", "friendsKey"]);
+
 	function deleteUser(cb) {
 		//TODO: think about nickname, mail (unique values)
 		step(function () {
@@ -384,30 +401,6 @@ var User = function (id) {
 
 	this.getName = getNameF;
 
-	this.getNickname = function(view, cb) {
-		step(function() {
-			getAttribute(view, "nickname", this);
-		}, cb);
-	};
-
-	this.setNickname = function(view, nickname, cb) {
-		step(function () {
-			setAttribute(view, "nickname", nickname, this);
-		}, cb);
-	};
-
-	this.setPassword = function(view, password, cb) {
-		step(function doSetPassword() {
-			setAttribute(view, "password", password, this);
-		}, cb);
-	};
-
-	this.getPassword = function(view, cb) {
-		step(function doGetPassword() {
-			getAttribute(view, "password", password, this);
-		}, cb);
-	};
-
 	this.getEMail = function(view, cb) {
 		step(function () {
 			getAttribute(view, "email", this);
@@ -473,43 +466,6 @@ var User = function (id) {
 		}, cb);
 	};
 
-	this.setMigrationState = function (view, state, cb) {
-		setAttribute(view, "migrationState", state, cb);
-	};
-
-	this.getMigrationState = function (view, cb) {
-		getAttribute(view, "migrationState", cb);
-	};
-
-	this.setFriendsKey = function(view, key, cb) {
-		setAttribute(view, "friendsKey", key, cb);
-	};
-
-	this.setFriendsLevel2Key = function(view, key, cb) {
-		setAttribute(view, "friendsLevel2Key", key, cb);
-	};
-
-	this.setMainKey = function(view, key, cb) {
-		setAttribute(view, "mainKey", key, cb);
-	};
-
-	this.setCryptKey = function(view, key, cb) {
-		setAttribute(view, "cryptKey", key, cb);
-	};
-
-	this.setSignKey = function(view, key, cb) {
-		setAttribute(view, "signKey", key, cb);
-	};
-
-
-	this.getFriendsKey = function(view, cb) {
-		getAttribute(view, "friendsKey", cb);
-	};
-
-	this.getFriendsLevel2Key = function(view, cb) {
-		getAttribute(view, "friendsLevel2Key", cb);
-	};
-
 	this.getFriendShipKey = function(view, cb) {
 		step(function getFSKF() {
 			view.logedinError(this);
@@ -524,18 +480,6 @@ var User = function (id) {
 		}, h.sF(function () {
 			client.get("friends:key:" + view.getUserID() + ":" + id, this);
 		}), cb);
-	};
-
-	this.getMainKey = function(view, cb) {
-		getAttribute(view, "mainKey", cb);
-	};
-
-	this.getCryptKey = function(view, cb) {
-		getAttribute(view, "cryptKey", cb);
-	};
-
-	this.getSignKey = function(view, cb) {
-		getAttribute(view, "signKey", cb);
 	};
 
 	function keyIDsToObjects(keys, cb) {
