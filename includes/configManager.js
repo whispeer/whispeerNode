@@ -16,13 +16,7 @@ var configManager = {
 
   availableEnvironments: function() {
     var envs = this.getEnvironments();
-    var envNames = [];
-    for (key in envs) {
-      if (envs.hasOwnProperty(key)) {
-        envNames.push(key);
-      }
-    }
-    return envNames;
+    return Object.keys(envs);
   },
 
   loadEnvironments: function() {
@@ -36,7 +30,7 @@ var configManager = {
     }
     config = envs[env];
     if (config === undefined) {
-      throw "Could not laod configuration named '" + env + "'. Known environments are: [" + this.availableEnvironments() + "]" ;
+      throw "Could not load configuration named '" + env + "'. Known environments are: [" + this.availableEnvironments() + "]" ;
     }
     return config;
   }
