@@ -441,7 +441,7 @@ Post.create = function (view, data, cb) {
 		multi.exec(this);
 	}), h.sF(function () {
 		if (data.meta.walluserObj) {
-			mailer.delaySendMails([data.meta.walluserObj], "[Whispeer] New Post on your wall", "You have got a new post on your wall!");
+			mailer.sendInteractionMails([data.meta.walluserObj]);
 		}
 		//TODO: notify wall user and mentioned users.
 

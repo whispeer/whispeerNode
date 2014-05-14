@@ -287,7 +287,7 @@ var Topic = function (id) {
 				}
 			});
 
-			mailer.delaySendMails(offlineUsers, "[Whispeer] New Message", "You have a new message on Whispeer!");
+			mailer.sendInteractionMails(offlineUsers);
 
 			this.ne();
 		}), cb);

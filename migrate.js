@@ -8,7 +8,8 @@ var path = require("path");
 
 var migrationState, availableMigrations, highestMigrationState;
 
-var config = JSON.parse(fs.readFileSync(path.resolve(__dirname, "config.json")));
+var configManager = require("./includes/configManager");
+var config = configManager.get();
 
 var migrationToRun = process.argv[2];
 

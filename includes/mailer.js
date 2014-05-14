@@ -48,8 +48,19 @@ function generateChallenge(cb) {
 	}), cb);
 }
 
+function isMailActivatedForUser(user, mail, cb) {
+	step(function () {
+		this.parallel.unflatten();
+
+		client.sismember("mail:" + user.getID(), mail, this.parallel());
+		client.hget("settings:" + user.getID(), "mailsEnabled", this.parallel());
+	}, h.sF(function (verified, mailsEnabled) {
+		this.ne(verified && mailsEnabled === "1");
+	}), cb);
+}
+
 var mailer = {
-	verifyUserMail: function (challenge, cb) {
+	verifyUserMail: function (challenge, mailsEnabled, cb) {
 		var challengeData;
 		step(function () {
 			client.hgetall("mail:challenges:" + challenge, this);
@@ -69,10 +80,10 @@ var mailer = {
 		}), h.sF(function (userMail) {
 			if (userMail === challengeData.mail) {
 				client.multi()
-					.hset("mail:" + challengeData.user, challengeData.mail + ":verified", 1)
-					.sadd("mail:" + challengeData.user + ":all", challengeData.mail)
+					.sadd("mail:" + challengeData.user, challengeData.mail)
 					.srem("mail:codes", challenge)
 					.del("mail:challenges:" + challenge)
+					.hset("settings:" + challengeData.user, "mailsEnabled", (mailsEnabled ? 1 : 0))
 					.exec(this);
 			} else {
 				this.last.ne(false);
@@ -121,6 +132,25 @@ var mailer = {
 			mailer.sendMails.apply(mailer, args);
 		});
 	},
+	sendInteractionMails: function (users, cb) {
+		var usersToNotify;
+
+		step(function () {
+			users.forEach(function (user) {
+				client.sismember("mail:notifiedUsers", user.getID(), this.parallel());
+			}, this);
+		}, h.sF(function (notified) {
+			usersToNotify = users.filter(function (user, i) {
+				return !notified[i];
+			});
+
+			usersToNotify.forEach(function (user) {
+				client.sadd("mail:notifiedUsers", user.getID(), this.parallel());
+			}, this);
+		}), h.sF(function () {
+			mailer.sendMails(usersToNotify, "[Whispeer] Neue Interaktionen", "Jemand hat mit dir auf Whispeer interagiert!\nBesuche " + config.host + " um zu sehen wer mit dir interagiert hat.\n\nMit freundlichen Grüßen,\nDein Whispeer Team!", this);
+		}), (cb || h.nop));
+	},
 	sendMails: function (users, subject, text, cb, inReplyTo, messageID) {
 		//todo: add inReplyTo and messageID!
 		var mails;
@@ -138,7 +168,7 @@ var mailer = {
 
 			users.forEach(function (user, i) {
 				if (mails[i]) {
-					client.hget("mail:" + user.getID(), mails[i] + ":verified", this.parallel());
+					isMailActivatedForUser(user, mails[i], this.parallel());
 				} else {
 					this.parallel()();
 				}
@@ -146,7 +176,7 @@ var mailer = {
 		}), h.sF(function (verified) {
 			//TODO: text replacements (e.g. user name!)
 			users.forEach(function (user, i) {
-				if (verified[i] === "1") {
+				if (verified[i]) {
 					mail.sendMail({
 						from: defaultFrom,
 						to: mails[i],
