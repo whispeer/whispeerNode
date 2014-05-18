@@ -284,6 +284,13 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 			getUserIDsForFilter(view, filter, this);
 		}
 	}, h.sF(function (userids) {
+
+		var multi = client.multi();
+
+		userids.forEach(function (userid) {
+			removeOldNewPosts(multi, userid);
+		});
+
 		var postKeys = userids.map(function (userid) {
 			return "user:" + userid + ":newPosts";
 		});
@@ -293,7 +300,9 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 		postKeys.unshift(unionKey);
 		postKeys.push(this);
 
-		client.zunionstore.apply(client, postKeys);
+		multi.zunionstore.apply(client, postKeys);
+
+		multi.exec();
 	}), h.sF(function (resultLength) {
 		if (resultLength === 0) {
 			this.last.ne([]);
