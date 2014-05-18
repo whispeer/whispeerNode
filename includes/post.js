@@ -300,7 +300,7 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 		postKeys.unshift(unionKey);
 		postKeys.push(this);
 
-		multi.zunionstore.apply(client, postKeys);
+		multi.zunionstore.apply(multi, postKeys);
 
 		multi.exec();
 	}), h.sF(function (resultLength) {
