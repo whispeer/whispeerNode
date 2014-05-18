@@ -9,6 +9,8 @@ var client = require("./redisClient");
 
 var KeyApi = require("./crypto/KeyApi");
 
+var mailer = require("./mailer");
+
 //maximum difference: 5 minutes.
 var MAXTIME = 5 * 60 * 1000;
 
@@ -244,7 +246,7 @@ var Topic = function (id) {
 
 			message.getSenderID(view, this.parallel());
 			message.getTime(view, this.parallel());
-			theTopic.getReceiverIDs(view, this.parallel());
+			theTopic.getReceiver(view, this.parallel());
 		}), h.sF(function (senderid, time, receiver) {
 			theReceiver = receiver;
 			theSender = senderid;
@@ -271,12 +273,23 @@ var Topic = function (id) {
 
 			multi.exec(this);
 		}), h.sF(function () {
-			var i;
-			for (i = 0; i < theReceiver.length; i += 1) {
-				client.publish("user:" + theReceiver[i] + ":message", messageID, this);
-			}
+			theReceiver.forEach(function (user) {
+				user.isOnline(this.parallel());
+			}, this);
+		}), h.sF(function (onlineUsers) {
+			var offlineUsers = [];
 
-			this.ne(true);
+			theReceiver.forEach(function (user, index) {
+				if (onlineUsers[index]) {
+					client.publish("user:" + user.getID() + ":message", messageID);
+				} else {
+					offlineUsers.push(user);
+				}
+			});
+
+			mailer.sendInteractionMails(offlineUsers);
+
+			this.ne();
 		}), cb);
 	};
 

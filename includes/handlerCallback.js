@@ -33,9 +33,9 @@ var HandlerCallback = function (fn) {
 
 			console.log(err);
 			try {
-				mailer.mailAdmin("An Error occured", err);
+				mailer.mailAdmin("An Error occured", err.toString() + "\r\n" + err.stack);
 			} catch (e) {
-				console.error(e);
+				console.log(e);
 			}
 		} else {
 			result = extend(result, value);

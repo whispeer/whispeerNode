@@ -60,8 +60,6 @@ var Session = function Session() {
 	/** session id, userid, are we loged in, time we logged in, stay forever? */
 	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser, session = this;
 
-
-
 	/** get a session id
 	* @param callback called with result (sid)
 	* @callback	(err, sid) error and session id

@@ -1,7 +1,14 @@
 {
-	"ws": "127.0.0.1",
-	"wsPort": 3000,
-	"dbNumber": 1,
-	"production": false,
-	"debug": false
+  "development": {
+	  "host": "http://localhost",
+	  "ws": "127.0.0.1",
+	  "wsPort": 3000,
+	  "dbNumber": 1,
+	  "production": false,
+	  "debug": false,
+	  "mail": {
+	  	"directory": "./mails"
+	  },
+	  "mailType": "PICKUP"
+    }
 }

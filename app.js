@@ -11,7 +11,8 @@
 
 var fs = require("fs");
 var path = require("path");
-var config = JSON.parse(fs.readFileSync(path.resolve(__dirname, "config.json")));
+var configManager = require("./includes/configManager");
+var config = configManager.get();
 
 var options = {};
 

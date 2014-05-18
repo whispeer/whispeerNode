@@ -13,6 +13,8 @@ var Friends = require("./friends");
 var SortedSetPaginator = require("./sortedSetPaginator");
 var SymKey = require("./crypto/symKey");
 
+var mailer = require("./mailer");
+
 /*
 	signature is of meta without signature.
 
@@ -349,9 +351,7 @@ function processWallUser(userid, cb) {
 	if (userid) {
 		step(function () {
 			User.getUser(userid, this);
-		}, h.sF(function (user) {
-			this.ne(user.getID());
-		}), cb);
+		}, cb);
 	} else {
 		cb();
 	}
@@ -375,9 +375,10 @@ function processMetaInformation(view, meta, cb) {
 
 		processWallUser(meta.walluser, this.parallel());
 		processKey(view, meta.key, this.parallel());
-	}, h.sF(function (userid, keyid) {
-		if (userid) {
-			meta.walluser = userid;
+	}, h.sF(function (user, keyid) {
+		if (user) {
+			meta.walluserObj = user;
+			meta.walluser = user.getID();
 		} else {
 			delete meta.walluser;
 		}
@@ -439,6 +440,9 @@ Post.create = function (view, data, cb) {
 
 		multi.exec(this);
 	}), h.sF(function () {
+		if (data.meta.walluserObj) {
+			mailer.sendInteractionMails([data.meta.walluserObj]);
+		}
 		//TODO: notify wall user and mentioned users.
 
 		//collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrangebyscore)

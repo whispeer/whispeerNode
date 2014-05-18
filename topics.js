@@ -13,12 +13,22 @@ var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
 
 var blob = require("./topics/tblob");
+var mailer = require("./includes/mailer");
 
 var MAXDEPTH = 20;
 
 var whispeerAPI = {
 	priorized: ["keyData"],
 	blob: blob,
+	verifyMail: function verifyMailF(data, fn, view) {
+		step(function () {
+			mailer.verifyUserMail(data.challenge, data.mailsEnabled, this);
+		}, h.sF(function (success) {
+			this.ne({
+				mailVerified: success
+			});
+		}), fn);
+	},
 	logedin: function isLogedinF(data, fn, view) {
 		step(function () {
 			if (data === true) {

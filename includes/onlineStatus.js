@@ -83,6 +83,8 @@ function onlineStatusUpdater(view, session) {
 					friends.notifyAllFriends(view, "online", 2);
 				}
 			})
+			//user went online so remove from notifiedUsers. maybe move to listener pattern later on.
+			.srem("mail:notifiedUsers", view.getUserID())
 			.sadd("user:" + userid + ":sockets", view.getSocket().id)
 			.getset("user:" + userid + ":recentActivity", "1", function (error, oldValue) {
 				if (!oldValue && !alreadyNotified) {
