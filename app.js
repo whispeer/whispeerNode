@@ -67,3 +67,6 @@ step(function () {
 }), h.sF(function () {
 	io.sockets.on("connection", onSocketConnection);
 }));
+
+console.log("App started");
+
