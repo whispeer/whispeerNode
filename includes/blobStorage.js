@@ -6,7 +6,7 @@ var fs = require("fs");
 var client = require("./redisClient");
 
 function isBlobID(blobid) {
-	return h.isHex(blobid);
+	return blobid.match(/^[A-z0-9]*$/);
 }
 
 function blobIDtoFile(blobid) {
@@ -17,20 +17,20 @@ function checkBlobExists(blobid, cb) {
 	step(function () {
 		client.sismember("blobs:usedids", blobid, this);
 	}, h.sF(function (ismember) {
-		console.log(ismember);
-
 		if (!ismember) {
 			throw new BlobNotFound();
 		}
+
+		this.ne();
 	}), cb);
 }
 
 function useBlobID(blobid, cb) {
 	step(function () {
 		if (isBlobID(blobid)) {
-			client.srem("blobs:reservedids", blobid, this);
+			client.srem("blobs:reserved", blobid, this);
 		} else {
-			throw new InvalidBlobID("Not a blob id");
+			throw new InvalidBlobID("Not a blob id " + blobid);
 		}
 	}, h.sF(function (removed) {
 		if (removed === 1) {
@@ -126,25 +126,20 @@ var blobStorage = {
 		}), cb);
 	},
 	getBlob: function (view, blobid, cb) {
-		var result = "";
-
 		step(function () {
 			view.logedinError(this);
 		}, h.sF(function () {
 			checkBlobExists(blobid, this);
 		}), h.sF(function () {
-			client.sismember("blobs.usedids", blobid, this);
+			client.sismember("blobs:usedids", blobid, this);
 		}), h.sF(function (exists) {
-			var stream = fs.createReadStream(blobIDtoFile(blobid));
-
-			var base64Stream = require("base64Stream");
-
-			var bstream = new base64Stream.BufferedStreamToBase64();
-			stream.pipe(bstream);
-
-			bstream.on("data", function (d) {result += d;});
-			bstream.on("end", this);
-		}), h.sF(function () {
+			if (exists) {
+				fs.readFile(blobIDtoFile(blobid), this);
+			} else {
+				throw new Error("Blob not found");
+			}
+		}), h.sF(function (data) {
+			var result = new Buffer(data).toString("base64");
 			this.ne(result);
 		}), cb);
 	}
