@@ -256,7 +256,7 @@ var Topic = function (id) {
 			multi.zadd(mDomain, time, messageID);
 			multi.zadd(domain + ":user:" + senderid + ":messages", time, messageID);
 
-			receiver.forEach(function (receiver) {
+			theReceiver.forEach(function (receiver) {
 				var rid = receiver.getID();
 
 				if (receiver !== theSender) {
