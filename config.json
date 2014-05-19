@@ -1,4 +1,5 @@
 {
+
   "development": {
 	  "host": "http://localhost",
 	  "ws": "127.0.0.1",
@@ -10,5 +11,18 @@
 	  	"directory": "./mails"
 	  },
 	  "mailType": "PICKUP"
-    }
+  },
+
+  "test": {
+	  "host": "http://localhost",
+	  "ws": "127.0.0.1",
+	  "wsPort": 3000,
+	  "dbNumber": 2,
+	  "production": false,
+	  "debug": false,
+	  "mail": {
+	  	"directory": "./mails"
+	  },
+	  "mailType": "PICKUP"
+  }
 }

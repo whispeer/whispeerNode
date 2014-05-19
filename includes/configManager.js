@@ -4,7 +4,11 @@ var path = require("path");
 var configManager = {
 
   guessEnv: function() {
-    return "development";
+    var result;
+    if (this.environmentName === undefined) {
+      this.environmentName = process.env.WHISPEER_ENV || "development";
+    }
+    return this.environmentName;
   },
 
   getEnvironments: function() {
