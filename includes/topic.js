@@ -256,15 +256,16 @@ var Topic = function (id) {
 			multi.zadd(mDomain, time, messageID);
 			multi.zadd(domain + ":user:" + senderid + ":messages", time, messageID);
 
-			var i;
-			for (i = 0; i < receiver.length; i += 1) {
-				if (receiver[i] !== theSender) {
-					multi.zadd("topic:user:" + receiver[i] + ":unreadTopics", time, id);
-					multi.zadd(domain + ":user:" + receiver[i] + ":unread", time, messageID);
+			receiver.forEach(function (receiver) {
+				var rid = receiver.getID();
+
+				if (receiver !== theSender) {
+					multi.zadd("topic:user:" + rid + ":unreadTopics", time, id);
+					multi.zadd(domain + ":user:" + rid + ":unread", time, messageID);					
 				}
 
-				multi.zadd("topic:user:" + receiver[i] + ":topics", time, id);
-			}
+				multi.zadd("topic:user:" + rid + ":topics", time, id);
+			});
 
 			multi.hmset(domain + ":data", {
 				"newest": messageID,
