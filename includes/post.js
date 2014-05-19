@@ -284,6 +284,13 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 			getUserIDsForFilter(view, filter, this);
 		}
 	}, h.sF(function (userids) {
+
+		var multi = client.multi();
+
+		userids.forEach(function (userid) {
+			removeOldNewPosts(multi, userid);
+		});
+
 		var postKeys = userids.map(function (userid) {
 			return "user:" + userid + ":newPosts";
 		});
@@ -293,7 +300,9 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 		postKeys.unshift(unionKey);
 		postKeys.push(this);
 
-		client.zunionstore.apply(client, postKeys);
+		multi.zunionstore.apply(multi, postKeys);
+
+		multi.exec();
 	}), h.sF(function (resultLength) {
 		if (resultLength === 0) {
 			this.last.ne([]);
@@ -441,7 +450,7 @@ Post.create = function (view, data, cb) {
 		multi.exec(this);
 	}), h.sF(function () {
 		if (data.meta.walluserObj) {
-			mailer.delaySendMails([data.meta.walluserObj], "[Whispeer] New Post on your wall", "You have got a new post on your wall!");
+			mailer.sendInteractionMails([data.meta.walluserObj]);
 		}
 		//TODO: notify wall user and mentioned users.
 

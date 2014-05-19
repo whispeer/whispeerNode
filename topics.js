@@ -20,7 +20,7 @@ var whispeerAPI = {
 	priorized: ["keyData"],
 	verifyMail: function verifyMailF(data, fn, view) {
 		step(function () {
-			mailer.verifyUserMail(data.challenge, this);
+			mailer.verifyUserMail(data.challenge, data.mailsEnabled, this);
 		}, h.sF(function (success) {
 			this.ne({
 				mailVerified: success

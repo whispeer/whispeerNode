@@ -1098,6 +1098,8 @@ User.search = function (text, cb) {
 		search.user.type("and").query(text, this.parallel());
 		User.getUser(text, this.parallel(), true);
 	}, h.sF(function (ids, user) {
+		ids = ids.map(h.parseDecimal);
+
 		var position;
 		if (user instanceof User) {
 			position = ids.indexOf(user.getID());
