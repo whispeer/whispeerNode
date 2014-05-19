@@ -33,5 +33,7 @@ function sendAcceptMails(cb) {
 				this.parallel()();
 			}
 		}, this);
+	}), h.sF(function () {
+		this.ne(true);
 	}), cb);
 }
