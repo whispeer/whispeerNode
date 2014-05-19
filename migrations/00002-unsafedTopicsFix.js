@@ -54,11 +54,7 @@ function getTopicData(tid, cb) {
 }
 
 function fixUnsavedTopics(cb) {
-	var multi = {
-		zadd: function () {
-			console.log(Array.prototype.slice.apply(arguments));
-		}
-	};
+	var multi = client.multi();
 
 	var topics = [], scores = {};
 	step(function () {
@@ -82,15 +78,15 @@ function fixUnsavedTopics(cb) {
 			tdata.unreadMessages.forEach(function (unReadMessage) {
 				tdata.receiverids.forEach(function (rid) {
 					if (rid !== unReadMessage.sender) {
-						multi.zadd("topic:user:" + rid + ":unread", unReadMessage.time, unReadMessage.mid);
+						multi.zadd("topic:" + tid + ":user:" + rid + ":unread", unReadMessage.time, unReadMessage.mid);
 						multi.zadd("topic:user:" + rid + ":unreadTopics", scores[tid], tid);
 					}
 				});
 			});
 		})
 
-		//multi.exec(this);
-
-		process.exit();
+		multi.exec(this);
+	}), h.sF(function () {
+		this.ne(true);
 	}), cb);
 }
