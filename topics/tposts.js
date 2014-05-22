@@ -56,7 +56,7 @@ var p = {
 					remaining: remainingPosts
 				});
 			}
-		}, TimeSpanExceeded), fn);
+		}, [TimeSpanExceeded]), fn);
 	},
 	getTimeline: function (data, fn, view) {
 		var remainingPosts;

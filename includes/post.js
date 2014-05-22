@@ -275,7 +275,7 @@ Post.getTimeline = function (view, filter, afterID, count, cb) {
 };
 
 Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, cb) {
-	var unionKey;
+	var unionKey, userids;
 
 	step(function () {
 		if (new Date().getTime() - h.parseDecimal(lastRequestTime) > newPostsExpireTime * 1000) {
@@ -283,7 +283,16 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 		} else {
 			getUserIDsForFilter(view, filter, this);
 		}
-	}, h.sF(function (userids) {
+	}, h.sF(function (_userids) {
+		userids = _userids;
+		var multi = client.multi();
+
+		userids.forEach(function (userid) {
+			removeOldNewPosts(multi, userid);
+		});
+
+		multi.exec(this);
+	}), h.sF(function () {
 		var postKeys = userids.map(function (userid) {
 			return "user:" + userid + ":newPosts";
 		});

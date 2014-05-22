@@ -86,3 +86,5 @@ styleguide.use(helmet.cacheControl());
 styleguide.use(express.static("../styleguide/"));
 
 styleguide.listen(STYLEGUIDE_PORT);
+
+console.log("Webserver started");
