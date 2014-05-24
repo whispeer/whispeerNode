@@ -6,8 +6,12 @@ var client = require("./redisClient");
 
 var onlineStatusUpdater = require("./onlineStatus");
 
+var socketS = require("socket.io-stream");
+
 var view = function view(socket, session, listener) {
 	var theView = this, toDestroy = [];
+
+	var streamSocket;
 
 	this.getSocket = function getSocketF() {
 		return socket;
@@ -20,6 +24,19 @@ var view = function view(socket, session, listener) {
 	this.getSession = getSessionF;
 
 	this.session = getSessionF;
+
+	this.upgradeStream = function (api) {
+		if (!streamSocket) {
+			streamSocket = socketS(socket);
+
+			var attr;
+			for (attr in api) {
+				if (api.hasOwnProperty(attr)) {
+					streamSocket.on(attr, api[attr]);
+				}
+			}
+		}
+	};
 
 	session.changeListener(function sessionChange(logedin) {
 		step(function () {

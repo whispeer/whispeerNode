@@ -35,8 +35,6 @@ function onlineStatusUpdater(view, session) {
 	var userid, timeout;
 
 	function removeSocket() {
-		console.log("remove socket " + view.getSocket().id + " from user " + userid);
-
 		if (userid) {
 			var socketID =  view.getSocket().id;
 			var userIDToRemove = userid;
@@ -68,8 +66,6 @@ function onlineStatusUpdater(view, session) {
 	function addSocket() {
 		userid = view.getUserID();
 		var alreadyNotified = false;
-
-		console.log("added socket " + view.getSocket().id + " from user " + userid);
 
 		//add current user to online users - add current socket to users connections
 		client.multi()
