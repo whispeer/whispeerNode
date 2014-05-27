@@ -129,7 +129,9 @@ var friends = {
 
 			this.ne();
 		}), function (e) {
-			console.error(e);
+			if (e) {
+				console.error(e);
+			}
 		});
 	},
 	notifyAllFriends: function (view, channel, content) {
