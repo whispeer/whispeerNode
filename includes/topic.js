@@ -259,7 +259,7 @@ var Topic = function (id) {
 			theReceiver.forEach(function (receiver) {
 				var rid = receiver.getID();
 
-				if (receiver !== theSender) {
+				if (rid !== h.parseDecimal(theSender)) {
 					multi.zadd("topic:user:" + rid + ":unreadTopics", time, id);
 					multi.zadd(domain + ":user:" + rid + ":unread", time, messageID);					
 				}
