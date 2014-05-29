@@ -55,7 +55,9 @@ var view = function view(socket, session, listener) {
 				});
 			}
 		}, function (e) {
-			console.error(e);
+			if (e) {
+				console.error(e);
+			}
 		});
 	});
 

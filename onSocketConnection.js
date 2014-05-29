@@ -53,14 +53,18 @@ module.exports = function (socket) {
 			if (typeof handler === "function") {
 				handler(data, new HandlerCallback(this.last.ne), view);
 			} else if (typeof handler === "object" && typeof data === "object") {
-				var topic;
+				var topic, registered = false;
 				for (topic in data) {
 					if (data.hasOwnProperty(topic) && handler[topic] !== undefined) {
 						if (!handler.priorized || handler.priorized.indexOf(topic) === -1) {
+							registered = true;
 							topics.push(topic);
 							handle(handler[topic], data[topic], this.parallel(), view);
 						}
 					}
+				}
+				if (!registered) {
+					throw new Error("no api called");
 				}
 			}
 		}), function (err, results) {

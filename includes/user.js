@@ -315,7 +315,9 @@ var User = function (id) {
 			search.user.index(name, id);
 			//TO-DO: search.friendsSearch(view).updateOwn(friends, name);
 		}), function (e) {
-			console.error(e);
+			if (e) {
+				console.error(e);
+			}
 		});
 	}
 
@@ -610,7 +612,9 @@ var User = function (id) {
 			}), function saveDone(e) {
 				if (e) {
 					deleteF(function (e) {
-						console.error(e);
+						if (e) {
+							console.error(e);
+						}
 					});
 
 					throw e;
