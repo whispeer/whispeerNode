@@ -1,14 +1,13 @@
 "use strict";
 
 var KeyApi = require("./crypto/KeyApi");
-var SymKey = require("./crypto/symKey");
 
 var step = require("step");
 var client = require("./redisClient");
 var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
-var jsonFields = ["profile", "hashObject", "metaData"];
+var jsonFields = ["profile", "own"];
 
 var Profile = function (userid, profileid) {
 	var theProfile = this;
@@ -49,15 +48,9 @@ var Profile = function (userid, profileid) {
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
-			var err = validator.validate("profileEncrypted", data.profile, 1);
+			if (Profile.validate(data)) {
+				data = h.stringifyCertainAttributes(data, jsonFields);
 
-			if (!data.signature || !data.hashObject) {
-				throw new InvalidProfile();
-			}
-
-			data = h.stringifyCertainAttributes(data, jsonFields);
-
-			if (!err) {
 				client.hmset(domain, data, this);
 				client.publish(domain, data.profile);
 			} else {
@@ -97,7 +90,7 @@ var Profile = function (userid, profileid) {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.srem("user:" + userid + ":profiles", profileid, this);
-		}), cb)
+		}), cb);
 	};
 };
 
@@ -170,9 +163,10 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 };
 
 Profile.validate = function validateF(data) {
-	var err = validator.validate("profileEncrypted", data.profile, 1);
+	var content = data.profile.content, meta = data.profile.meta;
+	var err = validator.validate("profileEncrypted", content, 1);
 
-	return !err && data.signature && data.hashObject;
+	return !err && meta._signature && meta._hashObject && meta._contentHash && meta._key && meta._version;
 };
 
 Profile.create = function createF(view, data, cb) {
@@ -185,13 +179,8 @@ Profile.create = function createF(view, data, cb) {
 			return;
 		}
 
-		if (typeof data.profile.key !== "object") {
-			KeyApi.get(data.profile.key, this);
-		} else if (!KeyApi.isKey(key)) {
-			SymKey.createWDecryptors(view, data.profile.key, this);
-		} else {
-			this.ne(data.profile.key);
-		}
+		var meta = data.profile.meta;
+		KeyApi.get(meta._key, this);
 	}), h.sF(function createP3(key) {
 		userID = view.getUserID();
 		if (key && key.isSymKey()) {
