@@ -18,7 +18,6 @@ var mailer = require("./includes/mailer");
 var MAXDEPTH = 20;
 
 var whispeerAPI = {
-	priorized: ["keyData"],
 	blob: blob,
 	verifyMail: function verifyMailF(data, fn, view) {
 		step(function () {
