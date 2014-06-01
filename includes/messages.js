@@ -234,25 +234,6 @@ Message.create = function (view, data, cb) {
 			return;
 		}
 
-		var toHash = {
-			meta: {
-				createTime: meta.createTime,
-				topicHash: meta.topicHash,
-				previousMessage: meta.previousMessage,
-				previousMessageHash: meta.previousMessageHash
-			},
-			content: {
-				iv: data.content.iv,
-				text: data.content.text
-			}
-		};
-
-		if (chelper.hash.hashObject(toHash) !== meta.ownHash) {
-			throw new InvalidMessageData("Invalid Hash");
-		}
-
-		toHash.meta.ownHash = meta.ownHash;
-
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 		SymKey.createWDecryptors(view, data.content.key, this);
