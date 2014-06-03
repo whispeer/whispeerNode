@@ -32,13 +32,13 @@ module.exports = function (socket) {
 					} else {
 						throw new Error("api not existing");
 					}
-				}. this);
+				}, this);
 
 				if (!usedHandler) {
 					throw new Error("no api called");
 				}
 			}
-		}, function (err, results) {
+		}, h.sF(function (err, results) {
 			var result = {};
 
 			var i;
@@ -47,7 +47,7 @@ module.exports = function (socket) {
 			}
 
 			this.ne(result);
-		}, fn);
+		}), fn);
 	}
 
 	/** adds data which is always present.
@@ -94,6 +94,10 @@ module.exports = function (socket) {
 			}, h.sF(function () {
 				handle(handler, data, this, myView);
 			}), function (e, result) {
+				if (e) {
+					result.status = 0;
+				}
+
 				always(myView, result, fn);
 				console.log("Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
 			});
