@@ -29,8 +29,6 @@ module.exports = function (socket) {
 						usedHandler = true;
 						topics.push(topic);
 						handle(handler[topic], value, this.parallel(), view);
-					} else {
-						throw new Error("api not existing");
 					}
 				}, this);
 
@@ -38,7 +36,7 @@ module.exports = function (socket) {
 					throw new Error("no api called");
 				}
 			}
-		}, h.sF(function (err, results) {
+		}, h.sF(function (results) {
 			var result = {};
 
 			var i;
@@ -95,7 +93,9 @@ module.exports = function (socket) {
 				handle(handler, data, this, myView);
 			}), function (e, result) {
 				if (e) {
-					result.status = 0;
+					result = {
+						status: 0
+					};
 				}
 
 				always(myView, result, fn);
