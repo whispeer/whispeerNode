@@ -1,0 +1,7 @@
+*.cmd
+*.log
+*complexity.txt
+*log.txt
+codekit-config.json
+mails/*.eml
+tmp/*
