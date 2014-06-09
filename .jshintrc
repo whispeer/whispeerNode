@@ -1,6 +1,37 @@
 {
 	"globals": {
-
+		"StepError": true,
+		"NotLogedin": true,
+		"InvalidLogin": true,
+		"AccessViolation": true,
+		"InvalidToken": true,
+		"UserNotExisting": true,
+		"MailInUse": true,
+		"NicknameInUse": true,
+		"InvalidPassword": true,
+		"InvalidAttribute": true,
+		"InvalidProfile": true,
+		"LostDecryptor": true,
+		"InvalidDecryptor": true,
+		"RealIDInUse": true,
+		"InvalidRealID": true,
+		"NotASymKey": true,
+		"InvalidSymKey": true,
+		"NotAEccKey": true,
+		"InvalidEccKey": true,
+		"InvalidKey": true,
+		"InvalidHexError": true,
+		"InvalidTopicData": true,
+		"InvalidMessageData": true,
+		"TopicNotExisting": true,
+		"MessageNotExisting": true,
+		"InvalidPost": true,
+		"InvalidFilter": true,
+		"InvalidCircleData": true,
+		"TimeSpanExceeded": true,
+		"InvalidBlobID": true,
+		"BlobNotFound": true,
+		"CircleNotExisting": true
 	},
 	"node": true
 }
