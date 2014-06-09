@@ -97,7 +97,7 @@ var Profile = function (userid, profileid) {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.srem("user:" + userid + ":profiles", profileid, this);
-		}), cb)
+		}), cb);
 	};
 };
 
@@ -187,7 +187,7 @@ Profile.create = function createF(view, data, cb) {
 
 		if (typeof data.profile.key !== "object") {
 			KeyApi.get(data.profile.key, this);
-		} else if (!KeyApi.isKey(key)) {
+		} else if (!KeyApi.isKey(data.profile.key)) {
 			SymKey.createWDecryptors(view, data.profile.key, this);
 		} else {
 			this.ne(data.profile.key);

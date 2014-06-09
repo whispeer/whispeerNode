@@ -83,7 +83,7 @@ function fixUnsavedTopics(cb) {
 					}
 				});
 			});
-		})
+		});
 
 		multi.exec(this);
 	}), h.sF(function () {

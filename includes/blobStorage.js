@@ -85,7 +85,6 @@ var blobStorage = {
 		var blobid;
 
 		step(function () {
-			debugger;
 			createBlobID(this);
 		}, h.sF(function (bid) {
 			blobid = bid;

@@ -70,6 +70,7 @@ Notification.add = function (userid, theme, referenceid, cb) {
 		client.incr("user:" + userid + ":notifications", this);
 	}, h.sF(function (newid) {
 		theID = newid;
+		var multi = client.multi();
 		multi.hmset("user:" + userid + ":notifications:" + newid, {
 			id: newid,
 			theme: theme,

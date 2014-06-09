@@ -16,9 +16,8 @@
 		"step": "git+ssh://git@whispeer.de:4351/whispeerStep#master"
 	},
 	"devDependencies": {
-		"selenium-webdriver": "2.x"
-	},
-  "scripts": {
-    "test": "mocha test/helpers/*.js test/*.js"
-  }
+		"selenium-webdriver": "2.x",
+		"grunt": "~0.4.5",
+		"grunt-contrib-jshint": "~0.10.0"
+	}
 }

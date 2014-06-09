@@ -229,7 +229,6 @@ var friends = {
 				friends.getFriendsKeys(view, this);
 			}
 		}), h.sF(function hasOtherRequested(keys) {
-			debugger;
 			friendShip.keys = keys;
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 

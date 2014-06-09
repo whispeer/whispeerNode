@@ -11,23 +11,23 @@ var config = configManager.get();
 // requireConfirmation will ask the user to confirm by typing 'y'. When
 // not in a tty, the action is performed w/o confirmation.
 var requireConfirmation = function(message, action) {
-  console.log(message);
-  if (process.stdout.isTTY) {
-    var stdin = process.openStdin();
-    console.log("Press y and enter to continue!");
+	console.log(message);
+	if (process.stdout.isTTY) {
+		var stdin = process.openStdin();
+		console.log("Press y and enter to continue!");
 
-    stdin.on("data", function(chunk) {
-    	if (chunk.toString().toLowerCase().substr(0, 1) === "y") {
-        action();
-    	} else {
-    		console.log("Aborted!");
-    		process.exit(-1);
-    	}
-    });
-  } else {
-    action();
-  }
-}
+		stdin.on("data", function(chunk) {
+			if (chunk.toString().toLowerCase().substr(0, 1) === "y") {
+				action();
+			} else {
+				console.log("Aborted!");
+				process.exit(-1);
+			}
+		});
+	} else {
+		action();
+	}
+};
 
 var emptyRedis = function() {
 
@@ -42,6 +42,6 @@ var emptyRedis = function() {
 		});
 	});
 
-}
+};
 
 requireConfirmation("Deleting all data in db number " + config.dbNumber || 0, emptyRedis);
