@@ -1,0 +1,6 @@
+[submodule "node_modules/whispeerHelper"]
+	path = node_modules/whispeerHelper
+	url = ssh://git@whispeer.de:4351/whispeerHelper
+[submodule "node_modules/whispeerValidations"]
+	path = node_modules/whispeerValidations
+	url = ssh://git@whispeer.de:4351/whispeerValidations

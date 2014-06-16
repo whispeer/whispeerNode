@@ -35,7 +35,7 @@ var HandlerCallback = function (fn) {
 			try {
 				var errString;
 				try {
-					errString = JSON.stringify(err)
+					errString = JSON.stringify(err);
 				} catch (e) {
 					errString = err.toString();
 				}

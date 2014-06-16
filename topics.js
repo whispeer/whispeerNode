@@ -65,10 +65,6 @@ var whispeerAPI = {
 				var loaded = data.loaded || [];
 
 				function addNotLoaded(e) {
-					if (!e) {
-						debugger;
-					}
-
 					if (!h.array.contains(loaded, e.getRealID())) {
 						result.push(e);
 						loaded.push(e.getRealID());

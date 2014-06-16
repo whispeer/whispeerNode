@@ -17,6 +17,10 @@ var SymKey = require("./crypto/symKey");
 
 */
 
+function hasFriend(uid, friendid, cb) {
+	client.sismember("friends:" + uid, friendid, cb);
+}
+
 function mutual(uid1, uid2, cb) {
 		step(function () {
 			client.sinter("friends:" + uid1, "friends:" + uid2, this);
@@ -142,8 +146,8 @@ var friends = {
 		step(function () {
 			this.parallel.unflatten();
 
-			client.sismember("friends:" + ownID, uid, this.parallel());
-			client.sismember("friends:" + uid, ownID, this.parallel());
+			hasFriend(ownID, uid, this.parallel());
+			hasFriend(uid, ownID, this.parallel());
 		}, h.sF(function (friend1, friend2) {
 			if (friend1 !== friend2) {
 				console.error("CORRUPT DATA!" + ownID + "-" + uid);
@@ -231,7 +235,6 @@ var friends = {
 				friends.getFriendsKeys(view, this);
 			}
 		}), h.sF(function hasOtherRequested(keys) {
-			debugger;
 			friendShip.keys = keys;
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 
@@ -320,11 +323,17 @@ var friends = {
 		}), cb);
 	},
 	getUser: function (view, uid, cb) {
-		getFriends(view, uid, cb);
+		step(function () {
+			friends.areFriends(view, uid, this);
+		}, h.sF(function (hasFriend) {
+			if (hasFriend) {
+				getFriends(view, uid, this);
+			} else {
+				this.ne([]);
+			}
+		}), cb);
 	},
 	get: function (view, cb) {
-		friends.getFriendsOfFriends(view, function () {
-		});
 		getFriends(view, view.getUserID(), cb);
 	},
 	getRequests: function (view, cb) {

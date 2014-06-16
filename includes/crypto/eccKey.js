@@ -111,7 +111,7 @@ EccKey.get = function getF(keyRealID, cb) {
 		if (h.isRealID(keyRealID)) {
 			client.get("key:" + keyRealID, this);
 		} else {
-			throw InvalidRealID(keyRealID);
+			throw new InvalidRealID(keyRealID);
 		}
 	}, h.sF(function (keyData) {
 		if (keyData === "ecckey") {

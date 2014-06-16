@@ -151,6 +151,8 @@ var Topic = function (id) {
 				var Message = require("./messages");
 				var newest = new Message(result.newest);
 				newest.getFullData(view, this, true);
+			} else {
+				this.ne();
 			}
 		}), h.sF(function (newest) {
 			result.newest = newest;

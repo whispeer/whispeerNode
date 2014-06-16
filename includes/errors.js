@@ -87,6 +87,7 @@ global.InvalidFilter  = addError("invalid filter", true);
 
 /** end post part */
 
+global.CircleNotExisting = addError("circle not existing", true);
 global.InvalidCircleData = addError("invalid circle data", true);
 global.TimeSpanExceeded  = addError("timespan has been exceeded", true);
 

@@ -30,7 +30,8 @@
 		"InvalidCircleData": true,
 		"TimeSpanExceeded": true,
 		"InvalidBlobID": true,
-		"BlobNotFound": true
+		"BlobNotFound": true,
+		"CircleNotExisting": true
 	},
 	"undef": true,
 	"node": true,
