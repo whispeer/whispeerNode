@@ -324,7 +324,7 @@ var friends = {
 		step(function () {
 			friends.areFriends(view, uid, this);
 		}, h.sF(function (hasFriend) {
-			if (hasFriend) {
+			if (hasFriend || view.getUserID() === h.parseDecimal(uid)) {
 				getFriends(view, uid, this);
 			} else {
 				this.ne([]);
