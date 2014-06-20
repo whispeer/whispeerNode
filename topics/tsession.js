@@ -40,13 +40,13 @@ var s = {
 	register: function (data, fn, view) {
 		var res, myUser;
 		step(function () {
-			view.getSession().register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
+			view.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
 		}, h.sF(function (result) {
 			res = result;
 			if (result.error) {
 				this.last.ne(res);
 			} else {
-				view.getSession().getOwnUser(this);
+				view.session.getOwnUser(this);
 			}
 		}), h.sF(function (user) {
 			myUser = user;
@@ -74,7 +74,7 @@ var s = {
 		var mySession;
 		step(function () {
 			console.log(data);
-			mySession = view.getSession();
+			mySession = view.session;
 			mySession.login(view, data.identifier, data.password, data.token, this);
 		}, h.sF(function (success) {
 			this.ne({

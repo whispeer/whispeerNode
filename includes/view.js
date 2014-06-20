@@ -9,21 +9,12 @@ var onlineStatusUpdater = require("./onlineStatus");
 var socketS = require("socket.io-stream");
 
 var view = function view(socket, session, listener) {
+	this.session = session;
+	this.socket = socket;
+
 	var theView = this, toDestroy = [];
 
 	var streamSocket;
-
-	this.getSocket = function getSocketF() {
-		return socket;
-	};
-
-	function getSessionF() {
-		return session;
-	}
-
-	this.getSession = getSessionF;
-
-	this.session = getSessionF;
 
 	this.upgradeStream = function (api) {
 		if (!streamSocket) {
@@ -50,7 +41,7 @@ var view = function view(socket, session, listener) {
 					if (listener[subChannel]) {
 						listener[subChannel](theView, data);
 					} else {
-						theView.getSocket().emit("notify." + subChannel, JSON.parse(data));
+						socket.emit("notify." + subChannel, JSON.parse(data));
 					}
 				});
 			}

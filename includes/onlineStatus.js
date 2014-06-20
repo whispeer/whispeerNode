@@ -36,7 +36,7 @@ function onlineStatusUpdater(view, session) {
 
 	function removeSocket() {
 		if (userid) {
-			var socketID =  view.getSocket().id;
+			var socketID =  view.socket.id;
 			var userIDToRemove = userid;
 			timeout = 0;
 
@@ -58,7 +58,9 @@ function onlineStatusUpdater(view, session) {
 					this.ne();
 				}
 			}), function (e) {
-				console.error(e);
+				if (e) {
+					console.error(e);
+				}
 			});
 		}
 	}
@@ -81,7 +83,7 @@ function onlineStatusUpdater(view, session) {
 			})
 			//user went online so remove from notifiedUsers. maybe move to listener pattern later on.
 			.srem("mail:notifiedUsers", view.getUserID())
-			.sadd("user:" + userid + ":sockets", view.getSocket().id)
+			.sadd("user:" + userid + ":sockets", view.socket.id)
 			.getset("user:" + userid + ":recentActivity", "1", function (error, oldValue) {
 				if (!oldValue && !alreadyNotified) {
 					friends.notifyAllFriends(view, "online", 2);

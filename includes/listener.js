@@ -7,7 +7,7 @@ var User = require("./user");
 var listener = {
 	"friends:online": function fo(view, data) {
 		data = JSON.parse(data);
-		view.getSocket().emit("friendOnlineChange", {
+		view.socket.emit("friendOnlineChange", {
 			uid: data.sender,
 			status: data.content
 		});
@@ -21,7 +21,7 @@ var listener = {
 			theUser.getUData(view, this);
 		}), function (e, data) {
 			if (!e) {
-				view.getSocket().emit("friendRequest", {
+				view.socket.emit("friendRequest", {
 					uid: uid,
 					user: data
 				});
@@ -37,7 +37,7 @@ var listener = {
 			theUser.getUData(view, this);
 		}), function (e, data) {
 			if (!e) {
-				view.getSocket().emit("friendAccept", {
+				view.socket.emit("friendAccept", {
 					uid: uid,
 					user: data
 				});
@@ -76,7 +76,7 @@ var listener = {
 			});
 		}), function (e, data) {
 			if (!e) {
-				view.getSocket().emit("message", data);
+				view.socket.emit("message", data);
 			} else {
 				console.error(e);
 			}
