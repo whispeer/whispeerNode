@@ -46,6 +46,10 @@ KeyApi.isKey = function isKeyF(key) {
 * @param realid keys real id
 */
 KeyApi.get = function getKF(realid, callback) {
+	if (!realid) {
+		throw new Error("invalid realid");
+	}
+
 	step(function () {
 		client.get("key:" + realid, this);
 	}, h.sF(function (type) {
@@ -57,16 +61,26 @@ KeyApi.get = function getKF(realid, callback) {
 			this.last.ne(new EccKey(realid));
 			break;
 		default:
-			this.last.ne(false);
-			break;
+			throw new Error("key not found for realid: " + realid);
 		}
 	}), callback);
+};
+
+KeyApi.createWithDecryptors = function (view, keyData, cb) {
+	if (keyData.type === "sign" || keyData.type === "crypt") {
+		EccKey.createWDecryptors(view, keyData, cb);
+	} else {
+		SymKey.createWDecryptors(view, keyData, cb);
+	}
 };
 
 KeyApi.getWData = function getDataF(view, realid, callback, wDecryptors) {
 	step(function () {
 		KeyApi.get(realid, this);
 	}, h.sF(function (key) {
+		if (!key) {
+			throw new Error("Key not found: " + realid);
+		}
 		key.getKData(view, this, wDecryptors);
 	}), callback);
 };
