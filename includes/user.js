@@ -1117,6 +1117,24 @@ User.search = function (text, cb) {
 	}), cb);
 };
 
+User.checkUserIDs = function (ids, cb) {
+	step(function () {
+		ids = ids.map(h.parseDecimal);
+		ids.forEach(function (id) {
+			client.get("user:id:" + id, this.parallel());
+		}, this);
+	}, h.sF(function (serverIDs) {
+		serverIDs = serverIDs.map(h.parseDecimal);
+		ids.forEach(function (id, index) {
+			if (id !== serverIDs[index]) {
+				throw new Error("user not existing: " + id);
+			}
+		});
+
+		this.ne();
+	}), cb);
+};
+
 User.getUser = function (identifier, callback, returnError) {
 	step(function () {
 		if (h.isMail(identifier)) {

@@ -437,13 +437,20 @@ Topic.getUserTopicID = function (view, userid, cb) {
 	}), cb);
 };
 
-Topic.create = function (view, data, cb) {
-	var SymKey = require("./crypto/symKey");
+Topic.create = function (view, data, receiverKeys, cb) {
 	var User = require("./user.js");
 
 	//TODO: check user can read their crypto key
 
-	var receiver, receiverWO = [], cryptKeys, result = {}, theTopicID;
+	function hasUserKeyAccess(uid, key, cb) {
+		step(function () {
+			KeyApi.get(key, this);
+		}, h.sF(function (key) {
+			key.hasUserAccess(uid, this);
+		}), cb);
+	}
+
+	var receiverIDs, receiverWO, theTopicID;
 	step(function () {
 		var err = validator.validate("topicCreate", data);
 
@@ -451,87 +458,61 @@ Topic.create = function (view, data, cb) {
 			throw new InvalidTopicData();
 		}
 
+		if (!view.isMyID(data.creator)) {
+			throw new InvalidTopicData();
+		}
+
 		if (Math.abs(data.createTime - new Date().getTime()) > MAXTIME) {
 			throw new InvalidTopicData();
 		}
 
-		receiver = data.receiver;
+		receiverIDs = data.receiver.map(h.parseDecimal);
+		receiverWO = receiverIDs.filter(h.not(view.isMyID));
 
-		var i;
-		for (i = 0; i < receiver.length; i += 1) {
-			User.getUser(receiver[i].identifier, this.parallel());
-		}
-	}, h.sF(function (recv) {
-		var i;
-		for (i = 0; i < receiver.length; i += 1) {
-			receiver[i].id = recv[i].getID();
-		}
-
-		for (i = 0; i < receiver.length; i += 1) {
-			if (receiver[i].key) {
-				receiverWO.push(receiver[i]);
-				SymKey.createWDecryptors(view, receiver[i].key, this.parallel());
-			}
-		}
+		User.checkUserIDs(receiverIDs, this.parallel());
+	}, h.sF(function () {
+		receiverWO.forEach(function (uid) {
+			hasUserKeyAccess(uid, data.key, this.parallel());
+			hasUserKeyAccess(uid, data.receiverKeys[uid], this.parallel());
+		}, this);
 
 		if (receiverWO.length === 0) {
 			this.ne([]);
 		}
-	}), h.sF(function (keys) {
-		cryptKeys = keys;
-		var i;
-		for (i = 0; i < receiverWO.length; i += 1) {
-			receiverWO[i].key = cryptKeys[i].getRealID();
-			cryptKeys[i].hasUserAccess(receiverWO[i].id, this.parallel());
-		}
-
-		if (receiverWO.length === 0) {
-			this.ne([]);
-		}
-	}), h.sF(function (acc) {
-		var i;
-		for (i = 0; i < acc.length; i += 1) {
-			if (!acc[i]) {
-				//TODO: clean up/rollback
-				throw new InvalidTopicData();
+	}), h.sF(function (keysAccessible) {
+		keysAccessible.forEach(function (keyAccessible) {
+			if (!keyAccessible) {
+				throw new Error("keys might not be accessible by all user");
 			}
-		}
-
-		SymKey.createWDecryptors(view, data.key, this);
-	}), h.sF(function (key) {
-		result.key = key.getRealID();
-		result.createTime = data.createTime;
-
-		//TO-DO: check all receiver have access!
-
-		result.creator = view.getUserID();
-
-		result.newest = 0;
+		});
 
 		client.incr("topic:topics", this);
 	}), h.sF(function (topicid) {
 		theTopicID = topicid;
-		result.topicid = topicid;
+
+		var topicData = data;
+
+		topicData.newest = 0;
+		topicData.topicid = topicid;
 
 		var multi = client.multi();
 
-		var i;
-		for (i = 0; i < receiver.length; i += 1) {
-			multi.zadd("topic:user:" + receiver[i].id + ":topics", new Date().getTime(), topicid);
-			if (receiver[i].key) {
-				multi.hset("topic:" + topicid + ":receiverKeys", receiver[i].id, receiver[i].key);
+		receiverIDs.forEach(function (uid) {
+			multi.zadd("topic:user:" + uid + ":topics", new Date().getTime(), topicid);
+			if (!view.isMyID(uid)) {
+				multi.hset("topic:" + topicid + ":receiverKeys", uid, receiverKeys[uid]);
 			}
+		});
+
+		if (receiverIDs.length === 2) {
+			multi.set("topic:user:" + receiverIDs[0] + ":single:" + receiverIDs[1], topicid);
+			multi.set("topic:user:" + receiverIDs[1] + ":single:" + receiverIDs[0], topicid);
+		} else if (receiverIDs.length === 1) {
+			multi.set("topic:user:" + receiverIDs[0] + ":single:" + receiverIDs[0], topicid);
 		}
 
-		if (receiver.length === 2) {
-			multi.set("topic:user:" + receiver[0].id + ":single:" + receiver[1].id, topicid);
-			multi.set("topic:user:" + receiver[1].id + ":single:" + receiver[0].id, topicid);
-		} else if (receiver.length === 1) {
-			multi.set("topic:user:" + receiver[0].id + ":single:" + receiver[0].id, topicid);
-		}
-
-		multi.hmset("topic:" + topicid + ":data", result);
-		multi.sadd("topic:" + topicid + ":receiver", receiver.map(function (e) {return e.id;}));
+		multi.hmset("topic:" + topicid + ":data", topicData);
+		multi.sadd("topic:" + topicid + ":receiver", receiverIDs);
 
 		multi.exec(this);
 	}), h.sF(function () {

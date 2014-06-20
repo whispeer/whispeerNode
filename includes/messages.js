@@ -236,9 +236,6 @@ Message.create = function (view, data, cb) {
 
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
-		SymKey.createWDecryptors(view, data.content.key, this);
-	}), h.sF(function (key) {
-		data.content.key = key.getRealID();
 		client.incr("message:messages", this);
 	}), h.sF(function (messageid) {
 		data.meta.sender = view.getUserID();

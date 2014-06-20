@@ -61,6 +61,10 @@ var view = function view(socket, session, listener) {
 		});
 	});
 
+	this.isMyID = function (id) {
+		return session.getUserID() === h.parseDecimal(id);
+	};
+
 	this.getUserID = function getUserIDF() {
 		return session.getUserID();
 	};

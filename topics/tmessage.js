@@ -20,15 +20,17 @@ var Message = require("../includes/messages");
 	}
 
 	message: {
+		unsignedMeta: {
+			topicid: (int),
+			read: (bool)
+		},
 		meta: {
 			createTime: (int),
 			topicHash: (hex)
 			previousMessage: (int),
 			previousMessageHash: (hex),
 			ownHash: (hex)
-			sender: (int),
-			topicid: (int),
-			read: (bool)
+			sender: (int)
 		}
 		content: {
 			key,
@@ -135,7 +137,7 @@ var t = {
 	sendNewTopic: function sendNewTopicF(data, fn, view) {
 		var topic;
 		step(function () {
-			Topic.create(view, data.topic, this);
+			Topic.create(view, data.topic, data.receiverKeys, this);
 		}, h.sF(function (theTopic) {
 			topic = theTopic;
 			data.message.meta.topicid = theTopic.getID();
