@@ -8,7 +8,7 @@ var onlineStatusUpdater = require("./onlineStatus");
 
 var socketS = require("socket.io-stream");
 
-var view = function view(socket, session, listener) {
+function SocketData(socket, session) {
 	this.session = session;
 	this.socket = socket;
 
@@ -28,29 +28,6 @@ var view = function view(socket, session, listener) {
 			}
 		}
 	};
-
-	session.changeListener(function sessionChange(logedin) {
-		step(function () {
-			theView.destroy();
-
-			if (logedin) {
-				var base = "user:" + session.getUserID() + ":*";
-				theView.psub(base, function (channel, data) {
-					var subChannel = channel.substr(base.length - 1);
-
-					if (listener[subChannel]) {
-						listener[subChannel](theView, data);
-					} else {
-						socket.emit("notify." + subChannel, JSON.parse(data));
-					}
-				});
-			}
-		}, function (e) {
-			if (e) {
-				console.error(e);
-			}
-		});
-	});
 
 	this.isMyID = function (id) {
 		return session.getUserID() === h.parseDecimal(id);
@@ -167,9 +144,9 @@ var view = function view(socket, session, listener) {
 	this.recentActivity = function (cb) {
 		statusUpdater.recentActivity(cb);
 	};
-};
+}
 
-view.logedinViewStub = {
+SocketData.logedinViewStub = {
 	ownUserError: function (user, cb) {
 		cb();
 	},
@@ -181,4 +158,4 @@ view.logedinViewStub = {
 	}
 };
 
-module.exports = view;
+module.exports = SocketData;
