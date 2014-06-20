@@ -8,44 +8,61 @@ var topics = require("./topics.js");
 var View = require("./includes/view");
 var Session = require("./includes/session");
 
+var KeyApi = require("./includes/crypto/KeyApi");
+
 module.exports = function (socket) {
 	"use strict";
 	console.log("connection received");
 	var session = new Session();
 
 	var myView = new View(socket, session, listener);
+	var reservedNames = ["sid"];
+
+	function createKeys(view, keys, cb) {
+		step(function () {
+			view.logedinError(this);
+		}, h.sF(function () {
+			keys.forEach(function (keyData) {
+				KeyApi.createWithDecryptors(view, keyData, this.parallel());
+			}, this);
+		}), cb);
+	}
+
+	function callExplicitHandler(handler, data, cb, view) {
+		step(function () {
+			if (Array.isArray(data.keys)) {
+				createKeys(view, data.keys, this);
+			} else {
+				this.ne();
+			}
+		}, h.sF(function () {
+			handler(data, new HandlerCallback(this.ne), view);
+		}), cb);
+	}
+
+	function callSubHandlers(handlerObject, data, cb, view) {
+		var topics = [];
+
+		step(function () {
+			h.objectEach(data, function (topic, value) {
+				if (reservedNames.indexOf(topic) === -1) {
+					topics.push(topic);
+					handle(handlerObject[topic], value, this.parallel(), view);
+				}
+			}, this);
+		}, h.sF(function (results) {
+			this.ne(h.array.spreadByArray(results, topics));
+		}), cb);
+	}
 
 	function handle(handler, data, fn, view) {
-		var topics = [];
-		//console.log("Handling:");
-		//console.log(data);
-		step(function () {
-			var usedHandler = false;
-			if (typeof handler === "function") {
-				handler(data, new HandlerCallback(this.last.ne), view);
-			} else if (typeof handler === "object" && typeof data === "object") {
-				h.objectEach(data, function (topic, value) {
-					if (typeof handler[topic] !== "undefined") {
-						usedHandler = true;
-						topics.push(topic);
-						handle(handler[topic], value, this.parallel(), view);
-					}
-				}, this);
-
-				if (!usedHandler) {
-					throw new Error("no api called");
-				}
-			}
-		}, h.sF(function (results) {
-			var result = {};
-
-			var i;
-			for (i = 0; i < results.length; i += 1) {
-				result[topics[i]] = results[i];
-			}
-
-			this.ne(result);
-		}), fn);
+		if (typeof handler === "function") {
+			callExplicitHandler(handler, data, fn, view);
+		} else if (typeof handler === "object" && typeof data === "object") {
+			callSubHandlers(handler, data, fn, view);
+		} else {
+			console.log("could not match handler and data");
+		}
 	}
 
 	/** adds data which is always present.
@@ -69,8 +86,8 @@ module.exports = function (socket) {
 			data.logedin = logedin;
 
 			if (logedin) {
-				data.sid = view.getSession().getSID();
-				data.userid = view.getSession().getUserID();
+				data.sid = view.session.getSID();
+				data.userid = view.session.getUserID();
 				data.serverTime = new Date().getTime();
 			}
 
