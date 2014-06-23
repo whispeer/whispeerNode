@@ -464,17 +464,18 @@ var Session = function Session() {
 
 			session.logedinError(this);
 		}, h.sF(function () {
+			var sessionUserID = session.getUserID();
 			if (typeof user === "object") {
-				if (parseInt(session.getUserID(), 10) !== parseInt(user.getID(), 10)) {
+				if (sessionUserID !== user.getID()) {
 					throw new AccessViolation();
 				}
 			} else if (typeof user === "string") {
-				if (parseInt(session.getUserID(), 10) !== parseInt(user, 10)) {
+				if (sessionUserID !== h.parseDecimal(user)) {
 					console.log(session.getUserID() + "-" + parseInt(user, 10));
 					throw new AccessViolation();
 				}
 			} else if (typeof user === "number") {
-				if (session.getUserID() !== user) {
+				if (sessionUserID !== user) {
 					throw new AccessViolation();
 				}
 			} else {
