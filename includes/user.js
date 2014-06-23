@@ -255,6 +255,13 @@ var User = function (id) {
 
 	var databaseUser = new SaveAbleEntity(validKeys, this, userDomain);
 
+	databaseUser.on("saved", updateSearch);
+	databaseUser.on("setAttribute", function (request, field, data) {
+		if (UPDATESEARCHON.indexOf(field.attr) > -1) {
+			updateSearch(request);
+		}
+	});
+
 	function getAttribute(request, attr, cb, fullHash) {
 		databaseUser.getAttribute(request, attr, cb, fullHash);
 	}
@@ -267,11 +274,11 @@ var User = function (id) {
 		attributes.forEach(function (attribute) {
 			var accessor = h.capitaliseFirstLetter(attribute);
 
-			this["get" + accessor] = function getAttribute(request, cb) {
+			theUser["get" + accessor] = function getAttribute(request, cb) {
 				databaseUser.getAttribute(request, attribute, cb);
 			};
 
-			this["set" + accessor] = function setAttribute(request, value, cb) {
+			theUser["set" + accessor] = function setAttribute(request, value, cb) {
 				databaseUser.setAttribute(request, attribute, value, cb);
 			};
 		});

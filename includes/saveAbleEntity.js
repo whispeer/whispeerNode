@@ -93,6 +93,9 @@ function SavedEntity(domain) {
 			}
 		}), h.sF(function() {
 			that._executeHooks("post", field.attrs, data, this);
+		}), h.sF(function () {
+			that.emit("setAttribute", request, field, data);
+			cb();
 		}), cb);
 	};
 
@@ -112,10 +115,12 @@ function SavedEntity(domain) {
 			that._executeHooks("read", field.attrs, data, this);
 		}, h.sF(function () {
 			if (fullHash) {
-				client.hgetall(field.key, cb);
+				client.hgetall(field.key, this);
 			} else {
-				client.hget(field.key, field.attr, cb);
+				client.hget(field.key, field.attr, this);
 			}
+		}), h.sF(function (data) {
+			that._transform("readTransform", field.attrs, data, this);
 		}), cb);
 	};
 
@@ -128,6 +133,8 @@ function SavedEntity(domain) {
 		} else {
 			client.hdel(field.key, field.attr, cb);
 		}
+
+		this.emit("unsetAttribute", field);
 	};
 }
 
@@ -195,6 +202,8 @@ function UnSavedEntity() {
 			that._saved = true;
 			that._saving = false;
 
+			that.emit("saved");
+
 			this.ne();
 		}), cb);
 	};
@@ -241,5 +250,9 @@ function SaveAbleEntity(validation, reference, domain) {
 		return this._saved;
 	};
 }
+
+var util = require("util");
+var EventEmitter = require("events").EventEmitter;
+util.inherits(SaveAbleEntity, EventEmitter);
 
 module.exports = SaveAbleEntity;
