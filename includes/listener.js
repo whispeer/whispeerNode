@@ -5,23 +5,23 @@ var h = require("whispeerHelper");
 var User = require("./user");
 
 var listener = {
-	"friends:online": function fo(view, data) {
+	"friends:online": function fo(socketData, data) {
 		data = JSON.parse(data);
-		view.socket.emit("friendOnlineChange", {
+		socketData.socket.emit("friendOnlineChange", {
 			uid: data.sender,
 			status: data.content
 		});
 	},
-	friendRequest: function fr(view, uid) {
+	friendRequest: function fr(socketData, uid) {
 		step(function () {
 			//we definitly need to add this users friendKey here!
 			//maybe also get this users profile.
 			User.getUser(uid, this);
 		}, h.sF(function (theUser) {
-			theUser.getUData(view, this);
+			theUser.getUData(request, this);
 		}), function (e, data) {
 			if (!e) {
-				view.socket.emit("friendRequest", {
+				socketData.socket.emit("friendRequest", {
 					uid: uid,
 					user: data
 				});
@@ -30,14 +30,14 @@ var listener = {
 			}
 		});
 	},
-	friendAccept: function fa(view, uid) {
+	friendAccept: function fa(socketData, uid) {
 		step(function () {
 			User.getUser(uid, this);
 		}, h.sF(function (theUser) {
-			theUser.getUData(view, this);
+			theUser.getUData(request, this);
 		}), function (e, data) {
 			if (!e) {
-				view.socket.emit("friendAccept", {
+				socketData.socket.emit("friendAccept", {
 					uid: uid,
 					user: data
 				});
@@ -46,7 +46,7 @@ var listener = {
 			}
 		});
 	},
-	message: function messageLF(view, messageid) {
+	message: function messageLF(socketData, messageid) {
 		var Message = require("./messages.js");
 		var m, mData, theTopic;
 		step(function messageLF1() {
@@ -54,16 +54,16 @@ var listener = {
 
 			this.parallel.unflatten();
 
-			m.getFullData(view, this.parallel(), true);
+			m.getFullData(request, this.parallel(), true);
 			m.getTopic(this.parallel());
 		}, h.sF(function (data, topic) {
 			theTopic = topic;
 			mData = data;
 
-			theTopic.messageCount(view, this);
+			theTopic.messageCount(request, this);
 		}), h.sF(function (count) {
 			if (count === 1) {
-				theTopic.getFullData(view, this, true, false);
+				theTopic.getFullData(request, this, true, false);
 			} else {
 				this.last.ne({
 					message: mData
@@ -76,7 +76,7 @@ var listener = {
 			});
 		}), function (e, data) {
 			if (!e) {
-				view.socket.emit("message", data);
+				socketData.socket.emit("message", data);
 			} else {
 				console.error(e);
 			}

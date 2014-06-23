@@ -74,18 +74,18 @@ SymKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
-SymKey.createWDecryptors = function (view, data, cb) {
+SymKey.createWDecryptors = function (request, data, cb) {
 	step(function () {
 		if (!data.decryptors || data.decryptors.length === 0) {
 			throw new InvalidSymKey("no decryptors given");
 		}
 
-		SymKey.create(view, data, this);
+		SymKey.create(request, data, this);
 	}, cb);
 };
 
 /** create a symmetric key */
-SymKey.create = function (view, data, cb) {
+SymKey.create = function (request, data, cb) {
 	var keyRealID, theKey;
 	step(function () {
 		SymKey.validate(data, this);
@@ -98,13 +98,13 @@ SymKey.create = function (view, data, cb) {
 			throw new RealIDInUse();
 		}
 
-		client.set("key:" + keyRealID + ":owner", view.session.getUserID(), this.parallel());
+		client.set("key:" + keyRealID + ":owner", request.session.getUserID(), this.parallel());
 		client.set("key:" + keyRealID + ":type", data.type, this.parallel());
 		client.set("key:" + keyRealID + ":comment", data.comment || "", this.parallel());
 	}), h.sF(function () {
 		theKey = new SymKey(keyRealID);
 		if (data.decryptors) {
-			theKey.addDecryptors(view, data.decryptors, this);
+			theKey.addDecryptors(request, data.decryptors, this);
 		} else {
 			this.last.ne(theKey);
 		}

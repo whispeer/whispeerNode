@@ -6,7 +6,7 @@ var User = require("./user");
 var configManager = require("./configManager");
 var config = configManager.get();
 var client = require("./redisClient");
-var viewCreator = require("./socketData");
+var socketDataCreator = require("./socketData");
 
 var step = require("step");
 var h = require("whispeerHelper");
@@ -65,7 +65,7 @@ var mailer = {
 			}
 		}), h.sF(function (user) {
 			if (user && user.getID() === h.parseDecimal(challengeData.user)) {
-				user.getEMail(viewCreator.logedinViewStub, this);
+				user.getEMail(socketDataCreator.logedinStub, this);
 			} else {
 				this.last.ne(false);
 			}
@@ -91,7 +91,7 @@ var mailer = {
 		}, h.sF(function (code) {
 			challenge = code;
 
-			user.getEMail(viewCreator.logedinViewStub, this);
+			user.getEMail(socketDataCreator.logedinStub, this);
 		}), h.sF(function (userMail) {
 			if (userMail) {
 				var m = client.multi();
@@ -153,7 +153,7 @@ var mailer = {
 			}
 
 			users.forEach(function (user) {
-				user.getEMail(viewCreator.logedinViewStub, this.parallel());
+				user.getEMail(socketDataCreator.logedinStub, this.parallel());
 			}, this);
 		}, h.sF(function (theMails) {
 			mails = theMails;

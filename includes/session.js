@@ -61,7 +61,7 @@ var Session = function Session() {
 	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser, session = this;
 
 	this.isMyID = function (id) {
-		return this.getUserID() === h.parseDecimal(id);
+		return session.getUserID() === h.parseDecimal(id);
 	};
 
 	/** get a session id
@@ -233,7 +233,7 @@ var Session = function Session() {
 	* @callback (err, loginSuccess) error if something went wrong, loginSuccess true/false if login ok.
 	* @author Nilos
 	*/
-	this.login = function loginF(view, identifier, externalHash, token, cb) {
+	this.login = function loginF(request, identifier, externalHash, token, cb) {
 		var myUser;
 		step(function () {
 			var User = require("./user.js");
@@ -246,7 +246,7 @@ var Session = function Session() {
 				throw new InvalidToken();
 			}
 
-			myUser.getPassword(view, this);
+			myUser.getPassword(request, this);
 		}), h.sF(function (internalPassword) {
 
 			var crypto = require("crypto");
@@ -282,7 +282,7 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, keys, settings, view, cb) {
+	this.register = function registerF(mail, nickname, password, keys, settings, request, cb) {
 		//y rule 1: nickname must be set.
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -315,15 +315,15 @@ var Session = function Session() {
 			result.error = true;
 		}
 
-		function createKeys(view, keys, cb) {
+		function createKeys(request, keys, cb) {
 			step(function () {
 				var i;
 				for (i = 0; i < registerSymKeys.length; i += 1) {
-					SymKey.createWDecryptors(view, keys[registerSymKeys[i]], this.parallel());
+					SymKey.createWDecryptors(request, keys[registerSymKeys[i]], this.parallel());
 				}
 
 				for (i = 0; i < registerEccKeys.length; i += 1) {
-					EccKey.createWDecryptors(view, keys[registerEccKeys[i]], this.parallel());
+					EccKey.createWDecryptors(request, keys[registerEccKeys[i]], this.parallel());
 				}
 			}, h.sF(function (keys) {
 				keys = h.arrayToObject(keys, function (val, index) {
@@ -417,32 +417,32 @@ var Session = function Session() {
 				myUser = new User();
 
 				if (mail) {
-					myUser.setMail(view, mail, this.parallel());
+					myUser.setMail(request, mail, this.parallel());
 				}
 
 				if (nickname) {
-					myUser.setNickname(view, nickname, this.parallel());
+					myUser.setNickname(request, nickname, this.parallel());
 				}
 
-				myUser.setPassword(view, password, this.parallel());
+				myUser.setPassword(request, password, this.parallel());
 			}
 		}), h.sF(function userCreation() {
-			myUser.save(view, this);
+			myUser.save(request, this);
 		}), h.sF(function createS() {
 			internalLogin(myUser.getID(), this);
 		}), h.sF(function sessionF(theSid) {
 			mySid = theSid;
 
-			createKeys(view, keys, this);
+			createKeys(request, keys, this);
 		}), h.sF(function keysCreated(theKeys) {
 			keys = theKeys;
 
-			myUser.setMainKey(view, keys.main, this.parallel());
-			myUser.setFriendsKey(view, keys.friends, this.parallel());
-			myUser.setFriendsLevel2Key(view, keys.friendsLevel2, this.parallel());
-			myUser.setCryptKey(view, keys.crypt, this.parallel());
-			myUser.setSignKey(view, keys.sign, this.parallel());
-			settingsService.setOwnSettings(view, settings, this.parallel());
+			myUser.setMainKey(request, keys.main, this.parallel());
+			myUser.setFriendsKey(request, keys.friends, this.parallel());
+			myUser.setFriendsLevel2Key(request, keys.friendsLevel2, this.parallel());
+			myUser.setCryptKey(request, keys.crypt, this.parallel());
+			myUser.setSignKey(request, keys.sign, this.parallel());
+			settingsService.setOwnSettings(request, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
 			this.ne(mySid);
 		}), cb);

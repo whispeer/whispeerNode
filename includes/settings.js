@@ -13,16 +13,16 @@ var client = require("./redisClient");
 */
 
 var settings = {
-	getOwnSettings: function (view, cb) {
+	getOwnSettings: function (request, cb) {
 		step(function () {
-			client.get("user:" + view.session.getUserID() + ":settings", this);
+			client.get("user:" + request.session.getUserID() + ":settings", this);
 		}, h.sF(function (result) {
 			this.ne(JSON.parse(result));
 		}), cb);
 	},
-	setOwnSettings: function (view, settings, cb) {
+	setOwnSettings: function (request, settings, cb) {
 		step(function () {
-			client.set("user:" + view.session.getUserID() + ":settings", JSON.stringify(settings), this);
+			client.set("user:" + request.session.getUserID() + ":settings", JSON.stringify(settings), this);
 		}, h.sF(function (res) {
 			this.ne(res === "OK");
 		}), cb);

@@ -5,13 +5,13 @@ var h = require("whispeerHelper");
 var Circle = require("../includes/circle");
 
 var f = {
-	getAll: function getAllF(data, fn, view) {
+	getAll: function getAllF(data, fn, request) {
 		step(function () {
-			Circle.getAll(view, this);
+			Circle.getAll(request, this);
 		}, h.sF(function (results) {
 			var i;
 			for (i = 0; i < results.length; i += 1) {
-				results[i].getData(view, this.parallel(), data.fullKey);
+				results[i].getData(request, this.parallel(), data.fullKey);
 			}
 
 			if (results.length === 0) {
@@ -23,20 +23,20 @@ var f = {
 			});
 		}), fn);
 	},
-	removeCircle: function removeCircleF(data, fn, view) {
+	removeCircle: function removeCircleF(data, fn, request) {
 		step(function () {
-			Circle.get(view, data.remove.circleid, this);
+			Circle.get(request, data.remove.circleid, this);
 		}, h.sF(function (circle) {
-			circle.remove(view, this);
+			circle.remove(request, this);
 		}), h.sF(function (success) {
 			this.ne({remove: success});
 		}), fn);
 	},
-	removeUsers: function removeUsersF(data, fn, view) {
+	removeUsers: function removeUsersF(data, fn, request) {
 		step(function () {
-			Circle.get(view, data.remove.circleid, this);
+			Circle.get(request, data.remove.circleid, this);
 		}, h.sF(function (circle) {
-			circle.removeUsers(view, data.remove.key, data.remove.oldKeyDecryptor, data.remove.user, data.remove.remove, this);
+			circle.removeUsers(request, data.remove.key, data.remove.oldKeyDecryptor, data.remove.user, data.remove.remove, this);
 		}), h.sF(function (success) {
 			this.ne({
 				removed: success
@@ -51,33 +51,33 @@ var f = {
 						}
 		*/
 	},
-	get: function get(data, fn, view) {
+	get: function get(data, fn, request) {
 		step(function () {
-			Circle.get(view, data.circleid, this);
+			Circle.get(request, data.circleid, this);
 		}, h.sF(function (result) {
-				result.getData(view, this, data.fullKey);
+				result.getData(request, this, data.fullKey);
 		}), h.sF(function (result) {
 			this.ne({
 				circle: result
 			});
 		}), fn);
 	},
-	addUsers: function addUserF(data, fn, view) {
+	addUsers: function addUserF(data, fn, request) {
 		step(function () {
-			Circle.get(view, data.add.circleid, this);
+			Circle.get(request, data.add.circleid, this);
 		}, h.sF(function (circle) {
-			circle.addUsers(view, data.add.userids, data.add.decryptors, this);
+			circle.addUsers(request, data.add.userids, data.add.decryptors, this);
 		}), h.sF(function (added) {
 			this.ne({
 				added: !!added
 			});
 		}), fn);
 	},
-	add: function addCircleF(data, fn, view) {
+	add: function addCircleF(data, fn, request) {
 		step(function () {
-			Circle.create(view, data.circle, this);
+			Circle.create(request, data.circle, this);
 		}, h.sF(function (circle) {
-			circle.getData(view, this);
+			circle.getData(request, this);
 		}), h.sF(function (data) {
 			this.ne({
 				result: data

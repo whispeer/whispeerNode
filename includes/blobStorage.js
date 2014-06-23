@@ -65,11 +65,11 @@ function createBlobID(cb) {
 }
 
 var blobStorage = {
-	reserveBlobID: function (view, cb) {
+	reserveBlobID: function (request, cb) {
 		var blobid;
 
 		step(function () {
-			view.session.logedinError(this);
+			request.session.logedinError(this);
 		}, h.sF(function () {
 			createBlobID(this);
 		}), h.sF(function (bid) {
@@ -100,9 +100,9 @@ var blobStorage = {
 			}
 		}), cb);
 	},
-	fullyReserveBlobID: function (view, blobid, cb) {
+	fullyReserveBlobID: function (request, blobid, cb) {
 		step(function () {
-			view.session.logedinError(this);
+			request.session.logedinError(this);
 		}, h.sF(function () {
 			client.sismember("blobs:prereserved", blobid, this);
 		}), h.sF(function (isPreReserved) {
@@ -126,9 +126,9 @@ var blobStorage = {
 			client.sadd("blobs:usedids", blobid, this);
 		}), cb);
 	},
-	getBlob: function (view, blobid, cb) {
+	getBlob: function (request, blobid, cb) {
 		step(function () {
-			view.session.logedinError(this);
+			request.session.logedinError(this);
 		}, h.sF(function () {
 			checkBlobExists(blobid, this);
 		}), h.sF(function () {

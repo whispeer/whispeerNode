@@ -25,8 +25,8 @@ var client = require("./redisClient");
 
 */
 
-var Notification = function (view, id) {
-	this._userid = view.session.getUserID();
+var Notification = function (request, id) {
+	this._userid = request.session.getUserID();
 	this._id = id;
 };
 

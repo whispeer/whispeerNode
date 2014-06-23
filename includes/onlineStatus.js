@@ -32,12 +32,12 @@ setInterval(function () {
 }, 10*1000);
 
 
-function OnlineStatusUpdater(view, session) {
+function OnlineStatusUpdater(socketData, session) {
 	var userid, timeout;
 
 	function removeSocket() {
 		if (userid) {
-			var socketID =  view.socket.id;
+			var socketID =  socketData.socket.id;
 			var userIDToRemove = userid;
 			timeout = 0;
 
@@ -67,7 +67,7 @@ function OnlineStatusUpdater(view, session) {
 	}
 
 	function addSocket() {
-		userid = view.session.getUserID();
+		userid = socketData.session.getUserID();
 		var alreadyNotified = false;
 
 		//add current user to online users - add current socket to users connections
@@ -79,15 +79,15 @@ function OnlineStatusUpdater(view, session) {
 
 				if (added) {
 					alreadyNotified = true;
-					friends.notifyAllFriends(view, "online", 2);
+					friends.notifyAllFriends(socketData, "online", 2);
 				}
 			})
 			//user went online so remove from notifiedUsers. maybe move to listener pattern later on.
-			.srem("mail:notifiedUsers", view.session.getUserID())
-			.sadd("user:" + userid + ":sockets", view.socket.id)
+			.srem("mail:notifiedUsers", socketData.session.getUserID())
+			.sadd("user:" + userid + ":sockets", socketData.socket.id)
 			.getset("user:" + userid + ":recentActivity", "1", function (error, oldValue) {
 				if (!oldValue && !alreadyNotified) {
-					friends.notifyAllFriends(view, "online", 2);
+					friends.notifyAllFriends(socketData, "online", 2);
 				}
 			})
 			.zadd("user:awayCheck", new Date().getTime() + awayTimeout, userid)
@@ -105,10 +105,10 @@ function OnlineStatusUpdater(view, session) {
 		}
 	});
 
-	view.once("disconnect", removeSocket);
+	socketData.once("disconnect", removeSocket);
 
 	this.recentActivity = function () {
-		if (view.session.getUserID()) {
+		if (socketData.session.getUserID()) {
 			addSocket();
 		}
 	};

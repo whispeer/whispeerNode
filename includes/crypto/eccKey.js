@@ -50,14 +50,14 @@ EccKey.prototype.getPoint = function getPointF(cb) {
 	}), cb);
 };
 
-EccKey.prototype.getKData = function getKDataF(view, cb, wDecryptors) {
+EccKey.prototype.getKData = function getKDataF(request, cb, wDecryptors) {
 	var theKey = this;
 	var result;
 	step(function () {
 		this.parallel.unflatten();
 		theKey.getPoint(this.parallel());
 		theKey.getCurve(this.parallel());
-		theKey.getBasicData(view, this.parallel(), wDecryptors);
+		theKey.getBasicData(request, this.parallel(), wDecryptors);
 	}, h.sF(function (point, curve, basic) {
 		result = basic;
 		result.point = point;
@@ -122,19 +122,19 @@ EccKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
-EccKey.createWDecryptors = function (view, data, cb) {
+EccKey.createWDecryptors = function (request, data, cb) {
 	step(function () {
 		if (!data.decryptors || data.decryptors.length === 0) {
 			throw new InvalidEccKey();
 		}
 
-		EccKey.create(view, data, this);
+		EccKey.create(request, data, this);
 	}, cb);
 };
 
 
 /** create a symmetric key */
-EccKey.create = function (view, data, cb) {
+EccKey.create = function (request, data, cb) {
 	var domain, keyRealID, theKey;
 
 	step(function () {
@@ -153,12 +153,12 @@ EccKey.create = function (view, data, cb) {
 		client.set(domain + ":point:x", data.point.x, this.parallel());
 		client.set(domain + ":point:y", data.point.y, this.parallel());
 		client.set(domain + ":type", data.type, this.parallel());
-		client.set(domain + ":owner", view.session.getUserID(), this.parallel());
+		client.set(domain + ":owner", request.session.getUserID(), this.parallel());
 		client.set(domain + ":comment", data.comment || "", this.parallel());
 	}), h.sF(function () {
 		theKey = new EccKey(keyRealID);
 		if (data.decryptors) {
-			theKey.addDecryptors(view, data.decryptors, this);
+			theKey.addDecryptors(request, data.decryptors, this);
 		} else {
 			this.last.ne(theKey);
 		}

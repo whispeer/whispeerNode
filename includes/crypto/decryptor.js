@@ -109,15 +109,15 @@ var Decryptor = function (keyRealID, count) {
 	};
 };
 
-Decryptor.getAllWithAccess = function getAllWAF(view, keyRealID, cb) {
+Decryptor.getAllWithAccess = function getAllWAF(request, keyRealID, cb) {
 	step(function () {
-		view.session.logedinError(this);
+		request.session.logedinError(this);
 	}, h.sF(function () {
 		if (!h.isRealID(keyRealID)) {
 			throw new InvalidRealID();
 		}
 
-		client.smembers("key:" + keyRealID + ":accessVia:" + view.session.getUserID(), this);
+		client.smembers("key:" + keyRealID + ":accessVia:" + request.session.getUserID(), this);
 	}), h.sF(function (decryptorSet) {
 		var results = [];
 		var i;
@@ -174,9 +174,9 @@ Decryptor.validateFormat = function validateFormat(data) {
 	}
 };
 
-Decryptor.validateNoThrow = function validateF(view, data, key, cb) {
+Decryptor.validateNoThrow = function validateF(request, data, key, cb) {
 	step(function validate() {
-		Decryptor.validate(view, data, key, this);
+		Decryptor.validate(request, data, key, this);
 	}, function validate2(e) {
 		if (e) {
 			this.ne(false);
@@ -186,7 +186,7 @@ Decryptor.validateNoThrow = function validateF(view, data, key, cb) {
 	}, cb);
 };
 
-Decryptor.validate = function validateF(view, data, key, cb) {
+Decryptor.validate = function validateF(request, data, key, cb) {
 	var keyRealID = key.getRealID();
 	var parentKey;
 	step(function validateF1() {
@@ -211,10 +211,10 @@ Decryptor.validate = function validateF(view, data, key, cb) {
 		}
 
 		this.parallel.unflatten();
-		key.hasAccess(view, this.parallel());
+		key.hasAccess(request, this.parallel());
 
 		if (typeof parentKey === "object") {
-			parentKey.hasAccess(view, this.parallel());
+			parentKey.hasAccess(request, this.parallel());
 			parentKey.getType(this.parallel());
 		} else {
 			this.parallel()(null, true);
@@ -236,15 +236,15 @@ Decryptor.validate = function validateF(view, data, key, cb) {
 };
 
 /** create a decryptor */
-Decryptor.create = function (view, key, data, cb) {
+Decryptor.create = function (request, key, data, cb) {
 	var userid, decryptorInternalID, keyRealID = key.getRealID(), parentKey;
 
 	step(function createD1() {
 		//only allow key creation when logged in
-		view.session.logedinError(this);
+		request.session.logedinError(this);
 	}, h.sF(function createD12() {
 		//validate our decryptor
-		Decryptor.validate(view, data, key, this);
+		Decryptor.validate(request, data, key, this);
 	}), h.sF(function createD2(p) {
 		parentKey = p;
 
@@ -282,7 +282,7 @@ Decryptor.create = function (view, key, data, cb) {
 		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", decryptorInternalID, this.parallel());
 
 		//user stuff
-		userid = view.session.getUserID();
+		userid = request.session.getUserID();
 
 		client.set(domain + ":creator", userid, this.parallel());
 	}), h.sF(function createD4() {

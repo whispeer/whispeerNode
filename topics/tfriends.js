@@ -6,7 +6,7 @@ var h = require("whispeerHelper");
 var Friends = require("../includes/friends");
 
 var f = {
-	add: function addFriend(data, fn, view) {
+	add: function addFriend(data, fn, request) {
 		/*
 			userid,
 			fkdecryptor, //is added to our friend key
@@ -14,10 +14,10 @@ var f = {
 		*/
 		var wasSuccess = false;
 		step(function () {
-			Friends.add(view, data.userid, data.signedRequest, data.key, data.decryptors, this);
+			Friends.add(request, data.userid, data.signedRequest, data.key, data.decryptors, this);
 		}, h.sF(function (success) {
 			wasSuccess = success;
-			Friends.isOnline(view, data.userid, this);
+			Friends.isOnline(request, data.userid, this);
 		}), h.sF(function (online) {
 			this.ne({
 				friendOnline: online,
@@ -25,41 +25,41 @@ var f = {
 			});
 		}), fn);
 	},
-	getOnline: function getOnlineF(data, fn, view) {
+	getOnline: function getOnlineF(data, fn, request) {
 		step(function () {
-			Friends.getOnline(view, this);
+			Friends.getOnline(request, this);
 		}, h.sF(function (ids) {
-			ids[view.session.getUserID()] = -1;
+			ids[request.session.getUserID()] = -1;
 			this.ne({
 				online: ids
 			});
 		}), fn);
 	},
-	mutual: function getMutualF(data, fn, view) {
+	mutual: function getMutualF(data, fn, request) {
 		step(function () {
-			Friends.myMutual(view, data.uid, this);
+			Friends.myMutual(request, data.uid, this);
 		}, h.sF(function (ids) {
 			this.last.ne({
 				mutual: ids
 			});
 		}), fn);
 	},
-	getUser: function getUserFriends(data, fn, view) {
+	getUser: function getUserFriends(data, fn, request) {
 		step(function () {
-			Friends.getUser(view, data.userid, this);
+			Friends.getUser(request, data.userid, this);
 		}, h.sF(function (userFriends) {
 			this.ne({
 				friends: userFriends
 			});
 		}), fn);
 	},
-	getAll: function getFriends(data, fn, view) {
+	getAll: function getFriends(data, fn, request) {
 		step(function () {
 			this.parallel.unflatten();
 
-			Friends.getRequests(view, this.parallel());
-			Friends.getRequested(view, this.parallel());
-			Friends.get(view, this.parallel());
+			Friends.getRequests(request, this.parallel());
+			Friends.getRequested(request, this.parallel());
+			Friends.get(request, this.parallel());
 		}, h.sF(function (requests, requested, friends) {
 			this.ne({
 				requests: requests,

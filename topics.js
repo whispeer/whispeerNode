@@ -28,10 +28,10 @@ var whispeerAPI = {
 			});
 		}), fn);
 	},
-	logedin: function isLogedinF(data, fn, view) {
+	logedin: function isLogedinF(data, fn, request) {
 		step(function () {
 			if (data === true) {
-				view.session.logedin(this);
+				request.session.logedin(this);
 			} else {
 				fn.error.protocol();
 			}
@@ -47,7 +47,7 @@ var whispeerAPI = {
 		}, fn);
 	},
 	key: {
-		getMultiple: function (data, fn, view) {
+		getMultiple: function (data, fn, request) {
 			var keys, result = [];
 			step(function () {
 				if (data.realids.length === 0) {
@@ -74,7 +74,7 @@ var whispeerAPI = {
 				keys.forEach(addNotLoaded);
 
 				result.forEach(function (e) {
-					e.getKData(view, this.parallel(), true);
+					e.getKData(request, this.parallel(), true);
 				}, this);
 
 				this.parallel()();
@@ -84,7 +84,7 @@ var whispeerAPI = {
 				this.ne({keys: keys});
 			}), fn);
 		},
-		get: function getKeyChainF(data, fn, view) {
+		get: function getKeyChainF(data, fn, request) {
 			var theKey, result = [];
 			step(function () {
 				KeyApi.get(data.realid, this);
@@ -94,7 +94,7 @@ var whispeerAPI = {
 				}
 
 				theKey = key;
-				theKey.getAllAccessedParents(view, this, MAXDEPTH);
+				theKey.getAllAccessedParents(request, this, MAXDEPTH);
 			}), h.sF(function (parents) {
 				var i;
 				if (data.loaded && Array.isArray(data.loaded)) {
@@ -108,13 +108,13 @@ var whispeerAPI = {
 				result.push(theKey);
 
 				for (i = 0; i < result.length; i += 1) {
-					result[i].getKData(view, this.parallel(), true);
+					result[i].getKData(request, this.parallel(), true);
 				}
 			}), h.sF(function (keys) {
 				this.ne({keychain: keys});
 			}), fn);
 		},
-		addFasterDecryptors: function addFasterDecryptorF(data, fn, view) {
+		addFasterDecryptors: function addFasterDecryptorF(data, fn, request) {
 			var keys;
 			step(function () {
 				var key;
@@ -127,7 +127,7 @@ var whispeerAPI = {
 				keys = k;
 				var i;
 				for (i = 0; i < keys.length; i += 1) {
-					keys[i].addFasterDecryptor(view, data.keys[keys[i].getRealID()][0], this.parallel());
+					keys[i].addFasterDecryptor(request, data.keys[keys[i].getRealID()][0], this.parallel());
 				}
 			}), h.sF(function (success) {
 				var result = {}, i;
@@ -139,18 +139,18 @@ var whispeerAPI = {
 		}
 	},
 	settings: {
-		getSettings: function (data, fn, view) {
+		getSettings: function (data, fn, request) {
 			step(function () {
-				settings.getOwnSettings(view, this);
+				settings.getOwnSettings(request, this);
 			}, h.sF(function (settings) {
 				this.ne({
 					settings: settings
 				});
 			}), fn);
 		},
-		setSettings: function (data, fn, view) {
+		setSettings: function (data, fn, request) {
 			step(function () {
-				settings.setOwnSettings(view, data.settings, this);
+				settings.setOwnSettings(request, data.settings, this);
 			}, h.sF(function (result) {
 				this.ne({
 					success: result

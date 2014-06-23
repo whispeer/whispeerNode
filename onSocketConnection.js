@@ -37,26 +37,26 @@ function createKeys(request, keys, cb) {
 	}), cb);
 }
 
-function callExplicitHandler(handler, data, cb, view) {
+function callExplicitHandler(handler, data, cb, request) {
 	step(function () {
 		if (Array.isArray(data.keys)) {
-			createKeys(view, data.keys, this);
+			createKeys(request, data.keys, this);
 		} else {
 			this.ne();
 		}
 	}, h.sF(function () {
-		handler(data, new HandlerCallback(this.ne), view);
+		handler(data, new HandlerCallback(this.ne), request);
 	}), cb);
 }
 
-function callSubHandlers(handlerObject, data, cb, view) {
+function callSubHandlers(handlerObject, data, cb, request) {
 	var topics = [];
 
 	step(function () {
 		h.objectEach(data, function (topic, value) {
 			if (reservedNames.indexOf(topic) === -1) {
 				topics.push(topic);
-				handle(handlerObject[topic], value, this.parallel(), view);
+				handle(handlerObject[topic], value, this.parallel(), request);
 			}
 		}, this);
 	}, h.sF(function (results) {
@@ -64,11 +64,11 @@ function callSubHandlers(handlerObject, data, cb, view) {
 	}), cb);
 }
 
-handle = function (handler, data, fn, view) {
+handle = function (handler, data, fn, request) {
 	if (typeof handler === "function") {
-		callExplicitHandler(handler, data, fn, view);
+		callExplicitHandler(handler, data, fn, request);
 	} else if (typeof handler === "object" && typeof data === "object") {
-		callSubHandlers(handler, data, fn, view);
+		callSubHandlers(handler, data, fn, request);
 	} else {
 		console.log("could not match handler and data");
 	}

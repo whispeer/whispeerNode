@@ -10,7 +10,7 @@ var Topic = require("../includes/topic.js");
 var User = require("../includes/user");
 var Profile = require("../includes/profile");
 
-function makeSearchUserData(view, cb, ids, known) {
+function makeSearchUserData(request, cb, ids, known) {
 	var remaining;
 	step(function () {
 		remaining = Math.max(ids.length - 20, 0);
@@ -38,7 +38,7 @@ function makeSearchUserData(view, cb, ids, known) {
 				if (theUsers[i] instanceof UserNotExisting) {
 					this.parallel()({userNotExisting: true});
 				} else if (typeof theUsers[i] === "object") {
-					theUsers[i].getUData(view, this.parallel());
+					theUsers[i].getUData(request, this.parallel());
 				} else {
 					this.parallel()(null, theUsers[i]);
 				}
@@ -54,12 +54,12 @@ function makeSearchUserData(view, cb, ids, known) {
 	}), cb);
 }
 
-function setPrivateProfiles(view, privateProfiles, cb) {
+function setPrivateProfiles(request, privateProfiles, cb) {
 	step(function () {
 		if (privateProfiles && privateProfiles.length > 0) {
 			var i;
 			for (i = 0; i < privateProfiles.length; i += 1) {
-				Profile.get(view, privateProfiles[i].profileid, this.parallel());
+				Profile.get(request, privateProfiles[i].profileid, this.parallel());
 			}
 		} else {
 			this.last.ne([]);
@@ -71,27 +71,27 @@ function setPrivateProfiles(view, privateProfiles, cb) {
 
 		var i;
 		for (i = 0; i < privateProfiles.length; i += 1) {
-			profiles[i].setData(view, privateProfiles[i], this.parallel());
+			profiles[i].setData(request, privateProfiles[i], this.parallel());
 		}
 	}), h.sF(function (success) {
 		this.ne(success);
 	}), cb);
 }
 
-function setPublicProfile(view, publicProfile, cb) {
+function setPublicProfile(request, publicProfile, cb) {
 	step(function () {
 		if (publicProfile) {
-			view.session.getOwnUser(this);
+			request.session.getOwnUser(this);
 		} else {
 			this.last.ne(true);
 		}
 	}, h.sF(function (myUser) {
-		myUser.setPublicProfile(view, publicProfile, this);
+		myUser.setPublicProfile(request, publicProfile, this);
 	}), cb);
 }
 
 var u = {
-	get: function getUserF(data, fn, view) {
+	get: function getUserF(data, fn, request) {
 		step(function () {
 			if (data && data.identifier) {
 				User.getUser(data.identifier, this);
@@ -103,28 +103,28 @@ var u = {
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
-				theUser.getUData(view, this);
+				theUser.getUData(request, this);
 			}
 		}, UserNotExisting), fn);
 	},
-	searchFriends: function searchFriends(data, fn, view) {
+	searchFriends: function searchFriends(data, fn, request) {
 		step(function () {
-			view.session.getOwnUser(this);
+			request.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
-			ownUser.searchFriends(view, data.text, this);
+			ownUser.searchFriends(request, data.text, this);
 		}), h.sF(function (ids) {
-			makeSearchUserData(view, this, ids, data.known);
+			makeSearchUserData(request, this, ids, data.known);
 		}), fn);
 		//TODO
 	},
-	search: function searchF(data, fn, view) {
+	search: function searchF(data, fn, request) {
 		step(function () {
 			User.search(data.text, this);
 		}, h.sF(function (ids) {
-			makeSearchUserData(view, this, ids, data.known);
+			makeSearchUserData(request, this, ids, data.known);
 		}), fn);
 	},
-	getMultiple: function getAllF(data, fn, view) {
+	getMultiple: function getAllF(data, fn, request) {
 		step(function () {
 			if (data && data.identifiers) {
 				var i;
@@ -144,7 +144,7 @@ var u = {
 					if (theUsers[i] instanceof UserNotExisting) {
 						this.parallel()({userNotExisting: true});
 					} else {
-						theUsers[i].getUData(view, this.parallel());
+						theUsers[i].getUData(request, this.parallel());
 					}
 				}
 			}
@@ -154,14 +154,14 @@ var u = {
 			});
 		}), fn);
 	},
-	createPrivateProfiles: function createProfileF(data, fn, view) {
+	createPrivateProfiles: function createProfileF(data, fn, request) {
 		step(function () {
-			view.session.getOwnUser(this);
+			request.session.getOwnUser(this);
 		}, h.sF(function (myUser) {
 			var i;
 			if (typeof data.privateProfiles === "object" && data.privateProfiles instanceof Array) {
 				for (i = 0; i < data.privateProfiles.length; i += 1) {
-					myUser.createPrivateProfile(view, data.privateProfiles[i], this.parallel());
+					myUser.createPrivateProfile(request, data.privateProfiles[i], this.parallel());
 				}
 			} else {
 				fn.error.protocol();
@@ -176,14 +176,14 @@ var u = {
 			this.ne(result);
 		}), fn);
 	},
-	deletePrivateProfiles: function deletePrivateProfilesF(data, fn, view) {
+	deletePrivateProfiles: function deletePrivateProfilesF(data, fn, request) {
 		step(function () {
-			view.session.getOwnUser(this);
+			request.session.getOwnUser(this);
 		}, h.sF(function (myUser) {
 			if (typeof data.profilesToDelete === "object" && data.profilesToDelete instanceof Array) {
 				var i;
 				for (i = 0; i < data.profilesToDelete.length; i += 1) {
-					myUser.deletePrivateProfile(view, data.profilesToDelete[i], this.parallel());
+					myUser.deletePrivateProfile(request, data.profilesToDelete[i], this.parallel());
 				}
 
 				this.parallel()();
@@ -202,7 +202,7 @@ var u = {
 			this.ne(result);
 		}), fn);
 	},
-	profileChange: function changeProfilesF(data, fn, view) {
+	profileChange: function changeProfilesF(data, fn, request) {
 		step(function () {
 			if (!data) {
 				this.last.ne({});
@@ -210,8 +210,8 @@ var u = {
 
 			this.parallel.unflatten();
 
-			setPublicProfile(view, data.pub, this.parallel());
-			setPrivateProfiles(view, data.priv, this.parallel());
+			setPublicProfile(request, data.pub, this.parallel());
+			setPrivateProfiles(request, data.priv, this.parallel());
 		}, h.sF(function (successPub, successPriv) {
 			var allok = successPub;
 			var errors = {
@@ -232,26 +232,26 @@ var u = {
 			});
 		}), fn);
 	},
-	setMigrationState: function (data, fn, view) {
+	setMigrationState: function (data, fn, request) {
 		step(function () {
-			view.session.getOwnUser(this);
+			request.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
-			ownUser.setMigrationState(view, data.migrationState, this);
+			ownUser.setMigrationState(request, data.migrationState, this);
 		}), h.sF(function () {
 			this.ne({
 				success: true
 			});
 		}), fn);
 	},
-	own: function getOwnDataF(data, fn, view) {
+	own: function getOwnDataF(data, fn, request) {
 		var userData;
 		step(function () {
-			view.session.getOwnUser(this);
+			request.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
-			ownUser.getUData(view, this);
+			ownUser.getUData(request, this);
 		}), h.sF(function (data) {
 			userData = data;
-			Topic.unreadCount(view, this);
+			Topic.unreadCount(request, this);
 		}), h.sF(function (unreadCount) {
 			userData.unreadTopics = unreadCount;
 			this.ne(userData);

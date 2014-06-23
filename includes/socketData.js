@@ -62,7 +62,7 @@ var util = require("util");
 var EventEmitter = require("events").EventEmitter;
 util.inherits(SocketData, EventEmitter);
 
-SocketData.logedinViewStub = {
+SocketData.logedinStub = {
 	session: {
 		ownUserError: function (user, cb) {
 			cb();

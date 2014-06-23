@@ -17,11 +17,11 @@ Key.prototype._getAttribute = function(attr, cb) {
 	}, cb);
 };
 
-Key.prototype.addFasterDecryptor = function addFasterDecryptorF(view, decryptor, cb) {
+Key.prototype.addFasterDecryptor = function addFasterDecryptorF(request, decryptor, cb) {
 	var theKey = this;
 	step(function () {
 		console.log(theKey.getRealID());
-		theKey.getDecryptors(view, this);
+		theKey.getDecryptors(request, this);
 	}, h.sF(function (decryptors) {
 		var j;
 		for (j = 0; j < decryptors.length; j += 1) {
@@ -40,18 +40,18 @@ Key.prototype.addFasterDecryptor = function addFasterDecryptorF(view, decryptor,
 			}
 		}
 
-		theKey.addDecryptor(view, decryptor, this);
+		theKey.addDecryptor(request, decryptor, this);
 	}), cb);
 };
 
-Key.prototype.getBasicData = function getBasicDataF(view, cb, wDecryptors) {
+Key.prototype.getBasicData = function getBasicDataF(request, cb, wDecryptors) {
 	var theKey = this;
 	var result = {};
 	step(function () {
 		this.parallel.unflatten();
 		result.realid = theKey.getRealID();
 
-		theKey.hasAccess(view, this.parallel());
+		theKey.hasAccess(request, this.parallel());
 		theKey.getType(this.parallel());
 	}, h.sF(function getBD2(access, type) {
 		result.type = type;
@@ -62,7 +62,7 @@ Key.prototype.getBasicData = function getBasicDataF(view, cb, wDecryptors) {
 			theKey.accessCount(this.parallel());
 
 			if (wDecryptors) {
-				theKey.getDecryptorsJSON(view, this.parallel());
+				theKey.getDecryptorsJSON(request, this.parallel());
 			}
 		} else {
 			this.last.ne(result);
@@ -92,21 +92,21 @@ Key.prototype.getType = function getTypeF(cb) {
 	this._getAttribute(":type", cb);
 };
 
-Key.prototype.getAllAccessedParents = function getAllAccessedParentsF(view, cb, maxdepth) {
+Key.prototype.getAllAccessedParents = function getAllAccessedParentsF(request, cb, maxdepth) {
 	var theKey = this;
 	var theKeys = [];
 	step(function () {
 		if (maxdepth === 0) {
 			this.last.ne();
 		} else {
-			theKey.getUserDecryptors(view, this);
+			theKey.getUserDecryptors(request, this);
 		}
 	}, h.sF(function (keys) {
 		if (keys) {
 			theKeys = keys;
 			var i;
 			for (i = 0; i < keys.length; i += 1) {
-				keys[i].getAllAccessedParents(view, this.parallel(), maxdepth-1);
+				keys[i].getAllAccessedParents(request, this.parallel(), maxdepth-1);
 			}
 
 			this.parallel()();
@@ -125,10 +125,10 @@ Key.prototype.getAllAccessedParents = function getAllAccessedParentsF(view, cb, 
 	}), cb);
 };
 
-Key.prototype.getUserDecryptors = function getUserDecryptorsF(view, cb) {
+Key.prototype.getUserDecryptors = function getUserDecryptorsF(request, cb) {
 	var theKey = this;
 	step(function () {
-		Decryptor.getAllWithAccess(view, theKey._realid, this);
+		Decryptor.getAllWithAccess(request, theKey._realid, this);
 	}, h.sF(function (decryptors) {
 		var i;
 		for (i = 0; i < decryptors.length; i += 1) {
@@ -151,14 +151,14 @@ Key.prototype.getUserDecryptors = function getUserDecryptorsF(view, cb) {
 };
 
 /** get this keys decryptors */
-Key.prototype.getDecryptors = function getDecryptorsF(view, cb) {
-	Decryptor.getAllWithAccess(view, this._realid, cb);
+Key.prototype.getDecryptors = function getDecryptorsF(request, cb) {
+	Decryptor.getAllWithAccess(request, this._realid, cb);
 };
 
-Key.prototype.getDecryptorsJSON = function getDecryptorsJSONF(view, cb) {
+Key.prototype.getDecryptorsJSON = function getDecryptorsJSONF(request, cb) {
 	var theKey = this;
 	step(function () {
-		theKey.getDecryptors(view, this);
+		theKey.getDecryptors(request, this);
 	}, h.sF(function (decryptors) {
 		var i;
 		for (i = 0; i < decryptors.length; i += 1) {
@@ -175,10 +175,10 @@ Key.prototype.getDecryptorsJSON = function getDecryptorsJSONF(view, cb) {
 };
 
 /** add one decryptor
-* @param view view
+* @param request request
 * @param data decryptor data
 */
-Key.prototype.addDecryptor = function addDecryptorF(view, data, cb) {
+Key.prototype.addDecryptor = function addDecryptorF(request, data, cb) {
 	var theKey = this;
 	step(function () {
 		if (data[theKey.getRealID()]) {
@@ -193,15 +193,15 @@ Key.prototype.addDecryptor = function addDecryptorF(view, data, cb) {
 			}
 		}
 
-		Decryptor.create(view, theKey, data, this);
+		Decryptor.create(request, theKey, data, this);
 	}, cb);
 };
 
 /** add decryptors
-* @param view view
+* @param request request
 * @param data decryptor data
 */
-Key.prototype.addDecryptors = function addDecryptorF(view, data, cb) {
+Key.prototype.addDecryptors = function addDecryptorF(request, data, cb) {
 	var theKey = this;
 	step(function () {
 		if (data[theKey.getRealID()]) {
@@ -210,7 +210,7 @@ Key.prototype.addDecryptors = function addDecryptorF(view, data, cb) {
 
 		var i;
 		for (i = 0; i < data.length; i += 1) {
-			Decryptor.create(view, theKey, data[i], this.parallel());
+			Decryptor.create(request, theKey, data[i], this.parallel());
 		}
 	}, cb);
 };
@@ -331,13 +331,13 @@ Key.prototype.hasUserAccess = function hasUserAccessF(userid, cb) {
 };
 
 /** checks if the current user has access to this key
-* @param view users view
+* @param request users request
 * @param cb callback
 */
-Key.prototype.hasAccess = function hasAccessF(view, cb) {
+Key.prototype.hasAccess = function hasAccessF(request, cb) {
 	var theKey = this;
 	step(function hasAccess1() {
-		client.sismember(theKey._domain + ":access", view.session.getUserID(), this);
+		client.sismember(theKey._domain + ":access", request.session.getUserID(), this);
 	}, h.sF(function hasAccess2(access) {
 		if (access === 1) {
 			this.last.ne(true);
@@ -345,7 +345,7 @@ Key.prototype.hasAccess = function hasAccessF(view, cb) {
 			theKey.getOwner(this);
 		}
 	}), h.sF(function hasAccess3(owner) {
-		if (parseInt(owner, 10) === parseInt(view.session.getUserID(), 10)) {
+		if (parseInt(owner, 10) === parseInt(request.session.getUserID(), 10)) {
 			this.last.ne(true);
 		} else {
 			this.ne(false);

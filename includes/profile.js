@@ -12,7 +12,7 @@ var jsonFields = ["profile", "own"];
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
-	this.getPData = function getPDataF(view, cb, wKeyData) {
+	this.getPData = function getPDataF(request, cb, wKeyData) {
 		var result;
 		step(function () {
 			client.hgetall(domain, this);
@@ -25,7 +25,7 @@ var Profile = function (userid, profileid) {
 
 			if (!err) {
 				if (wKeyData) {
-					KeyApi.getWData(view, result.key, this, true);
+					KeyApi.getWData(request, result.key, this, true);
 				} else {
 					this.ne(result.key);
 				}
@@ -38,15 +38,15 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
-	this.listen = function doListenF(view, cb) {
-		view.sub(domain, function (data) {
+	this.listen = function doListenF(request, cb) {
+		request.socketData.sub(domain, function (data) {
 			cb(JSON.parse(data));
 		});
 	};
 
-	this.setData = function setDataF(view, data, cb) {
+	this.setData = function setDataF(request, data, cb) {
 		step(function () {
-			view.session.ownUserError(userid, this);
+			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			if (Profile.validate(data)) {
 				data = h.stringifyCertainAttributes(data, jsonFields);
@@ -59,9 +59,9 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
-	this.getKey = function getKeyF(view, cb) {
+	this.getKey = function getKeyF(request, cb) {
 		step(function () {
-			view.session.logedinError(this);
+			request.session.logedinError(this);
 		}, h.sF(function () {
 			client.hget(domain, "key", this);
 		}), h.sF(function (keyRealID) {
@@ -69,34 +69,34 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
-	this.hasAccess = function hasAccessF(view, cb) {
+	this.hasAccess = function hasAccessF(request, cb) {
 		step(function () {
-			if (view.session.getUserID() === userid) {
+			if (request.session.getUserID() === userid) {
 				this.last.ne(true);
 			} else {
-				theProfile.getKey(view, this);
+				theProfile.getKey(request, this);
 			}
 		}, h.sF(function (key) {
 			if (!key) {
 				throw new Error("key not existing");
 			}
 
-			key.hasAccess(view, this);
+			key.hasAccess(request, this);
 		}), cb);
 	};
 
-	this.remove = function removeF(view, cb) {
+	this.remove = function removeF(request, cb) {
 		step(function () {
-			view.session.ownUserError(userid, this);
+			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.srem("user:" + userid + ":profiles", profileid, this);
 		}), cb);
 	};
 };
 
-function getAllProfiles(view, userid, cb) {
+function getAllProfiles(request, userid, cb) {
 	step(function getAP1() {
-		view.session.logedinError(this);
+		request.session.logedinError(this);
 	}, h.sF(function getAP2() {
 		client.smembers("user:" + userid + ":profiles", this);
 	}), h.sF(function getAP3(profiles) {
@@ -110,36 +110,36 @@ function getAllProfiles(view, userid, cb) {
 	}), cb);
 }
 
-Profile.get = function get(view, profileid, cb) {
+Profile.get = function get(request, profileid, cb) {
 	step(function () {
-		client.sismember("user:" + view.session.getUserID() + ":profiles", profileid, this);
+		client.sismember("user:" + request.session.getUserID() + ":profiles", profileid, this);
 	}, h.sF(function (exists) {
 		if (exists) {
-			this.ne(new Profile(view.session.getUserID(), profileid));
+			this.ne(new Profile(request.session.getUserID(), profileid));
 		} else {
 			this.ne(false);
 		}
 	}), cb);
 };
 
-Profile.getOwn = function getOwnF(view, cb) {
+Profile.getOwn = function getOwnF(request, cb) {
 	step(function () {
-		getAllProfiles(view, view.session.getUserID(), this);
+		getAllProfiles(request, request.session.getUserID(), this);
 	}, cb);
 };
 
-Profile.getAccessed = function getAccessedF(view, userid, cb) {
+Profile.getAccessed = function getAccessedF(request, userid, cb) {
 	var profiles;
 	step(function () {
-		getAllProfiles(view, userid, this);
+		getAllProfiles(request, userid, this);
 	}, h.sF(function (p) {
 		profiles = p;
-		if (view.session.getUserID() === userid) {
+		if (request.session.getUserID() === userid) {
 			this.last.ne(p);
 		} else {
 			var i;
 			for (i = 0; i < profiles.length; i += 1) {
-				profiles[i].hasAccess(view, this.parallel());
+				profiles[i].hasAccess(request, this.parallel());
 			}
 		}
 
@@ -169,10 +169,10 @@ Profile.validate = function validateF(data) {
 	return !err && meta._signature && meta._hashObject && meta._contentHash && meta._key && meta._version;
 };
 
-Profile.create = function createF(view, data, cb) {
+Profile.create = function createF(request, data, cb) {
 	var profile, userID, profileID;
 	step(function createP1() {
-		view.session.logedinError(this);
+		request.session.logedinError(this);
 	}, h.sF(function createP2() {
 		if (!Profile.validate(data)) {
 			this.last.ne(false);
@@ -182,7 +182,7 @@ Profile.create = function createF(view, data, cb) {
 		var meta = data.profile.meta;
 		KeyApi.get(meta._key, this);
 	}), h.sF(function createP3(key) {
-		userID = view.session.getUserID();
+		userID = request.session.getUserID();
 		if (key && key.isSymKey()) {
 			data.profile.key = key.getRealID();
 			client.incr("user:" + userID + ":profileCount", this);
@@ -197,7 +197,7 @@ Profile.create = function createF(view, data, cb) {
 			.exec(this);
 	}), h.sF(function () {
 		profile = new Profile(userID, profileID);
-		profile.setData(view, data, this, true);
+		profile.setData(request, data, this, true);
 	}), h.sF(function () {
 		this.ne(profile);
 	}), cb);

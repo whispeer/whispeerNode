@@ -32,9 +32,9 @@ KeyApi.validate = function validateF(data, callback) {
 };
 
 /** validate a decryptor. No Duplicate check. */
-KeyApi.validateDecryptor = function validateDecryptorF(view, data, key, callback) {
+KeyApi.validateDecryptor = function validateDecryptorF(request, data, key, callback) {
 	step(function () {
-		Decryptor.validate(view, data, key, this);
+		Decryptor.validate(request, data, key, this);
 	}, callback);
 };
 
@@ -66,22 +66,22 @@ KeyApi.get = function getKF(realid, callback) {
 	}), callback);
 };
 
-KeyApi.createWithDecryptors = function (view, keyData, cb) {
+KeyApi.createWithDecryptors = function (request, keyData, cb) {
 	if (keyData.type === "sign" || keyData.type === "crypt") {
-		EccKey.createWDecryptors(view, keyData, cb);
+		EccKey.createWDecryptors(request, keyData, cb);
 	} else {
-		SymKey.createWDecryptors(view, keyData, cb);
+		SymKey.createWDecryptors(request, keyData, cb);
 	}
 };
 
-KeyApi.getWData = function getDataF(view, realid, callback, wDecryptors) {
+KeyApi.getWData = function getDataF(request, realid, callback, wDecryptors) {
 	step(function () {
 		KeyApi.get(realid, this);
 	}, h.sF(function (key) {
 		if (!key) {
 			throw new Error("Key not found: " + realid);
 		}
-		key.getKData(view, this, wDecryptors);
+		key.getKData(request, this, wDecryptors);
 	}), callback);
 };
 

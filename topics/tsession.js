@@ -6,10 +6,10 @@ var h = require("whispeerHelper");
 var mailer = require("../includes/mailer");
 
 var s = {
-	logout: function logoutF(data, fn, view) {
+	logout: function logoutF(data, fn, request) {
 		step(function () {
 			if (data && data.logout === true) {
-				view.session.logout(this);
+				request.session.logout(this);
 			}
 		}, fn);
 	},
@@ -37,28 +37,28 @@ var s = {
 			}
 		}), fn);
 	},
-	register: function (data, fn, view) {
+	register: function (data, fn, request) {
 		var res, myUser;
 		step(function () {
-			view.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
+			request.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, request, this);
 		}, h.sF(function (result) {
 			res = result;
 			if (result.error) {
 				this.last.ne(res);
 			} else {
-				view.session.getOwnUser(this);
+				request.session.getOwnUser(this);
 			}
 		}), h.sF(function (user) {
 			myUser = user;
 			if (data.profile) {
 				if (data.profile.pub) {
-					myUser.setPublicProfile(view, data.profile.pub, this.parallel());
+					myUser.setPublicProfile(request, data.profile.pub, this.parallel());
 				}
 
 				if (data.profile.priv && data.keys.profile) {
 					var i;
 					for (i = 0; i < data.profile.priv.length; i += 1) {
-						myUser.createPrivateProfile(view, data.profile.priv[i], this.parallel());
+						myUser.createPrivateProfile(request, data.profile.priv[i], this.parallel());
 					}
 				}
 			}
@@ -70,12 +70,12 @@ var s = {
 			this.ne(res);
 		}), fn);
 	},
-	login: function (data, fn, view) {
+	login: function (data, fn, request) {
 		var mySession;
 		step(function () {
 			console.log(data);
-			mySession = view.session;
-			mySession.login(view, data.identifier, data.password, data.token, this);
+			mySession = request.session;
+			mySession.login(request, data.identifier, data.password, data.token, this);
 		}, h.sF(function (success) {
 			this.ne({
 				login: success
