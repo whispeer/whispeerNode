@@ -9,7 +9,6 @@
 var step = require("step");
 var client = require("./redisClient");
 var h = require("whispeerHelper");
-var extend = require("xtend");
 
 var search = require("./search");
 var KeyApi = require("./crypto/KeyApi");
@@ -21,7 +20,7 @@ var UPDATESEARCHON = ["profile", "nickname"];
 
 function logedinF(data, cb) {
 	step(function () {
-		if (data.user.isSaved()) {
+		if (data.reference.isSaved()) {
 			data.request.session.logedinError(this);
 		} else {
 			this.ne();
@@ -31,8 +30,8 @@ function logedinF(data, cb) {
 
 function ownUserF(data, cb) {
 	step(function () {
-		if (data.user.isSaved()) {
-			data.request.session.ownUserError(data.user, this);
+		if (data.reference.isSaved()) {
+			data.request.session.ownUserError(data.reference, this);
 		} else {
 			this.ne();
 		}
@@ -41,9 +40,9 @@ function ownUserF(data, cb) {
 
 function hasFriendKeyAccess(data, cb) {
 	step(function () {
-		if (data.user.isSaved()) {
+		if (data.reference.isSaved()) {
 			var friends = require("./friends");
-			friends.hasFriendsKeyAccess(data.request, data.user.getID(), this);
+			friends.hasFriendsKeyAccess(data.request, data.reference.getID(), this);
 		} else {
 			this.last.ne();
 		}
@@ -58,10 +57,6 @@ function hasFriendKeyAccess(data, cb) {
 
 function trueF(data, cb) {
 	cb();
-}
-
-function falseF(data, cb) {
-	cb(new AccessViolation());
 }
 
 function checkKeyExists(keyObj) {
@@ -141,32 +136,27 @@ var validKeys = {
 	mainKey: {
 		read: ownUserF,
 		pre: checkKeyExists(SymKey),
-		transform: keyToRealID,
-		unset: falseF
+		transform: keyToRealID
 	},
 	friendsKey: {
 		read: hasFriendKeyAccess,
 		pre: checkKeyExists(SymKey),
-		transform: keyToRealID,
-		unset: falseF
+		transform: keyToRealID
 	},
 	friendsLevel2Key: {
 		read: hasFriendKeyAccess,
 		pre: checkKeyExists(SymKey),
-		transform: keyToRealID,
-		unset: falseF
+		transform: keyToRealID
 	},
 	cryptKey: {
 		read: logedinF,
 		pre: checkKeyExists(EccKey),
-		transform: keyToRealID,
-		unset: falseF
+		transform: keyToRealID
 	},
 	signKey: {
 		read: logedinF,
 		pre: checkKeyExists(EccKey),
-		transform: keyToRealID,
-		unset: falseF
+		transform: keyToRealID
 	},
 	nickname: {
 		read: logedinF,
@@ -175,7 +165,7 @@ var validKeys = {
 			step(function nPre1() {
 				ownUserF(data, this);
 			}, h.sF(function () {
-				client.setnx("user:nickname:" + data.value, data.user.getID(), this);
+				client.setnx("user:nickname:" + data.value, data.reference.getID(), this);
 			}), h.sF(function nPre2(set) {
 				if (set) {
 					this.last.ne();
@@ -183,7 +173,7 @@ var validKeys = {
 					client.get("user:nickname:" + data.value, this);
 				}
 			}), h.sF(function nPre3(id) {
-				if (id === data.user.getID()) {
+				if (id === data.reference.getID()) {
 					this.last.ne();
 				} else {
 					throw new NicknameInUse(data.value);
@@ -198,19 +188,6 @@ var validKeys = {
 
 				this.ne();
 			}, cb);
-		},
-		unset: function (data, cb) {
-			step(function () {
-				ownUserF(data, this);
-			}, h.sF(function () {
-				client.get("user:nickname:" + data.value, this);
-			}), h.sF(function (id) {
-				if (id === data.user.getID()) {
-					client.del("user:nickname:" + data.value, this);
-				} else {
-					this.last.ne();
-				}
-			}), cb);
 		}
 	},
 	email: {
@@ -220,7 +197,7 @@ var validKeys = {
 			step(function mailPre1() {
 				ownUserF(data, this);
 			}, h.sF(function mailPre2() {
-				client.setnx("user:mail:" + data.value.toLowerCase(), data.user.getID(), this);
+				client.setnx("user:mail:" + data.value.toLowerCase(), data.reference.getID(), this);
 			}), h.sF(function mailPre3(set) {
 				if (set) {
 					this.last.ne();
@@ -228,7 +205,7 @@ var validKeys = {
 					client.get("user:mail:" + data.value.toLowerCase(), this);
 				}
 			}), h.sF(function mailPre4(id) {
-				if (id === data.user.getID()) {
+				if (id === data.reference.getID()) {
 					this.last.ne();
 				} else {
 					throw new MailInUse(data.value.toLowerCase());
@@ -247,65 +224,15 @@ var validKeys = {
 				}
 				this.ne();
 			}, cb);
-		},
-		unset: function (data, cb) {
-			step(function () {
-				ownUserF(data, this);
-			}, h.sF(function () {
-				client.get("user:mail:" + data.value.toLowerCase(), this);
-			}), h.sF(function (id) {
-				if (id === data.user.getID()) {
-					client.del("user:mail:" + data.value.toLowerCase(), this);
-				} else {
-					this.last.ne();
-				}
-			}), cb);
 		}
 	}
 };
 
-function key2obj(key) {
-	if (typeof key === "string") {
-		return key.split(":");
-	}
-
-	return key;
-}
-
-function obj2key(key) {
-	if (typeof key === "string") {
-		return key;
-	}
-
-	return key.join(":");
-}
-
-function validKey(key) {
-	if (typeof key === "string") {
-		key = key2obj(key);
-	}
-
-	var cur = validKeys;
-
-	var i;
-	for (i = 0; i < key.length; i += 1) {
-		if (cur[key[i]]) {
-			cur = cur[key[i]];
-		} else {
-			return false;
-		}
-	}
-
-	return cur;
-}
+var SaveAbleEntity = require("./saveAbleEntity");
 
 var User = function (id) {
 	var userDomain;
 	var theUser = this;
-
-	var getAttribute, unsetAttribute;
-
-	var setAttribute, saved;
 
 	function updateSearch(request) {
 		step(function () {
@@ -321,335 +248,101 @@ var User = function (id) {
 		});
 	}
 
-	/** set an attribute of this user.
-	* @param request current request (for session etc.)
-	* @param key key to set
-	* @param value value to set to
-	* @param cb callback
-	* checks if we are allowed to do this set operation and uses validKeys for this.
-	*/
-	function doSetOperation(request, key, value, cb) {
-		var attr, data = {};
-		//request, user, key, value, oldValue
-
-		var newKey = [];
-
-		var i;
-		for (i = 0; i < key.length; i += 1) {
-			newKey.push(key[i]);
-		}
-
-		key = newKey;
-
-		step(function () {
-			attr = h.deepGet(validKeys, key);
-
-			if (!attr) {
-				throw new AccessViolation(obj2key(key));
-			}
-
-			data.request = request;
-			data.user = theUser;
-			data.key = key;
-			data.value = value;
-
-			if (typeof attr.match === "object" && attr.match instanceof RegExp) {
-				if (!attr.match.test(data.value)) {
-					throw new InvalidAttribute(obj2key(key));
-				}
-			}
-
-			getAttribute(request, key, this);
-		}, h.sF(function (oldVal) {
-			data.oldValue = oldVal;
-
-			if (typeof attr.pre === "function") {
-				attr.pre(data, this);
-			} else {
-				this.ne();
-			}
-		}), h.sF(function () {
-			if (typeof attr.transform === "function") {
-				attr.transform(data, this);
-			} else {
-				this.ne(value);
-			}
-		}), h.sF(function (realValue) {
-			data.value = realValue;
-
-			if (attr.hash) {
-				client.multi().del(userDomain + ":" + obj2key(key)).hmset(userDomain + ":" + obj2key(key), data.value).exec(this);
-			} else {
-				console.log("SET " + userDomain + ":" + obj2key(key) + "-" + data.value);
-				client.set(userDomain + ":" + obj2key(key), data.value, this);
-			}
-		}), h.sF(function () {
-			if (typeof attr.post === "function") {
-				attr.post(data, this);
-			} else {
-				this.ne();
-			}
-		}), cb);
+	if (id) {
+		id = h.parseDecimal(id);
+		userDomain = "user:" + id;
 	}
 
-	function realGetAttribute(request, key, cb) {
-		var attr;
-		step(function () {
-			if (validKey(key)) {
-				attr = h.deepGet(validKeys, key);
+	var databaseUser = new SaveAbleEntity(validKeys, this, userDomain);
 
-				var data = {
-					request: request,
-					user: theUser
-				};
-
-				if (typeof attr.read === "function") {
-					attr.read(data, this);
-				} else {
-					this.ne();
-				}
-			} else {
-				throw new AccessViolation(obj2key(key));
-			}
-		}, h.sF(function () {
-			if (attr.hash) {
-				client.hgetall(userDomain + ":" + obj2key(key), this);
-			} else {
-				client.get(userDomain + ":" + obj2key(key), this);
-			}
-		}), h.sF(function (res) {
-			if (typeof attr.readTransform === "function") {
-				attr.readTransform(res, this);
-			} else {
-				this.ne(res);
-			}
-		}), cb);
+	function getAttribute(request, attr, cb, fullHash) {
+		databaseUser.getAttribute(request, attr, cb, fullHash);
 	}
 
-	/** set an attribute of this user.
-	* @param request current request (for session etc.)
-	* @param key key to set
-	* @param value value to set to
-	* @param cb callback
-	* checks if we are allowed to do this set operation and uses validKeys for this.
-	*/
-	function realUnsetAttribute(request, key, cb) {
-		var attr, data = {};
-		//request, user, key, value
-
-		step(function () {
-			attr = h.deepGet(validKeys, key);
-
-			if (!attr) {
-				throw new AccessViolation(obj2key(key));
-			}
-
-			data.request = request;
-			data.user = theUser;
-			data.key = key;
-
-			getAttribute(request, key, this);
-		}, h.sF(function (value) {
-			data.value = value;
-
-			if (typeof attr.unset === "function") {
-				attr.unset(data, this);
-			} else {
-				this.ne();
-			}
-		}), h.sF(function () {
-			client.del(userDomain + ":" + obj2key(key), this);
-		}), cb);
+	function setAttribute(request, attr, value, cb) {
+		databaseUser.setAttribute(request, attr, value, cb);
 	}
 
-	function realSetAttribute(request, val, key, cb) {
-		var doUpdateSearch = false;
-		step(function doRealSetAttribute() {
-			if (typeof val === "undefined") {
-				this.last.ne();
-			}
+	function createAccessors(attributes) {
+		attributes.forEach(function (attribute) {
+			var accessor = h.capitaliseFirstLetter(attribute);
 
-			if (typeof key !== "object") {
-				key = [];
-			} else {
-				var newKey = [];
+			this["get" + accessor] = function getAttribute(request, cb) {
+				databaseUser.getAttribute(request, attribute, cb);
+			};
 
-				var i;
-				for (i = 0; i < key.length; i += 1) {
-					newKey.push(key[i]);
-				}
-
-				key = newKey;
-			}
-
-			//console.log("Current Key:" + JSON.stringify(key));
-			//console.log("Current Val:" + JSON.stringify(val));
-
-			var valKey, cur, valid;
-			for (valKey in val) {
-				if (val.hasOwnProperty(valKey)) {
-					key.push(valKey);
-
-					cur = val[valKey];
-					valid = validKey(key);
-					if (valid !== false) {
-						if (typeof valid.read === "undefined") {
-							realSetAttribute(request, cur, key, this.parallel());
-						} else {
-							doSetOperation(request, key, cur, this.parallel());
-							if (UPDATESEARCHON.indexOf(obj2key(key)) > -1) {
-								doUpdateSearch = true;
-							}
-						}
-					} else {
-						console.log("rejected: " + obj2key(key));
-					}
-
-					key.pop();
-				}
-			}
-
-			this.parallel()();
-		}, h.sF(function finishUp() {
-			if (doUpdateSearch && saved === true) {
-				updateSearch(request);
-			}
-			this.ne();
-		}), cb);
+			this["set" + accessor] = function setAttribute(request, value, cb) {
+				databaseUser.setAttribute(request, attribute, value, cb);
+			};
+		});
 	}
 
-	function setAttributeF(request, val, cb) {
-		realSetAttribute(request, val, [], cb);
-	}
+	createAccessors(["password", "nickname", "migrationState", "email",
+					"friendsLevel2Key", "mainKey", "cryptKey", "signKey", "friendsKey"]);
 
-	function deleteF(cb) {
+	function deleteUser(cb) {
 		//TODO: think about nickname, mail (unique values)
 		step(function () {
 			client.keys(userDomain + ":*", this);
 		}, h.sF(function (keys) {
-			var i;
-			for (i = 0; i < keys.length; i += 1) {
-				client.del(keys[i], this.parallel());
-			}
+			keys.forEach(function (key) {
+				client.del(key, this.parallel());
+			}, this);
 		}), cb);
 	}
 
-	if (id) {
-		userDomain = "user:" + id;
-		saved = true;
-		setAttribute = setAttributeF;
-		getAttribute = realGetAttribute;
-		unsetAttribute = realUnsetAttribute;
-	} else {
-		var vals = {};
+	this.save = function doSave(request, cb) {
+		h.assert(!databaseUser.isSaved());
 
-		getAttribute = function (request, key, cb) {
-			step(function fakeGetAttribute() {
-				key = key2obj(key);
-				var i, cur = vals;
-				for (i = 0; i < key.length; i += 1) {
-					if (!cur) {
-						this.ne(null);
-						return;
-					}
+		step(function doSave() {
+			client.incr("user:count", this);
+		}, h.sF(function handleNewID(myid) {
+			id = h.parseDecimal(myid);
+			userDomain = "user:" + id;
 
-					cur = cur[key[i]];
-				}
+			this.parallel.unflatten();
 
-				if (cur) {
-					this.ne(cur);
-				} else {
-					this.ne(null);
-				}
-			}, cb);
-		};
+			client.setnx("user:id:" + id, id, this.parallel());
+			client.sadd("user:list", id, this.parallel());
+		}), h.sF(function (set) {
+			h.assert(set);
 
-		unsetAttribute = function (request, key, cb) {
-			step(function fakeUnsetAttribute() {
-				key = key2obj(key);
-				var i, cur = vals;
-				for (i = 0; i < key.length - 1; i += 1) {
-					if (!cur) {
-						this.ne();
-						return;
-					}
+			databaseUser.save(request, userDomain, this);
+		}), function saveDone(e) {
+			if (e) {
+				deleteUser(function (e) {
+					console.error(e);
+				});
 
-					cur = cur[key[i]];
-				}
+				throw e;
+			}
 
-				delete cur[key[key.length - 1]];
-				this.ne(true);
-			}, cb);
-		};
+			this.ne(true);
+		}, cb);
+	};
 
-		setAttribute = function (request, val, cb) {
-			step(function fakeSetAttribute() {
-				vals = extend(vals, val);
-				this.ne(true);
-			}, cb);
-		};
+	this.isSaved = function() {
+		return databaseUser.isSaved();
+	};
 
-		saved = false;
-		this.save = function doSave(request, cb) {
-			step(function doSave() {
-				client.incr("user:count", this);
-			}, h.sF(function handleNewID(myid) {
-				id = myid;
-				userDomain = "user:" + id;
-
-				client.setnx("user:id:" + id, id, this);
-			}), h.sF(function (set) {
-				if (!set) {
-					console.error("id for user already in use (dafuq!): " + id);
-					throw "id for user already in use!";
-				}
-				setAttribute = setAttributeF;
-				getAttribute = realGetAttribute;
-				unsetAttribute = realUnsetAttribute;
-				client.sadd("user:list", id, this);
-			}), h.sF(function () {
-				setAttribute(request, vals, this);
-			}), function saveDone(e) {
-				if (e) {
-					deleteF(function (e) {
-						if (e) {
-							console.error(e);
-						}
-					});
-
-					throw e;
-				}
-				saved = true;
-				this.ne(true);
-			}, cb);
-		};
-	}
-
-	function isSavedF() {
-		return saved;
-	}
-	this.isSaved = isSavedF;
-
-	function getIDF() {
-		return h.parseDecimal(id);
-	}
-	this.getID = getIDF;
+	this.getID = function() {
+		return id;
+	};
 
 	this.isOwnUser = function isOwnUserF(request) {
-		return parseInt(request.session.getUserID(), 10) === parseInt(id, 10);
+		return parseInt(request.session.getUserID(), 10) === id;
 	};
 
 	this.isOnline = function isOnlineF(cb) {
-		step(function () {
-			client.sismember("user:online", id, this);
-		}, cb);
+		client.sismember("user:online", id, cb);
 	};
 
 	function getNameF(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
+
 			theUser.getNickname(request, this.parallel());
-			client.hget(userDomain + ":profile", "basic", this.parallel());
+			getAttribute(request, "profile:basic", this.parallel());
 		}, h.sF(function (nickname, basicProfile) {
 			var res = [], name;
 			if (basicProfile) {
@@ -675,66 +368,34 @@ var User = function (id) {
 
 	this.getName = getNameF;
 
-	function getNicknameF(request, cb) {
-		step(function doGetNickname() {
-			getAttribute(request, "nickname", this);
-		}, cb);
-	}
-	this.getNickname = getNicknameF;
-
-	function setNicknameF(request, nickname, cb) {
-		step(function () {
-			setAttribute(request, {nickname: nickname}, this);
-		}, cb);
-	}
-	this.setNickname = setNicknameF;
-
-	function setPasswordF(request, password, cb) {
-		step(function doSetPassword() {
-			setAttribute(request, {password: password}, this);
-		}, cb);
-	}
-	this.setPassword = setPasswordF;
-
-	function getPasswordF(request, cb) {
-		step(function doGetPassword() {
-			getAttribute(request, "password", this);
-		}, cb);
-	}
-	this.getPassword = getPasswordF;
-
-	function getEMailF(request, cb) {
+	this.getEMail = function(request, cb) {
 		step(function () {
 			getAttribute(request, "email", this);
 		}, cb);
-	}
-	this.getEMail = getEMailF;
+	};
 
-	function setMailF(request, mail, cb) {
+	this.setMail = function(request, mail, cb) {
 		step(function doSetMail() {
-			setAttribute(request, {email: mail}, this);
+			setAttribute(request, "email", mail, this);
 		}, cb);
-	}
-	this.setMail = setMailF;
+	};
 
-	function setPublicProfileF(request, profile, cb) {
+	this.setPublicProfile = function(request, profile, cb) {
 		step(function doSetPublicProfile() {
-			setAttribute(request, {profile: profile}, this);
+			setAttribute(request, "profile", profile, this);
 		}, cb);
-	}
-	this.setPublicProfile = setPublicProfileF;
+	};
 
-	function createPrivateProfileF(request, data, cb) {
+	this.createPrivateProfile = function(request, data, cb) {
 		step(function doCreatePP1() {
 			request.session.ownUserError(id, this);
 		}, h.sF(function doCreatePP2() {
 			var Profile = require("./profile");
 			Profile.create(request, data, this);
 		}), cb);
-	}
-	this.createPrivateProfile = createPrivateProfileF;
+	};
 
-	function deletePrivateProfileF(request, profileID, cb) {
+	this.deletePrivateProfile = function(request, profileID, cb) {
 		step(function removePP1() {
 			request.session.ownUserError(id, this);
 		}, h.sF(function removePP2() {
@@ -746,10 +407,9 @@ var User = function (id) {
 
 			profile.remove(request, this);
 		}), cb);
-	}
-	this.deletePrivateProfile = deletePrivateProfileF;
+	};
 
-	function getPrivateProfilesF(request, cb, json) {
+	this.getPrivateProfiles = function(request, cb, json) {
 		step(function getPP1() {
 			var Profile = require("./profile");
 			if (json) {
@@ -765,96 +425,29 @@ var User = function (id) {
 
 			this.parallel()();
 		}), cb);
-	}
-	this.getPrivateProfiles = getPrivateProfilesF;
+	};
 
-	function getPublicProfileF(request, cb) {
+	this.getPublicProfile = function(request, cb) {
 		step(function doGetPublicProfile() {
-			getAttribute(request, "profile", this);
-		}, h.sF(function (res) {
-			this.ne(res);
-		}), cb);
-	}
-
-	this.getPublicProfile = getPublicProfileF;
-
-	this.setMigrationState = function (request, state, cb) {
-		setAttribute(request, {migrationState: state}, cb);
+			getAttribute(request, "profile", this, true);
+		}, cb);
 	};
 
-	this.getMigrationState = function (request, cb) {
-		getAttribute(request, "migrationState", cb);
-	};
-
-	function setFriendsKeyF(request, key, cb) {
-		setAttribute(request, {friendsKey: key}, cb);
-	}
-
-	function setFriendsLevel2KeyF(request, key, cb) {
-		setAttribute(request, {friendsLevel2Key: key}, cb);
-	}
-
-	function setMainKeyF(request, key, cb) {
-		setAttribute(request, {mainKey: key}, cb);
-	}
-
-	function setCryptKeyF(request, key, cb) {
-		setAttribute(request, {cryptKey: key}, cb);
-	}
-
-	function setSignKeyF(request, key, cb) {
-		setAttribute(request, {signKey: key}, cb);
-	}
-
-	this.setMainKey = setMainKeyF;
-	this.setCryptKey = setCryptKeyF;
-	this.setSignKey = setSignKeyF;
-	this.setFriendsKey = setFriendsKeyF;
-	this.setFriendsLevel2Key = setFriendsLevel2KeyF;
-
-	function getFriendsKeyF(request, cb) {
-		getAttribute(request, "friendsKey", cb);
-	}
-
-	function getFriendsLevel2KeyF(request, cb) {
-		getAttribute(request, "friendsLevel2Key", cb);
-	}
-
-	function getFriendShipKeyF(request, cb) {
+	this.getFriendShipKey = function(request, cb) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
 			client.get("friends:key:" + id + ":" + request.session.getUserID(), this);
 		}), cb);
-	}
+	};
 
-	function getReverseFriendShipKeyF(request, cb) {
+	this.getReverseFriendShipKey = function(request, cb) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
 			client.get("friends:key:" + request.session.getUserID() + ":" + id, this);
 		}), cb);
-	}
-
-	function getMainKeyF(request, cb) {
-		getAttribute(request, "mainKey", cb);
-	}
-
-	function getCryptKeyF(request, cb) {
-		getAttribute(request, "cryptKey", cb);
-	}
-
-	function getSignKeyF(request, cb) {
-		getAttribute(request, "signKey", cb);
-	}
-
-	this.getMainKey = getMainKeyF;
-	this.getCryptKey = getCryptKeyF;
-	this.getSignKey = getSignKeyF;
-	this.getFriendsKey = getFriendsKeyF;
-	this.getFriendsLevel2Key = getFriendsLevel2KeyF;
-	this.getFriendShipKey = getFriendShipKeyF;
-	this.getReverseFriendShipKey = getReverseFriendShipKeyF;
+	};
 
 	function keyIDsToObjects(keys, cb) {
 		step(function () {
@@ -1038,7 +631,7 @@ var User = function (id) {
 		}), cb);
 	};
 
-	function generateTokenF(cb) {
+	this.generateToken = function(cb) {
 		var token;
 		step(function () {
 			var random = require("secure_random");
@@ -1055,10 +648,9 @@ var User = function (id) {
 				this.ne(false);
 			}
 		}), cb);
-	}
-	this.generateToken = generateTokenF;
+	};
 
-	function getOnlineStatusF(cb) {
+	this.getOnlineStatus = function(cb) {
 		step(function () {
 			client.scard(userDomain + ":sockets", this.parallel());
 			client.get(userDomain + ":recentActivity", this.parallel());
@@ -1073,10 +665,9 @@ var User = function (id) {
 				this.ne(0);
 			}
 		}), cb);
-	}
-	this.getOnlineStatus = getOnlineStatusF;
+	};
 
-	function useTokenF(token, cb) {
+	this.useToken = function useTokenF(token, cb) {
 		step(function () {
 			client.del(userDomain + ":token:" + token, this);
 		}, h.sF(function (deleted) {
@@ -1086,8 +677,7 @@ var User = function (id) {
 				this.ne(false);
 			}
 		}), cb);
-	}
-	this.useToken = useTokenF;
+	};
 
 	this.listen = function listenF(request, cb) {
 		request.socketData.psub(userDomain + ":*", function (channel, data) {
