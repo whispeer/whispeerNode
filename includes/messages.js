@@ -183,13 +183,12 @@ var Message = function (id, topic) {
 			};
 
 			if (key) {
-				KeyApi.getWData(request, result.content.key, this, true);
+				KeyApi.getWData(request, result.meta._key, this, true);
 			} else {
-				this.ne(result.content.key);
+				this.ne(result.meta._key);
 			}
 		}), h.sF(function (key) {
-			result.content.key = key;
-
+			request.addKeyData(key);
 			this.ne(result);
 		}), cb);
 	};

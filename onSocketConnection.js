@@ -31,6 +31,7 @@ function createKeys(request, keys, cb) {
 	step(function () {
 		request.session.logedinError(this);
 	}, h.sF(function () {
+		//TODO: this might fail if one of the decryptors is a key we also want to add!
 		keys.forEach(function (keyData) {
 			KeyApi.createWithDecryptors(request, keyData, this.parallel());
 		}, this);
@@ -38,14 +39,16 @@ function createKeys(request, keys, cb) {
 }
 
 function callExplicitHandler(handler, data, cb, request) {
+	var explicitHandlerRequest = new RequestData(request, data);
+
 	step(function () {
 		if (Array.isArray(data.keys)) {
-			createKeys(request, data.keys, this);
+			createKeys(explicitHandlerRequest, data.keys, this);
 		} else {
 			this.ne();
 		}
 	}, h.sF(function () {
-		handler(data, new HandlerCallback(this.ne), request);
+		handler(data, new HandlerCallback(this.ne), explicitHandlerRequest);
 	}), cb);
 }
 
@@ -129,7 +132,7 @@ module.exports = function (socket) {
 	function handleF(handler, channel) {
 		return function handleF(data, fn) {
 			var time = new Date().getTime();
-			var request = new RequestData(socketData);
+			var request = new RequestData(socketData, data);
 			step(function () {
 				console.log("Received data on channel " + channel);
 
