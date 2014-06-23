@@ -2,9 +2,6 @@
 
 var client = require("./includes/redisClient");
 
-var fs = require("fs");
-var path = require("path");
-
 var configManager = require("./includes/configManager");
 var config = configManager.get();
 

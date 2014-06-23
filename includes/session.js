@@ -191,7 +191,7 @@ var Session = function Session() {
 			client.get("session:" + theSID, this);
 		}, h.sF(function (result) {
 			if (result && h.isID(result)) {
-				if (!logedin || userid != result) {
+				if (!logedin || h.parseDecimal(userid) !== h.parseDecimal(result)) {
 					userid = result;
 					sid = theSID;
 					logedin = true;

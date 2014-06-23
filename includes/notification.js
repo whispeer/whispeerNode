@@ -3,10 +3,10 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
-var validator = require("whispeerValidations");
+//var validator = require("whispeerValidations");
 var client = require("./redisClient");
-var KeyApi = require("./crypto/KeyApi");
-var User = require("./user");
+//var KeyApi = require("./crypto/KeyApi");
+//var User = require("./user");
 
 /*
 	signature is of meta without signature.
@@ -56,11 +56,11 @@ Notification.prototype.getTheme = function (cb) {
 	}, cb);
 };
 
-Notification.getOwnUnreadCount = function (view) {
+Notification.getOwnUnreadCount = function () {
 
 };
 
-Notification.getOwn = function (view) {
+Notification.getOwn = function () {
 
 };
 

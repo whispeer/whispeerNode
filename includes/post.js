@@ -15,6 +15,8 @@ var SymKey = require("./crypto/symKey");
 
 var mailer = require("./mailer");
 
+var newPostsExpireTime = 10 * 60;
+
 /*
 	signature is of meta without signature.
 
@@ -106,6 +108,11 @@ var Post = function (postid) {
 		}), cb);
 	};
 };
+
+function removeOldNewPosts(multi, userid) {
+	var minTime = new Date().getTime() - newPostsExpireTime * 1000;
+	multi.zremrangebyscore("user:" + userid + ":newPosts", "-inf", minTime);
+}
 
 function getUserIDsFromUserFilter(filter, cb) {
 	step(function () {
@@ -396,13 +403,6 @@ function processMetaInformation(view, meta, cb) {
 
 		this.ne();
 	}), cb);
-}
-
-var newPostsExpireTime = 10 * 60;
-
-function removeOldNewPosts(multi, userid) {
-	var minTime = new Date().getTime() - newPostsExpireTime * 1000;
-	multi.zremrangebyscore("user:" + userid + ":newPosts", "-inf", minTime);
 }
 
 Post.create = function (view, data, cb) {

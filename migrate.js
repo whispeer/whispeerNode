@@ -1,3 +1,5 @@
+"use strict";
+
 var client = require("./includes/redisClient");
 
 var step = require("step");
@@ -12,6 +14,86 @@ var configManager = require("./includes/configManager");
 var config = configManager.get();
 
 var migrationToRun = process.argv[2];
+
+var runMigrations;
+
+function fileNameToID(name) {
+	return h.parseDecimal(name.split("-")[0]);
+}
+
+function getMigrationPath(id) {
+	var i;
+	for (i = 0; i < availableMigrations.length; i += 1) {
+		if (fileNameToID(availableMigrations[i]) === id) {
+			return "./migrations/" + availableMigrations[i];
+		}
+	}
+
+	throw new Error("Migration not found: " + id);
+}
+
+function updateMigrationState(state, cb) {
+	step(function () {
+		client.set("server:migrationState", migrationState + 1, this);
+	}, h.sF(function () {
+		migrationState += 1;
+
+		if (migrationState < highestMigrationState) {
+			runMigrations(this);
+		} else {
+			this.ne();
+		}
+	}), cb);
+}
+
+function runMigration(id, cb) {
+	step(function () {
+		var toRun = getMigrationPath(id);
+
+		require(toRun)(this);
+	}, h.sF(function (success) {
+		if (success) {
+			console.log("Migration Completed: " + (id));
+			this.ne();
+		} else {
+			throw new Error("Migration failed! " + id);
+		}
+	}), cb);
+}
+
+runMigrations = function (cb) {
+	step(function () {
+		runMigration(migrationState + 1, this);
+	}, h.sF(function () {
+		updateMigrationState(migrationState + 1, this);
+	}), cb);
+};
+
+function loadMigrations(cb) {
+	step(function () {
+		fs.readdir(path.resolve(__dirname, "migrations"), this);
+	}, h.sF(function (files) {
+		availableMigrations = files;
+
+		this.ne();
+	}), cb);
+}
+
+function getNewestMigrationCount(cb) {
+	step(function () {
+		loadMigrations(this);
+	}, h.sF(function () {
+		var highest = 0;
+		availableMigrations.forEach(function (file) {
+			var current = fileNameToID(file);
+			highest = Math.max(highest, current);
+		});
+
+		console.log("Highest available Migration: " + highest);
+
+		this.ne(highest);
+	}), cb);
+}
 
 if (migrationToRun) {
 	step(function () {
@@ -59,82 +141,4 @@ if (migrationToRun) {
 
 		process.exit(0);
 	});
-}
-
-function fileNameToID(name) {
-	return h.parseDecimal(name.split("-")[0]);
-}
-
-function getMigrationPath(id) {
-	var i;
-	for (i = 0; i < availableMigrations.length; i += 1) {
-		if (fileNameToID(availableMigrations[i]) === id) {
-			return "./migrations/" + availableMigrations[i];
-		}
-	}
-
-	throw new Error("Migration not found: " + id);
-}
-
-function updateMigrationState(state, cb) {
-	step(function () {
-		client.set("server:migrationState", migrationState + 1, this);
-	}, h.sF(function () {
-		migrationState += 1;
-
-		if (migrationState < highestMigrationState) {
-			runMigrations(this);
-		} else {
-			this.ne();
-		}
-	}), cb);
-}
-
-function runMigration(id, cb) {
-	step(function () {
-		var toRun = getMigrationPath(id);
-
-		require(toRun)(this);
-	}, h.sF(function (success) {
-		if (success) {
-			console.log("Migration Completed: " + (id));
-			this.ne();
-		} else {
-			throw new Error("Migration failed! " + id);
-		}
-	}), cb);
-}
-
-function runMigrations(cb) {
-	step(function () {
-		runMigration(migrationState + 1, this);
-	}, h.sF(function () {
-		updateMigrationState(migrationState + 1, this);
-	}), cb);
-}
-
-function loadMigrations(cb) {
-	step(function () {
-		fs.readdir(path.resolve(__dirname, "migrations"), this);
-	}, h.sF(function (files) {
-		availableMigrations = files;
-
-		this.ne();
-	}), cb);
-}
-
-function getNewestMigrationCount(cb) {
-	step(function () {
-		loadMigrations(this);
-	}, h.sF(function () {
-		var highest = 0;
-		availableMigrations.forEach(function (file) {
-			var current = fileNameToID(file);
-			highest = Math.max(highest, current);
-		});
-
-		console.log("Highest available Migration: " + highest);
-
-		this.ne(highest);
-	}), cb);
 }
