@@ -6,7 +6,7 @@ var User = require("./user");
 var configManager = require("./configManager");
 var config = configManager.get();
 var client = require("./redisClient");
-var viewCreator = require("./view");
+var viewCreator = require("./socketData");
 
 var step = require("step");
 var h = require("whispeerHelper");

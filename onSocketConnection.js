@@ -6,7 +6,7 @@ var HandlerCallback = require("./includes/handlerCallback");
 var listener = require("./includes/listener");
 var topics = require("./topics.js");
 
-var View = require("./includes/view");
+var View = require("./includes/socketData");
 var Session = require("./includes/session");
 
 var KeyApi = require("./includes/crypto/KeyApi");
