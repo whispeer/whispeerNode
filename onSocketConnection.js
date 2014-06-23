@@ -80,7 +80,7 @@ function always(view, data, fn) {
 	step(function () {
 		this.parallel.unflatten();
 		view.session.logedin(this.parallel());
-		view.session.recentActivity();
+		view.recentActivity();
 	}, function (e, logedin) {
 		if (e) {
 			console.error(e);
