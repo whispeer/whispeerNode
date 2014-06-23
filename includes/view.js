@@ -106,12 +106,6 @@ function SocketData(socket, session) {
 			this.ne();
 		}), cb);
 	};
-
-	var statusUpdater = new onlineStatusUpdater(this, session);
-
-	this.recentActivity = function (cb) {
-		statusUpdater.recentActivity(cb);
-	};
 }
 
 SocketData.logedinViewStub = {
