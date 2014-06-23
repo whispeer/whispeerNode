@@ -218,7 +218,7 @@ function getUserIDsForFilter(view, filter, cb) {
 		getUserIDsFromAlwaysFilter(view, alwaysFilter, this.parallel());
 		getUserIDsFromUserFilter(userFilter, this.parallel());
 	}, h.sF(function (alwaysUserIDs, userUserIDs) {
-		alwaysUserIDs.push(view.getUserID());
+		alwaysUserIDs.push(view.session.getUserID());
 		//unique!
 		var result = h.arrayUnique(alwaysUserIDs.concat(userUserIDs).map(h.parseDecimal));
 		this.ne(result);
@@ -233,7 +233,7 @@ function accessablePostFilter(view) {
 		step(function () {
 			client.hget("post:" + id + ":meta", "key", this);
 		}, h.sF(function (key) {
-			client.sismember("key:" + key + ":access", view.getUserID(), this);
+			client.sismember("key:" + key + ":access", view.session.getUserID(), this);
 		}), cb);
 	};
 }
@@ -253,7 +253,7 @@ Post.getTimeline = function (view, filter, afterID, count, cb) {
 			return "user:" + userid + ":posts";
 		});
 
-		unionKey = "post:union:" + view.getUserID() + ":" + userids.sort().join(",");
+		unionKey = "post:union:" + view.session.getUserID() + ":" + userids.sort().join(",");
 		postKeys.unshift(postKeys.length);
 		postKeys.unshift(unionKey);
 		postKeys.push(this);
@@ -297,7 +297,7 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 			return "user:" + userid + ":newPosts";
 		});
 
-		unionKey = "post:union:" + view.getUserID() + ":newPosts:" + userids.sort().join(",");
+		unionKey = "post:union:" + view.session.getUserID() + ":newPosts:" + userids.sort().join(",");
 		postKeys.unshift(postKeys.length);
 		postKeys.unshift(unionKey);
 		postKeys.push(this);
@@ -325,7 +325,7 @@ Post.getUserWall = function (view, userid, afterID, count, cb) {
 			step(function () {
 				client.hget("post:" + id + ":meta", "key", this);
 			}, h.sF(function (key) {
-				client.sismember("key:" + key + ":access", view.getUserID(), this);
+				client.sismember("key:" + key + ":access", view.session.getUserID(), this);
 			}), cb);
 		});
 	}, h.sF(function (ids) {
@@ -422,7 +422,7 @@ Post.create = function (view, data, cb) {
 	var postID;
 
 	step(function () {
-		data.meta.sender = view.getUserID();
+		data.meta.sender = view.session.getUserID();
 
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
@@ -432,7 +432,7 @@ Post.create = function (view, data, cb) {
 	}), h.sF(function (id) {
 		postID = id;
 		var multi = client.multi();
-		multi.zadd("user:" + view.getUserID() + ":posts", data.meta.time, id);
+		multi.zadd("user:" + view.session.getUserID() + ":posts", data.meta.time, id);
 
 		if (data.meta.walluser) {
 			multi.zadd("user:" + data.meta.walluser + ":wall", data.meta.time, id);
@@ -442,10 +442,10 @@ Post.create = function (view, data, cb) {
 		multi.set("post:" + id, id);
 		multi.hmset("post:" + id + ":content", data.content);
 
-		removeOldNewPosts(multi, view.getUserID());
-		multi.zadd("user:" + view.getUserID() + ":wall", data.meta.time, id);
-		multi.zadd("user:" + view.getUserID() + ":newPosts", data.meta.time, id);
-		multi.expire("user:" + view.getUserID() + ":newPosts", newPostsExpireTime);
+		removeOldNewPosts(multi, view.session.getUserID());
+		multi.zadd("user:" + view.session.getUserID() + ":wall", data.meta.time, id);
+		multi.zadd("user:" + view.session.getUserID() + ":newPosts", data.meta.time, id);
+		multi.expire("user:" + view.session.getUserID() + ":newPosts", newPostsExpireTime);
 
 		multi.exec(this);
 	}), h.sF(function () {

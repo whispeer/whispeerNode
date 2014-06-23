@@ -66,7 +66,7 @@ function onlineStatusUpdater(view, session) {
 	}
 
 	function addSocket() {
-		userid = view.getUserID();
+		userid = view.session.getUserID();
 		var alreadyNotified = false;
 
 		//add current user to online users - add current socket to users connections
@@ -82,7 +82,7 @@ function onlineStatusUpdater(view, session) {
 				}
 			})
 			//user went online so remove from notifiedUsers. maybe move to listener pattern later on.
-			.srem("mail:notifiedUsers", view.getUserID())
+			.srem("mail:notifiedUsers", view.session.getUserID())
 			.sadd("user:" + userid + ":sockets", view.socket.id)
 			.getset("user:" + userid + ":recentActivity", "1", function (error, oldValue) {
 				if (!oldValue && !alreadyNotified) {
@@ -107,7 +107,7 @@ function onlineStatusUpdater(view, session) {
 	view.addToDestroy(removeSocket);
 
 	this.recentActivity = function () {
-		if (view.getUserID()) {
+		if (view.session.getUserID()) {
 			addSocket();
 		}
 	};

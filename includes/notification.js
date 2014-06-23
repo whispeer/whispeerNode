@@ -26,7 +26,7 @@ var User = require("./user");
 */
 
 var Notification = function (view, id) {
-	this._userid = view.getUserID();
+	this._userid = view.session.getUserID();
 	this._id = id;
 };
 

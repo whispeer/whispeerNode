@@ -9,7 +9,7 @@ var s = {
 	logout: function logoutF(data, fn, view) {
 		step(function () {
 			if (data && data.logout === true) {
-				view.logout(this);
+				view.session.logout(this);
 			}
 		}, fn);
 	},

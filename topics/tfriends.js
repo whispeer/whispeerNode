@@ -29,7 +29,7 @@ var f = {
 		step(function () {
 			Friends.getOnline(view, this);
 		}, h.sF(function (ids) {
-			ids[view.getUserID()] = -1;
+			ids[view.session.getUserID()] = -1;
 			this.ne({
 				online: ids
 			});

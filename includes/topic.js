@@ -54,7 +54,7 @@ var Topic = function (id) {
 	this.hasAccess = function hasAccessF(view, cb) {
 		var uid;
 		step(function hA1() {
-			uid = view.getUserID();
+			uid = view.session.getUserID();
 			if (hasAccess.indexOf(uid) > -1) {
 				this.last.ne(true);
 			}
@@ -166,7 +166,7 @@ var Topic = function (id) {
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
-			client.zcard(domain + ":user:" + view.getUserID() + ":messages", this);
+			client.zcard(domain + ":user:" + view.session.getUserID() + ":messages", this);
 		}), cb);
 	};
 
@@ -191,7 +191,7 @@ var Topic = function (id) {
 	/** is this topic unread? */
 	this.isUnread = function isUnreadF(view, cb) {
 		step(function () {
-			client.zcard(domain + ":user:" + view.getUserID() + ":unread", this);
+			client.zcard(domain + ":user:" + view.session.getUserID() + ":unread", this);
 		}, h.sF(function (count) {
 			this.ne(count !== 0);
 		}), cb);
@@ -202,7 +202,7 @@ var Topic = function (id) {
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
-			client.zrevrange(domain + ":user:" + view.getUserID() + ":unread", 0, -1, this);
+			client.zrevrange(domain + ":user:" + view.session.getUserID() + ":unread", 0, -1, this);
 		}), h.sF(function (res) {
 			res.map(function (ele) {
 				return parseInt(ele, 10);
@@ -218,13 +218,13 @@ var Topic = function (id) {
 		step(function () {
 			hasAccessError(view, this);
 		}, h.sF(function () {
-			client.zremrangebyscore(domain + ":user:" + view.getUserID() + ":unread", "-inf", beforeTime, this);
+			client.zremrangebyscore(domain + ":user:" + view.session.getUserID() + ":unread", "-inf", beforeTime, this);
 		}), h.sF(function () {
 			theTopic.isUnread(view, this);
 		}), h.sF(function (isUnread) {
 			unread = isUnread;
 			if (!isUnread) {
-				client.zrem("topic:user:" + view.getUserID() + ":unreadTopics", id, this.parallel());
+				client.zrem("topic:user:" + view.session.getUserID() + ":unreadTopics", id, this.parallel());
 			}
 
 			this.parallel()();
@@ -361,7 +361,7 @@ var Topic = function (id) {
 		}, h.sF(function () {
 			this.parallel.unflatten();
 			client.hgetall(domain + ":data", this.parallel());
-			client.hget(domain + ":receiverKeys", view.getUserID(), this.parallel());
+			client.hget(domain + ":receiverKeys", view.session.getUserID(), this.parallel());
 		}), h.sF(function (data, key) {
 			if (key) {
 				data.additionalKey = key;
@@ -377,13 +377,13 @@ var Topic = function (id) {
 
 Topic.unreadCount = function (view, cb) {
 	step(function () {
-		client.zcard("topic:user:" + view.getUserID() + ":unreadTopics", this);
+		client.zcard("topic:user:" + view.session.getUserID() + ":unreadTopics", this);
 	}, cb);
 };
 
 Topic.unread = function (view, cb) {
 	step(function () {
-		client.zrevrange("topic:user:" + view.getUserID() + ":unreadTopics", 0, -1, this);
+		client.zrevrange("topic:user:" + view.session.getUserID() + ":unreadTopics", 0, -1, this);
 	}, h.sF(function (unread) {
 		var result = [], i;
 		for (i = 0; i < unread.length; i += 1) {
@@ -396,13 +396,13 @@ Topic.unread = function (view, cb) {
 
 Topic.own = function (view, afterTopic, count, cb) {
 	step(function () {
-		client.zrevrank("topic:user:" + view.getUserID() + ":topics", afterTopic, this);
+		client.zrevrank("topic:user:" + view.session.getUserID() + ":topics", afterTopic, this);
 	}, h.sF(function (index) {
 		if (index === null) {
 			index = -1;
 		}
 
-		client.zrevrange("topic:user:" + view.getUserID() + ":topics", index + 1, index + count, this);
+		client.zrevrange("topic:user:" + view.session.getUserID() + ":topics", index + 1, index + count, this);
 	}), h.sF(function (topicids) {
 		var result = [], i;
 		for (i = 0; i < topicids.length; i += 1) {
@@ -427,7 +427,7 @@ Topic.get = function (topicid, cb) {
 
 Topic.getUserTopicID = function (view, userid, cb) {
 	step(function () {
-		client.get("topic:user:" + view.getUserID() + ":single:" + userid, this);
+		client.get("topic:user:" + view.session.getUserID() + ":single:" + userid, this);
 	}, h.sF(function (topicid) {
 		if (topicid) {
 			this.ne(topicid);
@@ -458,7 +458,7 @@ Topic.create = function (view, data, receiverKeys, cb) {
 			throw new InvalidTopicData();
 		}
 
-		if (!view.isMyID(data.creator)) {
+		if (!view.session.isMyID(data.creator)) {
 			throw new InvalidTopicData();
 		}
 
@@ -467,7 +467,7 @@ Topic.create = function (view, data, receiverKeys, cb) {
 		}
 
 		receiverIDs = data.receiver.map(h.parseDecimal);
-		receiverWO = receiverIDs.filter(h.not(view.isMyID));
+		receiverWO = receiverIDs.filter(h.not(view.session.isMyID));
 
 		User.checkUserIDs(receiverIDs, this.parallel());
 	}, h.sF(function () {
@@ -499,7 +499,7 @@ Topic.create = function (view, data, receiverKeys, cb) {
 
 		receiverIDs.forEach(function (uid) {
 			multi.zadd("topic:user:" + uid + ":topics", new Date().getTime(), topicid);
-			if (!view.isMyID(uid)) {
+			if (!view.session.isMyID(uid)) {
 				multi.hset("topic:" + topicid + ":receiverKeys", uid, receiverKeys[uid]);
 			}
 		});

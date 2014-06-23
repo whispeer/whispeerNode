@@ -65,7 +65,7 @@ var Circle = function (userid, id) {
 		step(function () {
 			view.ownUserError(userid, this);
 		}, h.sF(function () {
-			client.srem("user:" + view.getUserID() + ":circles", id, this);
+			client.srem("user:" + view.session.getUserID() + ":circles", id, this);
 		}), h.sF(function (res) {
 			this.ne(res === 1);
 		}), cb);
@@ -182,10 +182,10 @@ var Circle = function (userid, id) {
 
 Circle.get = function (view, circleid, cb) {
 	step(function () {
-		client.exists("user:" + view.getUserID() + ":circle:" + circleid, this);
+		client.exists("user:" + view.session.getUserID() + ":circle:" + circleid, this);
 	}, h.sF(function (exists) {
 		if (exists === 1) {
-			this.ne(new Circle(view.getUserID(), circleid));
+			this.ne(new Circle(view.session.getUserID(), circleid));
 		} else {
 			throw new CircleNotExisting();
 		}
@@ -194,11 +194,11 @@ Circle.get = function (view, circleid, cb) {
 
 Circle.getAll = function (view, cb) {
 	step(function () {
-		client.smembers("user:" + view.getUserID() + ":circles", this);
+		client.smembers("user:" + view.session.getUserID() + ":circles", this);
 	}, h.sF(function (circles) {
 		var result = [], i;
 		for (i = 0; i < circles.length; i += 1) {
-			result.push(new Circle(view.getUserID(), circles[i]));
+			result.push(new Circle(view.session.getUserID(), circles[i]));
 		}
 
 		this.ne(result);
@@ -206,7 +206,7 @@ Circle.getAll = function (view, cb) {
 };
 
 Circle.create = function (view, data, cb) {
-	var result = {}, theCircleID, userid = view.getUserID(), userids;
+	var result = {}, theCircleID, userid = view.session.getUserID(), userids;
 	step(function () {
 		var err = validator.validate("circle", data);
 
@@ -251,7 +251,7 @@ Circle.create = function (view, data, cb) {
 
 		multi.exec(this);
 	}), h.sF(function () {
-		this.ne(new Circle(view.getUserID(), theCircleID));
+		this.ne(new Circle(view.session.getUserID(), theCircleID));
 	}), cb);
 };
 

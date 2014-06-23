@@ -31,7 +31,7 @@ var whispeerAPI = {
 	logedin: function isLogedinF(data, fn, view) {
 		step(function () {
 			if (data === true) {
-				view.logedin(this);
+				view.session.logedin(this);
 			} else {
 				fn.error.protocol();
 			}

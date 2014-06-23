@@ -337,7 +337,7 @@ Key.prototype.hasUserAccess = function hasUserAccessF(userid, cb) {
 Key.prototype.hasAccess = function hasAccessF(view, cb) {
 	var theKey = this;
 	step(function hasAccess1() {
-		client.sismember(theKey._domain + ":access", view.getUserID(), this);
+		client.sismember(theKey._domain + ":access", view.session.getUserID(), this);
 	}, h.sF(function hasAccess2(access) {
 		if (access === 1) {
 			this.last.ne(true);
@@ -345,7 +345,7 @@ Key.prototype.hasAccess = function hasAccessF(view, cb) {
 			theKey.getOwner(this);
 		}
 	}), h.sF(function hasAccess3(owner) {
-		if (parseInt(owner, 10) === parseInt(view.getUserID(), 10)) {
+		if (parseInt(owner, 10) === parseInt(view.session.getUserID(), 10)) {
 			this.last.ne(true);
 		} else {
 			this.ne(false);

@@ -29,14 +29,6 @@ function SocketData(socket, session) {
 		}
 	};
 
-	this.isMyID = function (id) {
-		return session.getUserID() === h.parseDecimal(id);
-	};
-
-	this.getUserID = function getUserIDF() {
-		return session.getUserID();
-	};
-
 	this.addToDestroy = function addToDestroyF(func) {
 		toDestroy.push(func);
 	};
@@ -62,12 +54,12 @@ function SocketData(socket, session) {
 
 	this.notifyOwnClients = function (channel, message) {
 		message = JSON.stringify(message);
-		client.publish("user:" + theView.getUserID() + ":" + channel, message);
+		client.publish("user:" + theView.session.getUserID() + ":" + channel, message);
 	};
 
 	this.psub = function subF(channel, cb) {
 		var end = client.psub(channel, function (channel, message) {
-			var base = "user:" + theView.getUserID();
+			var base = "user:" + theView.session.getUserID();
 
 			if (channel.substring(0, base.length + 1) === base + ":") {
 				cb(channel, message);
@@ -82,7 +74,7 @@ function SocketData(socket, session) {
 			theView.logedinError(this);
 		}, h.sF(function () {
 			var User = require("./user.js");
-			User.getUser(theView.getUserID(), this);
+			User.getUser(theView.session.getUserID(), this);
 		}), cb);
 	};
 
@@ -113,18 +105,6 @@ function SocketData(socket, session) {
 
 			this.ne();
 		}), cb);
-	};
-
-	this.logout = function (cb) {
-		step(function () {
-			session.logout(this);
-		}, cb);
-	};
-
-	this.logedin = function (cb) {
-		step(function () {
-			session.logedin(this);
-		}, cb);
 	};
 
 	this.logedinError = function logedinErrorF(cb) {

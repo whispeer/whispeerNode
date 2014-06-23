@@ -41,7 +41,7 @@ function addFriendName(view, user) {
 		step(function () {
 			user.getName(view, this);
 		}, h.sF(function (name) {
-			var searchF = new search.friendsSearch(view.getUserID());
+			var searchF = new search.friendsSearch(view.session.getUserID());
 			searchF.addUser(user.getID(), name);
 		}), function (e) {
 			if (e) {
@@ -92,7 +92,7 @@ function createAcceptSpecificData(view, friendShip, multi, cb) {
 	step(function () {
 		getUserLevel2Key(view, friendShip.user, this);
 	}, h.sF(function (otherFriendsLevel2Key) {
-		var ownID = view.getUserID(), 
+		var ownID = view.session.getUserID(), 
 			uid = friendShip.user.getID(),
 			decryptors = friendShip.decryptors;
 
@@ -139,10 +139,10 @@ var friends = {
 		});
 	},
 	notifyAllFriends: function (view, channel, content) {
-		friends.notifyUsersFriends(view.getUserID(), channel, content);
+		friends.notifyUsersFriends(view.session.getUserID(), channel, content);
 	},
 	areFriends: function (view, uid, cb) {
-		var ownID = view.getUserID();
+		var ownID = view.session.getUserID();
 		step(function () {
 			this.parallel.unflatten();
 
@@ -157,11 +157,11 @@ var friends = {
 		}), cb);
 	},
 	getOnline: function (view, cb) {
-		getUserOnlineFriends(view.getUserID(), cb);
+		getUserOnlineFriends(view.session.getUserID(), cb);
 	},
 	isOnline: function (view, uid, cb) {
 		step(function () {
-			var ownID = view.getUserID();
+			var ownID = view.session.getUserID();
 
 			this.parallel.unflatten();
 			client.sismember("friends:" + ownID, uid, this.parallel());
@@ -180,14 +180,14 @@ var friends = {
 		}), cb);
 	},
 	hasOtherRequested: function (view, uid, cb) {
-		var ownID = view.getUserID();
+		var ownID = view.session.getUserID();
 		step(function () {
 			client.sismember("friends:" + ownID + ":requests", uid, this);
 		}, cb);
 	},
 	hasFriendsKeyAccess: function (view, uid, cb) {
 		step(function () {
-			if (parseInt(view.getUserID(), 10) === parseInt(uid, 10)) {
+			if (parseInt(view.session.getUserID(), 10) === parseInt(uid, 10)) {
 				this.last.ne(true);
 				return;
 			}
@@ -219,7 +219,7 @@ var friends = {
 		step(function getUser() {
 			User.getUser(uid, this);
 		}, h.sF(function checkAlreadyRequested(toAdd) {
-			var ownID = view.getUserID();
+			var ownID = view.session.getUserID();
 			var uid = toAdd.getID();
 
 			friendShip.user = toAdd;
@@ -238,7 +238,7 @@ var friends = {
 			friendShip.keys = keys;
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 
-			client.sismember("friends:" + view.getUserID() + ":requests", friendShip.user.getID(), this);
+			client.sismember("friends:" + view.session.getUserID() + ":requests", friendShip.user.getID(), this);
 		}), h.sF(function createData(hasOtherRequested) {
 			firstRequest = !hasOtherRequested;
 
@@ -246,19 +246,19 @@ var friends = {
 
 			m = client.multi();
 
-			m.set("friends:" + view.getUserID() + ":signed:" + friendShip.user.getID(), signedRequest);
+			m.set("friends:" + view.session.getUserID() + ":signed:" + friendShip.user.getID(), signedRequest);
 
 			if (hasOtherRequested) {
 				createAcceptSpecificData(view, friendShip, m, this);
 			} else {
-				m.sadd("friends:" + view.getUserID() + ":requested", friendShip.user.getID());
-				m.sadd("friends:" + friendShip.user.getID() + ":requests", view.getUserID());
+				m.sadd("friends:" + view.session.getUserID() + ":requested", friendShip.user.getID());
+				m.sadd("friends:" + friendShip.user.getID() + ":requests", view.session.getUserID());
 				this.ne();
 			}
 		}), h.sF(function createSymKey() {
 			SymKey.createWDecryptors(view, key, this);
 		}), h.sF(function keyCreated(key) {
-			m.set("friends:key:" + friendShip.user.getID() + ":" + view.getUserID(), key.getRealID());
+			m.set("friends:key:" + friendShip.user.getID() + ":" + view.session.getUserID(), key.getRealID());
 
 			this.parallel.unflatten();
 
@@ -292,9 +292,9 @@ var friends = {
 		}), h.sF(function addFriendsName() {
 			addFriendName(view, friendShip.user);
 			if (firstRequest) {
-				client.publish("user:" + friendShip.user.getID() + ":friendRequest", view.getUserID());
+				client.publish("user:" + friendShip.user.getID() + ":friendRequest", view.session.getUserID());
 			} else {
-				client.publish("user:" + friendShip.user.getID() + ":friendAccept", view.getUserID());
+				client.publish("user:" + friendShip.user.getID() + ":friendAccept", view.session.getUserID());
 			}
 
 			this.ne(true);
@@ -304,18 +304,18 @@ var friends = {
 		step(function getUIDUser() {
 			User.getUser(uid, this);
 		}, h.sF(function (theUser) {
-			mutual(view.getUserID(), theUser.getID(), this);
+			mutual(view.session.getUserID(), theUser.getID(), this);
 		}), cb);
 	},
 	getFriendsOfFriends: function (view, cb) {
 		step(function () {
-			getFriends(view, view.getUserID(), this);
+			getFriends(view, view.session.getUserID(), this);
 		}, h.sF(function (ids) {
 			var keys = ids.map(function (id) {
 				return "friends:" + id;
 			});
 
-			keys.push("friends:" + view.getUserID());
+			keys.push("friends:" + view.session.getUserID());
 
 			client.sunion(keys, this);
 		}), h.sF(function (ids) {
@@ -334,18 +334,18 @@ var friends = {
 		}), cb);
 	},
 	get: function (view, cb) {
-		getFriends(view, view.getUserID(), cb);
+		getFriends(view, view.session.getUserID(), cb);
 	},
 	getRequests: function (view, cb) {
 		step(function () {
-			client.smembers("friends:" + view.getUserID() + ":requests", this);
+			client.smembers("friends:" + view.session.getUserID() + ":requests", this);
 		}, h.sF(function (ids) {
 			this.ne(ids);
 		}), cb);
 	},
 	getRequested: function (view, cb) {
 		step(function () {
-			client.smembers("friends:" + view.getUserID() + ":requested", this);
+			client.smembers("friends:" + view.session.getUserID() + ":requested", this);
 		}, h.sF(function (ids) {
 			this.ne(ids);
 		}), cb);

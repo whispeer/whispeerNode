@@ -117,7 +117,7 @@ Decryptor.getAllWithAccess = function getAllWAF(view, keyRealID, cb) {
 			throw new InvalidRealID();
 		}
 
-		client.smembers("key:" + keyRealID + ":accessVia:" + view.getUserID(), this);
+		client.smembers("key:" + keyRealID + ":accessVia:" + view.session.getUserID(), this);
 	}), h.sF(function (decryptorSet) {
 		var results = [];
 		var i;
@@ -282,7 +282,7 @@ Decryptor.create = function (view, key, data, cb) {
 		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", decryptorInternalID, this.parallel());
 
 		//user stuff
-		userid = view.getUserID();
+		userid = view.session.getUserID();
 
 		client.set(domain + ":creator", userid, this.parallel());
 	}), h.sF(function createD4() {

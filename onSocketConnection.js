@@ -79,7 +79,7 @@ handle = function (handler, data, fn, view) {
 function always(view, data, fn) {
 	step(function () {
 		this.parallel.unflatten();
-		view.logedin(this.parallel());
+		view.session.logedin(this.parallel());
 		view.recentActivity();
 	}, function (e, logedin) {
 		if (e) {

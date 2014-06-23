@@ -71,7 +71,7 @@ var Profile = function (userid, profileid) {
 
 	this.hasAccess = function hasAccessF(view, cb) {
 		step(function () {
-			if (view.getUserID() === userid) {
+			if (view.session.getUserID() === userid) {
 				this.last.ne(true);
 			} else {
 				theProfile.getKey(view, this);
@@ -112,10 +112,10 @@ function getAllProfiles(view, userid, cb) {
 
 Profile.get = function get(view, profileid, cb) {
 	step(function () {
-		client.sismember("user:" + view.getUserID() + ":profiles", profileid, this);
+		client.sismember("user:" + view.session.getUserID() + ":profiles", profileid, this);
 	}, h.sF(function (exists) {
 		if (exists) {
-			this.ne(new Profile(view.getUserID(), profileid));
+			this.ne(new Profile(view.session.getUserID(), profileid));
 		} else {
 			this.ne(false);
 		}
@@ -124,7 +124,7 @@ Profile.get = function get(view, profileid, cb) {
 
 Profile.getOwn = function getOwnF(view, cb) {
 	step(function () {
-		getAllProfiles(view, view.getUserID(), this);
+		getAllProfiles(view, view.session.getUserID(), this);
 	}, cb);
 };
 
@@ -134,7 +134,7 @@ Profile.getAccessed = function getAccessedF(view, userid, cb) {
 		getAllProfiles(view, userid, this);
 	}, h.sF(function (p) {
 		profiles = p;
-		if (view.getUserID() === userid) {
+		if (view.session.getUserID() === userid) {
 			this.last.ne(p);
 		} else {
 			var i;
@@ -182,7 +182,7 @@ Profile.create = function createF(view, data, cb) {
 		var meta = data.profile.meta;
 		KeyApi.get(meta._key, this);
 	}), h.sF(function createP3(key) {
-		userID = view.getUserID();
+		userID = view.session.getUserID();
 		if (key && key.isSymKey()) {
 			data.profile.key = key.getRealID();
 			client.incr("user:" + userID + ":profileCount", this);

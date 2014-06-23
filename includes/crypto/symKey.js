@@ -98,7 +98,7 @@ SymKey.create = function (view, data, cb) {
 			throw new RealIDInUse();
 		}
 
-		client.set("key:" + keyRealID + ":owner", view.getUserID(), this.parallel());
+		client.set("key:" + keyRealID + ":owner", view.session.getUserID(), this.parallel());
 		client.set("key:" + keyRealID + ":type", data.type, this.parallel());
 		client.set("key:" + keyRealID + ":comment", data.comment || "", this.parallel());
 	}), h.sF(function () {

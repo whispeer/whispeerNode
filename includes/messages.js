@@ -238,7 +238,7 @@ Message.create = function (view, data, cb) {
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 		client.incr("message:messages", this);
 	}), h.sF(function (messageid) {
-		data.meta.sender = view.getUserID();
+		data.meta.sender = view.session.getUserID();
 		data.meta.sendTime = new Date().getTime();
 		data.meta.messageid = messageid;
 		theMessageID = messageid;

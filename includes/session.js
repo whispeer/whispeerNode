@@ -9,6 +9,8 @@ var EccKey = require("./crypto/eccKey.js");
 
 var settingsService = require("./settings");
 
+var OnlineStatusUpdater = require("./onlineStatus");
+
 //delete session if it was not used for 30 days.
 var SESSIONTIME = 30 * 24 * 60 * 60;
 
@@ -59,6 +61,16 @@ var Session = function Session() {
 
 	/** session id, userid, are we loged in, time we logged in, stay forever? */
 	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser, session = this;
+
+	var statusUpdater = new OnlineStatusUpdater(this, session);
+
+	this.isMyID = function (id) {
+		return this.getUserID() === h.parseDecimal(id);
+	};
+
+	this.recentActivity = function (cb) {
+		statusUpdater.recentActivity(cb);
+	};
 
 	/** get a session id
 	* @param callback called with result (sid)

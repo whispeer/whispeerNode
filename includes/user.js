@@ -636,7 +636,7 @@ var User = function (id) {
 	this.getID = getIDF;
 
 	this.isOwnUser = function isOwnUserF(view) {
-		return parseInt(view.getUserID(), 10) === parseInt(id, 10);
+		return parseInt(view.session.getUserID(), 10) === parseInt(id, 10);
 	};
 
 	this.isOnline = function isOnlineF(cb) {
@@ -824,7 +824,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			view.logedinError(this);
 		}, h.sF(function () {
-			client.get("friends:key:" + id + ":" + view.getUserID(), this);
+			client.get("friends:key:" + id + ":" + view.session.getUserID(), this);
 		}), cb);
 	}
 
@@ -832,7 +832,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			view.logedinError(this);
 		}, h.sF(function () {
-			client.get("friends:key:" + view.getUserID() + ":" + id, this);
+			client.get("friends:key:" + view.session.getUserID() + ":" + id, this);
 		}), cb);
 	}
 
