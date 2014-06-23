@@ -24,7 +24,7 @@ var Circle = function (userid, id) {
 	this.getData = function getDataF(view, cb, key) {
 		var result = {};
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
 			client.smembers(domain + ":user", this.parallel());
@@ -49,7 +49,7 @@ var Circle = function (userid, id) {
 
 	this.getKey = function getKeyF(view, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.hget(domain, "key", this);
 		}), h.sF(function (keyid) {
@@ -63,7 +63,7 @@ var Circle = function (userid, id) {
 
 	this.remove = function removeF(view, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.srem("user:" + view.session.getUserID() + ":circles", id, this);
 		}), h.sF(function (res) {
@@ -76,7 +76,7 @@ var Circle = function (userid, id) {
 		//userid
 		//and a new decryptor
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			var i;
 			for (i = 0; i < toAddIDs.length; i += 1) {
@@ -100,7 +100,7 @@ var Circle = function (userid, id) {
 
 	this.hasUser = function hasUserF(view, userid, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.sismember(domain + ":user", this);
 		}), cb);
@@ -108,7 +108,7 @@ var Circle = function (userid, id) {
 
 	this.getUser = function getUserF(view, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.smembers(domain + ":user", this);
 		}), cb);
@@ -116,7 +116,7 @@ var Circle = function (userid, id) {
 
 	this.remove = function removeCircleF(view, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.multi()
 				.srem("user:" + userid + ":circles", id)
@@ -130,7 +130,7 @@ var Circle = function (userid, id) {
 	this.removeUsers = function removeUserF(view, key, oldKeyDecryptor, toKeep, toRemove, cb) {
 		var userids, realID;
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			//addBasicData(key, toKeep, this);
 			//addDecryptor(key, oldKeyDecryptor);

@@ -46,7 +46,7 @@ var Profile = function (userid, profileid) {
 
 	this.setData = function setDataF(view, data, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			if (Profile.validate(data)) {
 				data = h.stringifyCertainAttributes(data, jsonFields);
@@ -87,7 +87,7 @@ var Profile = function (userid, profileid) {
 
 	this.remove = function removeF(view, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			view.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.srem("user:" + userid + ":profiles", profileid, this);
 		}), cb);

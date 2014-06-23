@@ -32,7 +32,7 @@ function logedinF(data, cb) {
 function ownUserF(data, cb) {
 	step(function () {
 		if (data.user.isSaved()) {
-			data.view.ownUserError(data.user, this);
+			data.view.session.ownUserError(data.user, this);
 		} else {
 			this.ne();
 		}
@@ -726,7 +726,7 @@ var User = function (id) {
 
 	function createPrivateProfileF(view, data, cb) {
 		step(function doCreatePP1() {
-			view.ownUserError(id, this);
+			view.session.ownUserError(id, this);
 		}, h.sF(function doCreatePP2() {
 			var Profile = require("./profile");
 			Profile.create(view, data, this);
@@ -736,7 +736,7 @@ var User = function (id) {
 
 	function deletePrivateProfileF(view, profileID, cb) {
 		step(function removePP1() {
-			view.ownUserError(id, this);
+			view.session.ownUserError(id, this);
 		}, h.sF(function removePP2() {
 			require("./profile").get(view, profileID, this);
 		}), h.sF(function removePP3(profile) {
@@ -980,7 +980,7 @@ var User = function (id) {
 	this.searchFriends = function (view, text, cb) {
 		step(function () {
 			//TO-DO make other users friends also searchable. but this should be configurable by the user.
-			view.ownUserError(theUser, this);
+			view.session.ownUserError(theUser, this);
 		}, h.sF(function () {
 			var fSearch = new search.friendsSearch(id);
 			fSearch.findFriend(text, this);
