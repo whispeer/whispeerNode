@@ -6,7 +6,8 @@ var HandlerCallback = require("./includes/handlerCallback");
 var listener = require("./includes/listener");
 var topics = require("./topics.js");
 
-var View = require("./includes/socketData");
+var SocketData = require("./includes/socketData");
+var RequestData = require("./includes/requestData");
 var Session = require("./includes/session");
 
 var KeyApi = require("./includes/crypto/KeyApi");
@@ -26,12 +27,12 @@ function registerSocketListener(socketData) {
 
 var reservedNames = ["sid"], handle;
 
-function createKeys(view, keys, cb) {
+function createKeys(request, keys, cb) {
 	step(function () {
-		view.session.logedinError(this);
+		request.session.logedinError(this);
 	}, h.sF(function () {
 		keys.forEach(function (keyData) {
-			KeyApi.createWithDecryptors(view, keyData, this.parallel());
+			KeyApi.createWithDecryptors(request, keyData, this.parallel());
 		}, this);
 	}), cb);
 }
@@ -76,11 +77,11 @@ handle = function (handler, data, fn, view) {
 /** adds data which is always present.
 * mainly adds login data
 */
-function always(view, data, fn) {
+function always(request, data, fn) {
 	step(function () {
 		this.parallel.unflatten();
-		view.session.logedin(this.parallel());
-		view.recentActivity();
+		request.session.logedin(this.parallel());
+		request.socketData.recentActivity();
 	}, function (e, logedin) {
 		if (e) {
 			console.error(e);
@@ -94,8 +95,8 @@ function always(view, data, fn) {
 		data.logedin = logedin;
 
 		if (logedin) {
-			data.sid = view.session.getSID();
-			data.userid = view.session.getUserID();
+			data.sid = request.session.getSID();
+			data.userid = request.session.getUserID();
 			data.serverTime = new Date().getTime();
 		}
 
@@ -107,13 +108,13 @@ module.exports = function (socket) {
 	console.log("connection received");
 	var session = new Session();
 
-	var socketData = new View(socket, session);
+	var socketData = new SocketData(socket, session);
 	registerSocketListener(socketData);
 
 	session.changeListener(function sessionChange(logedin) {
 		step(function () {
 			socketData.emit("disconnect");
-			socketData = new View(socket, session);
+			socketData = new SocketData(socket, session);
 
 			if (logedin) {
 				registerSocketListener(socketData);
@@ -128,6 +129,7 @@ module.exports = function (socket) {
 	function handleF(handler, channel) {
 		return function handleF(data, fn) {
 			var time = new Date().getTime();
+			var request = new RequestData(socketData);
 			step(function () {
 				console.log("Received data on channel " + channel);
 
@@ -137,7 +139,7 @@ module.exports = function (socket) {
 					this.ne();
 				}
 			}, h.sF(function () {
-				handle(handler, data, this, socketData);
+				handle(handler, data, this, request);
 			}), function (e, result) {
 				if (e) {
 					result = {
@@ -145,7 +147,7 @@ module.exports = function (socket) {
 					};
 				}
 
-				always(socketData, result, fn);
+				always(request, result, fn);
 				console.log("Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
 			});
 		};
