@@ -8,9 +8,6 @@ var validator = require("whispeerValidations");
 var client = require("./redisClient");
 var KeyApi = require("./crypto/KeyApi");
 
-var chelper = require("./crypto/cHelper");
-var SymKey = require("./crypto/symKey");
-
 var User = require("./user");
 
 /*
