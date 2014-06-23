@@ -67,7 +67,7 @@ var blobStorage = {
 		var blobid;
 
 		step(function () {
-			view.logedinError(this);
+			view.session.logedinError(this);
 		}, h.sF(function () {
 			createBlobID(this);
 		}), h.sF(function (bid) {
@@ -100,7 +100,7 @@ var blobStorage = {
 	},
 	fullyReserveBlobID: function (view, blobid, cb) {
 		step(function () {
-			view.logedinError(this);
+			view.session.logedinError(this);
 		}, h.sF(function () {
 			client.sismember("blobs:prereserved", blobid, this);
 		}), h.sF(function (isPreReserved) {
@@ -126,7 +126,7 @@ var blobStorage = {
 	},
 	getBlob: function (view, blobid, cb) {
 		step(function () {
-			view.logedinError(this);
+			view.session.logedinError(this);
 		}, h.sF(function () {
 			checkBlobExists(blobid, this);
 		}), h.sF(function () {

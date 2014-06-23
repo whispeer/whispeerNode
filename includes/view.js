@@ -71,7 +71,7 @@ function SocketData(socket, session) {
 
 	this.getOwnUser = function getOwnUserF(cb) {
 		step(function () {
-			theView.logedinError(this);
+			theview.session.logedinError(this);
 		}, h.sF(function () {
 			var User = require("./user.js");
 			User.getUser(theView.session.getUserID(), this);
@@ -84,7 +84,7 @@ function SocketData(socket, session) {
 				this.last.ne();
 			}
 
-			theView.logedinError(this);
+			theview.session.logedinError(this);
 		}, h.sF(function () {
 			if (typeof user === "object") {
 				if (parseInt(session.getUserID(), 10) !== parseInt(user.getID(), 10)) {
@@ -104,18 +104,6 @@ function SocketData(socket, session) {
 			}
 
 			this.ne();
-		}), cb);
-	};
-
-	this.logedinError = function logedinErrorF(cb) {
-		step(function () {
-			session.logedin(this);
-		}, h.sF(function (logedin) {
-			if (!logedin) {
-				throw new NotLogedin();
-			} else {
-				this.ne();
-			}
 		}), cb);
 	};
 

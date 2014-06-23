@@ -111,7 +111,7 @@ var Decryptor = function (keyRealID, count) {
 
 Decryptor.getAllWithAccess = function getAllWAF(view, keyRealID, cb) {
 	step(function () {
-		view.logedinError(this);
+		view.session.logedinError(this);
 	}, h.sF(function () {
 		if (!h.isRealID(keyRealID)) {
 			throw new InvalidRealID();
@@ -241,7 +241,7 @@ Decryptor.create = function (view, key, data, cb) {
 
 	step(function createD1() {
 		//only allow key creation when logged in
-		view.logedinError(this);
+		view.session.logedinError(this);
 	}, h.sF(function createD12() {
 		//validate our decryptor
 		Decryptor.validate(view, data, key, this);

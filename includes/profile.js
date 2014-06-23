@@ -61,7 +61,7 @@ var Profile = function (userid, profileid) {
 
 	this.getKey = function getKeyF(view, cb) {
 		step(function () {
-			view.logedinError(this);
+			view.session.logedinError(this);
 		}, h.sF(function () {
 			client.hget(domain, "key", this);
 		}), h.sF(function (keyRealID) {
@@ -96,7 +96,7 @@ var Profile = function (userid, profileid) {
 
 function getAllProfiles(view, userid, cb) {
 	step(function getAP1() {
-		view.logedinError(this);
+		view.session.logedinError(this);
 	}, h.sF(function getAP2() {
 		client.smembers("user:" + userid + ":profiles", this);
 	}), h.sF(function getAP3(profiles) {
@@ -172,7 +172,7 @@ Profile.validate = function validateF(data) {
 Profile.create = function createF(view, data, cb) {
 	var profile, userID, profileID;
 	step(function createP1() {
-		view.logedinError(this);
+		view.session.logedinError(this);
 	}, h.sF(function createP2() {
 		if (!Profile.validate(data)) {
 			this.last.ne(false);

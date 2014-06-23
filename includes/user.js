@@ -22,7 +22,7 @@ var UPDATESEARCHON = ["profile", "nickname"];
 function logedinF(data, cb) {
 	step(function () {
 		if (data.user.isSaved()) {
-			data.view.logedinError(this);
+			data.view.session.logedinError(this);
 		} else {
 			this.ne();
 		}
@@ -822,7 +822,7 @@ var User = function (id) {
 
 	function getFriendShipKeyF(view, cb) {
 		step(function getFSKF() {
-			view.logedinError(this);
+			view.session.logedinError(this);
 		}, h.sF(function () {
 			client.get("friends:key:" + id + ":" + view.session.getUserID(), this);
 		}), cb);
@@ -830,7 +830,7 @@ var User = function (id) {
 
 	function getReverseFriendShipKeyF(view, cb) {
 		step(function getFSKF() {
-			view.logedinError(this);
+			view.session.logedinError(this);
 		}, h.sF(function () {
 			client.get("friends:key:" + view.session.getUserID() + ":" + id, this);
 		}), cb);
@@ -1001,7 +1001,7 @@ var User = function (id) {
 	this.getUData = function (view, cb) {
 		var result;
 		step(function () {
-			view.logedinError(this);
+			view.session.logedinError(this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
 

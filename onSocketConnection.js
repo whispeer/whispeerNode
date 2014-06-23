@@ -28,7 +28,7 @@ var reservedNames = ["sid"], handle;
 
 function createKeys(view, keys, cb) {
 	step(function () {
-		view.logedinError(this);
+		view.session.logedinError(this);
 	}, h.sF(function () {
 		keys.forEach(function (keyData) {
 			KeyApi.createWithDecryptors(view, keyData, this.parallel());
