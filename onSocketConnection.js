@@ -112,7 +112,7 @@ module.exports = function (socket) {
 
 	session.changeListener(function sessionChange(logedin) {
 		step(function () {
-			socketData.emit("destroy");
+			socketData.emit("disconnect");
 			socketData = new View(socket, session);
 
 			if (logedin) {
@@ -169,7 +169,7 @@ module.exports = function (socket) {
 	});
 
 	socket.on("disconnect", function () {
-		myView.destroy();
+		socketData.emit("disconnect");
 		//unregister listener
 		console.log("client disconnected");
 	});

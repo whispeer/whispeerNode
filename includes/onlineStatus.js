@@ -104,7 +104,7 @@ function onlineStatusUpdater(view, session) {
 		}
 	});
 
-	view.addToDestroy(removeSocket);
+	view.once("disconnect", removeSocket);
 
 	this.recentActivity = function () {
 		if (view.session.getUserID()) {

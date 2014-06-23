@@ -1,7 +1,6 @@
+
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
 var client = require("./redisClient");
 
 var onlineStatusUpdater = require("./onlineStatus");
@@ -12,9 +11,7 @@ function SocketData(socket, session) {
 	this.session = session;
 	this.socket = socket;
 
-	var theView = this, toDestroy = [];
-
-	var streamSocket;
+	var theSocketData = this, streamSocket;
 
 	this.upgradeStream = function (api) {
 		if (!streamSocket) {
@@ -29,44 +26,29 @@ function SocketData(socket, session) {
 		}
 	};
 
-	this.addToDestroy = function addToDestroyF(func) {
-		toDestroy.push(func);
-	};
-
-	this.destroy = function doDestroy() {
-		var i;
-		for (i = 0; i < toDestroy.length; i += 1) {
-			try {
-				toDestroy[i]();
-			} catch (e) {
-				console.error(e);
-			}
-		}
-	};
-
 	this.sub = function subF(channel, cb) {
 		var end = client.sub(channel, function (message) {
 			cb(message);
 		});
 
-		theView.addToDestroy(end);
+		theSocketData.once("disconnect", end);
 	};
 
 	this.notifyOwnClients = function (channel, message) {
 		message = JSON.stringify(message);
-		client.publish("user:" + theView.session.getUserID() + ":" + channel, message);
+		client.publish("user:" + theSocketData.session.getUserID() + ":" + channel, message);
 	};
 
 	this.psub = function subF(channel, cb) {
 		var end = client.psub(channel, function (channel, message) {
-			var base = "user:" + theView.session.getUserID();
+			var base = "user:" + theSocketData.session.getUserID() + ":";
 
-			if (channel.substring(0, base.length + 1) === base + ":") {
+			if (channel.substring(0, base.length) === base) {
 				cb(channel, message);
 			}
 		});
 
-		theView.addToDestroy(end);
+		theSocketData.once("disconnect", end);
 	};
 
 	var statusUpdater = new onlineStatusUpdater(this, session);
@@ -76,15 +58,21 @@ function SocketData(socket, session) {
 	};
 }
 
+var util = require("util");
+var EventEmitter = require("events").EventEmitter;
+util.inherits(SocketData, EventEmitter);
+
 SocketData.logedinViewStub = {
-	ownUserError: function (user, cb) {
-		cb();
-	},
-	logedin: function (cb) {
-		cb(null, true);
-	},
-	logedinError: function (cb) {
-		cb();
+	session: {
+		ownUserError: function (user, cb) {
+			cb();
+		},
+		logedin: function (cb) {
+			cb(null, true);
+		},
+		logedinError: function (cb) {
+			cb();
+		}
 	}
 };
 
