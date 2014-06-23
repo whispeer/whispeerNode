@@ -95,6 +95,8 @@ function always(request, data, fn) {
 			data.status = 1;
 		}
 
+		data.keys = request.getAllKeys();
+
 		data.logedin = logedin;
 
 		if (logedin) {

@@ -48,41 +48,15 @@ var whispeerAPI = {
 	},
 	key: {
 		getMultiple: function (data, fn, request) {
-			var keys, result = [];
 			step(function () {
 				if (data.realids.length === 0) {
-					this.last.ne({
-						keys: []
-					});
+					this.last.ne();
 				}
 
 				data.realids.forEach(function (e) {
-					KeyApi.get(e, this.parallel());
+					request.addKey(e, this.parallel());
 				}, this);
-			}, h.sF(function (theKeys) {
-				keys = theKeys;
-
-				var loaded = data.loaded || [];
-
-				function addNotLoaded(e) {
-					if (!h.array.contains(loaded, e.getRealID())) {
-						result.push(e);
-						loaded.push(e.getRealID());
-					}
-				}
-
-				keys.forEach(addNotLoaded);
-
-				result.forEach(function (e) {
-					e.getKData(request, this.parallel(), true);
-				}, this);
-
-				this.parallel()();
-			}), h.sF(function (keys) {
-				keys = keys || [];
-
-				this.ne({keys: keys});
-			}), fn);
+			}, fn);
 		},
 		get: function getKeyChainF(data, fn, request) {
 			var theKey, result = [];

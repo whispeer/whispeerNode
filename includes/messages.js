@@ -73,7 +73,7 @@ var Message = function (id, topic) {
 		step(function () {
 			hasAccessError(request, this);
 		}, h.sF(function () {
-			client.hget(domain + ":meta", "ownHash", this);
+			client.hget(domain + ":meta", "_ownHash", this);
 		}), h.sF(function (hash) {
 			this.ne(hash);
 		}), cb);

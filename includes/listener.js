@@ -4,15 +4,19 @@ var step = require("step");
 var h = require("whispeerHelper");
 var User = require("./user");
 
+var RequestData = require("./requestData");
+
 var listener = {
 	"friends:online": function fo(socketData, data) {
 		data = JSON.parse(data);
 		socketData.socket.emit("friendOnlineChange", {
+			keys: [],
 			uid: data.sender,
 			status: data.content
 		});
 	},
 	friendRequest: function fr(socketData, uid) {
+		var request = new RequestData(socketData, {});
 		step(function () {
 			//we definitly need to add this users friendKey here!
 			//maybe also get this users profile.
@@ -22,6 +26,7 @@ var listener = {
 		}), function (e, data) {
 			if (!e) {
 				socketData.socket.emit("friendRequest", {
+					keys: request.getAllKeys(),
 					uid: uid,
 					user: data
 				});
@@ -31,6 +36,8 @@ var listener = {
 		});
 	},
 	friendAccept: function fa(socketData, uid) {
+		var request = new RequestData(socketData, {});
+
 		step(function () {
 			User.getUser(uid, this);
 		}, h.sF(function (theUser) {
@@ -38,6 +45,7 @@ var listener = {
 		}), function (e, data) {
 			if (!e) {
 				socketData.socket.emit("friendAccept", {
+					keys: request.getAllKeys(),
 					uid: uid,
 					user: data
 				});
@@ -49,6 +57,9 @@ var listener = {
 	message: function messageLF(socketData, messageid) {
 		var Message = require("./messages.js");
 		var m, mData, theTopic;
+
+		var request = new RequestData(socketData, {});
+
 		step(function messageLF1() {
 			m = new Message(messageid);
 
@@ -76,6 +87,7 @@ var listener = {
 			});
 		}), function (e, data) {
 			if (!e) {
+				data.keys = request.getAllKeys();
 				socketData.socket.emit("message", data);
 			} else {
 				console.error(e);
