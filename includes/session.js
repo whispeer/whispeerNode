@@ -490,14 +490,12 @@ var Session = function Session() {
 		step(function checks() {
 			checkLoginError(this);
 		}, h.sF(function () {
-			if (userid > 0) {
-				if (!sessionUser || sessionUser.getID() !== userid) {
-					var User = require("./user.js");
-					sessionUser = new User(userid);
-				}
-
-				this.ne(sessionUser);
+			if (!sessionUser || sessionUser.getID() !== userid) {
+				var User = require("./user.js");
+				sessionUser = new User(userid);
 			}
+
+			this.ne(sessionUser);
 		}), cb);
 	};
 };

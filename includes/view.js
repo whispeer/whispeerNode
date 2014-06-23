@@ -69,15 +69,6 @@ function SocketData(socket, session) {
 		theView.addToDestroy(end);
 	};
 
-	this.getOwnUser = function getOwnUserF(cb) {
-		step(function () {
-			theview.session.logedinError(this);
-		}, h.sF(function () {
-			var User = require("./user.js");
-			User.getUser(theView.session.getUserID(), this);
-		}), cb);
-	};
-
 	var statusUpdater = new onlineStatusUpdater(this, session);
 
 	this.recentActivity = function (cb) {

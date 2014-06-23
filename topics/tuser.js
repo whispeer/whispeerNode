@@ -81,7 +81,7 @@ function setPrivateProfiles(view, privateProfiles, cb) {
 function setPublicProfile(view, publicProfile, cb) {
 	step(function () {
 		if (publicProfile) {
-			view.getOwnUser(this);
+			view.session.getOwnUser(this);
 		} else {
 			this.last.ne(true);
 		}
@@ -109,7 +109,7 @@ var u = {
 	},
 	searchFriends: function searchFriends(data, fn, view) {
 		step(function () {
-			view.getOwnUser(this);
+			view.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
 			ownUser.searchFriends(view, data.text, this);
 		}), h.sF(function (ids) {
@@ -156,7 +156,7 @@ var u = {
 	},
 	createPrivateProfiles: function createProfileF(data, fn, view) {
 		step(function () {
-			view.getOwnUser(this);
+			view.session.getOwnUser(this);
 		}, h.sF(function (myUser) {
 			var i;
 			if (typeof data.privateProfiles === "object" && data.privateProfiles instanceof Array) {
@@ -178,7 +178,7 @@ var u = {
 	},
 	deletePrivateProfiles: function deletePrivateProfilesF(data, fn, view) {
 		step(function () {
-			view.getOwnUser(this);
+			view.session.getOwnUser(this);
 		}, h.sF(function (myUser) {
 			if (typeof data.profilesToDelete === "object" && data.profilesToDelete instanceof Array) {
 				var i;
@@ -234,7 +234,7 @@ var u = {
 	},
 	setMigrationState: function (data, fn, view) {
 		step(function () {
-			view.getOwnUser(this);
+			view.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
 			ownUser.setMigrationState(view, data.migrationState, this);
 		}), h.sF(function () {
@@ -246,7 +246,7 @@ var u = {
 	own: function getOwnDataF(data, fn, view) {
 		var userData;
 		step(function () {
-			view.getOwnUser(this);
+			view.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
 			ownUser.getUData(view, this);
 		}), h.sF(function (data) {

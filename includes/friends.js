@@ -202,7 +202,7 @@ var friends = {
 	},
 	getFriendsKeys: function (view, cb) {
 		step(function () {
-			view.getOwnUser(this);
+			view.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
 			ownUser.getFriendsKeys(view, this, {
 				noSuffix: true,
