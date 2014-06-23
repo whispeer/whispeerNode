@@ -1,10 +1,9 @@
+"use strict";
 //get all users
 
 //filter for those which have a mail
 
 //send accept mail to those users
-
-module.exports = sendAcceptMails;
 
 var step = require("step");
 var h = require("whispeerHelper");
@@ -37,3 +36,5 @@ function sendAcceptMails(cb) {
 		this.ne(true);
 	}), cb);
 }
+
+module.exports = sendAcceptMails;

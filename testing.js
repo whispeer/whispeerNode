@@ -1,1 +1,0 @@
-var User = require("./includes/user"); var my = new User(); var p = function () {console.log(arguments);};

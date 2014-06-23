@@ -57,9 +57,9 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
-	this.update = function updateF(view, data, cb) {
+	/*this.update = function updateF(view, data, cb) {
 		//TODO
-	};
+	};*/
 
 	this.remove = function removeF(view, cb) {
 		step(function () {

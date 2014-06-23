@@ -1,3 +1,5 @@
+"use strict";
+
 var step = require("step");
 var h = require("whispeerHelper");
 

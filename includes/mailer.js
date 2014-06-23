@@ -1,8 +1,8 @@
+"use strict";
+
 var nodemailer = require("nodemailer");
 var User = require("./user");
 
-var fs = require("fs");
-var path = require("path");
 var configManager = require("./configManager");
 var config = configManager.get();
 var client = require("./redisClient");
@@ -12,14 +12,6 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var code = require("./session").code;
-
-var mailOptions = {
-    from: "Fred Foo ✔ <foo@blurdybloop.com>", // sender address
-    to: "bar@blurdybloop.com, baz@blurdybloop.com", // list of receivers
-    subject: "Hello ✔", // Subject line
-    text: "Hello world ✔", // plaintext body
-    html: "<b>Hello world ✔</b>" // html body
-};
 
 var mail = nodemailer.createTransport(config.mailType, config.mail);
 
@@ -151,7 +143,7 @@ var mailer = {
 			mailer.sendMails(usersToNotify, "[Whispeer] Neue Interaktionen", "Jemand hat mit dir auf Whispeer interagiert!\nBesuche " + config.host + " um zu sehen wer mit dir interagiert hat.\n\nMit freundlichen Grüßen,\nDein Whispeer Team!", this);
 		}), (cb || h.nop));
 	},
-	sendMails: function (users, subject, text, cb, inReplyTo, messageID) {
+	sendMails: function (users, subject, text, cb) {
 		//todo: add inReplyTo and messageID!
 		var mails;
 

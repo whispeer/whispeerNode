@@ -1,10 +1,11 @@
+"use strict";
+
 var fs = require("fs");
 var path = require("path");
 
 var configManager = {
 
   guessEnv: function() {
-    var result;
     if (this.environmentName === undefined) {
       this.environmentName = process.env.WHISPEER_ENV || "development";
     }

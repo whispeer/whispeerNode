@@ -10,7 +10,6 @@
 "use strict";
 
 var fs = require("fs");
-var path = require("path");
 var configManager = require("./includes/configManager");
 var config = configManager.get();
 

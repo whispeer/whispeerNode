@@ -1,3 +1,4 @@
+"use strict";
 var client = require("./redisClient");
 
 var step = require("step");
@@ -31,7 +32,7 @@ setInterval(function () {
 }, 10*1000);
 
 
-function onlineStatusUpdater(view, session) {
+function OnlineStatusUpdater(view, session) {
 	var userid, timeout;
 
 	function removeSocket() {
@@ -111,4 +112,4 @@ function onlineStatusUpdater(view, session) {
 	};
 }
 
-module.exports = onlineStatusUpdater;
+module.exports = OnlineStatusUpdater;
