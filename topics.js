@@ -17,6 +17,18 @@ var mailer = require("./includes/mailer");
 
 var MAXDEPTH = 20;
 
+//change api style:
+//extract objects with methods:
+//get
+//getMultiple
+//create
+//delete
+//exists
+//more actions (e.g. verify)
+//seperate message, topic
+//seperate timeline, post
+//more crud
+
 var whispeerAPI = {
 	blob: blob,
 	verifyMail: function verifyMailF(data, fn) {

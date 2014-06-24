@@ -8,6 +8,8 @@ var topics = require("./topics.js");
 var View = require("./includes/view");
 var Session = require("./includes/session");
 
+var APIVERSION = "0.0.1";
+
 module.exports = function (socket) {
 	"use strict";
 	console.log("connection received");
@@ -61,6 +63,8 @@ module.exports = function (socket) {
 				console.error(e);
 				data.status = 0;
 			}
+
+			data.version = APIVERSION;
 
 			if (data.status !== 0) {
 				data.status = 1;
