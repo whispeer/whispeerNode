@@ -185,6 +185,10 @@ Profile.create = function createF(view, data, cb) {
 			return;
 		}
 
+		if (typeof data.metaData !== "object") {
+			throw new InvalidProfile();
+		}
+
 		if (typeof data.profile.key !== "object") {
 			KeyApi.get(data.profile.key, this);
 		} else if (!KeyApi.isKey(data.profile.key)) {
