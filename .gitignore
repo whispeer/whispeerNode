@@ -3,6 +3,7 @@
 *complexity.txt
 *log.txt
 codekit-config.json
+files/*.png
 mails/*.eml
 tmp/*
 node_modules/*
