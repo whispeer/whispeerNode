@@ -54,7 +54,7 @@ function SavedEntity(domain) {
 		if (hookF) {
 			hookF(data, cb);
 		} else {
-			cb();
+			cb(null, data);
 		}
 	};
 
