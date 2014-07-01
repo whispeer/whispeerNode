@@ -179,6 +179,7 @@ Profile.create = function createF(request, data, cb) {
 			return;
 		}
 
+
 		var meta = data.profile.meta;
 		KeyApi.get(meta._key, this);
 	}), h.sF(function createP3(key) {

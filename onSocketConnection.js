@@ -10,6 +10,7 @@ var SocketData = require("./includes/socketData");
 var RequestData = require("./includes/requestData");
 var Session = require("./includes/session");
 
+var APIVERSION = "0.0.1";
 var KeyApi = require("./includes/crypto/KeyApi");
 
 function registerSocketListener(socketData) {
@@ -94,6 +95,8 @@ function always(request, data, fn) {
 		if (data.status !== 0) {
 			data.status = 1;
 		}
+
+		data.version = APIVERSION;
 
 		data.keys = request.getAllKeys();
 
