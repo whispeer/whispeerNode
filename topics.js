@@ -19,9 +19,21 @@ var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
 
 var MAXDEPTH = 20;
 
+//change api style:
+//extract objects with methods:
+//get
+//getMultiple
+//create
+//delete
+//exists
+//more actions (e.g. verify)
+//seperate message, topic
+//seperate timeline, post
+//more crud
+
 var whispeerAPI = {
 	blob: blob,
-	verifyMail: function verifyMailF(data, fn, view) {
+	verifyMail: function verifyMailF(data, fn) {
 		step(function () {
 			mailer.verifyUserMail(data.challenge, data.mailsEnabled, this);
 		}, h.sF(function (success) {

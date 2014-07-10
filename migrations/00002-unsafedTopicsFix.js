@@ -1,18 +1,9 @@
-//get all users
-
-//filter for those which have a mail
-
-//send accept mail to those users
-
-module.exports = fixUnsavedTopics;
+"use strict";
 
 var step = require("step");
 var h = require("whispeerHelper");
 
 var client = require("../includes/redisClient");
-var Topic = require("../includes/topic");
-
-var userids;
 
 function getMessageData(mid, cb) {
 	step(function () {
@@ -90,3 +81,5 @@ function fixUnsavedTopics(cb) {
 		this.ne(true);
 	}), cb);
 }
+
+module.exports = fixUnsavedTopics;
