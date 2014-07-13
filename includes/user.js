@@ -88,14 +88,15 @@ var validKeys = {
 		read: logedinF,
 		readTransform: function (data, cb) {
 			step(function () {
-				var attr;
-				for (attr in data) {
-					if (data.hasOwnProperty(attr)) {
-						data[attr] = JSON.parse(data[attr]);
+				var val = data.value, attr;
+
+				for (attr in val) {
+					if (val.hasOwnProperty(attr)) {
+						val[attr] = JSON.parse(val[attr]);
 					}
 				}
 
-				this.ne(data);
+				this.ne(val);
 			}, cb);
 		},
 		pre: function (data, cb) {
@@ -255,8 +256,8 @@ var User = function (id) {
 
 	var databaseUser = new SaveAbleEntity(validKeys, this, userDomain);
 
-	databaseUser.on("saved", updateSearch);
-	databaseUser.on("setAttribute", function (request, field, data) {
+	databaseUser.on("afterSavedHook", updateSearch);
+	databaseUser.on("setAttribute", function (request, field) {
 		if (UPDATESEARCHON.indexOf(field.attr) > -1) {
 			updateSearch(request);
 		}

@@ -16,9 +16,11 @@ function SavedEntity(domain) {
 			var cur = that._validation;
 
 			attrs.forEach(function (attr) {
-				cur = cur[attr];
+				if (cur) {
+					cur = cur[attr];
+				}
 
-				if (cur[hook]) {
+				if (cur && cur[hook]) {
 					cur[hook](data, this.parallel());
 				}
 			}, this);
@@ -54,7 +56,7 @@ function SavedEntity(domain) {
 		if (hookF) {
 			hookF(data, cb);
 		} else {
-			cb(null, data);
+			cb(null, data.value);
 		}
 	};
 
@@ -119,7 +121,9 @@ function SavedEntity(domain) {
 			} else {
 				client.hget(field.key, field.attr, this);
 			}
-		}), h.sF(function (data) {
+		}), h.sF(function (value) {
+			data.value = value;
+
 			that._transform("readTransform", field.attrs, data, this);
 		}), cb);
 	};
@@ -199,10 +203,10 @@ function UnSavedEntity() {
 				that.setAttribute(request, key, value, this.parallel());
 			}, this);
 		}, h.sF(function () {
+			that.emit("afterSavedHooks", request);
+
 			that._saved = true;
 			that._saving = false;
-
-			that.emit("saved");
 
 			this.ne();
 		}), cb);
