@@ -46,9 +46,13 @@ function SavedEntity(domain) {
 		var cur = this._validation, hookF;
 
 		attrs.forEach(function (attr) {
-			cur = cur[attr];
+			if (cur) {
+				cur = cur[attr];
+			}
 
-			hookF = cur[hook] || hookF;
+			if (cur) {
+				hookF = cur[hook] || hookF;
+			}
 		});
 
 		//TODO: transform objects of value!
@@ -203,7 +207,7 @@ function UnSavedEntity() {
 				that.setAttribute(request, key, value, this.parallel());
 			}, this);
 		}, h.sF(function () {
-			that.emit("afterSavedHooks", request);
+			that.emit("afterSavedHook", request);
 
 			that._saved = true;
 			that._saving = false;
