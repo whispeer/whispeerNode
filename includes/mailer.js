@@ -40,18 +40,17 @@ function generateChallenge(cb) {
 	}), cb);
 }
 
-function isMailActivatedForUser(user, mail, cb) {
-	step(function () {
-		this.parallel.unflatten();
-
-		client.sismember("mail:" + user.getID(), mail, this.parallel());
-		client.hget("settings:" + user.getID(), "mailsEnabled", this.parallel());
-	}, h.sF(function (verified, mailsEnabled) {
-		this.ne(verified && mailsEnabled === "1");
-	}), cb);
-}
-
 var mailer = {
+	isMailActivatedForUser: function (user, mail, cb) {
+		step(function () {
+			this.parallel.unflatten();
+
+			client.sismember("mail:" + user.getID(), mail, this.parallel());
+			client.hget("settings:" + user.getID(), "mailsEnabled", this.parallel());
+		}, h.sF(function (verified, mailsEnabled) {
+			this.ne(verified && mailsEnabled === "1");
+		}), cb);
+	},
 	verifyUserMail: function (challenge, mailsEnabled, cb) {
 		var challengeData;
 		step(function () {
@@ -160,7 +159,7 @@ var mailer = {
 
 			users.forEach(function (user, i) {
 				if (mails[i]) {
-					isMailActivatedForUser(user, mails[i], this.parallel());
+					mailer.isMailActivatedForUser(user, mails[i], this.parallel());
 				} else {
 					this.parallel()();
 				}
