@@ -473,7 +473,7 @@ Topic.create = function (request, data, receiverKeys, cb) {
 	}, h.sF(function () {
 		receiverWO.forEach(function (uid) {
 			hasUserKeyAccess(uid, data.key, this.parallel());
-			hasUserKeyAccess(uid, data.receiverKeys[uid], this.parallel());
+			hasUserKeyAccess(uid, receiverKeys[uid], this.parallel());
 		}, this);
 
 		if (receiverWO.length === 0) {
