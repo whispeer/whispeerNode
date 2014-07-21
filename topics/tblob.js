@@ -10,8 +10,7 @@ var pushBlobAPI = {
 		step(function () {
 			blobStorage.addBlobFromStream(stream, data.blobid, this);
 		}, function (e) {
-			console.log("got here!");
-			console.log(e);
+			console.error(e);
 			//todo: socket.emit(pushBlobDone or something like that!);
 		});
 	},

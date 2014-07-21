@@ -15,6 +15,8 @@ var settings = require("./includes/settings");
 var blob = require("./topics/tblob");
 var mailer = require("./includes/mailer");
 
+var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
+
 var MAXDEPTH = 20;
 
 //change api style:
@@ -122,6 +124,14 @@ var whispeerAPI = {
 					result[keys[i].getRealID()] = success[i];
 				}
 			}), fn);
+		}
+	},
+	trustManager: {
+		get: function (data, fn, view) {
+			new SimpleUserDataStore("trustManager").get(view, h.objectifyResult("content", fn));
+		},
+		set: function (data, fn, view) {
+			new SimpleUserDataStore("trustManager").set(view, data.content, h.objectifyResult("success", fn));
 		}
 	},
 	settings: {

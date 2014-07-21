@@ -599,6 +599,19 @@ var User = function (id) {
 		}
 	};
 
+	this.isMailVerified = function (request, cb) {
+		step(function () {
+			theUser.getEMail(request, this);
+		}, h.sF(function (mail) {
+			if (mail) {
+				var mailer = require("./mailer");
+				mailer.isMailActivatedForUser(theUser, mail, this);
+			} else {
+				this.ne();
+			}
+		}), cb);
+	};
+
 	this.getUData = function (request, cb) {
 		var result;
 		step(function () {
@@ -615,8 +628,9 @@ var User = function (id) {
 			if (theUser.isOwnUser(request)) {
 				theUser.getMigrationState(request, this.parallel());
 				theUser.getEMail(request, this.parallel());
+				theUser.isMailVerified(request, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, migrationState, mail) {
+		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, migrationState, mail, mailVerified) {
 			result = {
 				id: id,
 				nickname: nick,
@@ -628,7 +642,10 @@ var User = function (id) {
 
 			if (theUser.isOwnUser(request)) {
 				result.migrationState = migrationState;
-				result.mail = mail;
+				if (mail) {
+					result.mail = mail;
+					result.mailVerified = mailVerified;
+				}
 			}
 
 			result.keys = keys;
