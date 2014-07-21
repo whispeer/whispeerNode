@@ -1003,7 +1003,7 @@ var User = function (id) {
 			theUser.getEMail(view, this);
 		}, h.sF(function (mail) {
 			if (mail) {
-				var mailer = require("mailer");
+				var mailer = require("./mailer");
 				mailer.isMailActivatedForUser(theUser, mail, this);
 			} else {
 				this.ne();
