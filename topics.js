@@ -127,11 +127,11 @@ var whispeerAPI = {
 		}
 	},
 	trustManager: {
-		get: function (data, fn, view) {
-			new SimpleUserDataStore("trustManager").get(view, h.objectifyResult("content", fn));
+		get: function (data, fn, request) {
+			new SimpleUserDataStore("trustManager").get(request, h.objectifyResult("content", fn));
 		},
-		set: function (data, fn, view) {
-			new SimpleUserDataStore("trustManager").set(view, data.content, h.objectifyResult("success", fn));
+		set: function (data, fn, request) {
+			new SimpleUserDataStore("trustManager").set(request, data.content, h.objectifyResult("success", fn));
 		}
 	},
 	settings: {
