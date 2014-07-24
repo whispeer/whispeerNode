@@ -60,6 +60,10 @@ function fixUnsavedTopics(cb) {
 		topics.forEach(function (tid) {
 			getTopicData(tid, this.parallel());
 		}, this);
+
+		if (topics.length === 0) {
+			this.ne([]);
+		}
 	}), h.sF(function (topicData) {
 		topicData.forEach(function (tdata) {
 			var tid = tdata.tid;
