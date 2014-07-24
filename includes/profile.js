@@ -175,6 +175,7 @@ Profile.create = function createF(request, data, cb) {
 		request.session.logedinError(this);
 	}, h.sF(function createP2() {
 		if (!Profile.validate(data)) {
+			console.error("Profile invalid. not creating!");
 			this.last.ne(false);
 			return;
 		}

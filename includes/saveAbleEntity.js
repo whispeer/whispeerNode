@@ -101,7 +101,8 @@ function SavedEntity(domain) {
 			that._executeHooks("post", field.attrs, data, this);
 		}), h.sF(function () {
 			that.emit("setAttribute", request, field, data);
-			cb();
+
+			this.ne(true);
 		}), cb);
 	};
 

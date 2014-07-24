@@ -64,7 +64,11 @@ var s = {
 			}
 
 			this.parallel()();
-		}), h.sF(function () {
+		}), h.sF(function (valid) {
+			if (!valid.reduce(h.and, true)) {
+				console.error("could not create profiles. TODO: delete user!");
+			}
+
 			mailer.sendAcceptMail(myUser, this);
 		}), h.sF(function () {
 			this.ne(res);
