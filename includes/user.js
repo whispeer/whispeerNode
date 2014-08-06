@@ -134,6 +134,10 @@ var validKeys = {
 		match: /^[A-Fa-f0-9]{10}$/,
 		pre: ownUserF
 	},
+	signedKeys: {
+		read: trueF,
+		hash: true
+	},
 	mainKey: {
 		read: ownUserF,
 		pre: checkKeyExists(SymKey),
@@ -388,6 +392,14 @@ var User = function (id) {
 		}, cb);
 	};
 
+	this.getSignedKeys = function (request, cb) {
+		getAttribute(request, "signedKeys", cb, true);
+	};
+
+	this.setSignedKeys = function (request, signedKeys, cb) {
+		getAttribute(request, "signedKeys", signedKeys, cb, true);
+	};
+
 	this.setPublicProfile = function(request, profile, cb) {
 		step(function doSetPublicProfile() {
 			setAttribute(request, "profile", profile, this);
@@ -624,20 +636,22 @@ var User = function (id) {
 			theUser.getPrivateProfiles(request, this.parallel(), true);
 			theUser.getKeys(request, this.parallel());
 			theUser.getMutualFriends(request, this.parallel());
+			theUser.getSignedKeys(request, this.parallel());
 
 			if (theUser.isOwnUser(request)) {
 				theUser.getMigrationState(request, this.parallel());
 				theUser.getEMail(request, this.parallel());
 				theUser.isMailVerified(request, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, migrationState, mail, mailVerified) {
+		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, signedKeys, migrationState, mail, mailVerified) {
 			result = {
 				id: id,
 				nickname: nick,
 				profile: {
 					pub: pubProf,
 					priv: privProf
-				}
+				},
+				signedKeys: signedKeys
 			};
 
 			if (theUser.isOwnUser(request)) {
