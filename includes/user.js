@@ -138,6 +138,16 @@ var validKeys = {
 		read: trueF,
 		hash: true
 	},
+	signedOwnKeys: {
+		read: ownUserF,
+		pre: ownUserF,
+		transform: function (data, cb) {
+			cb(null, JSON.stringify(data.value));
+		},
+		readTransform: function (data, cb) {
+			cb(null, JSON.parse(data.value));
+		}
+	},
 	mainKey: {
 		read: ownUserF,
 		pre: checkKeyExists(SymKey),
@@ -290,7 +300,7 @@ var User = function (id) {
 	}
 
 	createAccessors(["password", "nickname", "migrationState", "email",
-					"friendsLevel2Key", "mainKey", "cryptKey", "signKey", "friendsKey"]);
+					"friendsLevel2Key", "mainKey", "cryptKey", "signKey", "friendsKey", "signedOwnKeys"]);
 
 	function deleteUser(cb) {
 		//TODO: think about nickname, mail (unique values)
@@ -397,7 +407,7 @@ var User = function (id) {
 	};
 
 	this.setSignedKeys = function (request, signedKeys, cb) {
-		getAttribute(request, "signedKeys", signedKeys, cb, true);
+		setAttribute(request, "signedKeys", signedKeys, cb);
 	};
 
 	this.setPublicProfile = function(request, profile, cb) {
@@ -639,11 +649,12 @@ var User = function (id) {
 			theUser.getSignedKeys(request, this.parallel());
 
 			if (theUser.isOwnUser(request)) {
+				theUser.getSignedOwnKeys(request, this.parallel());
 				theUser.getMigrationState(request, this.parallel());
 				theUser.getEMail(request, this.parallel());
 				theUser.isMailVerified(request, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, signedKeys, migrationState, mail, mailVerified) {
+		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, signedKeys, signedOwnKeys, migrationState, mail, mailVerified) {
 			result = {
 				id: id,
 				nickname: nick,
@@ -651,7 +662,8 @@ var User = function (id) {
 					pub: pubProf,
 					priv: privProf
 				},
-				signedKeys: signedKeys
+				signedKeys: signedKeys,
+				signedOwnKeys: signedOwnKeys
 			};
 
 			if (theUser.isOwnUser(request)) {

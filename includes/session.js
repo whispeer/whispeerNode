@@ -282,7 +282,7 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, keys, settings, signedKeys, request, cb) {
+	this.register = function registerF(mail, nickname, password, keys, settings, signedKeys, signedOwnKeys, request, cb) {
 		//y rule 1: nickname must be set.
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -443,6 +443,7 @@ var Session = function Session() {
 			myUser.setCryptKey(request, keys.crypt, this.parallel());
 			myUser.setSignKey(request, keys.sign, this.parallel());
 			myUser.setSignedKeys(request, signedKeys, this.parallel());
+			myUser.setSignedOwnKeys(request, signedOwnKeys, this.parallel());
 			settingsService.setOwnSettings(request, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
 			this.ne(mySid);

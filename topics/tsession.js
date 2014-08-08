@@ -40,7 +40,7 @@ var s = {
 	register: function (data, fn, request) {
 		var res, myUser;
 		step(function () {
-			request.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, data.signedKeys, request, this);
+			request.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, data.signedKeys, data.signedOwnKeys, request, this);
 		}, h.sF(function (result) {
 			res = result;
 			if (result.error) {

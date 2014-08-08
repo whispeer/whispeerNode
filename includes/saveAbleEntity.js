@@ -68,37 +68,38 @@ function SavedEntity(domain) {
 		h.assert(this._saved || this._saving);
 
 		var that = this;
-
-		var isHash = (typeof value === "object" && value.constructor === Object);
-		var field = this.getFieldName(attrs, isHash);
+		var fieldAttrs = this.getAttributes(attrs);
 
 		var data = {
 			reference: this._reference,
-			isHash: isHash,
 			request: request,
-			key: field.attrs,
+			key: fieldAttrs,
 			value: value
 		};
 
+		var field;
 		step(function() {
 			that.getAttribute(request, attrs, this);
 		}, h.sF(function (oldValue) {
 			data.oldValue = oldValue;
 
-			that._transform("transform", field.attrs, data, this);
+			that._transform("transform", fieldAttrs, data, this);
 		}), h.sF(function (newValue) {
 			value = newValue || value;
 			data.value = value;
 
-			that._executeHooks("pre", field.attrs, data, this);
+			that._executeHooks("pre", fieldAttrs, data, this);
 		}), h.sF(function() {
+			var isHash = (typeof value === "object" && value.constructor === Object);
+			field = that.getFieldName(attrs, isHash);
+
 			if (isHash) {
 				client.multi().del(field.key).hmset(field.key, value).exec(this);
 			} else {
 				client.hmset(field.key, field.attr, value, this);
 			}
 		}), h.sF(function() {
-			that._executeHooks("post", field.attrs, data, this);
+			that._executeHooks("post", fieldAttrs, data, this);
 		}), h.sF(function () {
 			that.emit("setAttribute", request, field, data);
 
@@ -228,8 +229,7 @@ function SaveAbleEntity(validation, reference, domain) {
 		UnSavedEntity.call(this);
 	}
 
-	this.getFieldName = function(attrs, fullHash) {
-		var value;
+	this.getAttributes = function (attrs) {
 		if (typeof attrs === "string") {
 			attrs = attrs.split(":");
 		}
@@ -237,6 +237,13 @@ function SaveAbleEntity(validation, reference, domain) {
 		if (attrs.length === 1 && attrs[0] === "") {
 			attrs = [];
 		}
+
+		return attrs;
+	};
+
+	this.getFieldName = function(attrs, fullHash) {
+		var value;
+		attrs = this.getAttributes(attrs);
 
 		var givenAttrs = attrs.slice();
 
