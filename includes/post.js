@@ -41,7 +41,7 @@ var newPostsExpireTime = 10 * 60;
 */
 
 var Post = function (postid) {
-	var domain = "post:" + postid, thePost = this, metaData, contentData;
+	var domain = "post:" + postid, thePost = this, result;
 	this.getPostData = function getDataF(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
@@ -49,19 +49,18 @@ var Post = function (postid) {
 			client.hgetall(domain + ":meta", this.parallel());
 			client.hgetall(domain + ":content", this.parallel());
 		}, h.sF(function (meta, content) {
-			metaData = meta;
-			contentData = content;
+			meta.sender = h.parseDecimal(meta.sender);
+			meta.time = h.parseDecimal(meta.time);
+			meta.walluser = h.parseDecimal(meta.walluser || 0);
 
-			metaData.sender = h.parseDecimal(metaData.sender);
-			metaData.time = h.parseDecimal(metaData.time);
-			metaData.walluser = h.parseDecimal(metaData.walluser || 0);
-
-			var result = {
+			result = {
 				id: postid,
-				meta: metaData,
-				content: contentData
+				meta: meta,
+				content: content
 			};
 
+			request.addKey(meta._key, this);
+		}), h.sF(function () {
 			this.ne(result);
 		}), cb);
 	};

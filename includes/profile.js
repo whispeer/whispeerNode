@@ -12,7 +12,7 @@ var jsonFields = ["profile", "own"];
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
-	this.getPData = function getPDataF(request, cb, wKeyData) {
+	this.getPData = function getPDataF(request, cb) {
 		var result;
 		step(function () {
 			client.hgetall(domain, this);
@@ -23,17 +23,12 @@ var Profile = function (userid, profileid) {
 
 			var err = validator.validate("profileEncrypted", result.profile, 1);
 
-			if (!err) {
-				if (wKeyData) {
-					KeyApi.getWData(request, result.key, this, true);
-				} else {
-					this.ne(result.key);
-				}
-			} else {
-				this.last.ne(false);
+			if (err) {
+				throw err;
 			}
-		}), h.sF(function (key) {
-			result.profile.key = key;
+
+			request.addKey(result.profile.meta._key, this);
+		}), h.sF(function () {
 			this.last.ne(result);
 		}), cb);
 	};

@@ -117,10 +117,14 @@ var Topic = function (id) {
 		var server, meta;
 		step(function () {
 			theTopic.getTData(request, this);
-		}, h.sF(function (_server, _meta) {
+		}, h.sF(function (_server, _meta, additionalKey) {
 			server = _server;
 			meta = _meta;
-
+			request.addKey(_meta._key, this.parallel());
+			if (additionalKey) {
+				request.addKey(additionalKey, this.parallel());
+			}
+		}), h.sF(function () {
 			theTopic.getReceiverIDs(request, this);
 		}), h.sF(function (receiver) {
 			meta.receiver = receiver.map(h.parseDecimal);
@@ -345,12 +349,13 @@ var Topic = function (id) {
 			this.parallel.unflatten();
 			client.hgetall(domain + ":server", this.parallel());
 			client.hgetall(domain + ":meta", this.parallel());
-			//TODO: add this key to the request! client.hget(domain + ":receiverKeys", request.session.getUserID(), this.parallel());
-		}), h.sF(function (server, meta) {
+
+			client.hget(domain + ":receiverKeys", request.session.getUserID(), this.parallel());
+		}), h.sF(function (server, meta, additionalKey) {
 			meta.createTime = h.parseDecimal(meta.createTime);
 			meta.creator = h.parseDecimal(meta.creator);
 
-			this.ne(server, meta);
+			this.ne(server, meta, additionalKey);
 		}), cb);
 	};
 };

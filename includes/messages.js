@@ -168,7 +168,7 @@ var Message = function (id, topic) {
 	};
 
 	/** get the full data of this message */
-	this.getFullData = function getFullDataF(request, cb, key) {
+	this.getFullData = function getFullDataF(request, cb) {
 		var result;
 		step(function () {
 			hasAccessError(request, this);
@@ -182,13 +182,8 @@ var Message = function (id, topic) {
 				content: content
 			};
 
-			if (key) {
-				KeyApi.getWData(request, result.meta._key, this, true);
-			} else {
-				this.ne(result.meta._key);
-			}
-		}), h.sF(function (key) {
-			request.addKeyData(key);
+			request.addKey(result.meta._key, this);
+		}), h.sF(function () {
 			this.ne(result);
 		}), cb);
 	};
