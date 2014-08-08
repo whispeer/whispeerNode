@@ -17,7 +17,7 @@ var MAXTIME = 5 * 60 * 1000;
 /*
 	topic: {
 		createTime: (int)
-		key: key,
+		_key: key,
 		cryptKeys: [key],
 		receiver: (int),
 		creator: (int),
@@ -106,58 +106,41 @@ var Topic = function (id) {
 		step(function () {
 			hasAccessError(request, this);
 		}, h.sF(function () {
-			client.hget(domain + ":data", "key", this);
+			client.hget(domain + ":meta", "_key", this);
 		}), h.sF(function (realid) {
 			KeyApi.get(realid, this);
 		}), cb);
 	};
 
 	/** get topic full data */
-	this.getFullData = function getFullDataF(request, cb, key, receivers) {
-		var result;
+	this.getFullData = function (request, cb) {
+		var server, meta;
 		step(function () {
 			theTopic.getTData(request, this);
-		}, h.sF(function (data) {
-			result = data;
-			if (key) {
-				this.parallel.unflatten();
-				KeyApi.getWData(request, data.key, this.parallel(), true);
-				if (data.additionalKey) {
-					KeyApi.getWData(request, data.additionalKey, this.parallel(), true);
-				}
-			} else {
-				this.ne(data.key);
-			}
-		}), h.sF(function (keyData, additionalKey) {
-			result.key = keyData;
+		}, h.sF(function (_server, _meta) {
+			server = _server;
+			meta = _meta;
 
-			if (additionalKey) {
-				result.additionalKey = additionalKey;
-			}
-
-			if (receivers) {
-				theTopic.getReceiverData(request, this);
-			} else {
-				theTopic.getReceiverIDs(request, this);
-			}
+			theTopic.getReceiverIDs(request, this);
 		}), h.sF(function (receiver) {
-			result.receiver = receiver.map(h.parseDecimal);
+			meta.receiver = receiver.map(h.parseDecimal);
 
 			theTopic.getUnreadMessages(request, this);
 		}), h.sF(function (unreadMessages) {
-			result.unread = unreadMessages;
+			server.unread = unreadMessages;
 
-			if (h.parseDecimal(result.newest) !== 0) {
+			if (h.parseDecimal(server.newest) !== 0) {
 				var Message = require("./messages");
-				var newest = new Message(result.newest);
+				var newest = new Message(server.newest);
 				newest.getFullData(request, this, true);
 			} else {
 				this.ne();
 			}
 		}), h.sF(function (newest) {
-			result.newest = newest;
+			server.newest = newest;
+			server.meta = meta;
 
-			this.ne(result);
+			this.ne(server);
 		}), cb);
 	};
 
@@ -269,7 +252,7 @@ var Topic = function (id) {
 				multi.zadd("topic:user:" + rid + ":topics", time, id);
 			});
 
-			multi.hmset(domain + ":data", {
+			multi.hmset(domain + ":server", {
 				"newest": messageID,
 				"newestTime": time
 			});
@@ -360,17 +343,14 @@ var Topic = function (id) {
 			hasAccessError(request, this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
-			client.hgetall(domain + ":data", this.parallel());
-			client.hget(domain + ":receiverKeys", request.session.getUserID(), this.parallel());
-		}), h.sF(function (data, key) {
-			if (key) {
-				data.additionalKey = key;
-			}
+			client.hgetall(domain + ":server", this.parallel());
+			client.hgetall(domain + ":meta", this.parallel());
+			//TODO: add this key to the request! client.hget(domain + ":receiverKeys", request.session.getUserID(), this.parallel());
+		}), h.sF(function (server, meta) {
+			meta.createTime = h.parseDecimal(meta.createTime);
+			meta.creator = h.parseDecimal(meta.creator);
 
-			data.createTime = h.parseDecimal(data.createTime);
-			data.creator = h.parseDecimal(data.creator);
-
-			this.ne(data);
+			this.ne(server, meta);
 		}), cb);
 	};
 };
@@ -415,7 +395,7 @@ Topic.own = function (request, afterTopic, count, cb) {
 
 Topic.get = function (topicid, cb) {
 	step(function () {
-		client.exists("topic:" + topicid + ":data", this);
+		client.exists("topic:" + topicid + ":server", this);
 	}, h.sF(function (exists) {
 		if (exists === 1) {
 			this.ne(new Topic(topicid));
@@ -437,7 +417,7 @@ Topic.getUserTopicID = function (request, userid, cb) {
 	}), cb);
 };
 
-Topic.create = function (request, data, receiverKeys, cb) {
+Topic.create = function (request, topicMeta, receiverKeys, cb) {
 	var User = require("./user.js");
 
 	//TODO: check user can read their crypto key
@@ -452,27 +432,27 @@ Topic.create = function (request, data, receiverKeys, cb) {
 
 	var receiverIDs, receiverWO, theTopicID;
 	step(function () {
-		var err = validator.validate("topicCreate", data);
+		var err = validator.validate("topicCreate", topicMeta);
 
 		if (err) {
 			throw new InvalidTopicData();
 		}
 
-		if (!request.session.isMyID(data.creator)) {
+		if (!request.session.isMyID(topicMeta.creator)) {
 			throw new InvalidTopicData();
 		}
 
-		if (Math.abs(data.createTime - new Date().getTime()) > MAXTIME) {
+		if (Math.abs(topicMeta.createTime - new Date().getTime()) > MAXTIME) {
 			throw new InvalidTopicData();
 		}
 
-		receiverIDs = data.receiver.map(h.parseDecimal);
+		receiverIDs = topicMeta.receiver;
 		receiverWO = receiverIDs.filter(h.not(request.session.isMyID));
 
 		User.checkUserIDs(receiverIDs, this.parallel());
 	}, h.sF(function () {
 		receiverWO.forEach(function (uid) {
-			hasUserKeyAccess(uid, data.key, this.parallel());
+			hasUserKeyAccess(uid, topicMeta._key, this.parallel());
 			hasUserKeyAccess(uid, receiverKeys[uid], this.parallel());
 		}, this);
 
@@ -490,10 +470,10 @@ Topic.create = function (request, data, receiverKeys, cb) {
 	}), h.sF(function (topicid) {
 		theTopicID = topicid;
 
-		var topicData = data;
+		var topicServer = {};
 
-		topicData.newest = 0;
-		topicData.topicid = topicid;
+		topicServer.newest = 0;
+		topicServer.topicid = topicid;
 
 		var multi = client.multi();
 
@@ -511,7 +491,8 @@ Topic.create = function (request, data, receiverKeys, cb) {
 			multi.set("topic:user:" + receiverIDs[0] + ":single:" + receiverIDs[0], topicid);
 		}
 
-		multi.hmset("topic:" + topicid + ":data", topicData);
+		multi.hmset("topic:" + topicid + ":server", topicServer);
+		multi.hmset("topic:" + topicid + ":meta", topicMeta);
 		multi.sadd("topic:" + topicid + ":receiver", receiverIDs);
 
 		multi.exec(this);
