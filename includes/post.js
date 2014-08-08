@@ -54,14 +54,7 @@ var Post = function (postid) {
 
 			metaData.sender = h.parseDecimal(metaData.sender);
 			metaData.time = h.parseDecimal(metaData.time);
-			
-			if (metaData.walluser) {
-				metaData.walluser = h.parseDecimal(metaData.walluser);
-			}
-
-			KeyApi.getWData(request, meta.key, this, true);
-		}), h.sF(function (keyData) {
-			metaData.key = keyData;
+			metaData.walluser = h.parseDecimal(metaData.walluser || 0);
 
 			var result = {
 				id: postid,
@@ -75,7 +68,7 @@ var Post = function (postid) {
 
 	this.hasUserAccess = function (userid, cb) {
 		step(function () {
-			client.hget(domain, "key", this);
+			client.hget(domain, "_key", this);
 		}, h.sF(function (keyRealID) {
 			client.sismember("key:" + keyRealID + ":access", userid, this);
 		}), cb);
@@ -96,7 +89,7 @@ var Post = function (postid) {
 
 	this.getKey = function getKeyF(request, cb) {
 		step(function () {
-			client.hget(domain, "key", this);
+			client.hget(domain, "_key", this);
 		}, cb);
 	};
 
@@ -238,7 +231,7 @@ function getUserIDsForFilter(request, filter, cb) {
 function accessablePostFilter(request) {
 	return function (id, cb) {
 		step(function () {
-			client.hget("post:" + id + ":meta", "key", this);
+			client.hget("post:" + id + ":meta", "_key", this);
 		}, h.sF(function (key) {
 			client.sismember("key:" + key + ":access", request.session.getUserID(), this);
 		}), cb);
@@ -330,7 +323,7 @@ Post.getUserWall = function (request, userid, afterID, count, cb) {
 		var paginator = new SortedSetPaginator("user:" + userid + ":wall", count);
 		paginator.getRangeAfterID(afterID, this, function (id, cb) {
 			step(function () {
-				client.hget("post:" + id + ":meta", "key", this);
+				client.hget("post:" + id + ":meta", "_key", this);
 			}, h.sF(function (key) {
 				client.sismember("key:" + key + ":access", request.session.getUserID(), this);
 			}), cb);
@@ -355,11 +348,7 @@ Post.validateFormat = function (data, cb) {
 			throw new InvalidPost("time too old");
 		}
 
-		if (data.meta.key) {
-			KeyApi.validate(data.meta.key, this);
-		} else {
-			this();
-		}
+		KeyApi.validate(data.meta._key, this);
 	}, cb);
 };
 
@@ -390,7 +379,7 @@ function processMetaInformation(request, meta, cb) {
 		this.parallel.unflatten();
 
 		processWallUser(meta.walluser, this.parallel());
-		processKey(request, meta.key, this.parallel());
+		processKey(request, meta._key, this.parallel());
 	}, h.sF(function (user, keyid) {
 		if (user) {
 			meta.walluserObj = user;
@@ -399,7 +388,7 @@ function processMetaInformation(request, meta, cb) {
 			delete meta.walluser;
 		}
 
-		meta.key = keyid;
+		meta._key = keyid;
 
 		this.ne();
 	}), cb);
@@ -422,7 +411,9 @@ Post.create = function (request, data, cb) {
 	var postID;
 
 	step(function () {
-		data.meta.sender = request.session.getUserID();
+		if (data.meta.sender !== request.session.getUserID()) {
+			throw new InvalidPost("incorrect sender!");
+		}
 
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
