@@ -13,167 +13,92 @@ var SymKey = require("./crypto/symKey");
 /*
 	circle: {
 		key,
-		name,
-		userids
+		content
+		meta
 	}
 
 */
 
 var Circle = function (userid, id) {
-	var domain = "user:" + userid + ":circle:" + id, theCircle = this;
-	this.getData = function getDataF(request, cb, key) {
+	var domain = "user:" + userid + ":circle:" + id;
+	this.getData = function getDataF(request, cb) {
 		var result = {};
 		step(function () {
 			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
-			client.smembers(domain + ":user", this.parallel());
-			client.hgetall(domain, this.parallel());
-		}), h.sF(function (user, data) {
-			result = data;
-			result.user = user;
+			client.hgetall(domain + ":content", this.parallel());
+			client.hgetall(domain + ":meta", this.parallel());
+		}), h.sF(function (content, meta) {
+			meta.users = JSON.parse(meta.users);
+
 			result.id = id;
-			result.userid = userid;
+			result.content = content;
+			result.meta = meta;
 
-			if (key) {
-				KeyApi.getWData(request, result.key, this, true);
-			} else {
-				this.ne(result.key);
-			}
-		}), h.sF(function (key) {
-			result.key = key;
-
+			request.addKey(meta.circleKey, this);
+		}), h.sF(function () {
 			this.ne(result);
 		}), cb);
 	};
 
-	this.getKey = function getKeyF(request, cb) {
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			client.hget(domain, "key", this);
-		}), h.sF(function (keyid) {
-			KeyApi.get(keyid, this);
-		}), cb);
-	};
-
-	/*this.update = function updateF(request, data, cb) {
-		//TODO
-	};*/
-
-	this.remove = function removeF(request, cb) {
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			client.srem("user:" + request.session.getUserID() + ":circles", id, this);
-		}), h.sF(function (res) {
-			this.ne(res === 1);
-		}), cb);
-	};
-
-	this.addUsers = function addUsersF(request, toAddIDs, decryptors, cb) {
-		//data needs to have:
-		//userid
-		//and a new decryptor
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			var i;
-			for (i = 0; i < toAddIDs.length; i += 1) {
-				User.getUser(toAddIDs[i], this.parallel());
-			}
-		}), h.sF(function (users) {
-			var currentStep = this;
-			toAddIDs = users.map(function (e) {
-				client.sismember(domain + ":user", e.getID(), currentStep.parallel());
-				return e.getID();
-			});
-		}), h.sF(function () {
-			theCircle.getKey(request, this);
-		}), h.sF(function (key) {
-			key.addDecryptors(request, decryptors, this);
-		}), h.sF(function () {
-			client.sadd(domain + ":user", toAddIDs, this);
-			request.socketData.notifyOwnClients("circle", {circleid: id, addUsers: toAddIDs});
-		}), cb);
-	};
-
-	this.hasUser = function hasUserF(request, userid, cb) {
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			client.sismember(domain + ":user", this);
-		}), cb);
-	};
-
-	this.getUser = function getUserF(request, cb) {
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			client.smembers(domain + ":user", this);
-		}), cb);
-	};
-
-	this.remove = function removeCircleF(request, cb) {
+	this.delete = function (request, cb) {
 		step(function () {
 			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
 			client.multi()
-				.srem("user:" + userid + ":circles", id)
-				.sadd("user:" + userid + ":deletedCircles", id)
+				.srem("user:" + userid + ":circle", id)
+				.sadd("user:" + userid + ":circle:deleted", id)
 				.exec(this);
 		}), h.sF(function () {
 			this.ne(true);
 		}), cb);
 	};
 
-	this.removeUsers = function removeUserF(request, key, oldKeyDecryptor, toKeep, toRemove, cb) {
-		var userids, realID;
+	function createKeysAndDecryptors(request, key, decryptors, cb) {
+		step(function () {
+			client.hget(domain + ":meta", "circleKey", this);
+		}, h.sF(function (oldKeyID) {
+			this.parallel.unflatten();
+
+			KeyApi.get(oldKeyID, this.parallel());
+			SymKey.createWDecryptors(request, key, this.parallel());
+		}), h.sF(function (oldKey) {
+			oldKey.addDecryptors(request, decryptors, this.parallel());
+		}), cb);
+	}
+
+	this.update = function (request, content, meta, key, decryptors, cb) {
 		step(function () {
 			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
-			//addBasicData(key, toKeep, this);
-			//addDecryptor(key, oldKeyDecryptor);
-
-			var i;
-			for (i = 0; i < toKeep.length; i += 1) {
-				User.getUser(toKeep[i], this.parallel());
-			}
-
-			if (toKeep.length === 0) {
-				this.ne([]);
-			}
+			client.hget(domain + ":meta", "users", this);
 		}), h.sF(function (users) {
-			userids = users.map(function (e) {return e.getID();});
+			users = JSON.parse(users);
 
-			theCircle.getUser(request, this);
-		}), h.sF(function (circleUsers) {
-			circleUsers = circleUsers.map(h.parseDecimal);
+			var removing = h.arraySubtract(users, meta.users).length > 0;
 
-			var i;
-			var localUsers = toKeep.concat(toRemove);
-			if (circleUsers.length === localUsers.length) {
-				for (i = 0; i < localUsers.length; i += 1) {
-					if (circleUsers.indexOf(localUsers[i]) === -1) {
-						this.last.ne(false);
-						return;
-					}
+			if (removing) {
+				if (!key || !decryptors) {
+					throw new Error("no new key created for circle update even though users were removed!");
 				}
 
-				SymKey.createWDecryptors(request, key, this);
+				createKeysAndDecryptors(request, key, decryptors, this);
+				//add key: key
+				//add decryptors: decryptors
+			} else if (key || decryptors) {
+				throw new Error("new key created for circle update even though no users were removed!");
 			} else {
-				this.last.ne(false);
+				this.ne();
 			}
-		}), h.sF(function (key) {
-			realID = key.getRealID();
-			theCircle.getKey(request, this);
-		}), h.sF(function (circleKey) {
-			circleKey.addDecryptor(request, oldKeyDecryptor, this);
 		}), h.sF(function () {
-			client.multi()
-				.srem(domain + ":user", toRemove)
-				.hset(domain, "key", realID)
-				.exec(this);
+			var multi = client.multi();
+			meta.users = JSON.stringify(meta.users);
+
+			multi.hmset(domain + ":content", content);
+			multi.hmset(domain + ":meta", meta);
+
+			multi.exec(this.parallel());
 		}), h.sF(function () {
 			this.ne(true);
 		}), cb);
@@ -182,7 +107,7 @@ var Circle = function (userid, id) {
 
 Circle.get = function (request, circleid, cb) {
 	step(function () {
-		client.exists("user:" + request.session.getUserID() + ":circle:" + circleid, this);
+		client.exists("user:" + request.session.getUserID() + ":circle:" + circleid + ":content", this);
 	}, h.sF(function (exists) {
 		if (exists === 1) {
 			this.ne(new Circle(request.session.getUserID(), circleid));
@@ -192,21 +117,20 @@ Circle.get = function (request, circleid, cb) {
 	}), cb);
 };
 
-Circle.getAll = function (request, cb) {
+Circle.all = function (request, cb) {
 	step(function () {
-		client.smembers("user:" + request.session.getUserID() + ":circles", this);
+		client.smembers("user:" + request.session.getUserID() + ":circle", this);
 	}, h.sF(function (circles) {
-		var result = [], i;
-		for (i = 0; i < circles.length; i += 1) {
-			result.push(new Circle(request.session.getUserID(), circles[i]));
-		}
-
-		this.ne(result);
+		this.ne(circles.map(function (circle) {
+			return new Circle(request.session.getUserID(), circle);
+		}));
 	}), cb);
 };
 
 Circle.create = function (request, data, cb) {
-	var result = {}, theCircleID, userid = request.session.getUserID(), userids;
+	var theCircleID, userid = request.session.getUserID();
+
+	var content = data.content, meta = data.meta;
 	step(function () {
 		var err = validator.validate("circle", data);
 
@@ -214,27 +138,19 @@ Circle.create = function (request, data, cb) {
 			throw new InvalidCircleData();
 		}
 
-		if (data.user && data.user.length !== data.key.decryptors.length - 1) {
+		if (meta.users.length !== data.key.decryptors.length - 1) {
 			throw new InvalidCircleData("not enough decryptors");
 		}
 
-		if (data.user && data.user.length > 0) {
-			var i;
-			for (i = 0; i < data.user.length; i += 1) {
-				User.getUser(data.user[i], this.parallel());
-			}
-		} else {
-			this.ne([]);
-		}
-	}, h.sF(function (users) {
-		userids = users.map(function (e) {return e.getID();});
+		meta.users.forEach(function (uid) {
+			User.getUser(uid, this.parallel());
+		}, this);
 
+		this.parallel()();
+	}, h.sF(function () {
 		SymKey.createWDecryptors(request, data.key, this);
-	}), h.sF(function (key) {
-		result.key = key.getRealID();
-		result.name = data.name;
-
-		client.incr("user:" + userid + ":circleCount", this);
+	}), h.sF(function () {
+		client.incr("user:" + userid + ":circle:count", this);
 	}), h.sF(function (circleid) {
 		theCircleID = circleid;
 
@@ -242,12 +158,11 @@ Circle.create = function (request, data, cb) {
 
 		var multi = client.multi();
 
-		multi.sadd(domain + ":circles", circleid);
-		multi.hmset(domain + ":circle:" + circleid, result);
+		meta.users = JSON.stringify(meta.users);
 
-		if (userids.length > 0) {
-			multi.sadd(domain + ":circle:" + circleid + ":user", userids);
-		}
+		multi.sadd(domain + ":circle", circleid);
+		multi.hmset(domain + ":circle:" + circleid + ":content", content);
+		multi.hmset(domain + ":circle:" + circleid + ":meta", meta);
 
 		multi.exec(this);
 	}), h.sF(function () {

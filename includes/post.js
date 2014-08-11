@@ -86,12 +86,6 @@ var Post = function (postid) {
 		}), cb);
 	};
 
-	this.getKey = function getKeyF(request, cb) {
-		step(function () {
-			client.hget(domain, "_key", this);
-		}, cb);
-	};
-
 	this.getContent = function getContentF(request, cb) {
 		step(function () {
 			thePost.throwUserAccess(request, this);

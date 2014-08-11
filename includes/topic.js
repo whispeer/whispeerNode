@@ -101,17 +101,6 @@ var Topic = function (id) {
 		}), cb);
 	};
 
-	/** get topic key */
-	this.getKey = function getKeyF(request, cb) {
-		step(function () {
-			hasAccessError(request, this);
-		}, h.sF(function () {
-			client.hget(domain + ":meta", "_key", this);
-		}), h.sF(function (realid) {
-			KeyApi.get(realid, this);
-		}), cb);
-	};
-
 	/** get topic full data */
 	this.getFullData = function (request, cb) {
 		var server, meta;

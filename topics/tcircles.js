@@ -5,9 +5,9 @@ var h = require("whispeerHelper");
 var Circle = require("../includes/circle");
 
 var f = {
-	getAll: function getAllF(data, fn, request) {
+	all: function getAllF(data, fn, request) {
 		step(function () {
-			Circle.getAll(request, this);
+			Circle.all(request, this);
 		}, h.sF(function (results) {
 			var i;
 			for (i = 0; i < results.length; i += 1) {
@@ -23,7 +23,7 @@ var f = {
 			});
 		}), fn);
 	},
-	removeCircle: function removeCircleF(data, fn, request) {
+	"delete": function removeCircleF(data, fn, request) {
 		step(function () {
 			Circle.get(request, data.remove.circleid, this);
 		}, h.sF(function (circle) {
@@ -32,56 +32,34 @@ var f = {
 			this.ne({remove: success});
 		}), fn);
 	},
-	removeUsers: function removeUsersF(data, fn, request) {
+	update: function removeUsersF(data, fn, request) {
 		step(function () {
-			Circle.get(request, data.remove.circleid, this);
+			Circle.get(request, data.update.id, this);
 		}, h.sF(function (circle) {
-			circle.removeUsers(request, data.remove.key, data.remove.oldKeyDecryptor, data.remove.user, data.remove.remove, this);
+			//if we have got a key and decryptors handle them!
+			circle.update(request, data.update.content, data.update.meta, data.update.key, data.update.decryptors, this);
 		}), h.sF(function (success) {
 			this.ne({
-				removed: success
+				updated: success
 			});
 		}), fn);
-
-		/**
-						circle: {
-							key: keyData,
-							remove: uids,
-							user: userIDs,
-						}
-		*/
 	},
 	get: function get(data, fn, request) {
 		step(function () {
 			Circle.get(request, data.circleid, this);
 		}, h.sF(function (result) {
-				result.getData(request, this, data.fullKey);
+			result.getData(request, this);
 		}), h.sF(function (result) {
-			this.ne({
-				circle: result
-			});
+			this.ne({ circle: result });
 		}), fn);
 	},
-	addUsers: function addUserF(data, fn, request) {
-		step(function () {
-			Circle.get(request, data.add.circleid, this);
-		}, h.sF(function (circle) {
-			circle.addUsers(request, data.add.userids, data.add.decryptors, this);
-		}), h.sF(function (added) {
-			this.ne({
-				added: !!added
-			});
-		}), fn);
-	},
-	add: function addCircleF(data, fn, request) {
+	create: function createCircleF(data, fn, request) {
 		step(function () {
 			Circle.create(request, data.circle, this);
 		}, h.sF(function (circle) {
 			circle.getData(request, this);
 		}), h.sF(function (data) {
-			this.ne({
-				result: data
-			});
+			this.ne({ created: data });
 		}), fn);
 	}
 };

@@ -162,7 +162,7 @@ var whispeerAPI = {
 			}), fn);
 		}
 	},
-	circles: circles,
+	circle: circles,
 	friends: friends,
 	messages: messages,
 	user: user,
