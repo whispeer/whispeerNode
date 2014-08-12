@@ -187,7 +187,7 @@ var friends = {
 	},
 	hasFriendsKeyAccess: function (request, uid, cb) {
 		step(function () {
-			if (parseInt(request.session.getUserID(), 10) === parseInt(uid, 10)) {
+			if (h.parseDecimal(request.session.getUserID()) === h.parseDecimal(uid)) {
 				this.last.ne(true);
 				return;
 			}
@@ -200,6 +200,13 @@ var friends = {
 			this.ne(areFriends || hasORequested);
 		}), cb);
 	},
+	getFriendShip: function (request, uid, cb) {
+		step(function () {
+			client.hgetall("friends:" + request.session.getUserID() + ":" + uid, this.parallel());
+		}, h.sF(function (meta) {
+			this.ne(meta);
+		}), cb);
+	},
 	getFriendsKeys: function (request, cb) {
 		step(function () {
 			request.session.getOwnUser(this);
@@ -210,26 +217,27 @@ var friends = {
 			});
 		}), cb);
 	},
-	add: function (request, uid, signedRequest, key, decryptors, cb) {
+	add: function (request, meta, signedList, key, decryptors, cb) {
 		var m, firstRequest;
 		var friendShip = {
 			decryptors: decryptors
 		};
 
+		var domain = "friends:" + request.session.getUserID();
+
 		step(function getUser() {
-			User.getUser(uid, this);
+			User.getUser(meta.friend, this);
 		}, h.sF(function checkAlreadyRequested(toAdd) {
-			var ownID = request.session.getUserID();
 			var uid = toAdd.getID();
 
 			friendShip.user = toAdd;
 
 			this.parallel.unflatten();
 
-			client.sismember("friends:" + ownID + ":requested", uid, this.parallel());
-			client.sismember("friends:" + ownID, uid, this.parallel());
-		}), h.sF(function getFriendKeys(haveIRequested, allreadyFriends) {
-			if (haveIRequested || allreadyFriends) {
+			client.sismember(domain + ":requested", uid, this.parallel());
+			client.sismember(domain, uid, this.parallel());
+		}), h.sF(function getFriendKeys(haveIRequested, alreadyFriends) {
+			if (haveIRequested || alreadyFriends) {
 				this.last.ne(true);
 			} else {
 				friends.getFriendsKeys(request, this);
@@ -237,6 +245,9 @@ var friends = {
 		}), h.sF(function hasOtherRequested(keys) {
 			friendShip.keys = keys;
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
+
+			//TODO: get friends and requests list. check that they are equal to the signed list content.
+			//TODO: check meta format
 
 			client.sismember("friends:" + request.session.getUserID() + ":requests", friendShip.user.getID(), this);
 		}), h.sF(function createData(hasOtherRequested) {
@@ -246,20 +257,19 @@ var friends = {
 
 			m = client.multi();
 
-			m.set("friends:" + request.session.getUserID() + ":signed:" + friendShip.user.getID(), signedRequest);
+			m.hmset(domain + ":" + friendShip.user.getID(), meta);
+			m.hmset(domain + ":signedList", signedList);
 
 			if (hasOtherRequested) {
 				createAcceptSpecificData(request, friendShip, m, this);
 			} else {
-				m.sadd("friends:" + request.session.getUserID() + ":requested", friendShip.user.getID());
+				m.sadd(domain + ":requested", friendShip.user.getID());
 				m.sadd("friends:" + friendShip.user.getID() + ":requests", request.session.getUserID());
 				this.ne();
 			}
 		}), h.sF(function createSymKey() {
 			SymKey.createWDecryptors(request, key, this);
-		}), h.sF(function keyCreated(key) {
-			m.set("friends:key:" + friendShip.user.getID() + ":" + request.session.getUserID(), key.getRealID());
-
+		}), h.sF(function keyCreated() {
 			this.parallel.unflatten();
 
 			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this.parallel());
@@ -335,6 +345,9 @@ var friends = {
 	},
 	get: function (request, cb) {
 		getFriends(request, request.session.getUserID(), cb);
+	},
+	getSignedList: function (request, cb) {
+		client.hgetall("friends:" + request.session.getUserID() + ":signedList", cb);
 	},
 	getRequests: function (request, cb) {
 		step(function () {

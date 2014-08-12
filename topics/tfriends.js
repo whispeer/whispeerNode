@@ -14,7 +14,7 @@ var f = {
 		*/
 		var wasSuccess = false;
 		step(function () {
-			Friends.add(request, data.userid, data.signedRequest, data.key, data.decryptors, this);
+			Friends.add(request, data.meta, data.signedList, data.key, data.decryptors, this);
 		}, h.sF(function (success) {
 			wasSuccess = success;
 			Friends.isOnline(request, data.userid, this);
@@ -53,18 +53,20 @@ var f = {
 			});
 		}), fn);
 	},
-	getAll: function getFriends(data, fn, request) {
+	all: function getFriends(data, fn, request) {
 		step(function () {
 			this.parallel.unflatten();
 
 			Friends.getRequests(request, this.parallel());
 			Friends.getRequested(request, this.parallel());
 			Friends.get(request, this.parallel());
-		}, h.sF(function (requests, requested, friends) {
+			Friends.getSignedList(request, this.parallel());
+		}, h.sF(function (requests, requested, friends, signedList) {
 			this.ne({
 				requests: requests,
 				requested: requested,
-				friends: friends
+				friends: friends,
+				signedList: signedList
 			});
 		}), fn);
 	}

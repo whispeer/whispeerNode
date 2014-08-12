@@ -6,7 +6,6 @@ var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
 var client = require("./redisClient");
-var KeyApi = require("./crypto/KeyApi");
 
 var User = require("./user");
 
