@@ -20,6 +20,19 @@ var Post = require("../includes/post");
 */
 
 var p = {
+	comment: {
+		create: function (data, fn, request) {
+			step(function () {
+				Post.get(request, h.parseDecimal(data.postID), this);
+			}, h.sF(function (thePost) {
+				thePost.addComment(request, data.comment.content, data.comment.meta, this);
+			}), h.sF(function () {
+				this.ne({
+					created: true
+				});
+			}), fn);
+		}
+	},
 	getPost: function (data, fn, request) {
 		step(function () {
 			Post.get(request, data.postid, this);

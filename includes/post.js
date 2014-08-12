@@ -42,13 +42,60 @@ var newPostsExpireTime = 10 * 60;
 
 var Post = function (postid) {
 	var domain = "post:" + postid, thePost = this, result;
+
+	this.addComment = function (request, content, meta, cb) {
+		step(function () {
+			console.log("create1");
+			//TODO: check data
+			//TODO: check comment ordering!
+			client.incr(domain + ":comments:count", this);
+		}, h.sF(function (id) {
+			console.log("create2");
+			var m = client.multi();
+			m.hmset(domain + ":comments:" + id + ":content", content);
+			m.hmset(domain + ":comments:" + id + ":meta", meta);
+			m.zadd(domain + ":comments:list", meta.createTime, id);
+
+			m.exec(this);
+		}), cb);
+	};
+
+	function getComment(id, cb) {
+		step(function () {
+			this.parallel.unflatten();
+			client.hgetall(domain + ":comments:" + id + ":content", this.parallel());
+			client.hgetall(domain + ":comments:" + id + ":meta", this.parallel());
+		}, h.sF(function (content, meta) {
+			this.ne({
+				content: content,
+				meta: meta
+			});
+		}), cb);
+	}
+
+	this.getComments = function (request, cb) {
+		step(function () {
+			client.zrevrange(domain + ":comments:list", 0, -1, this);
+		}, h.sF(function (comments) {
+			if (comments.length === 0) {
+				this.last.ne([]);
+				return;
+			}
+
+			comments.forEach(function (comment) {
+				getComment(comment, this.parallel());
+			}, this);
+		}), cb);
+	};
+
 	this.getPostData = function getDataF(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
 
 			client.hgetall(domain + ":meta", this.parallel());
 			client.hgetall(domain + ":content", this.parallel());
-		}, h.sF(function (meta, content) {
+			thePost.getComments(request, this.parallel());
+		}, h.sF(function (meta, content, comments) {
 			meta.sender = h.parseDecimal(meta.sender);
 			meta.time = h.parseDecimal(meta.time);
 			meta.walluser = h.parseDecimal(meta.walluser || 0);
@@ -56,7 +103,8 @@ var Post = function (postid) {
 			result = {
 				id: postid,
 				meta: meta,
-				content: content
+				content: content,
+				comments: comments
 			};
 
 			request.addKey(meta._key, this);
@@ -67,7 +115,7 @@ var Post = function (postid) {
 
 	this.hasUserAccess = function (userid, cb) {
 		step(function () {
-			client.hget(domain, "_key", this);
+			client.hget(domain + ":meta", "_key", this);
 		}, h.sF(function (keyRealID) {
 			client.sismember("key:" + keyRealID + ":access", userid, this);
 		}), cb);
@@ -76,7 +124,7 @@ var Post = function (postid) {
 	this.throwUserAccess = function throwUserAccessF(request, cb) {
 		var that = this;
 		step(function () {
-			that.hasUserAccess(this);
+			that.hasUserAccess(request.session.getUserID(), this);
 		}, h.sF(function (access) {
 			if (!access) {
 				throw new AccessViolation("user has no access to post");
@@ -448,14 +496,14 @@ Post.get = function (request, postid, cb) {
 	var thePost;
 	step(function () {
 		if (h.isInt(postid)) {
-			client.get("post:" + postid);
+			client.get("post:" + postid, this);
 		} else {
 			throw new AccessViolation();
 		}
 	}, h.sF(function (id) {
 		thePost = new Post(id);
 
-		thePost.throwUserAccess(this);
+		thePost.throwUserAccess(request, this);
 	}), h.sF(function () {
 		this.ne(thePost);
 	}), cb);
