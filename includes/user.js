@@ -11,7 +11,6 @@ var client = require("./redisClient");
 var h = require("whispeerHelper");
 
 var search = require("./search");
-var KeyApi = require("./crypto/KeyApi");
 
 var EccKey = require("./crypto/eccKey");
 var SymKey = require("./crypto/symKey");
@@ -467,7 +466,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
-			client.get("friends:key:" + id + ":" + request.session.getUserID(), this);
+			client.hget("friends:" + request.session.getUserID() + ":" + id + ":meta", "friendShipKey", this);
 		}), cb);
 	};
 
@@ -475,47 +474,23 @@ var User = function (id) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
-			client.get("friends:key:" + request.session.getUserID() + ":" + id, this);
+			client.hget("friends:" + id + ":" + request.session.getUserID() + ":meta", "friendShipKey", this);
 		}), cb);
 	};
 
-	function keyIDsToObjects(keys, cb) {
+	function addArrayKeys(request, arr, cb) {
 		step(function () {
-			keys.forEach(function (key) {
-				KeyApi.get(key, this.parallel());
+			arr.forEach(function (keyName) {
+				getAttribute(request, keyName, this.parallel());
 			}, this);
-		}, cb);
-	}
-
-	function getArrayKeys(request, arr, cb, options) {
-		options = options || {};
-
-		step(function () {
-			var i;
-			for (i = 0; i < arr.length; i += 1) {
-				getAttribute(request, arr[i], this.parallel());
-			}
 		}, h.sF(function (keys) {
-			if (options.keyObject) {
-				keyIDsToObjects(keys, this);
-			} else {
-				this.ne(keys);
-			}
-		}), h.sF(function (keys) {
-			var i, result = {};
-			for (i = 0; i < keys.length; i += 1) {
-				if (options.noSuffix) {
-					result[arr[i].replace(/Key$/, "")] = keys[i];
-				} else {
-					result[arr[i]] = keys[i];
-				}
-			}
-
-			this.ne(result);
+			keys.forEach(function (key) {
+				request.addKey(key, this.parallel());
+			}, this);
 		}), cb);
 	}
 
-	this.getFriendShipKeys = function (request, cb) {
+	this.addFriendShipKeys = function (request, cb) {
 		step(function () {
 			this.parallel.unflatten();
 
@@ -525,11 +500,11 @@ var User = function (id) {
 			var result = {};
 
 			if (friendShipKey) {
-				result.friendShipKey = friendShipKey;
+				request.addKey(friendShipKey, this);
 			}
 
 			if (reverseFriendShipKey) {
-				result.reverseFriendShipKey = reverseFriendShipKey;
+				request.addKey(reverseFriendShipKey, this);
 			}
 
 			this.ne(result);
@@ -537,66 +512,36 @@ var User = function (id) {
 	};
 
 	var ownKeys = ["mainKey"];
-	this.getOwnKeys = function (request, cb, options) {
-		getArrayKeys(request, ownKeys, cb, options);
+	this.addOwnKeys = function (request, cb) {
+		addArrayKeys(request, ownKeys, cb);
 	};
 
 	var publicKeys = ["cryptKey", "signKey"];
-	this.getPublicKeys = function (request, cb, options) {
-		getArrayKeys(request, publicKeys, cb, options);
+	this.addPublicKeys = function (request, cb) {
+		addArrayKeys(request, publicKeys, cb);
 	};
 
 	var friendsKeys = ["friendsKey", "friendsLevel2Key"];
-	this.getFriendsKeys = function (request, cb, options) {
-		getArrayKeys(request, friendsKeys, cb, options);
+	this.addFriendsKeys = function (request, cb) {
+		addArrayKeys(request, friendsKeys, cb);
 	};
 
-	function loadMultipleNamedKeys(request, keys, cb) {
-		var names = Object.keys(keys);
-
-		step(function () {
-			names.forEach(function (name) {
-				KeyApi.get(keys[name], this.parallel());
-			}, this);
-		}, h.sF(function (keyObjs) {
-			keyObjs.forEach(function (key, index) {
-				if (!key) {
-					console.log("Key not found for " + names[index] + " with id " + keys[names[index]]);
-					throw new Error("key not found!");
-				}
-
-				key.getKData(request, this.parallel(), true);
-			}, this);
-		}), h.sF(function (keyData) {
-			var result = {};
-
-			keyData.forEach(function (data, index) {
-				result[names[index]] = data;
-			});
-
-			this.ne(result);
-		}), cb);
-	}
-
-	this.getKeys = function (request, cb) {
+	this.addKeys = function (request, cb) {
 		step(function () {
 			var friends = require("./friends");
 			friends.hasFriendsKeyAccess(request, theUser.getID(), this);
 		}, h.sF(function (hasAccess) {
-			theUser.getPublicKeys(request, this.parallel());
+			theUser.addPublicKeys(request, this.parallel());
 
 			if (hasAccess) {
-				theUser.getFriendsKeys(request, this.parallel());
-
-				if (theUser.isOwnUser(request)) {
-					theUser.getOwnKeys(request, this.parallel());
-				} else {
-					theUser.getFriendShipKeys(request, this.parallel());
-				}
+				theUser.addFriendsKeys(request, this.parallel());
 			}
-		}), h.sF(function (keys) {
-			keys = h.object.multipleFlatJoin(keys);
-			loadMultipleNamedKeys(request, keys, this);
+
+			if (theUser.isOwnUser(request)) {
+				theUser.addOwnKeys(request, this.parallel());
+			} else {
+				theUser.addFriendShipKeys(request, this.parallel());
+			}
 		}), cb);
 	};
 
@@ -634,6 +579,19 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.getProfile = function (request, cb) {
+		step(function () {
+			this.parallel.unflatten();
+			theUser.getPublicProfile(request, this.parallel());
+			theUser.getPrivateProfiles(request, this.parallel(), true);
+		}, h.sF(function (pub, priv) {
+			this.ne({
+				pub: pub,
+				priv: priv
+			});
+		}), cb);
+	};
+
 	this.getUData = function (request, cb) {
 		var result;
 		step(function () {
@@ -642,39 +600,37 @@ var User = function (id) {
 			this.parallel.unflatten();
 
 			theUser.getNickname(request, this.parallel());
-			theUser.getPublicProfile(request, this.parallel());
-			theUser.getPrivateProfiles(request, this.parallel(), true);
-			theUser.getKeys(request, this.parallel());
+			theUser.getProfile(request, this.parallel());
+
 			theUser.getMutualFriends(request, this.parallel());
 			theUser.getSignedKeys(request, this.parallel());
 
 			if (theUser.isOwnUser(request)) {
+				theUser.getMainKey(request, this.parallel());
 				theUser.getSignedOwnKeys(request, this.parallel());
 				theUser.getMigrationState(request, this.parallel());
 				theUser.getEMail(request, this.parallel());
 				theUser.isMailVerified(request, this.parallel());
 			}
-		}), h.sF(function (nick, pubProf, privProf, keys, mutualFriends, signedKeys, signedOwnKeys, migrationState, mail, mailVerified) {
+
+			theUser.addKeys(request, this.parallel());
+		}), h.sF(function (nick, profile, mutualFriends, signedKeys, mainKey, signedOwnKeys, migrationState, mail, mailVerified) {
 			result = {
 				id: id,
 				nickname: nick,
-				profile: {
-					pub: pubProf,
-					priv: privProf
-				},
-				signedKeys: signedKeys,
-				signedOwnKeys: signedOwnKeys
+				profile: profile,
+				signedKeys: signedKeys
 			};
 
 			if (theUser.isOwnUser(request)) {
+				result.signedOwnKeys = signedOwnKeys;
 				result.migrationState = migrationState;
+				result.mainKey = mainKey;
 				if (mail) {
 					result.mail = mail;
 					result.mailVerified = mailVerified;
 				}
 			}
-
-			result.keys = keys;
 
 			result.mutualFriends = mutualFriends;
 
