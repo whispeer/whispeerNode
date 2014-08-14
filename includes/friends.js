@@ -80,18 +80,12 @@ function getUserOnlineFriends(uid, cb) {
 	}), cb);
 }
 
-function getUserLevel2Key(request, otherUser, cb) {
-	step(function () {
-		otherUser.getFriendsLevel2Key(request, this);
-	}, h.sF(function (otherFriendsLevel2Key) {
-		KeyApi.get(otherFriendsLevel2Key, this);
-	}), cb);
-}
-
 function createAcceptSpecificData(request, friendShip, multi, cb) {
 	step(function () {
-		getUserLevel2Key(request, friendShip.user, this);
+		friendShip.user.getFriendsLevel2Key(request, this);
 	}, h.sF(function (otherFriendsLevel2Key) {
+		KeyApi.get(otherFriendsLevel2Key, this);
+	}), h.sF(function (otherFriendsLevel2Key) {
 		var ownID = request.session.getUserID(), 
 			uid = friendShip.user.getID(),
 			decryptors = friendShip.decryptors;
@@ -211,9 +205,19 @@ var friends = {
 		step(function () {
 			request.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
-			ownUser.getFriendsKeys(request, this, {
-				noSuffix: true,
-				keyObject: true
+			this.parallel.unflatten();
+
+			ownUser.getFriendsKey(request, this.parallel());
+			ownUser.getFriendsLevel2Key(request, this.parallel());
+		}), h.sF(function (friendsKey, friendsLevel2Key) {
+			this.parallel.unflatten();
+
+			KeyApi.get(friendsKey, this.parallel());
+			KeyApi.get(friendsLevel2Key, this.parallel());
+		}), h.sF(function (friendsKey, friendsLevel2Key) {
+			this.ne({
+				friends: friendsKey,
+				friendsLevel2: friendsLevel2Key
 			});
 		}), cb);
 	},
