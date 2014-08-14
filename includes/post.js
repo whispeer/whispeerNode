@@ -75,7 +75,7 @@ var Post = function (postid) {
 
 	this.getComments = function (request, cb) {
 		step(function () {
-			client.zrevrange(domain + ":comments:list", 0, -1, this);
+			client.zrange(domain + ":comments:list", 0, -1, this);
 		}, h.sF(function (comments) {
 			if (comments.length === 0) {
 				this.last.ne([]);
