@@ -113,16 +113,20 @@ var whispeerAPI = {
 				}
 			}, h.sF(function (k) {
 				keys = k;
-				var i;
-				for (i = 0; i < keys.length; i += 1) {
-					keys[i].addFasterDecryptor(request, data.keys[keys[i].getRealID()][0], this.parallel());
-				}
+
+				keys.forEach(function (key) {
+					key.addFasterDecryptor(request, data.keys[key.getRealID()][0], this.parallel());
+				}, this);
 			}), h.sF(function (success) {
 				var result = {}, i;
 
 				for (i = 0; i < success.length; i += 1) {
 					result[keys[i].getRealID()] = success[i];
 				}
+
+				this.ne({
+					result: result
+				});
 			}), fn);
 		}
 	},
