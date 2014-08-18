@@ -44,13 +44,13 @@ var Post = function (postid) {
 	var domain = "post:" + postid, thePost = this, result;
 
 	this.addComment = function (request, content, meta, cb) {
+		var commentID = 0;
 		step(function () {
-			console.log("create1");
 			//TODO: check data
 			//TODO: check comment ordering!
 			client.incr(domain + ":comments:count", this);
 		}, h.sF(function (id) {
-			console.log("create2");
+			commentID = id;
 			var m = client.multi();
 			m.hmset(domain + ":comments:" + id + ":content", content);
 			m.hmset(domain + ":comments:" + id + ":meta", meta);
