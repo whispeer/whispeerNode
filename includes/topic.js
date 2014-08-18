@@ -260,7 +260,7 @@ var Topic = function (id) {
 
 			theReceiver.forEach(function (user, index) {
 				if (onlineUsers[index]) {
-					client.publish("user:" + user.getID() + ":message", messageID);
+					user.notify("message", messageID);
 				} else {
 					offlineUsers.push(user);
 				}

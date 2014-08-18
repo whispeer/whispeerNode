@@ -14,14 +14,23 @@ var APIVERSION = "0.0.1";
 var KeyApi = require("./includes/crypto/KeyApi");
 
 function registerSocketListener(socketData) {
-	var base = "user:" + socketData.session.getUserID() + ":*";
-	socketData.psub(base, function (channel, data) {
-		var subChannel = channel.substr(base.length - 1);
+	if (socketData.session.getUserID() === 0) {
+		return;
+	}
 
-		if (listener[subChannel]) {
-			listener[subChannel](socketData, data);
-		} else {
-			socketData.socket.emit("notify." + subChannel, JSON.parse(data));
+	step(function () {
+		socketData.session.getOwnUser(this);
+	}, h.sF(function (ownUser) {
+		ownUser.listenAll(socketData, function (channel, data) {
+			if (listener[channel]) {
+				listener[channel](socketData, data);
+			} else {
+				socketData.socket.emit("notify." + channel, JSON.parse(data));
+			}
+		});
+	}), function (e) {
+		if (e) {
+			console.error(e);
 		}
 	});
 }
