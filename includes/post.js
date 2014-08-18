@@ -59,21 +59,25 @@ var Post = function (postid) {
 			m.zadd(domain + ":comments:list", meta.createTime, id);
 
 			m.exec(this);
+		}), h.sF(function () {
+			thePost.notify("comment:create", commentID);
+			this.ne();
 		}), cb);
 	};
 
-	function getComment(id, cb) {
+	this.getComment = function (id, cb) {
 		step(function () {
 			this.parallel.unflatten();
 			client.hgetall(domain + ":comments:" + id + ":content", this.parallel());
 			client.hgetall(domain + ":comments:" + id + ":meta", this.parallel());
 		}, h.sF(function (content, meta) {
 			this.ne({
+				id: id,
 				content: content,
 				meta: meta
 			});
 		}), cb);
-	}
+	};
 
 	this.getComments = function (request, cb) {
 		step(function () {
@@ -85,7 +89,7 @@ var Post = function (postid) {
 			}
 
 			comments.forEach(function (comment) {
-				getComment(comment, this.parallel());
+				thePost.getComment(comment, this.parallel());
 			}, this);
 		}), cb);
 	};
@@ -283,6 +287,26 @@ function accessablePostFilter(request) {
 	};
 }
 
+function makePost(request, id) {
+	var post = new Post(id);
+
+	var socketData = request.socketData;
+	post.listen(socketData, "comment:create", function (channel, data, postID) {
+		step(function () {
+			var p = new Post(postID);
+			p.getComment(data, this);
+		}, h.sF(function (comment) {
+			socketData.socket.emit("post." + postID + ".comment.new", comment);
+		}), function (e) {
+			if (e) {
+				console.error(e);
+			}
+		});
+	});
+
+	return post;
+}
+
 Post.getTimeline = function (request, filter, afterID, count, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
@@ -314,7 +338,9 @@ Post.getTimeline = function (request, filter, afterID, count, cb) {
 			paginator.getRangeAfterID(afterID, this, accessablePostFilter(request));
 		}		
 	}), h.sF(function (ids, remaining) {
-		var result = ids.map(h.newElement(Post));
+		var result = ids.map(function (id) {
+			return makePost(request, id);
+		});
 		this.ne(result, remaining);
 	}), cb);
 };
@@ -491,7 +517,7 @@ Post.create = function (request, data, cb) {
 		//TODO: notify wall user and mentioned users.
 
 		//collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrangebyscore)
-		this.ne(new Post(postID));
+		this.ne(makePost(request, postID));
 	}), cb);
 };
 
@@ -505,7 +531,7 @@ Post.get = function (request, postid, cb) {
 			throw new AccessViolation();
 		}
 	}, h.sF(function (id) {
-		thePost = new Post(id);
+		thePost = makePost(request, id);
 
 		thePost.throwUserAccess(request, this);
 	}), h.sF(function () {
