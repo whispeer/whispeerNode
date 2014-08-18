@@ -13,6 +13,28 @@ function SocketData(socket, session) {
 
 	var theSocketData = this, streamSocket;
 
+	var psubs = {};
+	var subs = {};
+
+	/* helper functions. Please use redisObserver where possible */
+	this.psub = function (channel, cb) {
+		if (!psubs[channel]) {
+			psubs[channel] = true;
+
+			var closeSubscriber = client.psub(channel, cb);
+			socket.once("disconnect", closeSubscriber);
+		}
+	};
+
+	this.sub = function (channel, cb) {
+		if (!subs[channel]) {
+			subs[channel] = true;
+
+			var closeSubscriber = client.sub(channel, cb);
+			socket.once("disconnect", closeSubscriber);
+		}
+	};
+
 	this.upgradeStream = function (api) {
 		if (!streamSocket) {
 			streamSocket = socketS(socket);
