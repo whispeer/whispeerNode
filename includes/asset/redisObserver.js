@@ -10,20 +10,19 @@ var RedisObserver = function (base, id) {
 	this._namespace = "db:" + (config.dbNumber || 0) + ":observer:" + base + ":" + id + ":";
 
 	function rewrite(cb) {
+		var namespace = theObserver._namespace;
 		return function (channel, data) {
-			var subChannel = channel.substr(theObserver._namespace.length);
-			cb(subChannel, data);
+			var subChannel = channel.substr(namespace.length);
+			cb(subChannel, JSON.parse(data), id);
 		};
 	}
 
 	this.listenAll = function(socket, fn) {
-		var closeSubscriber = client.psub(this._namespace + "*", rewrite(fn));
-		socket.once("disconnect", closeSubscriber);
+		socket.psub(this._namespace + "*", rewrite(fn));
 	};
 
 	this.listen = function(socket, type, fn) {
-		var closeSubscriber = client.sub(this._namespace + type, rewrite(fn));
-		socket.once("disconnect", closeSubscriber);
+		socket.sub(this._namespace + type, rewrite(fn));
 	};
 
 	this.notify = function(type, data) {
