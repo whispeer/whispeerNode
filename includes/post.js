@@ -13,6 +13,8 @@ var Friends = require("./friends");
 var SortedSetPaginator = require("./sortedSetPaginator");
 var SymKey = require("./crypto/symKey");
 
+var RedisObserver = require("./asset/redisObserver");
+
 var mailer = require("./mailer");
 
 var newPostsExpireTime = 10 * 60;
@@ -141,6 +143,8 @@ var Post = function (postid) {
 			client.hget(domain, "content", this);
 		}), cb);
 	};
+
+	RedisObserver.call(this, "post", postid);
 };
 
 function removeOldNewPosts(multi, userid) {

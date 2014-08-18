@@ -26,29 +26,9 @@ function SocketData(socket, session) {
 		}
 	};
 
-	this.sub = function subF(channel, cb) {
-		var end = client.sub(channel, function (message) {
-			cb(message);
-		});
-
-		theSocketData.once("disconnect", end);
-	};
-
 	this.notifyOwnClients = function (channel, message) {
 		message = JSON.stringify(message);
 		client.publish("user:" + theSocketData.session.getUserID() + ":" + channel, message);
-	};
-
-	this.psub = function subF(channel, cb) {
-		var end = client.psub(channel, function (channel, message) {
-			var base = "user:" + theSocketData.session.getUserID() + ":";
-
-			if (channel.substring(0, base.length) === base) {
-				cb(channel, message);
-			}
-		});
-
-		theSocketData.once("disconnect", end);
 	};
 
 	var statusUpdater = new onlineStatusUpdater(this, session);

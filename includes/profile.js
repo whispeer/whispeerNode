@@ -33,12 +33,6 @@ var Profile = function (userid, profileid) {
 		}), cb);
 	};
 
-	this.listen = function doListenF(request, cb) {
-		request.socketData.sub(domain, function (data) {
-			cb(JSON.parse(data));
-		});
-	};
-
 	this.setData = function setDataF(request, data, cb) {
 		step(function () {
 			request.session.ownUserError(userid, this);

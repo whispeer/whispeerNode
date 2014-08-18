@@ -15,6 +15,8 @@ var search = require("./search");
 var EccKey = require("./crypto/eccKey");
 var SymKey = require("./crypto/symKey");
 
+var RedisObserver = require("./asset/redisObserver");
+
 var UPDATESEARCHON = ["profile", "nickname"];
 
 function logedinF(data, cb) {
@@ -686,11 +688,7 @@ var User = function (id) {
 		}), cb);
 	};
 
-	this.listen = function listenF(request, cb) {
-		request.socketData.psub(userDomain + ":*", function (channel, data) {
-			cb(channel, JSON.parse(data));
-		});
-	};
+	RedisObserver.call(this, "user", id);
 };
 
 User.search = function (text, cb) {
