@@ -8,7 +8,6 @@ var RequestData = require("./requestData");
 
 var listener = {
 	"friends:online": function fo(socketData, data) {
-		data = JSON.parse(data);
 		socketData.socket.emit("friendOnlineChange", {
 			keys: [],
 			uid: data.sender,
