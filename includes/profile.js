@@ -9,6 +9,8 @@ var h = require("whispeerHelper");
 var validator = require("whispeerValidations");
 var jsonFields = ["profile", "own"];
 
+var RedisObserver = require("./asset/redisObserver");
+
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
@@ -41,7 +43,7 @@ var Profile = function (userid, profileid) {
 				data = h.stringifyCertainAttributes(data, jsonFields);
 
 				client.hmset(domain, data, this);
-				client.publish(domain, data.profile);
+				theProfile.notify("update", data.profile);
 			} else {
 				throw new InvalidProfile();
 			}
@@ -81,6 +83,8 @@ var Profile = function (userid, profileid) {
 			client.srem("user:" + userid + ":profiles", profileid, this);
 		}), cb);
 	};
+
+	RedisObserver.call(this, "user: " + userid + ":profile", profileid);
 };
 
 function getAllProfiles(request, userid, cb) {
