@@ -51,30 +51,41 @@ function addFriendName(request, user) {
 }
 
 function getUserOnlineFriends(uid, cb) {
-	var onlineFriends = [];
 	step(function () {
 		client.sinter("friends:" + uid, "user:online", this);
 	}, h.sF(function (friends) {
-		onlineFriends = friends || [];
-		var i;
-		for (i = 0; i < friends.length; i += 1) {
-			client.get("user:" + friends[i] + ":recentActivity", this.parallel());
-		}
+		friends = friends || [];
 
-		this.parallel()();
+		this.ne(friends);
+	}), cb);
+}
+
+function getUserOnlineFriendsStatus(uid, cb) {
+	var onlineFriends = [];
+	step(function () {
+		getUserOnlineFriends(uid, this);
+	}, h.sF(function (friends) {
+		onlineFriends = friends;
+
+		friends.forEach(function (friend) {
+			client.get("user:" + friend + ":recentActivity", this.parallel());
+		}, this);
+
+		if (friends.length === 0) {
+			this.last.ne({});
+		}
 	}), h.sF(function (recentActivity) {
 		var result = {};
 		recentActivity = recentActivity || [];
 		h.assert(recentActivity.length === onlineFriends.length);
 
-		var i;
-		for (i = 0; i < onlineFriends.length; i += 1) {
-			if (recentActivity[i]) {
-				result[onlineFriends[i]] = 2;
+		onlineFriends.forEach(function (friend, index) {
+			if (recentActivity[index]) {
+				result[friend] = 2;
 			} else {
-				result[onlineFriends[i]] = 1;
+				result[friend] = 1;
 			}
-		}
+		});
 
 		this.ne(result);
 	}), cb);
@@ -86,7 +97,7 @@ function createAcceptSpecificData(request, friendShip, multi, cb) {
 	}, h.sF(function (otherFriendsLevel2Key) {
 		KeyApi.get(otherFriendsLevel2Key, this);
 	}), h.sF(function (otherFriendsLevel2Key) {
-		var ownID = request.session.getUserID(), 
+		var ownID = request.session.getUserID(),
 			uid = friendShip.user.getID(),
 			decryptors = friendShip.decryptors;
 
@@ -112,18 +123,17 @@ var friends = {
 		step(function () {
 			getUserOnlineFriends(uid, this);
 		}, h.sF(function (online) {
-			online = Object.keys(online);
-
-			var i, currentChannel;
-			for (i = 0; i < online.length; i += 1) {
-				currentChannel = "user:" + online[i] + ":friends:" + channel;
-
-				client.publish(currentChannel, JSON.stringify({
+			online.forEach(function (uid) {
+				User.getUser(uid, this.parallel());
+			}, this);
+		}), h.sF(function (online) {
+			online.forEach(function (user) {
+				user.notify("friends:" + channel, {
 					sender: uid,
-					receiver: online[i],
+					receiver: user.getID(),
 					content: content
-				}));
-			}
+				});
+			});
 
 			this.ne();
 		}), function (e) {
@@ -151,7 +161,7 @@ var friends = {
 		}), cb);
 	},
 	getOnline: function (request, cb) {
-		getUserOnlineFriends(request.session.getUserID(), cb);
+		getUserOnlineFriendsStatus(request.session.getUserID(), cb);
 	},
 	isOnline: function (request, uid, cb) {
 		step(function () {
@@ -306,9 +316,9 @@ var friends = {
 		}), h.sF(function addFriendsName() {
 			addFriendName(request, friendShip.user);
 			if (firstRequest) {
-				client.publish("user:" + friendShip.user.getID() + ":friendRequest", request.session.getUserID());
+				friendShip.user.notify("friendRequest", request.session.getUserID());
 			} else {
-				client.publish("user:" + friendShip.user.getID() + ":friendAccept", request.session.getUserID());
+				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
 
 			this.ne(true);
