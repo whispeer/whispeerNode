@@ -445,26 +445,6 @@ function processKey(request, keyData, cb) {
 	}
 }
 
-function processMetaInformation(request, meta, cb) {
-	step(function () {
-		this.parallel.unflatten();
-
-		processWallUser(meta.walluser, this.parallel());
-		processKey(request, meta._key, this.parallel());
-	}, h.sF(function (user, keyid) {
-		if (user) {
-			meta.walluserObj = user;
-			meta.walluser = user.getID();
-		} else {
-			delete meta.walluser;
-		}
-
-		meta._key = keyid;
-
-		this.ne();
-	}), cb);
-}
-
 Post.create = function (request, data, cb) {
 	/*
 	post: {
@@ -479,7 +459,7 @@ Post.create = function (request, data, cb) {
 	}
 	*/
 
-	var postID;
+	var postID, wallUserObj;
 
 	step(function () {
 		if (data.meta.sender !== request.session.getUserID()) {
@@ -488,8 +468,21 @@ Post.create = function (request, data, cb) {
 
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
-		processMetaInformation(request, data.meta, this);
-	}), h.sF(function () {
+		this.parallel.unflatten();
+
+		processWallUser(data.meta.walluser, this.parallel());
+		processKey(request, data.meta._key, this.parallel());
+	}), h.sF(function (_wallUserObj, keyid) {
+		wallUserObj = _wallUserObj;
+
+		if (_wallUserObj && h.parseDecimal(data.meta.walluser) !== _wallUserObj.getID()) {
+			throw new InvalidPost("invalid walluser id");
+		} else if (data.meta.walluser) {
+			throw new InvalidPost("walluser not existing!");
+		}
+
+		data.meta._key = keyid;
+
 		client.incr("post", this);
 	}), h.sF(function (id) {
 		postID = id;
@@ -511,8 +504,8 @@ Post.create = function (request, data, cb) {
 
 		multi.exec(this);
 	}), h.sF(function () {
-		if (data.meta.walluserObj) {
-			mailer.sendInteractionMails([data.meta.walluserObj]);
+		if (wallUserObj) {
+			mailer.sendInteractionMails([wallUserObj]);
 		}
 		//TODO: notify wall user and mentioned users.
 
