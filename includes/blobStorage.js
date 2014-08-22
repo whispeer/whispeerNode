@@ -6,6 +6,7 @@ var h = require("whispeerHelper");
 var fs = require("fs");
 
 var client = require("./redisClient");
+var SymKey = require("./crypto/symKey");
 
 function isBlobID(blobid) {
 	return blobid.match(/^[A-z0-9]*$/);
@@ -55,8 +56,8 @@ function createBlobID(cb) {
 	}, h.sF(function (bid) {
 		blobid = bid;
 		client.sadd("blobs:allids", blobid, this);
-	}), h.sF(function (isMember) {
-		if (isMember === 1) {
+	}), h.sF(function (isNoMember) {
+		if (isNoMember === 1) {
 			this.ne(blobid);
 		} else {
 			createBlobID(cb);
@@ -64,8 +65,23 @@ function createBlobID(cb) {
 	}), cb);
 }
 
+function blobAddKey(request, blobid, keyData, cb) {
+	if (!keyData) {
+		cb();
+		return;
+	}
+
+	step(function () {
+		SymKey.createWDecryptors(request, keyData, this);
+	}, h.sF(function (key) {
+		//add key to database
+
+		client.set("blobs:" + blobid + ":key", key.getRealID(), this);
+	}), cb);
+}
+
 var blobStorage = {
-	reserveBlobID: function (request, cb) {
+	reserveBlobID: function (request, key, cb) {
 		var blobid;
 
 		step(function () {
@@ -75,12 +91,16 @@ var blobStorage = {
 		}), h.sF(function (bid) {
 			blobid = bid;
 			client.sadd("blobs:reserved", blobid, this);
-		}), h.sF(function (isMember) {
-			if (isMember === 1) {
-				this.ne(blobid);
+		}), h.sF(function (isNoMember) {
+			if (isNoMember === 1) {
+				this.ne();
 			} else {
 				throw "Per logical deduction this should not have happened";
 			}
+		}), h.sF(function () {
+			blobAddKey(request, blobid, key, this);
+		}), h.sF(function () {
+			this.ne(blobid);
 		}), cb);
 	},
 	preReserveBlobID: function (cb) {
@@ -92,15 +112,15 @@ var blobStorage = {
 			blobid = bid;
 
 			client.sadd("blobs:prereserved", blobid, this);
-		}), h.sF(function (isMember) {
-			if (isMember === 1) {
+		}), h.sF(function (isNoMember) {
+			if (isNoMember === 1) {
 				this.ne(blobid);
 			} else {
 				throw "Per logical deduction this should not have happened";
 			}
 		}), cb);
 	},
-	fullyReserveBlobID: function (request, blobid, cb) {
+	fullyReserveBlobID: function (request, blobid, key, cb) {
 		step(function () {
 			request.session.logedinError(this);
 		}, h.sF(function () {
@@ -111,6 +131,8 @@ var blobStorage = {
 			} else {
 				throw new InvalidBlobID("blob not prereserved");
 			}
+		}), h.sF(function () {
+			blobAddKey(request, blobid, key, this);
 		}), h.sF(function () {
 			this.ne(blobid);
 		}), cb);
@@ -135,13 +157,18 @@ var blobStorage = {
 			client.sismember("blobs:usedids", blobid, this);
 		}), h.sF(function (exists) {
 			if (exists) {
-				fs.readFile(blobIDtoFile(blobid), this);
+				this.parallel.unflatten();
+				fs.readFile(blobIDtoFile(blobid), this.parallel());
+				client.get("blobs:" + blobid + ":key", this.parallel());
 			} else {
 				throw new Error("Blob not found");
 			}
-		}), h.sF(function (data) {
+		}), h.sF(function (data, key) {
 			var result = new Buffer(data).toString("base64");
-			this.ne(result);
+			this.ne({
+				blob: result,
+				key: key
+			});
 		}), cb);
 	}
 };

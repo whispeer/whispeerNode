@@ -55,6 +55,10 @@ var Post = function (postid) {
 			meta.time = h.parseDecimal(meta.time);
 			meta.walluser = h.parseDecimal(meta.walluser || 0);
 
+			if (meta.images) {
+				meta.images = JSON.parse(meta.images);
+			}
+
 			result = {
 				id: postid,
 				meta: meta,
@@ -418,6 +422,10 @@ Post.create = function (request, data, cb) {
 	}), h.sF(function () {
 		client.incr("post", this);
 	}), h.sF(function (id) {
+		if (data.meta.images) {
+			data.meta.images = JSON.stringify(data.meta.images);
+		}
+
 		postID = id;
 		var multi = client.multi();
 		multi.zadd("user:" + request.session.getUserID() + ":posts", data.meta.time, id);
