@@ -134,6 +134,7 @@ var blobStorage = {
 		}), cb);
 	},
 	getBlob: function (request, blobid, cb) {
+		var result;
 		step(function () {
 			request.session.logedinError(this);
 		}, h.sF(function () {
@@ -149,11 +150,18 @@ var blobStorage = {
 				throw new Error("Blob not found");
 			}
 		}), h.sF(function (data, meta) {
-			var result = new Buffer(data).toString("base64");
-			this.ne({
-				blob: result,
+			result = {
+				blob: new Buffer(data).toString("base64"),
 				meta: meta
-			});
+			};
+
+			if (meta._key) {
+				request.addKey(meta._key, this);
+			} else {
+				this.ne();
+			}
+		}), h.sF(function () {
+			this.ne(result);
 		}), cb);
 	}
 };
