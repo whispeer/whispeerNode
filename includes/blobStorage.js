@@ -65,29 +65,6 @@ function createBlobID(cb) {
 	}), cb);
 }
 
-function blobSetMeta(request, blobid, meta, cb) {
-	if (!meta) {
-		cb();
-		return;
-	}
-
-	step(function () {
-		if (meta._key) {
-			SymKey.createWDecryptors(request, meta._key, this);
-		} else {
-			this.ne();
-		}
-	}, h.sF(function (key) {
-		if (key) {
-			meta._key = key.getRealID();
-		}
-
-		//add key to database
-
-		client.hmset("blobs:" + blobid + ":meta", meta, this);
-	}), cb);
-}
-
 var blobStorage = {
 	reserveBlobID: function (request, meta, cb) {
 		var blobid;
@@ -106,7 +83,7 @@ var blobStorage = {
 				throw "Per logical deduction this should not have happened";
 			}
 		}), h.sF(function () {
-			blobSetMeta(request, blobid, meta, this);
+			client.hmset("blobs:" + blobid, meta, this);
 		}), h.sF(function () {
 			this.ne(blobid);
 		}), cb);
@@ -140,7 +117,7 @@ var blobStorage = {
 				throw new InvalidBlobID("blob not prereserved");
 			}
 		}), h.sF(function () {
-			blobSetMeta(request, blobid, meta, this);
+			client.hmset("blobs:" + blobid, meta, this);
 		}), h.sF(function () {
 			this.ne(blobid);
 		}), cb);
@@ -167,7 +144,7 @@ var blobStorage = {
 			if (exists) {
 				this.parallel.unflatten();
 				fs.readFile(blobIDtoFile(blobid), this.parallel());
-				client.hgetall("blobs:" + blobid + ":meta", this.parallel());
+				client.hgetall("blobs:" + blobid, this.parallel());
 			} else {
 				throw new Error("Blob not found");
 			}
