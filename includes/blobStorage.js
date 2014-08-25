@@ -65,23 +65,31 @@ function createBlobID(cb) {
 	}), cb);
 }
 
-function blobAddKey(request, blobid, keyData, cb) {
-	if (!keyData) {
+function blobSetMeta(request, blobid, meta, cb) {
+	if (!meta) {
 		cb();
 		return;
 	}
 
 	step(function () {
-		SymKey.createWDecryptors(request, keyData, this);
+		if (meta._key) {
+			SymKey.createWDecryptors(request, meta._key, this);
+		} else {
+			this.ne();
+		}
 	}, h.sF(function (key) {
+		if (key) {
+			meta._key = key.getRealID();
+		}
+
 		//add key to database
 
-		client.set("blobs:" + blobid + ":key", key.getRealID(), this);
+		client.hmset("blobs:" + blobid + ":meta", meta, this);
 	}), cb);
 }
 
 var blobStorage = {
-	reserveBlobID: function (request, key, cb) {
+	reserveBlobID: function (request, meta, cb) {
 		var blobid;
 
 		step(function () {
@@ -98,7 +106,7 @@ var blobStorage = {
 				throw "Per logical deduction this should not have happened";
 			}
 		}), h.sF(function () {
-			blobAddKey(request, blobid, key, this);
+			blobSetMeta(request, blobid, meta, this);
 		}), h.sF(function () {
 			this.ne(blobid);
 		}), cb);
@@ -120,7 +128,7 @@ var blobStorage = {
 			}
 		}), cb);
 	},
-	fullyReserveBlobID: function (request, blobid, key, cb) {
+	fullyReserveBlobID: function (request, blobid, meta, cb) {
 		step(function () {
 			request.session.logedinError(this);
 		}, h.sF(function () {
@@ -132,7 +140,7 @@ var blobStorage = {
 				throw new InvalidBlobID("blob not prereserved");
 			}
 		}), h.sF(function () {
-			blobAddKey(request, blobid, key, this);
+			blobSetMeta(request, blobid, meta, this);
 		}), h.sF(function () {
 			this.ne(blobid);
 		}), cb);
@@ -159,15 +167,15 @@ var blobStorage = {
 			if (exists) {
 				this.parallel.unflatten();
 				fs.readFile(blobIDtoFile(blobid), this.parallel());
-				client.get("blobs:" + blobid + ":key", this.parallel());
+				client.hgetall("blobs:" + blobid + ":meta", this.parallel());
 			} else {
 				throw new Error("Blob not found");
 			}
-		}), h.sF(function (data, key) {
+		}), h.sF(function (data, meta) {
 			var result = new Buffer(data).toString("base64");
 			this.ne({
 				blob: result,
-				key: key
+				meta: meta
 			});
 		}), cb);
 	}

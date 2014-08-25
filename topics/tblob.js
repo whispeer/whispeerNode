@@ -28,7 +28,7 @@ var streamAPI = {
 	},
 	fullyReserveID: function (data, fn, request) {
 		step(function () {
-			blobStorage.fullyReserveBlobID(request, data.blobid, data.key, this);
+			blobStorage.fullyReserveBlobID(request, data.blobid, data.meta, this);
 		}, h.sF(function (blobid) {
 			this.ne({
 				blobid: blobid
@@ -37,7 +37,7 @@ var streamAPI = {
 	},
 	reserveBlobID: function (data, fn, request) {
 		step(function () {
-			blobStorage.reserveBlobID(request, data.key, this);
+			blobStorage.reserveBlobID(request, data.meta, this);
 		}, h.sF(function (blobid) {
 			this.ne({
 				blobid: blobid
