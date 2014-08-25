@@ -375,6 +375,14 @@ function processKey(request, keyData, cb) {
 	}
 }
 
+function processImages(request, images, keys, cb) {
+	step(function () {
+		images.forEach(function (img, index) {
+			SymKey.createWDecryptors(request, keys[index], this.parallel());
+		}, this);
+	}, cb);
+}
+
 function processMetaInformation(request, meta, cb) {
 	step(function () {
 		this.parallel.unflatten();
@@ -419,6 +427,10 @@ Post.create = function (request, data, cb) {
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
 		processMetaInformation(request, data.meta, this);
+	}), h.sF(function () {
+		if (data.meta.images.length > 0) {
+			processImages(request, data.meta.images, data.imageKeys, this);
+		}
 	}), h.sF(function () {
 		client.incr("post", this);
 	}), h.sF(function (id) {
