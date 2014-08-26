@@ -91,33 +91,6 @@ function getUserOnlineFriendsStatus(uid, cb) {
 	}), cb);
 }
 
-function createAcceptSpecificData(request, friendShip, multi, cb) {
-	step(function () {
-		friendShip.user.getFriendsLevel2Key(request, this);
-	}, h.sF(function (otherFriendsLevel2Key) {
-		KeyApi.get(otherFriendsLevel2Key, this);
-	}), h.sF(function (otherFriendsLevel2Key) {
-		var ownID = request.session.getUserID(),
-			uid = friendShip.user.getID(),
-			decryptors = friendShip.decryptors;
-
-		friendShip.keys.otherFriendsLevel2 = otherFriendsLevel2Key;
-
-		multi.sadd("friends:" + uid, ownID);
-		multi.sadd("friends:" + ownID, uid);
-		multi.srem("friends:" + ownID + ":requests", uid);
-		multi.srem("friends:" + uid + ":requested", ownID);
-
-		friendShip.decryptors.friendsLevel2 = decryptors[friendShip.keys.friendsLevel2.getRealID()][0];
-		friendShip.decryptors.otherFriendsLevel2 = decryptors[otherFriendsLevel2Key.getRealID()][0];
-
-		Decryptor.validateFormat(friendShip.decryptors.friendsLevel2);
-		Decryptor.validateFormat(friendShip.decryptors.otherFriendsLevel2);
-
-		this.ne();
-	}), cb);
-}
-
 var friends = {
 	notifyUsersFriends: function (uid, channel, content) {
 		step(function () {
@@ -218,16 +191,13 @@ var friends = {
 			this.parallel.unflatten();
 
 			ownUser.getFriendsKey(request, this.parallel());
-			ownUser.getFriendsLevel2Key(request, this.parallel());
-		}), h.sF(function (friendsKey, friendsLevel2Key) {
+		}), h.sF(function (friendsKey) {
 			this.parallel.unflatten();
 
 			KeyApi.get(friendsKey, this.parallel());
-			KeyApi.get(friendsLevel2Key, this.parallel());
-		}), h.sF(function (friendsKey, friendsLevel2Key) {
+		}), h.sF(function (friendsKey) {
 			this.ne({
-				friends: friendsKey,
-				friendsLevel2: friendsLevel2Key
+				friends: friendsKey
 			});
 		}), cb);
 	},
@@ -274,45 +244,30 @@ var friends = {
 			m.hmset(domain + ":" + friendShip.user.getID(), meta);
 			m.hmset(domain + ":signedList", signedList);
 
+			var ownID = request.session.getUserID(),
+				uid = friendShip.user.getID();
+
 			if (hasOtherRequested) {
-				createAcceptSpecificData(request, friendShip, m, this);
+				m.sadd("friends:" + uid, ownID);
+				m.sadd("friends:" + ownID, uid);
+				m.srem("friends:" + ownID + ":requests", uid);
+				m.srem("friends:" + uid + ":requested", ownID);
 			} else {
-				m.sadd(domain + ":requested", friendShip.user.getID());
-				m.sadd("friends:" + friendShip.user.getID() + ":requests", request.session.getUserID());
-				this.ne();
+				m.sadd(domain + ":requested", uid);
+				m.sadd("friends:" + uid + ":requests", ownID);
 			}
-		}), h.sF(function createSymKey() {
+
 			SymKey.createWDecryptors(request, key, this);
 		}), h.sF(function keyCreated() {
-			this.parallel.unflatten();
-
-			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this.parallel());
-
-			if (!firstRequest) {
-				Decryptor.validateNoThrow(request, friendShip.decryptors.friendsLevel2, friendShip.keys.friendsLevel2, this.parallel());
-				Decryptor.validateNoThrow(request, friendShip.decryptors.otherFriendsLevel2, friendShip.keys.otherFriendsLevel2, this.parallel());
-			}
-		}), h.sF(function (valid1, valid2, valid3) {
-			var validLevel2 = valid2 && valid3;
-
-			//TODO: remove key;
-
-			if (!firstRequest && !validLevel2) {
-				this.last.ne(false);
-				return;
-			}
-
-			if (!valid1) {
+			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this);
+		}), h.sF(function (valid) {
+			if (!valid) {
 				throw new InvalidDecryptor();
 			}
 
 			m.exec(this.parallel());
 
 			friendShip.keys.friends.addDecryptor(request, friendShip.decryptors.friends, this.parallel());
-			if (!firstRequest) {
-				friendShip.keys.friendsLevel2.addDecryptor(request, friendShip.decryptors.friendsLevel2, this.parallel());
-				friendShip.keys.otherFriendsLevel2.addDecryptor(request, friendShip.decryptors.otherFriendsLevel2, this.parallel());
-			}
 		}), h.sF(function addFriendsName() {
 			addFriendName(request, friendShip.user);
 			if (firstRequest) {
@@ -321,7 +276,7 @@ var friends = {
 				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
 
-			this.ne(true);
+			this.ne(!firstRequest);
 		}), cb);
 	},
 	myMutual: function (request, uid, cb) {

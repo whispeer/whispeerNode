@@ -7,21 +7,17 @@ var Friends = require("../includes/friends");
 
 var f = {
 	add: function addFriend(data, fn, request) {
-		/*
-			userid,
-			fkdecryptor, //is added to our friend key
-			signedRequest //signature of "friendShip:userid:nickname"
-		*/
-		var wasSuccess = false;
+		var areFriends;
 		step(function () {
 			Friends.add(request, data.meta, data.signedList, data.key, data.decryptors, this);
-		}, h.sF(function (success) {
-			wasSuccess = success;
+		}, h.sF(function (_areFriends) {
+			areFriends = _areFriends;
 			Friends.isOnline(request, data.userid, this);
 		}), h.sF(function (online) {
 			this.ne({
 				friendOnline: online,
-				friendAdded: wasSuccess
+				success: true,
+				friends: areFriends
 			});
 		}), fn);
 	},

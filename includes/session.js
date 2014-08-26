@@ -269,7 +269,7 @@ var Session = function Session() {
 		}), cb);
 	};
 
-	var registerSymKeys = ["main", "friends", "friendsLevel2", "profile"];
+	var registerSymKeys = ["main", "friends", "profile"];
 	var registerEccKeys = ["sign", "crypt"];
 	var keyName = registerSymKeys.concat(registerEccKeys);
 
@@ -439,7 +439,6 @@ var Session = function Session() {
 
 			myUser.setMainKey(request, keys.main, this.parallel());
 			myUser.setFriendsKey(request, keys.friends, this.parallel());
-			myUser.setFriendsLevel2Key(request, keys.friendsLevel2, this.parallel());
 			myUser.setCryptKey(request, keys.crypt, this.parallel());
 			myUser.setSignKey(request, keys.sign, this.parallel());
 			myUser.setSignedKeys(request, signedKeys, this.parallel());

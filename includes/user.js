@@ -159,11 +159,6 @@ var validKeys = {
 		pre: checkKeyExists(SymKey),
 		transform: keyToRealID
 	},
-	friendsLevel2Key: {
-		read: hasFriendKeyAccess,
-		pre: checkKeyExists(SymKey),
-		transform: keyToRealID
-	},
 	cryptKey: {
 		read: logedinF,
 		pre: checkKeyExists(EccKey),
@@ -301,7 +296,7 @@ var User = function (id) {
 	}
 
 	createAccessors(["password", "nickname", "migrationState", "email",
-					"mainKey", "cryptKey", "signKey", "friendsKey", "friendsLevel2Key", "signedOwnKeys"]);
+					"mainKey", "cryptKey", "signKey", "friendsKey", "signedOwnKeys"]);
 
 	function deleteUser(cb) {
 		//TODO: think about nickname, mail (unique values)
@@ -523,7 +518,7 @@ var User = function (id) {
 		addArrayKeys(request, publicKeys, cb);
 	};
 
-	var friendsKeys = ["friendsKey", "friendsLevel2Key"];
+	var friendsKeys = ["friendsKey"];
 	this.addFriendsKeys = function (request, cb) {
 		addArrayKeys(request, friendsKeys, cb);
 	};
