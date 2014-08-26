@@ -155,6 +155,54 @@ Key.prototype.getDecryptors = function getDecryptorsF(request, cb) {
 	Decryptor.getAllWithAccess(request, this._realid, cb);
 };
 
+Key.prototype.removeDecryptor = function (m, decryptorid, cb) {
+	var theKey = this;
+	step(function () {
+		client.smembers(theKey._domain + ":access", this);
+	}, h.sF(function (accessors) {
+		theKey.removeAccess(m, decryptorid, accessors, this);
+	}), h.sF(function () {
+		new Decryptor(theKey._realid, decryptorid).removeData(m, this);
+	}), cb);
+};
+
+Key.prototype.removeDecryptorByRealID = function (m, realid, cb) {
+	var theKey = this;
+	step(function () {
+		client.hget(theKey._domain + ":decryptor:map", realid, this);
+	}, h.sF(function (decryptorid) {
+		theKey.removeDecryptor(m, decryptorid, this);
+	}), cb);
+};
+
+/** warning: side effects possible */
+Key.prototype.remove = function (m, cb) {
+	var theKey = this;
+	step(function () {
+		client.keys(theKey._domain + ":*", this);
+	}, h.sF(function (keys) {
+		keys.forEach(function (key) {
+			m.del(key);
+		});
+		m.del(theKey._domain);
+
+		theKey.getEncryptors(this);
+	}), h.sF(function (encryptors) {
+		if (encryptors.length === 0) {
+			this.ne();
+		}
+
+		var toCall = encryptors.map(function (encryptor) {
+			return function () {
+				encryptor.removeDecryptorByRealID(m, theKey._realid, this);
+			};
+		});
+		toCall.push(this);
+
+		step.apply(null, toCall);
+	}), cb);
+};
+
 Key.prototype.getDecryptorsJSON = function getDecryptorsJSONF(request, cb) {
 	var theKey = this;
 	step(function () {
@@ -292,6 +340,90 @@ Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 		encryptors.forEach(function (encryptor) {
 			encryptor.addAccessByRealID(theKey._realid, userids, this.parallel(), added);
 		}, this);
+	}), cb);
+};
+
+/** warning: side effects possible */
+Key.prototype.removeAccessByRealID = function (m, keyRealID, userids, cb) {
+	var theKey = this;
+	step(function () {
+		client.hget(theKey._domain + ":decryptor:map", keyRealID, this);
+	}, h.sF(function (decryptorid) {
+		theKey.removeAccess(m, decryptorid, userids, this);
+	}), cb);
+};
+
+/** remove some access. removes access for users which had it by using a given decryptor
+* WARNING: this is not perfect, we have to remove access immediatly (no multi usage) 
+* to be able to remove keys which are accessed in two ways.
+* BUT: if something fails we can - in theory - restore all data
+* @param m client multi object
+* @param decryptorid decryptor we are coming from. not a realid but an internal id
+* @param users users who have typically lost access to the given decryptor
+* @param cb callback
+*/
+Key.prototype.removeAccess = function (m, decryptorid, users, cb) {
+	var theKey = this, accessLost;
+	decryptorid = h.parseDecimal(decryptorid);
+
+	step(function () {
+		users = users.slice();
+		users.forEach(function (userid) {
+			client.smembers(theKey._domain + ":accessVia:" + userid, this.parallel());
+		}, this);
+	}, h.sF(function (viaMembers) {
+		var originalMembers = h.joinArraysToObject({
+			user: users,
+			via: viaMembers
+		});
+
+		var members = originalMembers.filter(function (member) {
+			member.via = member.via.map(h.parseDecimal);
+			return member.via.indexOf(decryptorid) > -1;
+		});
+
+		accessLost = members.filter(function (member) {
+			return member.via.length === 1;
+		});
+
+		if (accessLost.length === originalMembers.length) {
+			//no decryptors left: remove key
+			theKey.remove(m, this.last);
+			return;
+		}
+
+		var m2 = client.multi();
+		members.forEach(function (member) {
+			m2.srem(theKey._domain + ":accessVia:" + member.user, decryptorid);
+		});
+
+		accessLost.forEach(function (member) {
+			m2.srem(theKey._domain + ":access", member.user);
+		});
+
+		if (accessLost.length === 0) {
+			this.last.ne();
+			return;
+		}
+
+		m2.exec(this);
+	}), h.sF(function () {
+		theKey.getEncryptors(this);
+	}), h.sF(function (encryptors) {
+		if (encryptors.length === 0) {
+			this.last.ne();
+			return;
+		}
+
+		var accessIDs = accessLost.map(function (member) { return member.user; });
+		var toCall = encryptors.map(function (encryptor) {
+			return function () {
+				encryptor.removeAccessByRealID(m, theKey._realid,  accessIDs, this);
+			};
+		});
+		toCall.push(this);
+
+		step.apply(null, toCall);
 	}), cb);
 };
 

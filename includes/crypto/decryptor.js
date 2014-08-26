@@ -42,6 +42,23 @@ var Decryptor = function (keyRealID, count) {
 	this.getJSON = function getJSONF(cb) {
 		client.hgetall(domain, cb);
 	};
+
+	/** remove this decryptors data */
+	this.removeData = function delF(m, cb) {
+
+		step(function () {
+			client.hget("key:" + keyRealID + ":decryptor:" + count, "decryptorid", this);
+		}, h.sF(function (decryptorid) {
+			m.srem("key:" + keyRealID + ":decryptor:decryptorSet", count);
+			m.del(domain);
+
+			if (decryptorid) {
+				m.hdel("key:" + keyRealID + ":decryptor:map", decryptorid);
+			}
+
+			this.ne();
+		}), cb);
+	};
 };
 
 Decryptor.getAllWithAccess = function getAllWAF(request, keyRealID, cb) {
