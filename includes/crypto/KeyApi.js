@@ -51,13 +51,14 @@ KeyApi.get = function getKF(realid, callback) {
 	}
 
 	step(function () {
-		client.get("key:" + realid, this);
+		client.hget("key:" + realid, "type", this);
 	}, h.sF(function (type) {
 		switch (type) {
-		case "symkey":
+		case "sym":
 			this.last.ne(new SymKey(realid));
 			break;
-		case "ecckey":
+		case "crypt":
+		case "sign":
 			this.last.ne(new EccKey(realid));
 			break;
 		default:

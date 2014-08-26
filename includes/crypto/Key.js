@@ -13,7 +13,7 @@ var Key = function () {};
 Key.prototype._getAttribute = function(attr, cb) {
 	var theKey = this;
 	step(function () {
-		client.get(theKey._domain + attr, this);
+		client.hget(theKey._domain, attr, this);
 	}, cb);
 };
 
@@ -85,11 +85,11 @@ Key.prototype.getRealID = function getRealIDF() {
 
 /** get the owner of this key */
 Key.prototype.getOwner = function getOwnerF(cb) {
-	this._getAttribute(":owner", cb);
+	this._getAttribute("owner", cb);
 };
 
 Key.prototype.getType = function getTypeF(cb) {
-	this._getAttribute(":type", cb);
+	this._getAttribute("type", cb);
 };
 
 Key.prototype.getAllAccessedParents = function getAllAccessedParentsF(request, cb, maxdepth) {
@@ -243,18 +243,10 @@ Key.prototype.getEncryptors = function getEncryptorsF(cb) {
 	}), cb);
 };
 
-Key.prototype.getDecryptorForRealID = function getDecryptorForRealIDF(keyRealID, cb) {
-	var theKey = this;
-	step(function () {
-		client.get(theKey._domain + ":decryptor:map:" + keyRealID, this);
-	}, cb);
-
-};
-
 Key.prototype.addAccessByRealID = function addAccessByRealIDF(keyRealID, userids, cb, added) {
 	var theKey = this;
 	step(function () {
-		theKey.getDecryptorForRealID(keyRealID, this);
+		client.hget(theKey._domain + ":decryptor:map", keyRealID, this);
 	}, h.sF(function (decryptorid) {
 		theKey.addAccess(decryptorid, userids, this, added);
 	}), cb);
@@ -269,16 +261,8 @@ Key.prototype.addAccessByRealID = function addAccessByRealIDF(keyRealID, userids
 Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 	var theKey = this;
 	step(function () {
-		var i, internal = [];
-		if (!added) {
-			added = [];
-		} else {
-			for (i = 0; i < added.length; i += 1) {
-				internal.push(added[i]);
-			}
-
-			added = internal;
-		}
+		added = added || [];
+		added = added.slice();
 
 		if (userids.length === 0) {
 			this.last.ne();
@@ -288,26 +272,26 @@ Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 		if (added.indexOf(theKey._realid) > -1) {
 			console.log("loop!");
 			this.last.ne();
-		} else {
-			for (i = 0; i < userids.length; i += 1) {
-				client.sadd(theKey._domain + ":access", userids[i], this.parallel());
-				client.sadd(theKey._domain + ":accessVia:" + userids[i], decryptorid, this.parallel());
-			}
-
-			added.push(theKey._realid);
+			return;
 		}
+
+		added.push(theKey._realid);
+
+		userids.forEach(function (userid) {
+			client.sadd(theKey._domain + ":access", userid, this.parallel());
+			client.sadd(theKey._domain + ":accessVia:" + userid, decryptorid, this.parallel());
+		}, this);
 	}, h.sF(function () {
 		theKey.getEncryptors(this);
 	}), h.sF(function (encryptors) {
-		var i;
-		if (encryptors.length > 0) {
-			for (i = 0; i < encryptors.length; i += 1) {
-				//TODO bugfix this!
-				encryptors[i].addAccessByRealID(theKey._realid, userids, this.parallel(), added);
-			}
-		} else {
+		if (encryptors.length === 0) {
 			this.last.ne();
+			return;
 		}
+
+		encryptors.forEach(function (encryptor) {
+			encryptor.addAccessByRealID(theKey._realid, userids, this.parallel(), added);
+		}, this);
 	}), cb);
 };
 
@@ -335,40 +319,17 @@ Key.prototype.hasUserAccess = function hasUserAccessF(userid, cb) {
 * @param cb callback
 */
 Key.prototype.hasAccess = function hasAccessF(request, cb) {
-	var theKey = this;
-	step(function hasAccess1() {
-		client.sismember(theKey._domain + ":access", request.session.getUserID(), this);
-	}, h.sF(function hasAccess2(access) {
-		if (access === 1) {
-			this.last.ne(true);
-		} else {
-			theKey.getOwner(this);
-		}
-	}), h.sF(function hasAccess3(owner) {
-		if (parseInt(owner, 10) === parseInt(request.session.getUserID(), 10)) {
-			this.last.ne(true);
-		} else {
-			this.ne(false);
-		}
-	}), cb);
+	this.hasUserAccess(request.session.getUserID(), cb);
 };
 
 /** get the users who have access to this key */
 Key.prototype.getAccess = function getAccessF(cb) {
-	var theKey = this;
-	step(function hasAccess1() {
-		client.smembers(theKey._domain + ":access", this);
-	}, h.sF(function hasAccess2(members) {
-		this.last.ne(members);
-	}), cb);
+	client.smembers(this._domain + ":access", cb);
 };
 
 /** count how many users have access to this key */
 Key.prototype.accessCount = function accessCountF(cb) {
-	var theKey = this;
-	step(function accessCount1() {
-		client.scard(theKey._domain + ":access", this);
-	}, cb);
+	client.scard(this._domain + ":access", cb);
 };
 
 module.exports = Key;
