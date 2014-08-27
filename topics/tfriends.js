@@ -4,8 +4,8 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var Friends = require("../includes/friends");
-var SymKey = require("./crypto/symKey");
-var User = require("./user");
+var SymKey = require("../includes/crypto/symKey");
+var User = require("../includes/user");
 
 var f = {
 	add: function addFriend(data, fn, request) {
@@ -37,7 +37,7 @@ var f = {
 		}), h.sF(function (myUser) {
 			myUser.setSignedKeys(request, data.signedKeys, this);
 		}), h.sF(function () {
-				this.last.ne({ success: false });
+			this.last.ne({ success: true });
 		}), fn);
 	},
 	getOnline: function getOnlineF(data, fn, request) {

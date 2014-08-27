@@ -91,7 +91,7 @@ function getUserOnlineFriendsStatus(uid, cb) {
 	}), cb);
 }
 
-function setSignedList(request, signedList, m, add, remove, cb) {
+function setSignedList(request, m, signedList, add, remove, cb) {
 	var ownID = request.session.getUserID();
 
 	step(function () {
@@ -102,13 +102,16 @@ function setSignedList(request, signedList, m, add, remove, cb) {
 				throw new Error("signedList update error");
 			}
 		});
-		add.forEach(function (uid) {
-			if (oldSignedList[uid] || !signedList[uid]) {
-				throw new Error("signedList update error");
-			}
-		});
+		if (oldSignedList) {
+			add.forEach(function (uid) {
+				if (oldSignedList[uid] || !signedList[uid]) {
+					throw new Error("signedList update error");
+				}
+			});
+		}
 
 		//update signedList
+		m.del("friends:" + ownID + ":signedList");
 		m.hmset("friends:" + ownID + ":signedList", signedList);
 
 		this.ne();
@@ -238,6 +241,7 @@ var friends = {
 		uid = h.parseDecimal(uid);
 
 		step(function () {
+			this.parallel.unflatten();
 			client.sismember("friends:" + uid, ownID, this.parallel());
 			client.sismember("friends:" + ownID, uid, this.parallel());
 			client.sismember("friends:" + ownID + ":unfriended" , uid, this.parallel());
@@ -390,7 +394,7 @@ var friends = {
 				m.sadd("friends:" + uid + ":requests", ownID);
 			}
 
-			setSignedList(request, signedList, m, [uid], [], this);
+			setSignedList(request, m, signedList, [uid], [], this);
 		}), h.sF(function () {
 			SymKey.createWDecryptors(request, key, this);
 		}), h.sF(function keyCreated() {
