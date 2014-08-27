@@ -91,6 +91,30 @@ function getUserOnlineFriendsStatus(uid, cb) {
 	}), cb);
 }
 
+function setSignedList(request, signedList, m, add, remove, cb) {
+	var ownID = request.session.getUserID();
+
+	step(function () {
+		client.hgetall("friends:" + ownID + ":signedList", this);
+	}, h.sF(function (oldSignedList) {
+		remove.forEach(function (uid) {
+			if (!oldSignedList[uid] || signedList[uid]) {
+				throw new Error("signedList update error");
+			}
+		});
+		add.forEach(function (uid) {
+			if (oldSignedList[uid] || !signedList[uid]) {
+				throw new Error("signedList update error");
+			}
+		});
+
+		//update signedList
+		m.hmset("friends:" + ownID + ":signedList", signedList);
+
+		this.ne();
+	}), cb);
+}
+
 var friends = {
 	notifyUsersFriends: function (uid, channel, content) {
 		step(function () {
@@ -201,6 +225,116 @@ var friends = {
 			});
 		}), cb);
 	},
+	/** remove a friend
+	* @param request
+	* @param uid uid of friend to remove
+	* @param signedList list of my friends after removal of user uid
+	* @param signedRemove signed removal request
+	* @param cb
+	*/
+	remove: function (request, uid, signedList, signedRemove, cb) {
+		//TODO: maybe invalidate other users friendShipKey? maybe just remove it?
+		var m = client.multi(), ownID = request.session.getUserID();
+		uid = h.parseDecimal(uid);
+
+		step(function () {
+			client.sismember("friends:" + uid, ownID, this.parallel());
+			client.sismember("friends:" + ownID, uid, this.parallel());
+			client.sismember("friends:" + ownID + ":unfriended" , uid, this.parallel());
+		}, h.sF(function (friends, friend2, unfriended) {
+			if (friends !== friend2 || friends && unfriended) {
+				throw new Error("data error ... this is not good!");
+			}
+
+			if (!friends && !unfriended) {
+				this.last.ne(false);
+				return;
+			}
+
+			if (friends) {
+				/* remove from both friends list */
+				m.srem("friends:" + uid, ownID);
+				m.srem("friends:" + ownID, uid);
+
+				/* save signed unfriending and add to unfriended list */
+				m.sadd("friends:" + uid + ":unfriended", ownID);
+				m.hmset("friends:" + ownID + ":" + uid + ":unfriending", signedRemove);
+			} else {
+				//remove unfriending "request"
+				m.srem("friends:" + ownID + ":unfriended", uid);
+				m.del("friends:" + uid + ":" + ownID + ":unfriending");
+			}
+
+			/* remove friendship detail data for myself */
+			m.del("friends:" + ownID + ":" + uid);
+
+			setSignedList(request, m, signedList, [], [uid], this);
+		}), h.sF(function () {
+			client.hget("friends:" + ownID + ":signedList", uid, this);
+		}), h.sF(function (friendShipKey) {
+			KeyApi.get(friendShipKey, this);
+		}), h.sF(function (friendShipKey) {
+			//remove: friendShipKey from ownid for uid
+			friendShipKey.remove(m, this);
+		}), h.sF(function () {
+			m.exec(this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
+	},
+	ignoreRequest: function (request, uid, cb) {
+		var m = client.multi(), ownID = request.session.getUserID();
+		uid = h.parseDecimal(uid);
+
+		step(function () {
+			client.sismember("friends:" + ownID + ":requests", uid, this);
+		}, h.sF(function (request) {
+			if (!request) {
+				this.last.ne(false);
+				return;
+			}
+
+			m.srem("friends:" + ownID + ":requests", uid);
+			m.sadd("friends:" + ownID + ":ignored", uid);
+
+			m.exec(this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
+	},
+	declineRequest: function (request, uid, signedRemove, cb) {
+		var m = client.multi(), ownID = request.session.getUserID();
+		uid = h.parseDecimal(uid);
+
+		//move a friend request to the ignore list
+		step(function () {
+			client.sismember("friends:" + ownID + ":requests", uid, this);
+		}, h.sF(function (request) {
+			if (!request) {
+				this.last.ne(false);
+				return;
+			}
+
+			/* remove from request lists */
+			m.srem("friends:" + ownID + ":requests", uid);
+			m.srem("friends:" + uid + ":requested", ownID);
+
+			/* save signed unfriending and add to unfriended list */
+			m.sadd("friends:" + uid + ":unfriended", ownID);
+			m.hmset("friends:" + ownID + ":" + uid + ":unfriending", signedRemove);
+
+			client.hget("friends:" + uid + ":signedList", ownID, this);
+		}), h.sF(function (friendShipKey) {
+			KeyApi.get(friendShipKey, this);
+		}), h.sF(function (friendShipKey) {
+			//remove: friendShipKey from uid for ownid
+			friendShipKey.remove(m, this);
+		}), h.sF(function () {
+			m.exec(this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
+	},
 	add: function (request, meta, signedList, key, decryptors, cb) {
 		var m, firstRequest;
 		var friendShip = {
@@ -230,10 +364,10 @@ var friends = {
 			friendShip.keys = keys;
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 
-			//TODO: get friends and requests list. check that they are equal to the signed list content.
+			//TODO: get friends, requests and removed list. check that they are equal to the signed list content.
 			//TODO: check meta format
 
-			client.sismember("friends:" + request.session.getUserID() + ":requests", friendShip.user.getID(), this);
+			client.sismember(domain + ":requests", friendShip.user.getID(), this);
 		}), h.sF(function createData(hasOtherRequested) {
 			firstRequest = !hasOtherRequested;
 
@@ -242,7 +376,6 @@ var friends = {
 			m = client.multi();
 
 			m.hmset(domain + ":" + friendShip.user.getID(), meta);
-			m.hmset(domain + ":signedList", signedList);
 
 			var ownID = request.session.getUserID(),
 				uid = friendShip.user.getID();
@@ -257,6 +390,8 @@ var friends = {
 				m.sadd("friends:" + uid + ":requests", ownID);
 			}
 
+			setSignedList(request, signedList, m, [uid], [], this);
+		}), h.sF(function () {
 			SymKey.createWDecryptors(request, key, this);
 		}), h.sF(function keyCreated() {
 			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this);

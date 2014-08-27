@@ -463,7 +463,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
-			client.hget("friends:" + request.session.getUserID() + ":" + id + ":meta", "friendShipKey", this);
+			client.hget("friends:" + request.session.getUserID() + ":signedList", id, this);
 		}), cb);
 	};
 
@@ -471,7 +471,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
-			client.hget("friends:" + id + ":" + request.session.getUserID() + ":meta", "friendShipKey", this);
+			client.hget("friends:" + id + ":signedList", request.session.getUserID(), this);
 		}), cb);
 	};
 
