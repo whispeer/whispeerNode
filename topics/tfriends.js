@@ -4,6 +4,8 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var Friends = require("../includes/friends");
+var SymKey = require("./crypto/symKey");
+var User = require("./user");
 
 var f = {
 	add: function addFriend(data, fn, request) {
@@ -19,6 +21,23 @@ var f = {
 				success: true,
 				friends: areFriends
 			});
+		}), fn);
+	},
+	remove: function (data, fn, request) {
+		step(function () {
+			SymKey.createWDecryptors(request, data.newFriendsKey, this);
+		}, h.sF(function () {
+			Friends.remove(request, data.uid, data.signedList, data.signedRemoval, this);
+		}), h.sF(function (success) {
+			if (success) {
+				request.session.getOwnUser(this);
+			} else {
+				this.last.ne({ success: false });
+			}
+		}), h.sF(function (myUser) {
+			myUser.setSignedKeys(request, data.signedKeys, this);
+		}), h.sF(function () {
+				this.last.ne({ success: false });
 		}), fn);
 	},
 	getOnline: function getOnlineF(data, fn, request) {
