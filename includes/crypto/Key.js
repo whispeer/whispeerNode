@@ -363,15 +363,18 @@ Key.prototype.removeAccessByRealID = function (m, keyRealID, userids, cb) {
 * @param cb callback
 */
 Key.prototype.removeAccess = function (m, decryptorid, users, cb) {
-	var theKey = this, accessLost;
+	var theKey = this, accessLost, accessors;
 	decryptorid = h.parseDecimal(decryptorid);
 
 	step(function () {
 		users = users.slice();
+		client.smembers(theKey._domain + ":access", this);
+	}, h.sF(function (_accessors) {
+		accessors = _accessors;
 		users.forEach(function (userid) {
 			client.smembers(theKey._domain + ":accessVia:" + userid, this.parallel());
 		}, this);
-	}, h.sF(function (viaMembers) {
+	}), h.sF(function (viaMembers) {
 		var originalMembers = h.joinArraysToObject({
 			user: users,
 			via: viaMembers
@@ -386,7 +389,7 @@ Key.prototype.removeAccess = function (m, decryptorid, users, cb) {
 			return member.via.length === 1;
 		});
 
-		if (accessLost.length === originalMembers.length) {
+		if (accessLost.length === accessors.length) {
 			//no decryptors left: remove key
 			theKey.remove(m, this.last);
 			return;
@@ -401,13 +404,18 @@ Key.prototype.removeAccess = function (m, decryptorid, users, cb) {
 			m2.srem(theKey._domain + ":access", member.user);
 		});
 
-		if (accessLost.length === 0) {
+		if (members.length === 0) {
 			this.last.ne();
 			return;
 		}
 
 		m2.exec(this);
 	}), h.sF(function () {
+		if (accessLost.length === 0) {
+			this.last.ne();
+			return;
+		}
+
 		theKey.getEncryptors(this);
 	}), h.sF(function (encryptors) {
 		if (encryptors.length === 0) {
