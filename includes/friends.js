@@ -458,11 +458,13 @@ var friends = {
 		client.hgetall("friends:" + request.session.getUserID() + ":signedList", cb);
 	},
 	getRequests: function (request, cb) {
-		step(function () {
-			client.smembers("friends:" + request.session.getUserID() + ":requests", this);
-		}, h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
+		client.smembers("friends:" + request.session.getUserID() + ":requests", cb);
+	},
+	getIgnored: function (request, cb) {
+		client.smembers("friends:" + request.session.getUserID() + ":ignored", cb);
+	},
+	getRemoved: function (request, cb) {
+		client.smembers("friends:" + request.session.getUserID() + ":unfriended", cb);
 	},
 	getRequested: function (request, cb) {
 		step(function () {
