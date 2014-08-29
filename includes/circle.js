@@ -82,7 +82,9 @@ var Circle = function (userid, id) {
 
 			if (removing && !key) {
 				throw new Error("no new key created for circle update even though users were removed!");
-			} else if (key) {
+			}
+
+			if (!removing && key) {
 				throw new Error("new key created for circle update even though no users were removed!");
 			}
 
