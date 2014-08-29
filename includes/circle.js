@@ -62,7 +62,9 @@ var Circle = function (userid, id) {
 			this.parallel.unflatten();
 
 			KeyApi.get(oldKeyID, this.parallel());
-			SymKey.createWDecryptors(request, key, this.parallel());
+			if (key) {
+				SymKey.createWDecryptors(request, key, this.parallel());
+			}
 		}), h.sF(function (oldKey) {
 			oldKey.addDecryptors(request, decryptors, this.parallel());
 		}), cb);
@@ -78,19 +80,17 @@ var Circle = function (userid, id) {
 
 			var removing = h.arraySubtract(users, meta.users).length > 0;
 
-			if (removing) {
-				if (!key || !decryptors) {
-					throw new Error("no new key created for circle update even though users were removed!");
-				}
-
-				createKeysAndDecryptors(request, key, decryptors, this);
-				//add key: key
-				//add decryptors: decryptors
-			} else if (key || decryptors) {
+			if (removing && !key) {
+				throw new Error("no new key created for circle update even though users were removed!");
+			} else if (key) {
 				throw new Error("new key created for circle update even though no users were removed!");
-			} else {
-				this.ne();
 			}
+
+			if (!decryptors) {
+				throw new Error("we need new decryptors!");
+			}
+
+			createKeysAndDecryptors(request, key, decryptors, this);
 		}), h.sF(function () {
 			var multi = client.multi();
 			meta.users = JSON.stringify(meta.users);
