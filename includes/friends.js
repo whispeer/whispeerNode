@@ -339,6 +339,20 @@ var friends = {
 			this.ne(true);
 		}), cb);
 	},
+	getSignedData: function (request, uid, cb) {
+		step(function () {
+			var ownID = request.session.getUserID();
+			this.parallel.unflatten();
+			client.hgetall("friends:" + uid + ":" + ownID, this.parallel());
+			client.hgetall("friends:" + uid + ":" + ownID + ":unfriending", this.parallel());
+		}, h.sF(function (signed1, signed2) {
+			if (signed1 && signed2) {
+				throw new Error("invalid data in database");
+			}
+
+			this.ne(signed1 || signed2);
+		}), cb);
+	},
 	add: function (request, meta, signedList, key, decryptors, cb) {
 		var m, firstRequest;
 		var friendShip = {

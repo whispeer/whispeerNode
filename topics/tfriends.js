@@ -68,6 +68,15 @@ var f = {
 			});
 		}), fn);
 	},
+	getSignedData: function (data, fn, request) {
+		step(function () {
+			Friends.getSignedData(request, data.uid, this);
+		}, h.sF(function (signedData) {
+			this.ne({
+				signedData: signedData
+			});
+		}), fn);
+	},
 	all: function getFriends(data, fn, request) {
 		step(function () {
 			this.parallel.unflatten();
