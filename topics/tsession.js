@@ -50,20 +50,17 @@ var s = {
 			}
 		}), h.sF(function (user) {
 			myUser = user;
-			if (data.profile) {
-				if (data.profile.pub) {
-					myUser.setPublicProfile(request, data.profile.pub, this.parallel());
-				}
-
-				if (data.profile.priv && data.keys.profile) {
-					var i;
-					for (i = 0; i < data.profile.priv.length; i += 1) {
-						myUser.createPrivateProfile(request, data.profile.priv[i], this.parallel());
-					}
-				}
+			if (data.profile.pub) {
+				myUser.setPublicProfile(request, data.profile.pub, this.parallel());
 			}
 
-			this.parallel()();
+			if (data.profile.priv && data.keys.profile) {
+				data.profile.priv.forEach(function (profile) {
+					myUser.createPrivateProfile(request, profile, this.parallel());
+				}, this);
+			}
+
+			myUser.setMyProfile(request, data.profile.me, this.parallel());
 		}), h.sF(function (valid) {
 			if (!valid.reduce(h.and, true)) {
 				console.error("could not create profiles. TODO: delete user!");
