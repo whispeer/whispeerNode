@@ -128,7 +128,7 @@ var u = {
 		step(function () {
 			view.getOwnUser(this);
 		}, h.sF(function (ownUser) {
-			ownUser.addBackupKey(data.innerKey, this);
+			ownUser.addBackupKey(view, data.decryptors, data.innerKey, this);
 		}), h.sF(function () {
 			this.ne({});
 		}), fn);

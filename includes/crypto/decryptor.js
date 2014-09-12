@@ -160,7 +160,7 @@ Decryptor.validateFormat = function validateFormat(data) {
 	}
 
 	// if pw or symkey, we need a hex iv
-	if ((data.type === "pw" || data.type === "symKey") && !h.isHex(data.iv)) {
+	if ((data.type === "pw" || data.type === "symKey" || data.type === "backup") && !h.isHex(data.iv)) {
 		throw new InvalidDecryptor("invalid iv");
 	}
 
@@ -169,7 +169,7 @@ Decryptor.validateFormat = function validateFormat(data) {
 		throw new InvalidDecryptor("invalid salt");
 	}
 
-	if (["symKey", "cryptKey", "pw"].indexOf(data.type) === -1) {
+	if (["symKey", "cryptKey", "pw", "backup"].indexOf(data.type) === -1) {
 		throw new InvalidDecryptor("invalid type.");
 	}
 };
@@ -199,7 +199,7 @@ Decryptor.validate = function validateF(view, data, key, cb) {
 		} else if (data.type === "cryptKey") {
 			var EccKey = require("./eccKey.js");
 			EccKey.get(data.decryptorid, this);
-		} else if (data.type === "pw") {
+		} else if (data.type === "pw" || data.type === "backup") {
 			this.ne(true);
 		} else {
 			throw new InvalidDecryptor("invalid type.");
@@ -286,7 +286,7 @@ Decryptor.create = function (view, key, data, cb) {
 
 		client.set(domain + ":creator", userid, this.parallel());
 	}), h.sF(function createD4() {
-		if (data.type === "pw") {
+		if (data.type === "pw" || data.type === "backup") {
 			this.ne([userid]);
 		} else {
 			parentKey.getAccess(this);

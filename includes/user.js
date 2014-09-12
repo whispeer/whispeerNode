@@ -1106,13 +1106,22 @@ var User = function (id) {
 	}
 	this.useToken = useTokenF;
 
-	this.addBackupKey = function (view, key, cb) {
+	this.addBackupKey = function (view, decryptors, key, cb) {
+		var backupKey;
 		step(function () {
 			view.ownUserError(theUser, this);
 		}, h.sF(function () {
-			SymKey.createWDecryptors(view, key, this);
-		}), h.sF(function (key) {
-			client.sadd(userDomain + ":backupKeys", key.getRealID(), this);
+			//get main key!
+			this.parallel.unflatten();
+			theUser.getMainKey(view, this.parallel());
+			SymKey.createWDecryptors(view, key, this.parallel());
+		}), h.sF(function (mainKey, _backupKey) {
+			backupKey = _backupKey;
+			KeyApi.get(mainKey, this);
+		}), h.sF(function (mainKey) {
+			mainKey.addDecryptors(view, decryptors, this);
+		}), h.sF(function () {
+			client.sadd(userDomain + ":backupKeys", backupKey.getRealID(), this);
 		}), cb);
 	};
 
