@@ -1106,6 +1106,16 @@ var User = function (id) {
 	}
 	this.useToken = useTokenF;
 
+	this.addBackupKey = function (view, key, cb) {
+		step(function () {
+			view.ownUserError(theUser, this);
+		}, h.sF(function () {
+			SymKey.createWDecryptors(view, key, this);
+		}), h.sF(function (key) {
+			client.sadd(userDomain + ":backupKeys", key.getRealID(), this);
+		}), cb);
+	};
+
 	this.listen = function listenF(view, cb) {
 		view.psub(userDomain + ":*", function (channel, data) {
 			cb(channel, JSON.parse(data));

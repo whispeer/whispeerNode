@@ -124,6 +124,15 @@ var u = {
 			makeSearchUserData(view, this, ids, data.known);
 		}), fn);
 	},
+	backupKey: function (data, fn, view) {
+		step(function () {
+			view.getOwnUser(this);
+		}, h.sF(function (ownUser) {
+			ownUser.addBackupKey(data.innerKey, this);
+		}), h.sF(function () {
+			this.ne({});
+		}), fn);
+	},
 	getMultiple: function getAllF(data, fn, view) {
 		step(function () {
 			if (data && data.identifiers) {
