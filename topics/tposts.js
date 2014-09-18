@@ -33,6 +33,17 @@ var p = {
 			}), fn);
 		}
 	},
+	remove: function (data, fn, request) {
+		step(function () {
+			Post.get(request, data.postid, this);
+		}, h.sF(function (post) {
+			post.remove(request, this);
+		}), h.sF(function () {
+			this.ne({
+				removed: true
+			});
+		}), fn);
+	},
 	getPost: function (data, fn, request) {
 		step(function () {
 			Post.get(request, data.postid, this);

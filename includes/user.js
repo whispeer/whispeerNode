@@ -85,6 +85,10 @@ function keyToRealID(data, cb) {
 }
 
 var validKeys = {
+	myProfile: {
+		read: ownUserF,
+		pre: ownUserF
+	},
 	profile: {
 		read: logedinF,
 		readTransform: function (data, cb) {
@@ -412,47 +416,46 @@ var User = function (id) {
 	};
 
 	this.setPublicProfile = function(request, profile, cb) {
-		step(function doSetPublicProfile() {
-			setAttribute(request, "profile", profile, this);
-		}, cb);
+		setAttribute(request, "profile", profile, cb);
+	};
+
+	this.setMyProfile = function (request, myProfileData, cb) {
+		step(function () {
+			getAttribute(request, "myProfile", this);
+		}, h.sF(function (meID) {
+			var Profile = require("./profile");
+			if (meID) {
+				var myProfile = new Profile(request.session.getUserID(), meID);
+				myProfile.setData(request, myProfileData, this.last);
+			} else {
+				Profile.create(request, myProfileData, this);
+			}
+		}), h.sF(function (myProfile) {
+			setAttribute(request, "myProfile", myProfile.getID(), this);
+		}), cb);
 	};
 
 	this.createPrivateProfile = function(request, data, cb) {
-		step(function doCreatePP1() {
-			request.session.ownUserError(id, this);
-		}, h.sF(function doCreatePP2() {
-			var Profile = require("./profile");
-			Profile.create(request, data, this);
+		var Profile = require("./profile");
+		Profile.create(request, data, cb);
+	};
+
+	this.deletePrivateProfilesExceptMine = function (request, cb) {
+		step(function () {
+			getAttribute(request, "myProfile", this);
+		}, h.sF(function (myProfile) {
+			require("./profile").deleteAllExcept(request, myProfile, this);
 		}), cb);
 	};
 
-	this.deletePrivateProfile = function(request, profileID, cb) {
-		step(function removePP1() {
-			request.session.ownUserError(id, this);
-		}, h.sF(function removePP2() {
-			require("./profile").get(request, profileID, this);
-		}), h.sF(function removePP3(profile) {
-			if (!profile) {
-				throw new Error("profile not existing");
-			}
-
-			profile.remove(request, this);
-		}), cb);
-	};
-
-	this.getPrivateProfiles = function(request, cb, json) {
+	this.getPrivateProfiles = function(request, cb) {
 		step(function getPP1() {
 			var Profile = require("./profile");
-			if (json) {
-				Profile.getAccessed(request, id, this);
-			} else {
-				Profile.getAccessed(request, id, this.last);
-			}
-		}, h.sF(function getPP2(p) {
-			var i;
-			for (i = 0; i < p.length; i += 1) {
-				p[i].getPData(request, this.parallel(), true);
-			}
+			Profile.getAccessed(request, id, this);
+		}, h.sF(function getPP2(profiles) {
+			profiles.forEach(function (profile) {
+				profile.getPData(request, this.parallel());
+			}, this);
 
 			this.parallel()();
 		}), cb);
@@ -581,9 +584,10 @@ var User = function (id) {
 		}), cb);
 	};
 
-	this.getProfile = function (request, cb) {
+	function getProfiles(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
+
 			theUser.getPublicProfile(request, this.parallel());
 			theUser.getPrivateProfiles(request, this.parallel(), true);
 		}, h.sF(function (pub, priv) {
@@ -592,6 +596,27 @@ var User = function (id) {
 				priv: priv
 			});
 		}), cb);
+	}
+
+	function getMyProfile(request, cb) {
+		step(function () {
+			getAttribute(request, "myProfile", this);
+		}, h.sF(function (meID) {
+			var Profile = require("./profile");
+			new Profile(request.session.getUserID(), meID).getPData(request, this);
+		}), h.sF(function (me) {
+			this.ne({
+				me: me
+			});
+		}), cb);
+	}
+
+	this.getProfile = function (request, cb) {
+		if (theUser.isOwnUser(request)) {
+			getMyProfile(request, cb);
+		} else {
+			getProfiles(request, cb);
+		}
 	};
 
 	this.getUData = function (request, cb) {

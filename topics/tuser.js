@@ -8,7 +8,6 @@ var h = require("whispeerHelper");
 var Topic = require("../includes/topic.js");
 
 var User = require("../includes/user");
-var Profile = require("../includes/profile");
 
 function makeSearchUserData(request, cb, ids, known) {
 	var remaining;
@@ -51,42 +50,6 @@ function makeSearchUserData(request, cb, ids, known) {
 			remaining: remaining,
 			results: users
 		});
-	}), cb);
-}
-
-function setPrivateProfiles(request, privateProfiles, cb) {
-	step(function () {
-		if (privateProfiles && privateProfiles.length > 0) {
-			var i;
-			for (i = 0; i < privateProfiles.length; i += 1) {
-				Profile.get(request, privateProfiles[i].profileid, this.parallel());
-			}
-		} else {
-			this.last.ne([]);
-		}
-	}, h.sF(function (profiles) {
-		if (profiles.length !== privateProfiles.length) {
-			throw "bug!";
-		}
-
-		var i;
-		for (i = 0; i < privateProfiles.length; i += 1) {
-			profiles[i].setData(request, privateProfiles[i], this.parallel());
-		}
-	}), h.sF(function (success) {
-		this.ne(success);
-	}), cb);
-}
-
-function setPublicProfile(request, publicProfile, cb) {
-	step(function () {
-		if (publicProfile) {
-			request.session.getOwnUser(this);
-		} else {
-			this.last.ne(true);
-		}
-	}, h.sF(function (myUser) {
-		myUser.setPublicProfile(request, publicProfile, this);
 	}), cb);
 }
 
@@ -154,83 +117,28 @@ var u = {
 			});
 		}), fn);
 	},
-	createPrivateProfiles: function createProfileF(data, fn, request) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (myUser) {
-			var i;
-			if (typeof data.privateProfiles === "object" && data.privateProfiles instanceof Array) {
-				for (i = 0; i < data.privateProfiles.length; i += 1) {
-					myUser.createPrivateProfile(request, data.privateProfiles[i], this.parallel());
-				}
-			} else {
-				fn.error.protocol();
-			}
-
-			this.parallel()();
-		}), h.sF(function (results) {
-			var result = {
-				success: results
-			};
-
-			this.ne(result);
-		}), fn);
-	},
-	deletePrivateProfiles: function deletePrivateProfilesF(data, fn, request) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (myUser) {
-			if (typeof data.profilesToDelete === "object" && data.profilesToDelete instanceof Array) {
-				var i;
-				for (i = 0; i < data.profilesToDelete.length; i += 1) {
-					myUser.deletePrivateProfile(request, data.profilesToDelete[i], this.parallel());
-				}
-
-				this.parallel()();
-			} else {
-				fn.error.protocol();
-			}
-		}), h.sF(function (results) {
-			results = results || [];
-
-			var result = {
-				success: h.arrayToObject(results, function (e, i) {
-					return data.profilesToDelete[i];
-				})
-			};
-
-			this.ne(result);
-		}), fn);
-	},
-	profileChange: function changeProfilesF(data, fn, request) {
-		step(function () {
-			if (!data) {
-				this.last.ne({});
-			}
-
-			this.parallel.unflatten();
-
-			setPublicProfile(request, data.pub, this.parallel());
-			setPrivateProfiles(request, data.priv, this.parallel());
-		}, h.sF(function (successPub, successPriv) {
-			var allok = successPub;
-			var errors = {
-				pub: successPub,
-				priv: []
-			};
-
-			successPriv.map(function (value, index) {
-				if (!value) {
-					allok = false;
-					errors.priv.push(data.priv[index].id);
-				}
-			});
-
-			this.ne({
-				allok: allok,
-				errors: errors
-			});
-		}), fn);
+	profile: {
+		update: function (data, fn, request) {
+			var ownUser;
+			step(function () {
+				request.session.getOwnUser(this);
+			}, h.sF(function (_ownUser) {
+				ownUser = _ownUser;
+				//delete all old profiles except me
+				ownUser.deletePrivateProfilesExceptMine(request, this);
+			}), h.sF(function () {
+				//update me
+				ownUser.setMyProfile(request, data.me, this.parallel());
+				//set public profile
+				ownUser.setPublicProfile(request, data.pub, this.parallel());
+				//set private profiles
+				data.priv.forEach(function (profile) {
+					ownUser.createPrivateProfile(request, profile, this.parallel());
+				}, this);
+			}), h.sF(function () {
+				this.ne({});
+			}), fn);
+		}
 	},
 	setMigrationState: function (data, fn, request) {
 		step(function () {
