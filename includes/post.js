@@ -73,7 +73,7 @@ var Post = function (postid) {
 
 	this.hasUserAccess = function (userid, cb) {
 		step(function () {
-			client.hget(domain, "_key", this);
+			client.hget(domain + ":meta", "_key", this);
 		}, h.sF(function (keyRealID) {
 			client.sismember("key:" + keyRealID + ":access", userid, this);
 		}), cb);
@@ -82,7 +82,7 @@ var Post = function (postid) {
 	this.throwUserAccess = function throwUserAccessF(request, cb) {
 		var that = this;
 		step(function () {
-			that.hasUserAccess(this);
+			that.hasUserAccess(request.session.getUserID(), this);
 		}, h.sF(function (access) {
 			if (!access) {
 				throw new AccessViolation("user has no access to post");
@@ -92,11 +92,43 @@ var Post = function (postid) {
 		}), cb);
 	};
 
-	this.getContent = function getContentF(request, cb) {
+	/**
+	* delete this post. only works if requester is post creator (or wall-user)
+	*/
+	this.remove = function (request, cb) {
 		step(function () {
-			thePost.throwUserAccess(request, this);
-		}, h.sF(function () {
-			client.hget(domain, "content", this);
+			//check if i am the walluser or the sender
+			this.parallel.unflatten();
+
+			client.hget(domain + ":meta", "sender", this.parallel());
+			client.hget(domain + ":meta", "walluser", this.parallel());
+		}, h.sF(function (sender, walluser) {
+			sender = h.parseDecimal(sender);
+			walluser = h.parseDecimal(walluser);
+
+			if (request.session.getUserID() !== sender && request.session.getUserID() !== walluser) {
+				throw new AccessViolation("can not delete other peoples posts");
+			}
+
+			//remove post from all lists
+			//remove post data
+			var m = client.multi();
+
+			m.del(domain + ":meta");
+			m.del(domain + ":content");
+			m.del(domain);
+
+			m.zrem("user:" + sender + ":posts", postid);
+			m.zrem("user:" + sender + ":newPosts", postid);
+			m.zrem("user:" + sender + ":wall", postid);
+
+			if (walluser) {
+				m.zrem("user:" + walluser + ":wall", postid);
+			}
+
+			//remove comments when added!
+
+			m.exec(this);
 		}), cb);
 	};
 
@@ -475,14 +507,14 @@ Post.get = function (request, postid, cb) {
 	var thePost;
 	step(function () {
 		if (h.isInt(postid)) {
-			client.get("post:" + postid);
+			client.get("post:" + postid, this);
 		} else {
 			throw new AccessViolation();
 		}
 	}, h.sF(function (id) {
 		thePost = new Post(id);
 
-		thePost.throwUserAccess(this);
+		thePost.throwUserAccess(request, this);
 	}), h.sF(function () {
 		this.ne(thePost);
 	}), cb);
