@@ -140,11 +140,43 @@ var Post = function (postid) {
 		}), cb);
 	};
 
-	this.getContent = function getContentF(request, cb) {
+	/**
+	* delete this post. only works if requester is post creator (or wall-user)
+	*/
+	this.remove = function (request, cb) {
 		step(function () {
-			thePost.throwUserAccess(request, this);
-		}, h.sF(function () {
-			client.hget(domain, "content", this);
+			//check if i am the walluser or the sender
+			this.parallel.unflatten();
+
+			client.hget(domain + ":meta", "sender", this.parallel());
+			client.hget(domain + ":meta", "walluser", this.parallel());
+		}, h.sF(function (sender, walluser) {
+			sender = h.parseDecimal(sender);
+			walluser = h.parseDecimal(walluser);
+
+			if (request.session.getUserID() !== sender && request.session.getUserID() !== walluser) {
+				throw new AccessViolation("can not delete other peoples posts");
+			}
+
+			//remove post from all lists
+			//remove post data
+			var m = client.multi();
+
+			m.del(domain + ":meta");
+			m.del(domain + ":content");
+			m.del(domain);
+
+			m.zrem("user:" + sender + ":posts", postid);
+			m.zrem("user:" + sender + ":newPosts", postid);
+			m.zrem("user:" + sender + ":wall", postid);
+
+			if (walluser) {
+				m.zrem("user:" + walluser + ":wall", postid);
+			}
+
+			//remove comments when added!
+
+			m.exec(this);
 		}), cb);
 	};
 
