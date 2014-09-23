@@ -465,6 +465,8 @@ Post.create = function (request, data, cb) {
 	}), h.sF(function () {
 		if (data.meta.images.length > 0) {
 			processImages(request, data.meta.images, data.imageKeys, this);
+		} else {
+			this.ne();
 		}
 	}), h.sF(function () {
 		client.incr("post", this);
