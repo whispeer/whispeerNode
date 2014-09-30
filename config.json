@@ -6,7 +6,6 @@
 	  "wsPort": 3000,
 	  "dbNumber": 1,
 	  "production": false,
-	  "debug": false,
 	  "mail": {
 	  	"directory": "./mails"
 	  },
@@ -19,7 +18,6 @@
 	  "wsPort": 3000,
 	  "dbNumber": 2,
 	  "production": false,
-	  "debug": false,
 	  "mail": {
 	  	"directory": "./mails"
 	  },

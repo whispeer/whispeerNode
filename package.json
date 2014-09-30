@@ -1,23 +1,23 @@
 {
-	"name": "whispeer",
-	"version": "0.0.1",
-	"dependencies": {
-		"nodemailer": "0.6.x",
-		"redis": "0.x.x",
-		"secure_random": "0.1.x",
-		"socket.io": "0.9.x",
-		"xtend": "2.0.x",
-		"amanda": "0.4.x",
-		"helmet": "0.1.x",
-		"express": "3.x",
-		"redis-search": "0.0.1",
-		"socket.io-stream": "0.5.x",
-		"base64stream": "0.1.1",
-		"step": "git+ssh://git@whispeer.de:4351/whispeerStep#master"
-	},
-	"devDependencies": {
-		"selenium-webdriver": "2.x",
-		"grunt": "~0.4.5",
-		"grunt-contrib-jshint": "~0.10.0"
-	}
+  "name": "whispeer",
+  "version": "0.0.1",
+  "dependencies": {
+    "amanda": "0.4.x",
+    "base64stream": "0.1.1",
+    "express": "3.x",
+    "helmet": "0.1.x",
+    "nodemailer": "0.6.x",
+    "redis": "0.x.x",
+    "redis-search": "0.0.1",
+    "secure_random": "0.1.x",
+    "socket.io": "^1.1.0",
+    "socket.io-stream": "0.5.x",
+    "step": "git+ssh://git@whispeer.de:4351/whispeerStep#master",
+    "xtend": "2.0.x"
+  },
+  "devDependencies": {
+    "selenium-webdriver": "2.x",
+    "grunt": "~0.4.5",
+    "grunt-contrib-jshint": "~0.10.0"
+  }
 }
