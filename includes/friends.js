@@ -362,7 +362,7 @@ var friends = {
 		var domain = "friends:" + request.session.getUserID();
 
 		step(function getUser() {
-			User.getUser(meta.friend, this);
+			User.getUser(meta.user, this);
 		}, h.sF(function checkAlreadyRequested(toAdd) {
 			var uid = toAdd.getID();
 
@@ -385,8 +385,10 @@ var friends = {
 			//TODO: get friends, requests and removed list. check that they are equal to the signed list content.
 			//TODO: check meta format
 
-			client.sismember(domain + ":requests", friendShip.user.getID(), this);
-		}), h.sF(function createData(hasOtherRequested) {
+			this.parallel.unflatten();
+			client.sismember(domain + ":requests", friendShip.user.getID(), this.parallel());
+			client.sismember("friends:" + friendShip.user.getID() + ":unfriended", request.session.getUserID(), this.parallel());
+		}), h.sF(function createData(hasOtherRequested, revertRemoval) {
 			firstRequest = !hasOtherRequested;
 
 			Decryptor.validateFormat(friendShip.decryptors.friends);
@@ -398,7 +400,13 @@ var friends = {
 			var ownID = request.session.getUserID(),
 				uid = friendShip.user.getID();
 
-			if (hasOtherRequested) {
+			if (revertRemoval) {
+				m.sadd("friends:" + uid, ownID);
+				m.sadd("friends:" + ownID, uid);
+
+				m.del("friends:" + ownID + ":" + uid + ":unfriending");
+				m.srem("friends:" + uid + ":unfriended", ownID);
+			} else if (hasOtherRequested) {
 				m.sadd("friends:" + uid, ownID);
 				m.sadd("friends:" + ownID, uid);
 				m.srem("friends:" + ownID + ":requests", uid);
