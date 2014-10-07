@@ -43,11 +43,9 @@ function code(length, callback) {
 			return;
 		}
 
-		var result = "", i = 0;
-
-		for (i = 0; i < numbers.length; i += 1) {
-			result = result + h.codeChars[numbers[i]];
-		}
+		var result = numbers.map(function (number) {
+			return h.codeChars[number];
+		}).join("");
 
 		callback(null, result);
 	});
