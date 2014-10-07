@@ -42,6 +42,44 @@ KeyApi.isKey = function isKeyF(key) {
 	return key instanceof SymKey || key instanceof EccKey;
 };
 
+/** warning: side effects possible */
+KeyApi.removeKeyDecryptor = function (request, realid, decryptorid, cb) {
+	var key, m = client.multi();
+	step(function () {
+		KeyApi.get(realid, this);
+	}, h.sF(function (_key) {
+		key = _key;
+		key.getOwner(this);
+	}), h.sF(function (owner) {
+		if (h.parseDecimal(owner) !== request.session.getUserID()) {
+			throw new Error("can only remove decryptors of own keys!");
+		}
+
+		key.removeDecryptor(m, decryptorid, this);
+	}), h.sF(function () {
+		m.exec(this);
+	}), cb);
+};
+
+/** warning: side effects possible */
+KeyApi.removeKey = function (request, realid, cb) {
+	var key, m = client.multi();
+	step(function () {
+		KeyApi.get(realid, this);
+	}, h.sF(function (_key) {
+		key = _key;
+		key.getOwner(this);
+	}), h.sF(function (owner) {
+		if (h.parseDecimal(owner) !== request.session.getUserID()) {
+			throw new Error("can only remove decryptors of own keys!");
+		}
+
+		key.remove(m, this);
+	}), h.sF(function () {
+		m.exec(this);
+	}), cb);
+};
+
 /** get a key
 * @param realid keys real id
 */
@@ -51,13 +89,14 @@ KeyApi.get = function getKF(realid, callback) {
 	}
 
 	step(function () {
-		client.get("key:" + realid, this);
+		client.hget("key:" + realid, "type", this);
 	}, h.sF(function (type) {
 		switch (type) {
-		case "symkey":
+		case "sym":
 			this.last.ne(new SymKey(realid));
 			break;
-		case "ecckey":
+		case "crypt":
+		case "sign":
 			this.last.ne(new EccKey(realid));
 			break;
 		default:

@@ -64,9 +64,9 @@ SymKey.get = function getF(keyRealID, cb) {
 				throw new InvalidRealID();
 			}
 
-			client.get("key:" + keyRealID, this);
-	}, h.sF(function (keyData) {
-		if (keyData === "symkey") {
+			client.hget("key:" + keyRealID, "type", this);
+	}, h.sF(function (type) {
+		if (type === "sym") {
 			this.ne(new SymKey(keyRealID));
 		} else {
 			throw new NotASymKey(keyRealID);
@@ -92,15 +92,17 @@ SymKey.create = function (request, data, cb) {
 	}, h.sF(function () {
 		keyRealID = data.realid;
 
-		client.setnx("key:" + keyRealID, "symkey", this);
+		client.setnx("key:" + keyRealID + ":used", "1", this);
 	}), h.sF(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
-		client.set("key:" + keyRealID + ":owner", request.session.getUserID(), this.parallel());
-		client.set("key:" + keyRealID + ":type", data.type, this.parallel());
-		client.set("key:" + keyRealID + ":comment", data.comment || "", this.parallel());
+		client.hmset("key:" + keyRealID, {
+			owner: request.session.getUserID(),
+			type: data.type,
+			comment: data.comment || ""
+		}, this);
 	}), h.sF(function () {
 		theKey = new SymKey(keyRealID);
 		if (data.decryptors) {
