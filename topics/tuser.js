@@ -9,6 +9,9 @@ var Topic = require("../includes/topic.js");
 
 var User = require("../includes/user");
 
+var Profile = require("../includes/profile");
+var mailer = require("../includes/mailer");
+
 function makeSearchUserData(request, cb, ids, known) {
 	var remaining;
 	step(function () {
@@ -149,6 +152,19 @@ var u = {
 			this.ne({
 				success: true
 			});
+		}), fn);
+	},
+	mailChange: function (data, fn, request) {
+		var ownUser;
+		step(function () {
+			request.session.getOwnUser(this);
+		}, h.sF(function (_ownUser) {
+			ownUser = _ownUser;
+			ownUser.setMail(request, data.mail, this);
+		}), h.sF(function () {
+			mailer.sendAcceptMail(ownUser, this);
+		}), h.sF(function () {
+			this.ne({});
 		}), fn);
 	},
 	own: function getOwnDataF(data, fn, request) {
