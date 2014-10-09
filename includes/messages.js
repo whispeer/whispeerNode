@@ -13,9 +13,8 @@ var User = require("./user");
 	message: {
 		meta: {
 			createTime: (int),
-			topicHash: (hex)
-			previousMessage: (int),
-			previousMessageHash: (hex),
+			_parent: (hex)
+			_sortCounter
 			ownHash: (hex)
 			sender: (int),
 			topicid: (int),
@@ -68,11 +67,11 @@ var Message = function (id, topic) {
 		}, cb);
 	};
 
-	this.getHash = function getHashF(request, cb) {
+	this.getSortCounter = function (request, cb) {
 		step(function () {
 			hasAccessError(request, this);
 		}, h.sF(function () {
-			client.hget(domain + ":meta", "_ownHash", this);
+			client.hget(domain + ":meta", "_sortCounter", this);
 		}), h.sF(function (hash) {
 			this.ne(hash);
 		}), cb);
@@ -146,10 +145,13 @@ var Message = function (id, topic) {
 		}, h.sF(function () {
 			client.hgetall(domain + ":meta", this);
 		}), h.sF(function (data) {
-			data.createTime = parseInt(data.createTime, 10);
-			data.previousMessage = parseInt(data.previousMessage, 10);
-			data.sender = parseInt(data.sender, 10);
-			data.topicid = parseInt(data.topicid, 10);
+			data.createTime = h.parseDecimal(data.createTime);
+			data.sender = h.parseDecimal(data.sender);
+			data.topicid = h.parseDecimal(data.topicid);
+
+			if (data._sortCounter) {
+				data._sortCounter = h.parseDecimal(data._sortCounter);
+			}
 
 			this.ne(data);
 		}), cb);
@@ -212,14 +214,13 @@ Message.create = function (request, data, cb) {
 		theTopic.getNewest(request, this);
 	}), h.sF(function (newest) {
 		if (newest === 0) {
-			this.ne("0", 0);
+			this.ne(0);
 		} else {
 			this.parallel.unflatten();
-			newest.getHash(request, this.parallel());
-			this.parallel()(null, newest.getID());
+			newest.getSortCounter(request, this);
 		}
-	}), h.sF(function (newestHash, newestID) {
-		if (parseInt(meta.previousMessage, 10) !== parseInt(newestID, 10) || meta.previousMessageHash !== newestHash) {
+	}), h.sF(function (newestCounter) {
+		if (newestCounter && parseInt(meta._sortCounter, 10) < newestCounter) {
 			this.last.ne(false);
 			return;
 		}
