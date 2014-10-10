@@ -50,8 +50,29 @@ var Post = function (postid) {
 		step(function () {
 			//TODO: check data
 			//TODO: check comment ordering!
+			client.zrevrange(domain + ":comments:list", 0, 0, this);
+		}, h.sF(function (newest) {
+			this.parallel.unflatten();
+
+			client.hget(domain + ":meta", "_ownHash", this.parallel());
+			if (newest.length !== 0) {
+				client.hget(domain + ":comments:" + newest[0] + ":meta", "_sortCounter", this.parallel());
+			}
+		}), h.sF(function (ownHash, sorting) {
+			if (meta._parent !== ownHash) {
+				console.log(meta._parent);
+				console.log(ownHash);
+				throw new Error("invalid parent data");
+			}
+
+			console.log(sorting);
+			console.log(meta._sortCounter);
+			if (sorting > meta._sortCounter) {
+				throw new Error("invalid counter");
+			}
+
 			client.incr(domain + ":comments:count", this);
-		}, h.sF(function (id) {
+		}), h.sF(function (id) {
 			commentID = id;
 			var m = client.multi();
 			m.hmset(domain + ":comments:" + id + ":content", content);
