@@ -45,7 +45,6 @@ var Decryptor = function (keyRealID, count) {
 
 	/** remove this decryptors data */
 	this.removeData = function delF(m, cb) {
-
 		step(function () {
 			client.hget("key:" + keyRealID + ":decryptor:" + count, "decryptorid", this);
 		}, h.sF(function (decryptorid) {
@@ -71,13 +70,9 @@ Decryptor.getAllWithAccess = function getAllWAF(request, keyRealID, cb) {
 
 		client.smembers("key:" + keyRealID + ":accessVia:" + request.session.getUserID(), this);
 	}), h.sF(function (decryptorSet) {
-		var results = [];
-		var i;
-		for (i = 0; i < decryptorSet.length; i += 1) {
-			results.push(new Decryptor(keyRealID, decryptorSet[i]));
-		}
-
-		this.ne(results);
+		this.ne(decryptorSet.map(function (decryptorID) {
+			return new Decryptor(keyRealID, decryptorID);
+		}));
 	}), cb);
 };
 

@@ -155,6 +155,26 @@ Key.prototype.getDecryptors = function getDecryptorsF(request, cb) {
 	Decryptor.getAllWithAccess(request, this._realid, cb);
 };
 
+Key.prototype.removeDecryptorForUser = function (m, userid, cb) {
+	var theKey = this;
+	step(function () {
+		client.smembers(theKey._domain + ":accessVia:" + userid, this);
+	}, h.sF(function (_decryptors) {
+		if (_decryptors.length === 0) {
+			this.last.ne(); //nothing to do here
+			return;
+		}
+
+		var decryptors = _decryptors.map(function (decryptorID) {
+			return new Decryptor(theKey._realid, decryptorID);
+		});
+
+		decryptors.forEach(function (decryptor) {
+			theKey.removeDecryptor(m, decryptor.getID(), this.parallel());
+		}, this);
+	}), cb);
+};
+
 Key.prototype.removeDecryptor = function (m, decryptorid, cb) {
 	var theKey = this;
 	step(function () {

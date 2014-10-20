@@ -43,6 +43,26 @@ KeyApi.isKey = function isKeyF(key) {
 };
 
 /** warning: side effects possible */
+KeyApi.removeKeyDecryptorForUser = function (request, realid, userid, cb) {
+	var key, m = client.multi();
+	step(function () {
+		KeyApi.get(realid, this);
+	}, h.sF(function (_key) {
+		key = _key;
+		key.getOwner(this);
+	}), h.sF(function (owner) {
+		if (h.parseDecimal(owner) !== request.session.getUserID()) {
+			throw new Error("can only remove decryptors of own keys!");
+		}
+
+		console.log("removing decryptor for user: " + userid);
+		key.removeDecryptorForUser(m, userid, this);
+	}), h.sF(function () {
+		m.exec(this);
+	}), cb);
+};
+
+/** warning: side effects possible */
 KeyApi.removeKeyDecryptor = function (request, realid, decryptorid, cb) {
 	var key, m = client.multi();
 	step(function () {
