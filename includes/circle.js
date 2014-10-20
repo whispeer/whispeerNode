@@ -71,14 +71,18 @@ var Circle = function (userid, id) {
 	}
 
 	this.update = function (request, content, meta, key, decryptors, cb) {
+		var usersRemoved;
 		step(function () {
 			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
-			client.hget(domain + ":meta", "users", this);
-		}), h.sF(function (users) {
+			this.parallel.unflatten();
+			client.hget(domain + ":meta", "users", this.parallel());
+			client.hget(domain + ":meta", "circleKey", this.parallel());
+		}), h.sF(function (users, oldKey) {
 			users = JSON.parse(users);
 
-			var removing = h.arraySubtract(users, meta.users).length > 0;
+			usersRemoved = h.arraySubtract(users, meta.users);
+			var removing = usersRemoved.length > 0;
 
 			if (removing && !key) {
 				throw new Error("no new key created for circle update even though users were removed!");
@@ -92,7 +96,12 @@ var Circle = function (userid, id) {
 				throw new Error("we need new decryptors!");
 			}
 
-			createKeysAndDecryptors(request, key, decryptors, this);
+			usersRemoved.forEach(function (userid) {
+				KeyApi.removeKeyDecryptorForUser(request, oldKey, userid, this.parallel());
+			}, this);
+			this.parallel()();
+		}), h.sF(function () {
+			createKeysAndDecryptors(request, key, decryptors, this.parallel());
 		}), h.sF(function () {
 			var multi = client.multi();
 			meta.users = JSON.stringify(meta.users);
