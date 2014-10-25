@@ -42,10 +42,14 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
-	this.delete = function (request, cb) {
+	this.remove = function (request, cb) {
 		step(function () {
 			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
+			client.hget(domain + ":meta", "circleKey", this);
+		}), h.sF(function (circleKey) {
+			KeyApi.removeKey(request, circleKey, this);
+		}), h.sF(function () {
 			client.multi()
 				.srem("user:" + userid + ":circle", id)
 				.sadd("user:" + userid + ":circle:deleted", id)
