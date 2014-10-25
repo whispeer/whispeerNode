@@ -17,8 +17,6 @@ var SymKey = require("./crypto/symKey");
 
 var RedisObserver = require("./asset/redisObserver");
 
-var UPDATESEARCHON = ["profile", "nickname"];
-
 function logedinF(data, cb) {
 	step(function () {
 		if (data.reference.isSaved()) {
@@ -272,9 +270,7 @@ var User = function (id) {
 
 	databaseUser.on("afterSavedHook", updateSearch);
 	databaseUser.on("setAttribute", function (request, field) {
-		if (UPDATESEARCHON.indexOf(field.attr) > -1) {
-			updateSearch(request);
-		}
+		updateSearch(request);
 	});
 
 	function getAttribute(request, attr, cb, fullHash) {
@@ -364,11 +360,12 @@ var User = function (id) {
 			this.parallel.unflatten();
 
 			theUser.getNickname(request, this.parallel());
-			getAttribute(request, "profile:basic", this.parallel());
-		}, h.sF(function (nickname, basicProfile) {
+			theUser.getPublicProfile(request, this.parallel());
+		}, h.sF(function (nickname, profile) {
 			var res = [], name;
-			if (basicProfile) {
-				basicProfile = JSON.parse(basicProfile);
+			if (profile && profile.content && profile.content.basic)  {
+				var basicProfile = profile.content.basic;
+
 				if (basicProfile.firstname) {
 					res.push(basicProfile.firstname);
 				}
