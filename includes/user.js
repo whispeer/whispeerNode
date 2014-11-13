@@ -134,7 +134,7 @@ var validKeys = {
 	},
 	password: {
 		read: trueF,
-		match: /^[A-Fa-f0-9]{10}$/,
+		match: /^[A-Fa-f0-9]{64}$/,
 		pre: ownUserF
 	},
 	signedKeys: {
@@ -295,7 +295,7 @@ var User = function (id) {
 		});
 	}
 
-	createAccessors(["password", "nickname", "migrationState", "email",
+	createAccessors(["password", "salt", "nickname", "migrationState", "email",
 					"mainKey", "cryptKey", "signKey", "friendsKey", "signedOwnKeys"]);
 
 	function deleteUser(cb) {

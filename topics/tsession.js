@@ -13,7 +13,7 @@ var s = {
 			}
 		}, fn);
 	},
-	token: function getToken(data, fn) {
+	token: function getToken(data, fn, request) {
 		step(function () {
 			if (data && data.identifier) {
 				var User = require("../includes/user");
@@ -26,11 +26,13 @@ var s = {
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
-				myUser.generateToken(this);
+				this.parallel.unflatten();
+				myUser.generateToken(this.parallel());
+				myUser.getSalt(request, this.parallel())
 			}
-		}, UserNotExisting), h.sF(function (token) {
+		}, UserNotExisting), h.sF(function (token, salt) {
 			if (token !== false) {
-				this.last.ne({token: token});
+				this.last.ne({token: token, salt: salt});
 			} else {
 				fn.error();
 				this.last.ne();

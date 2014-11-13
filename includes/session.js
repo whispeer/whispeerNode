@@ -373,7 +373,7 @@ var Session = function Session() {
 				regErr("invalidIdentifier");
 			}
 
-			if (!h.isPassword(password)) {
+			if (!h.isPassword(password.hash) && h.isHex(password.salt) && password.salt.length === 16) {
 				regErr("invalidPassword");
 			}
 
@@ -422,7 +422,8 @@ var Session = function Session() {
 					myUser.setNickname(request, nickname, this.parallel());
 				}
 
-				myUser.setPassword(request, password, this.parallel());
+				myUser.setPassword(request, password.hash, this.parallel());
+				myUser.setSalt(request, password.salt, this.parallel());
 			}
 		}), h.sF(function userCreation() {
 			myUser.save(request, this);
