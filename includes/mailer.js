@@ -99,7 +99,7 @@ var mailer = {
 						user: user.getID(),
 						mail: userMail
 					})
-					.expire("mail:challenges:" + challenge, 7*24*60);
+					.expire("mail:challenges:" + challenge, 7*24*60*60);
 
 				var mailOption = {
 					from: defaultFrom,
