@@ -33,6 +33,18 @@ var MAXDEPTH = 20;
 
 var whispeerAPI = {
 	blob: blob,
+	inviteUsers: function (data, fn, view) {
+		step(function () {
+			view.logedinError(this);
+		}, h.sF(function () {
+			data.mails.forEach(function (mail) {
+				debugger;
+				mailer.inviteMail(mail, data.name, this.parallel());
+			}, this);
+		}), h.sF(function () {
+			this.ne({});
+		}), fn);
+	},
 	verifyMail: function verifyMailF(data, fn) {
 		step(function () {
 			mailer.verifyUserMail(data.challenge, data.mailsEnabled, this);

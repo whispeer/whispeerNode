@@ -24,6 +24,27 @@ var defaultFrom = config.mailFrom || "support@whispeer.de";
 //-- <mail>Verified 1
 //-- <mail>Challenge <challenge>
 
+var sjcl = require("./crypto/sjcl");
+
+var INVITESTRING = "turing";
+var INVITEBITS = sjcl.codec.utf8String.toBits(INVITESTRING)
+
+function createInviteCode() {
+	var start = sjcl.random.randomWords(1);
+	var i, prev = start[0], result = [];
+
+	var bits = INVITEBITS;
+
+	result.push(prev);
+
+	for (i = 0; i < bits.length; i += 1) {
+		prev = (prev ^ bits[i]);
+		result.push(prev);
+	}
+
+	return sjcl.codec.base32.fromBits(result);
+}
+
 function generateChallenge(cb) {
 	var challenge;
 	step(function () {
@@ -82,6 +103,36 @@ var mailer = {
 		}), h.sF(function () {
 			this.ne(true);
 		}), cb);
+	},
+	inviteMail: function (receiver, name, cb) {
+		step(function () {
+			name = "";
+			var inviteCode = createInviteCode();
+
+			var mailOption = {
+				from: defaultFrom,
+				to: receiver
+			};
+
+			var nameLine = "";
+
+			if (name && name.length > 2) {
+				mailOption.subject = "[Whispeer] Einladung zu whispeer von " + name,
+				nameLine = "du wurdest von " + name + " zu whispeer eingeladen!";
+			} else {
+				mailOption.subject = "[Whispeer] Einladung zu whispeer",
+				nameLine = "du wurdest zu whispeer eingeladen!";
+			}
+
+			mailOption.text = "Hi,\n\n" +
+				nameLine +
+				"Du kannst dich unter " + config.host + "/start/" + inviteCode + " für whispeer registrieren!\n\n" +
+				"Wir freuen uns auf dich!\n" +
+				"Mit freundlichen Grüßen,\n" +
+				"Dein whispeer-Team";
+
+			mail.sendMail(mailOption, this);
+		}, cb);
 	},
 	sendAcceptMail: function (user, cb) {
 		var challenge;
