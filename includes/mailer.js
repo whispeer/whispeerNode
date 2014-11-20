@@ -13,6 +13,8 @@ var h = require("whispeerHelper");
 
 var code = require("./session").code;
 
+var fs = require("fs");
+
 var mail = nodemailer.createTransport(config.mailType, config.mail);
 
 var defaultFrom = config.mailFrom || "support@whispeer.de";
@@ -24,26 +26,7 @@ var defaultFrom = config.mailFrom || "support@whispeer.de";
 //-- <mail>Verified 1
 //-- <mail>Challenge <challenge>
 
-var sjcl = require("./crypto/sjcl");
-
-var INVITESTRING = "turing";
-var INVITEBITS = sjcl.codec.utf8String.toBits(INVITESTRING)
-
-function createInviteCode() {
-	var start = sjcl.random.randomWords(1);
-	var i, prev = start[0], result = [];
-
-	var bits = INVITEBITS;
-
-	result.push(prev);
-
-	for (i = 0; i < bits.length; i += 1) {
-		prev = (prev ^ bits[i]);
-		result.push(prev);
-	}
-
-	return sjcl.codec.base32.fromBits(result);
-}
+var TEMPLATEDIR = "./templates/";
 
 function generateChallenge(cb) {
 	var challenge;
@@ -104,36 +87,6 @@ var mailer = {
 			this.ne(true);
 		}), cb);
 	},
-	inviteMail: function (receiver, name, cb) {
-		step(function () {
-			name = "";
-			var inviteCode = createInviteCode();
-
-			var mailOption = {
-				from: defaultFrom,
-				to: receiver
-			};
-
-			var nameLine = "";
-
-			if (name && name.length > 2) {
-				mailOption.subject = "[Whispeer] Einladung zu whispeer von " + name,
-				nameLine = "du wurdest von " + name + " zu whispeer eingeladen!";
-			} else {
-				mailOption.subject = "[Whispeer] Einladung zu whispeer",
-				nameLine = "du wurdest zu whispeer eingeladen!";
-			}
-
-			mailOption.text = "Hi,\n\n" +
-				nameLine +
-				"Du kannst dich unter " + config.host + "/start/" + inviteCode + " für whispeer registrieren!\n\n" +
-				"Wir freuen uns auf dich!\n" +
-				"Mit freundlichen Grüßen,\n" +
-				"Dein whispeer-Team";
-
-			mail.sendMail(mailOption, this);
-		}, cb);
-	},
 	sendAcceptMail: function (user, cb) {
 		var challenge;
 		step(function () {
@@ -192,6 +145,46 @@ var mailer = {
 		}), h.sF(function () {
 			mailer.sendMails(usersToNotify, "[Whispeer] Neue Interaktionen", "Jemand hat mit dir auf Whispeer interagiert!\nBesuche " + config.host + " um zu sehen wer mit dir interagiert hat.\n\nMit freundlichen Grüßen,\nDein Whispeer Team!", this);
 		}), (cb || h.nop));
+	},
+	fillTemplate: function (templateName, variables, cb) {
+		step(function () {
+			fs.readFile(TEMPLATEDIR + templateName + ".html", this);
+		}, h.sF(function (content) {
+			content = content.toString();
+			h.objectEach(variables, function (key, value) {
+				content = content.split("{{" + key + "}}").join(value);
+			}, this);
+
+			this.ne(content);
+		}), cb);
+	},
+	sendUserMail: function (user, templateName, variables, subject, cb) {
+		var receiver;
+		step(function () {
+			user.getEMail(viewCreator.logedinViewStub, this);
+		}, h.sF(function (_receiver) {
+			receiver = _receiver;
+			mailer.isMailActivatedForUser(user, receiver, this);
+		}), h.sF(function (activated) {
+			if (activated) {
+				mailer.sendMail(receiver, templateName, variables, subject, this);
+			} else {
+				this.last.ne();
+			}
+		}), cb);
+	},
+	sendMail: function (receiver, templateName, variables, subject, cb) {
+		step(function () {
+			mailer.fillTemplate(templateName, variables, this);
+		}, h.sF(function (content) {
+			mail.sendMail({
+				to: receiver,
+				from: defaultFrom,
+				subject: subject,
+				html: content,
+				generateTextFromHTML: true
+			}, this);
+		}), cb);
 	},
 	sendMails: function (users, subject, text, cb) {
 		//todo: add inReplyTo and messageID!

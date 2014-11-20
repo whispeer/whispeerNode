@@ -9,6 +9,7 @@ var messages = require("./topics/tmessage");
 var friends = require("./topics/tfriends");
 var circles = require("./topics/tcircles");
 var posts = require("./topics/tposts");
+var invites = require("./topics/tinvites");
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
 
@@ -33,18 +34,7 @@ var MAXDEPTH = 20;
 
 var whispeerAPI = {
 	blob: blob,
-	inviteUsers: function (data, fn, view) {
-		step(function () {
-			view.logedinError(this);
-		}, h.sF(function () {
-			data.mails.forEach(function (mail) {
-				debugger;
-				mailer.inviteMail(mail, data.name, this.parallel());
-			}, this);
-		}), h.sF(function () {
-			this.ne({});
-		}), fn);
-	},
+	invites: invites,
 	verifyMail: function verifyMailF(data, fn) {
 		step(function () {
 			mailer.verifyUserMail(data.challenge, data.mailsEnabled, this);
