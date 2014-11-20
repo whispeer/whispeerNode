@@ -150,6 +150,8 @@ var mailer = {
 		step(function () {
 			fs.readFile(TEMPLATEDIR + templateName + ".html", this);
 		}, h.sF(function (content) {
+			variables.host = variables.host || config.remoteHost || config.host;
+
 			content = content.toString();
 			h.objectEach(variables, function (key, value) {
 				content = content.split("{{" + key + "}}").join(value);
