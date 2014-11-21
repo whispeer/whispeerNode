@@ -13,7 +13,7 @@ files.forEach(function (name) {
 	}
 });
 
-global.view = {
+global.viewStub = {
 	logedinError: function (cb) { cb(); },
 	getUserID: function () { return -1; }
 };
