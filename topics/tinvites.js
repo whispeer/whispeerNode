@@ -15,18 +15,18 @@ var invite = {
 			this.ne({});
 		}), fn);
 	},
-	createCode: function (data, fn, view) {
+	generateCode: function (data, fn, view) {
 		step(function () {
-			invites.generateInviteCode(view, this);
+			invites.generateCode(view, this);
 		}, h.sF(function (code) {
 			this.ne({
-				code: code
+				inviteCode: code
 			});
 		}), fn);
 	},
 	checkCode: function (data, fn) {
 		step(function () {
-			invites.checkCode(data.inviteCode);
+			invites.checkCode(data.inviteCode, this);
 		}, h.sF(function (valid) {
 			this.ne({
 				valid: valid
