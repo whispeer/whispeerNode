@@ -4,6 +4,7 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var mailer = require("../includes/mailer");
+var invites = require("../includes/invites");
 
 var s = {
 	logout: function logoutF(data, fn, view) {
@@ -40,8 +41,14 @@ var s = {
 	register: function (data, fn, view) {
 		var res, myUser;
 		step(function () {
+			invites.checkCode(data.inviteCode, this);
+		}, h.sF(function (valid) {
+			if (!valid) {
+				throw new Error("invalid invite code! Oo");
+			}
+
 			view.getSession().register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
-		}, h.sF(function (result) {
+		}), h.sF(function (result) {
 			res = result;
 			if (result.error) {
 				this.last.ne(res);
@@ -66,6 +73,8 @@ var s = {
 			this.parallel()();
 		}), h.sF(function () {
 			mailer.sendAcceptMail(myUser, this);
+		}), h.sF(function () {
+			invites.useCode(data.inviteCode, this);
 		}), h.sF(function () {
 			this.ne(res);
 		}), fn);
