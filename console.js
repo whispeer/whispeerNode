@@ -22,4 +22,11 @@ global.printDebug = function () {
 	console.log(arguments);
 };
 
-repl.start({useGlobal: true});
+var configManager = require("./includes/configManager");
+var config = configManager.get();
+var client = require("./includes/redisClient");
+
+console.log("Database selected: " + config.dbNumber || 0);
+client.select(config.dbNumber || 0, function () {
+	repl.start({useGlobal: true});
+});
