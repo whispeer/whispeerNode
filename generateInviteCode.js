@@ -7,12 +7,22 @@ var viewStub = {
 	getUserID: function () { return -1; }
 };
 
+var configManager = require("./includes/configManager");
+var config = configManager.get();
+var client = require("./includes/redisClient");
 
-invites.generateCode(viewStub, function (e, c) {
+client.select(config.dbNumber || 0, function (e) {
 	if (e) {
 		throw e;
 	}
+	console.log("Database selected: " + config.dbNumber || 0);
 
-	console.log(c);
-	process.exit();
+	invites.generateCode(viewStub, function (e, c) {
+		if (e) {
+			throw e;
+		}
+
+		console.log(c);
+		process.exit();
+	});
 });
