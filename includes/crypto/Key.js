@@ -300,6 +300,7 @@ Key.prototype.addEncryptor = function addEncryptorF(realid, cb) {
 Key.prototype.getEncryptors = function getEncryptorsF(cb) {
 	var theKey = this;
 	step(function () {
+		console.log(theKey._domain);
 		client.smembers(theKey._domain + ":encryptors", this);
 	}, h.sF(function (encrs) {
 		var KeyApi = require("./KeyApi");
@@ -350,8 +351,6 @@ Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 			client.sadd(theKey._domain + ":accessVia:" + userid, decryptorid, this.parallel());
 		}, this);
 	}, h.sF(function () {
-		var stack = new Error().stack;
-		console.log(stack);
 		theKey.getEncryptors(this);
 	}), h.sF(function (encryptors) {
 		if (encryptors.length === 0) {
@@ -360,7 +359,7 @@ Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 		}
 
 		encryptors.forEach(function (encryptor) {
-			encryptor.addAccessByRealID(theKey._realid, userids, this.parallel(), added);
+			encryptor.addAccessFByRealID(theKey._realid, userids, this.parallel(), added);
 		}, this);
 	}), cb);
 };
