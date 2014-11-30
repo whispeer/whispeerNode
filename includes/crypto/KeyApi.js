@@ -146,9 +146,6 @@ KeyApi.getWData = function getDataF(request, realid, callback, wDecryptors) {
 
 /** get multiple keys */
 KeyApi.getKeys = function getKeysF(realids, callback) {
-	var stack = new Error().stack;
-	console.log(stack);
-
 	step(function () {
 		var i;
 		for (i = 0; i < realids.length; i += 1) {

@@ -298,6 +298,9 @@ Key.prototype.addEncryptor = function addEncryptorF(realid, cb) {
 * @param cb callback
 */
 Key.prototype.getEncryptors = function getEncryptorsF(cb) {
+	var stack = new Error().stack;
+	console.log(stack);
+
 	var theKey = this;
 	step(function () {
 		client.smembers(theKey._domain + ":encryptors", this);
