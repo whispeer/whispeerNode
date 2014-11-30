@@ -88,12 +88,10 @@ SymKey.createWDecryptors = function (request, data, cb) {
 SymKey.create = function (request, data, cb) {
 	var keyRealID, theKey;
 	step(function () {
-		console.log("got here 2");
 		SymKey.validate(data, this);
 	}, h.sF(function () {
 		keyRealID = data.realid;
 
-		console.log("got here 3");
 		client.setnx("key:" + keyRealID + ":used", "1", this);
 	}), h.sF(function (set) {
 		if (set === 0) {
@@ -106,7 +104,6 @@ SymKey.create = function (request, data, cb) {
 			comment: data.comment || ""
 		}, this);
 	}), h.sF(function () {
-		console.log("got here 4");
 		theKey = new SymKey(keyRealID);
 		if (data.decryptors) {
 			theKey.addDecryptors(request, data.decryptors, this);
@@ -114,7 +111,6 @@ SymKey.create = function (request, data, cb) {
 			this.last.ne(theKey);
 		}
 	}), h.sF(function () {
-		console.log("got here 5");
 		this.last.ne(theKey);
 	}), cb);
 };

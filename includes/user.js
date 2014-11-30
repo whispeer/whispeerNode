@@ -715,12 +715,12 @@ var User = function (id) {
 			//get main key!
 			this.parallel.unflatten();
 			theUser.getMainKey(request, this.parallel());
-			console.log("got here 1");
 			SymKey.createWDecryptors(request, key, this.parallel());
 		}), h.sF(function (mainKey, _backupKey) {
 			backupKey = _backupKey;
 			KeyApi.get(mainKey, this);
 		}), h.sF(function (mainKey) {
+			console.log("got here yay");
 			mainKey.addDecryptors(request, decryptors, this);
 		}), h.sF(function () {
 			client.sadd(userDomain + ":backupKeys", backupKey.getRealID(), this);
