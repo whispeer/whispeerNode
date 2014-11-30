@@ -92,7 +92,7 @@ var u = {
 	},
 	backupKey: function (data, fn, request) {
 		step(function () {
-			request.getOwnUser(this);
+			request.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
 			ownUser.addBackupKey(request, data.decryptors, data.innerKey, this);
 		}), h.sF(function () {
