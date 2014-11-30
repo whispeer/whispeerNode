@@ -195,6 +195,29 @@ Key.prototype.removeDecryptorByRealID = function (m, realid, cb) {
 	}), cb);
 };
 
+Key.prototype.removeFromEncryptorLists = function (m, cb) {
+	var theKey = this;
+	step(function () {
+		Decryptor.getAll(theKey._realid, this);
+	}, h.sF(function (decryptors) {
+		decryptors.forEach(function (decryptor) {
+			decryptor.getDecryptorID(this.parallel());
+		}, this);
+
+		if (decryptors.length === 0) {
+			this.last.ne();
+		}
+	}), h.sF(function (decryptorids) {
+		decryptorids.forEach(function (decryptorid) {
+			if (decryptorid) {
+				m.srem("key:" + decryptorid + ":encryptors", theKey._realid);
+			}
+		});
+
+		this.ne();
+	}), cb);
+};
+
 /** warning: side effects possible */
 Key.prototype.remove = function (m, cb) {
 	var theKey = this;
@@ -206,6 +229,8 @@ Key.prototype.remove = function (m, cb) {
 		});
 		m.del(theKey._domain);
 
+		theKey.removeFromEncryptorLists(m, this);
+	}), h.sF(function () {
 		theKey.getEncryptors(this);
 	}), h.sF(function (encryptors) {
 		if (encryptors.length === 0) {
@@ -304,7 +329,6 @@ Key.prototype.getEncryptors = function getEncryptorsF(cb) {
 	}, h.sF(function (encrs) {
 		var KeyApi = require("./KeyApi");
 		if (encrs.length > 0) {
-			console.log(theKey._domain);
 			KeyApi.getKeys(encrs, this);
 		} else {
 			this.ne([]);
