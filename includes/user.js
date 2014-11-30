@@ -718,6 +718,7 @@ var User = function (id) {
 			SymKey.createWDecryptors(request, key, this.parallel());
 		}), h.sF(function (mainKey, _backupKey) {
 			backupKey = _backupKey;
+			console.log("my mainkey:" + mainKey);
 			KeyApi.get(mainKey, this);
 		}), h.sF(function (mainKey) {
 			mainKey.addDecryptors(request, decryptors, this);
