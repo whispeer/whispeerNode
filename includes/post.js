@@ -13,6 +13,8 @@ var Friends = require("./friends");
 var SortedSetPaginator = require("./sortedSetPaginator");
 var SymKey = require("./crypto/symKey");
 
+var RedisObserver = require("./asset/redisObserver");
+
 var mailer = require("./mailer");
 
 var newPostsExpireTime = 10 * 60;
@@ -41,50 +43,115 @@ var newPostsExpireTime = 10 * 60;
 */
 
 var Post = function (postid) {
-	var domain = "post:" + postid, thePost = this, metaData, contentData;
-	this.getPostData = function getDataF(view, cb) {
+	var domain = "post:" + postid, thePost = this, result;
+
+	this.addComment = function (request, content, meta, cb) {
+		var commentID = 0;
+		step(function () {
+			//TODO: check data
+			//TODO: check comment ordering!
+			client.zrevrange(domain + ":comments:list", 0, 0, this);
+		}, h.sF(function (newest) {
+			this.parallel.unflatten();
+
+			client.hget(domain + ":meta", "_ownHash", this.parallel());
+			if (newest.length !== 0) {
+				client.hget(domain + ":comments:" + newest[0] + ":meta", "_sortCounter", this.parallel());
+			}
+		}), h.sF(function (ownHash, sorting) {
+			if (meta._parent !== ownHash) {
+				console.log(meta._parent);
+				console.log(ownHash);
+				throw new Error("invalid parent data");
+			}
+
+			console.log(sorting);
+			console.log(meta._sortCounter);
+			if (sorting > meta._sortCounter) {
+				throw new Error("invalid counter");
+			}
+
+			client.incr(domain + ":comments:count", this);
+		}), h.sF(function (id) {
+			commentID = id;
+			var m = client.multi();
+			m.hmset(domain + ":comments:" + id + ":content", content);
+			m.hmset(domain + ":comments:" + id + ":meta", meta);
+			m.zadd(domain + ":comments:list", meta.createTime, id);
+
+			m.exec(this);
+		}), h.sF(function () {
+			thePost.notify("comment:create", commentID);
+			this.ne();
+		}), cb);
+	};
+
+	this.getComment = function (id, cb) {
+		step(function () {
+			this.parallel.unflatten();
+			client.hgetall(domain + ":comments:" + id + ":content", this.parallel());
+			client.hgetall(domain + ":comments:" + id + ":meta", this.parallel());
+		}, h.sF(function (content, meta) {
+			this.ne({
+				id: id,
+				content: content,
+				meta: meta
+			});
+		}), cb);
+	};
+
+	this.getComments = function (request, cb) {
+		step(function () {
+			client.zrange(domain + ":comments:list", 0, -1, this);
+		}, h.sF(function (comments) {
+			if (comments.length === 0) {
+				this.last.ne([]);
+				return;
+			}
+
+			comments.forEach(function (comment) {
+				thePost.getComment(comment, this.parallel());
+			}, this);
+		}), cb);
+	};
+
+	this.getPostData = function getDataF(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
 
 			client.hgetall(domain + ":meta", this.parallel());
 			client.hgetall(domain + ":content", this.parallel());
-		}, h.sF(function (meta, content) {
-			metaData = meta;
-			contentData = content;
+			thePost.getComments(request, this.parallel());
+		}, h.sF(function (meta, content, comments) {
+			meta.sender = h.parseDecimal(meta.sender);
+			meta.time = h.parseDecimal(meta.time);
+			meta.walluser = h.parseDecimal(meta.walluser || 0);
 
-			metaData.sender = h.parseDecimal(metaData.sender);
-			metaData.time = h.parseDecimal(metaData.time);
-			
-			if (metaData.walluser) {
-				metaData.walluser = h.parseDecimal(metaData.walluser);
-			}
-
-			KeyApi.getWData(view, meta.key, this, true);
-		}), h.sF(function (keyData) {
-			metaData.key = keyData;
-
-			var result = {
+			result = {
 				id: postid,
-				meta: metaData,
-				content: contentData
+				meta: meta,
+				content: content,
+				comments: comments
 			};
 
+			request.addKey(meta._key, this);
+		}), h.sF(function () {
 			this.ne(result);
 		}), cb);
 	};
 
 	this.hasUserAccess = function (userid, cb) {
 		step(function () {
-			client.hget(domain, "key", this);
+			client.hget(domain + ":meta", "_key", this);
 		}, h.sF(function (keyRealID) {
 			client.sismember("key:" + keyRealID + ":access", userid, this);
 		}), cb);
 	};
 
-	this.throwUserAccess = function throwUserAccessF(view, cb) {
+	this.throwUserAccess = function throwUserAccessF(request, cb) {
 		var that = this;
 		step(function () {
-			that.hasUserAccess(this);
+			that.hasUserAccess(request.session.getUserID(), this);
 		}, h.sF(function (access) {
 			if (!access) {
 				throw new AccessViolation("user has no access to post");
@@ -94,19 +161,47 @@ var Post = function (postid) {
 		}), cb);
 	};
 
-	this.getKey = function getKeyF(view, cb) {
+	/**
+	* delete this post. only works if requester is post creator (or wall-user)
+	*/
+	this.remove = function (request, cb) {
 		step(function () {
-			client.hget(domain, "key", this);
-		}, cb);
-	};
+			//check if i am the walluser or the sender
+			this.parallel.unflatten();
 
-	this.getContent = function getContentF(view, cb) {
-		step(function () {
-			thePost.throwUserAccess(view, this);
-		}, h.sF(function () {
-			client.hget(domain, "content", this);
+			client.hget(domain + ":meta", "sender", this.parallel());
+			client.hget(domain + ":meta", "walluser", this.parallel());
+		}, h.sF(function (sender, walluser) {
+			sender = h.parseDecimal(sender);
+			walluser = h.parseDecimal(walluser);
+
+			if (request.session.getUserID() !== sender && request.session.getUserID() !== walluser) {
+				throw new AccessViolation("can not delete other peoples posts");
+			}
+
+			//remove post from all lists
+			//remove post data
+			var m = client.multi();
+
+			m.del(domain + ":meta");
+			m.del(domain + ":content");
+			m.del(domain);
+
+			m.zrem("user:" + sender + ":posts", postid);
+			m.zrem("user:" + sender + ":newPosts", postid);
+			m.zrem("user:" + sender + ":wall", postid);
+
+			if (walluser) {
+				m.zrem("user:" + walluser + ":wall", postid);
+			}
+
+			//remove comments when added!
+
+			m.exec(this);
 		}), cb);
 	};
+
+	RedisObserver.call(this, "post", postid);
 };
 
 function removeOldNewPosts(multi, userid) {
@@ -156,19 +251,19 @@ function removeDoubleFilter(filter) {
 	return currentFilter;
 }
 
-function getAllFriendsIDs(view, cb) {
+function getAllFriendsIDs(request, cb) {
 	step(function () {
-		Friends.get(view, this);
+		Friends.get(request, this);
 	}, cb);
 }
 
-function getFriendsOfFriendsIDs(view, cb) {
+function getFriendsOfFriendsIDs(request, cb) {
 	step(function () {
-		Friends.getFriendsOfFriends(view, this);
+		Friends.getFriendsOfFriends(request, this);
 	}, cb);
 }
 
-function getUserIDsFromAlwaysFilter(view, filters, cb) {
+function getUserIDsFromAlwaysFilter(request, filters, cb) {
 	var theFilter = removeDoubleFilter(filters);
 
 	if (!theFilter) {
@@ -178,10 +273,10 @@ function getUserIDsFromAlwaysFilter(view, filters, cb) {
 
 	switch (theFilter) {
 		case "allfriends":
-			getAllFriendsIDs(view, cb);
+			getAllFriendsIDs(request, cb);
 			break;
 		case "friendsoffriends":
-			getFriendsOfFriendsIDs(view, cb);
+			getFriendsOfFriendsIDs(request, cb);
 			break;
 		case "everyone":
 			//TODO: how do we want to do this? who is "everyone"? -> most likely add some "share lists" for friendsoffriends
@@ -191,7 +286,7 @@ function getUserIDsFromAlwaysFilter(view, filters, cb) {
 	}
 }
 
-function getUserIDsForFilter(view, filter, cb) {
+function getUserIDsForFilter(request, filter, cb) {
 	//filter.user
 	//filter.meta
 	//allfriends
@@ -222,10 +317,10 @@ function getUserIDsForFilter(view, filter, cb) {
 	step(function () {
 		this.parallel.unflatten();
 
-		getUserIDsFromAlwaysFilter(view, alwaysFilter, this.parallel());
+		getUserIDsFromAlwaysFilter(request, alwaysFilter, this.parallel());
 		getUserIDsFromUserFilter(userFilter, this.parallel());
 	}, h.sF(function (alwaysUserIDs, userUserIDs) {
-		alwaysUserIDs.push(view.getUserID());
+		alwaysUserIDs.push(request.session.getUserID());
 		//unique!
 		var result = h.arrayUnique(alwaysUserIDs.concat(userUserIDs).map(h.parseDecimal));
 		this.ne(result);
@@ -235,17 +330,37 @@ function getUserIDsForFilter(view, filter, cb) {
 // Problem:
 // we get more posts than applicable for us, not removing those we can not read
 
-function accessablePostFilter(view) {
+function accessablePostFilter(request) {
 	return function (id, cb) {
 		step(function () {
-			client.hget("post:" + id + ":meta", "key", this);
+			client.hget("post:" + id + ":meta", "_key", this);
 		}, h.sF(function (key) {
-			client.sismember("key:" + key + ":access", view.getUserID(), this);
+			client.sismember("key:" + key + ":access", request.session.getUserID(), this);
 		}), cb);
 	};
 }
 
-Post.getTimeline = function (view, filter, afterID, count, cb) {
+function makePost(request, id) {
+	var post = new Post(id);
+
+	var socketData = request.socketData;
+	post.listen(socketData, "comment:create", function (channel, data, postID) {
+		step(function () {
+			var p = new Post(postID);
+			p.getComment(data, this);
+		}, h.sF(function (comment) {
+			socketData.socket.emit("post." + postID + ".comment.new", comment);
+		}), function (e) {
+			if (e) {
+				console.error(e);
+			}
+		});
+	});
+
+	return post;
+}
+
+Post.getTimeline = function (request, filter, afterID, count, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
 	//zinterstore
@@ -254,13 +369,13 @@ Post.getTimeline = function (view, filter, afterID, count, cb) {
 	var unionKey;
 
 	step(function () {
-		getUserIDsForFilter(view, filter, this);
+		getUserIDsForFilter(request, filter, this);
 	}, h.sF(function (userids) {
 		var postKeys = userids.map(function (userid) {
 			return "user:" + userid + ":posts";
 		});
 
-		unionKey = "post:union:" + view.getUserID() + ":" + userids.sort().join(",");
+		unionKey = "post:union:" + request.session.getUserID() + ":" + userids.sort().join(",");
 		postKeys.unshift(postKeys.length);
 		postKeys.unshift(unionKey);
 		postKeys.push(this);
@@ -273,22 +388,24 @@ Post.getTimeline = function (view, filter, afterID, count, cb) {
 			var paginator = new SortedSetPaginator(unionKey, count);
 			client.expire(unionKey, 120);
 
-			paginator.getRangeAfterID(afterID, this, accessablePostFilter(view));
+			paginator.getRangeAfterID(afterID, this, accessablePostFilter(request));
 		}		
 	}), h.sF(function (ids, remaining) {
-		var result = ids.map(h.newElement(Post));
+		var result = ids.map(function (id) {
+			return makePost(request, id);
+		});
 		this.ne(result, remaining);
 	}), cb);
 };
 
-Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, cb) {
+Post.getNewestPosts = function (request, filter, beforeID, count, lastRequestTime, cb) {
 	var unionKey, userids;
 
 	step(function () {
 		if (new Date().getTime() - h.parseDecimal(lastRequestTime) > newPostsExpireTime * 1000) {
 			throw new TimeSpanExceeded();
 		} else {
-			getUserIDsForFilter(view, filter, this);
+			getUserIDsForFilter(request, filter, this);
 		}
 	}, h.sF(function (_userids) {
 		userids = _userids;
@@ -304,7 +421,7 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 			return "user:" + userid + ":newPosts";
 		});
 
-		unionKey = "post:union:" + view.getUserID() + ":newPosts:" + userids.sort().join(",");
+		unionKey = "post:union:" + request.session.getUserID() + ":newPosts:" + userids.sort().join(",");
 		postKeys.unshift(postKeys.length);
 		postKeys.unshift(unionKey);
 		postKeys.push(this);
@@ -317,7 +434,7 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 			var paginator = new SortedSetPaginator(unionKey, count, true);
 			client.expire(unionKey, 120);
 
-			paginator.getRangeAfterID(beforeID, this, accessablePostFilter(view));
+			paginator.getRangeAfterID(beforeID, this, accessablePostFilter(request));
 		}		
 	}), h.sF(function (ids, remaining) {
 		var result = ids.reverse().map(h.newElement(Post));
@@ -325,14 +442,14 @@ Post.getNewestPosts = function (view, filter, beforeID, count, lastRequestTime, 
 	}), cb);
 };
 
-Post.getUserWall = function (view, userid, afterID, count, cb) {
+Post.getUserWall = function (request, userid, afterID, count, cb) {
 	step(function () {
 		var paginator = new SortedSetPaginator("user:" + userid + ":wall", count);
 		paginator.getRangeAfterID(afterID, this, function (id, cb) {
 			step(function () {
-				client.hget("post:" + id + ":meta", "key", this);
+				client.hget("post:" + id + ":meta", "_key", this);
 			}, h.sF(function (key) {
-				client.sismember("key:" + key + ":access", view.getUserID(), this);
+				client.sismember("key:" + key + ":access", request.session.getUserID(), this);
 			}), cb);
 		});
 	}, h.sF(function (ids) {
@@ -355,11 +472,7 @@ Post.validateFormat = function (data, cb) {
 			throw new InvalidPost("time too old");
 		}
 
-		if (data.meta.key) {
-			KeyApi.validate(data.meta.key, this);
-		} else {
-			this();
-		}
+		KeyApi.validate(data.meta._key, this);
 	}, cb);
 };
 
@@ -373,10 +486,10 @@ function processWallUser(userid, cb) {
 	}
 }
 
-function processKey(view, keyData, cb) {
+function processKey(request, keyData, cb) {
 	if (keyData) {
 		step(function () {
-			SymKey.createWDecryptors(view, keyData, this);
+			SymKey.createWDecryptors(request, keyData, this);
 		}, h.sF(function (key) {
 			this.ne(key.getRealID());
 		}), cb);
@@ -385,27 +498,7 @@ function processKey(view, keyData, cb) {
 	}
 }
 
-function processMetaInformation(view, meta, cb) {
-	step(function () {
-		this.parallel.unflatten();
-
-		processWallUser(meta.walluser, this.parallel());
-		processKey(view, meta.key, this.parallel());
-	}, h.sF(function (user, keyid) {
-		if (user) {
-			meta.walluserObj = user;
-			meta.walluser = user.getID();
-		} else {
-			delete meta.walluser;
-		}
-
-		meta.key = keyid;
-
-		this.ne();
-	}), cb);
-}
-
-Post.create = function (view, data, cb) {
+Post.create = function (request, data, cb) {
 	/*
 	post: {
 		meta: {
@@ -419,20 +512,35 @@ Post.create = function (view, data, cb) {
 	}
 	*/
 
-	var postID;
+	var postID, wallUserObj;
 
 	step(function () {
-		data.meta.sender = view.getUserID();
+		if (data.meta.sender !== request.session.getUserID()) {
+			throw new InvalidPost("incorrect sender!");
+		}
 
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
-		processMetaInformation(view, data.meta, this);
-	}), h.sF(function () {
+		this.parallel.unflatten();
+
+		processWallUser(data.meta.walluser, this.parallel());
+		processKey(request, data.meta._key, this.parallel());
+	}), h.sF(function (_wallUserObj, keyid) {
+		wallUserObj = _wallUserObj;
+
+		if (_wallUserObj && h.parseDecimal(data.meta.walluser) !== _wallUserObj.getID()) {
+			throw new InvalidPost("invalid walluser id");
+		} else if (data.meta.walluser) {
+			throw new InvalidPost("walluser not existing!");
+		}
+
+		data.meta._key = keyid;
+
 		client.incr("post", this);
 	}), h.sF(function (id) {
 		postID = id;
 		var multi = client.multi();
-		multi.zadd("user:" + view.getUserID() + ":posts", data.meta.time, id);
+		multi.zadd("user:" + request.session.getUserID() + ":posts", data.meta.time, id);
 
 		if (data.meta.walluser) {
 			multi.zadd("user:" + data.meta.walluser + ":wall", data.meta.time, id);
@@ -442,36 +550,36 @@ Post.create = function (view, data, cb) {
 		multi.set("post:" + id, id);
 		multi.hmset("post:" + id + ":content", data.content);
 
-		removeOldNewPosts(multi, view.getUserID());
-		multi.zadd("user:" + view.getUserID() + ":wall", data.meta.time, id);
-		multi.zadd("user:" + view.getUserID() + ":newPosts", data.meta.time, id);
-		multi.expire("user:" + view.getUserID() + ":newPosts", newPostsExpireTime);
+		removeOldNewPosts(multi, request.session.getUserID());
+		multi.zadd("user:" + request.session.getUserID() + ":wall", data.meta.time, id);
+		multi.zadd("user:" + request.session.getUserID() + ":newPosts", data.meta.time, id);
+		multi.expire("user:" + request.session.getUserID() + ":newPosts", newPostsExpireTime);
 
 		multi.exec(this);
 	}), h.sF(function () {
-		if (data.meta.walluserObj) {
-			mailer.sendInteractionMails([data.meta.walluserObj]);
+		if (wallUserObj) {
+			mailer.sendInteractionMails([wallUserObj]);
 		}
 		//TODO: notify wall user and mentioned users.
 
 		//collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrangebyscore)
-		this.ne(new Post(postID));
+		this.ne(makePost(request, postID));
 	}), cb);
 };
 
 //we need this if someone links directly to a post.
-Post.get = function (view, postid, cb) {
+Post.get = function (request, postid, cb) {
 	var thePost;
 	step(function () {
 		if (h.isInt(postid)) {
-			client.get("post:" + postid);
+			client.get("post:" + postid, this);
 		} else {
 			throw new AccessViolation();
 		}
 	}, h.sF(function (id) {
-		thePost = new Post(id);
+		thePost = makePost(request, id);
 
-		thePost.throwUserAccess(this);
+		thePost.throwUserAccess(request, this);
 	}), h.sF(function () {
 		this.ne(thePost);
 	}), cb);

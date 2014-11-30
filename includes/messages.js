@@ -6,10 +6,6 @@ var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
 var client = require("./redisClient");
-var KeyApi = require("./crypto/KeyApi");
-
-var chelper = require("./crypto/cHelper");
-var SymKey = require("./crypto/symKey");
 
 var User = require("./user");
 
@@ -17,9 +13,8 @@ var User = require("./user");
 	message: {
 		meta: {
 			createTime: (int),
-			topicHash: (hex)
-			previousMessage: (int),
-			previousMessageHash: (hex),
+			_parent: (hex)
+			_sortCounter
 			ownHash: (hex)
 			sender: (int),
 			topicid: (int),
@@ -44,9 +39,9 @@ var Message = function (id, topic) {
 		return id;
 	};
 
-	function hasAccessError(view, cb) {
+	function hasAccessError(request, cb) {
 		step(function () {
-			theMessage.hasAccess(view, this);
+			theMessage.hasAccess(request, this);
 		}, h.sF(function (access) {
 			if (access !== true) {
 				throw new AccessViolation();
@@ -57,35 +52,35 @@ var Message = function (id, topic) {
 	}
 
 	/** does the current user have access */
-	this.hasAccess = function hasAccessF(view, cb) {
+	this.hasAccess = function hasAccessF(request, cb) {
 		step(function () {
 			theMessage.getTopic(this);
 		}, h.sF(function (theTopic) {
-			theTopic.hasAccess(view, this);
+			theTopic.hasAccess(request, this);
 		}), cb);
 	};
 
 	/** message send time */
-	this.getTime = function getTimeF(view, cb) {
+	this.getTime = function getTimeF(request, cb) {
 		step(function () {
 			client.hget(domain + ":meta", "sendTime", this);
 		}, cb);
 	};
 
-	this.getHash = function getHashF(view, cb) {
+	this.getSortCounter = function (request, cb) {
 		step(function () {
-			hasAccessError(view, this);
+			hasAccessError(request, this);
 		}, h.sF(function () {
-			client.hget(domain + ":meta", "ownHash", this);
+			client.hget(domain + ":meta", "_sortCounter", this);
 		}), h.sF(function (hash) {
 			this.ne(hash);
 		}), cb);
 	};
 
 	/** sender id */
-	this.getSenderID = function getSenderIDF(view, cb) {
+	this.getSenderID = function getSenderIDF(request, cb) {
 		step(function () {
-			hasAccessError(view, this);
+			hasAccessError(request, this);
 		}, h.sF(function () {
 			client.hget(domain + ":meta", "sender", this);
 		}), h.sF(function (senderid) {
@@ -94,20 +89,20 @@ var Message = function (id, topic) {
 	};
 
 	/** sender object */
-	this.getSender = function getSenderF(view, cb) {
+	this.getSender = function getSenderF(request, cb) {
 		step(function () {
-			theMessage.getSenderID(view, this);
+			theMessage.getSenderID(request, this);
 		}, h.sF(function (senderid) {
 			User.get(senderid, this);
 		}), cb);
 	};
 
 	/** who will receive this message */
-	this.getReceiver = function getReceiverF(view, cb) {
+	this.getReceiver = function getReceiverF(request, cb) {
 		step(function () {
 			theMessage.getTopic(this);
 		}, h.sF(function (topic) {
-			topic.getReceiver(view, this);
+			topic.getReceiver(request, this);
 		}), cb);
 	};
 
@@ -144,25 +139,28 @@ var Message = function (id, topic) {
 	};
 
 	/** get message meta data */
-	this.getMeta = function getMetaF(view, cb) {
+	this.getMeta = function getMetaF(request, cb) {
 		step(function () {
-			hasAccessError(view, this);
+			hasAccessError(request, this);
 		}, h.sF(function () {
 			client.hgetall(domain + ":meta", this);
 		}), h.sF(function (data) {
-			data.createTime = parseInt(data.createTime, 10);
-			data.previousMessage = parseInt(data.previousMessage, 10);
-			data.sender = parseInt(data.sender, 10);
-			data.topicid = parseInt(data.topicid, 10);
+			data.createTime = h.parseDecimal(data.createTime);
+			data.sender = h.parseDecimal(data.sender);
+			data.topicid = h.parseDecimal(data.topicid);
+
+			if (data._sortCounter) {
+				data._sortCounter = h.parseDecimal(data._sortCounter);
+			}
 
 			this.ne(data);
 		}), cb);
 	};
 
 	/** get message content */
-	this.getContent = function getContentF(view, cb) {
+	this.getContent = function getContentF(request, cb) {
 		step(function () {
-			hasAccessError(view, this);
+			hasAccessError(request, this);
 		}, h.sF(function () {
 			client.hgetall(domain + ":content", this);
 		}), h.sF(function (data) {
@@ -171,34 +169,28 @@ var Message = function (id, topic) {
 	};
 
 	/** get the full data of this message */
-	this.getFullData = function getFullDataF(view, cb, key) {
+	this.getFullData = function getFullDataF(request, cb) {
 		var result;
 		step(function () {
-			hasAccessError(view, this);
+			hasAccessError(request, this);
 		}, h.sF(function () {
 			this.parallel.unflatten();
-			theMessage.getMeta(view, this.parallel());
-			theMessage.getContent(view, this.parallel());
+			theMessage.getMeta(request, this.parallel());
+			theMessage.getContent(request, this.parallel());
 		}), h.sF(function (meta, content) {
 			result = {
 				meta: meta,
 				content: content
 			};
 
-			if (key) {
-				KeyApi.getWData(view, result.content.key, this, true);
-			} else {
-				this.ne(result.content.key);
-			}
-		}), h.sF(function (key) {
-			result.content.key = key;
-
+			request.addKey(result.meta._key, this);
+		}), h.sF(function () {
 			this.ne(result);
 		}), cb);
 	};
 };
 
-Message.create = function (view, data, cb) {
+Message.create = function (request, data, cb) {
 	var theTopic, theMessageID, theMessage;
 	var meta = data.meta;
 
@@ -219,48 +211,25 @@ Message.create = function (view, data, cb) {
 	}, h.sF(function (topic) {
 		theTopic = topic;
 
-		theTopic.getNewest(view, this);
+		theTopic.getNewest(request, this);
 	}), h.sF(function (newest) {
 		if (newest === 0) {
-			this.ne("0", 0);
+			this.ne(0);
 		} else {
 			this.parallel.unflatten();
-			newest.getHash(view, this.parallel());
-			this.parallel()(null, newest.getID());
+			newest.getSortCounter(request, this);
 		}
-	}), h.sF(function (newestHash, newestID) {
-		if (parseInt(meta.previousMessage, 10) !== parseInt(newestID, 10) || meta.previousMessageHash !== newestHash) {
+	}), h.sF(function (newestCounter) {
+		if (newestCounter && parseInt(meta._sortCounter, 10) < newestCounter) {
 			this.last.ne(false);
 			return;
 		}
 
-		var toHash = {
-			meta: {
-				createTime: meta.createTime,
-				topicHash: meta.topicHash,
-				previousMessage: meta.previousMessage,
-				previousMessageHash: meta.previousMessageHash
-			},
-			content: {
-				iv: data.content.iv,
-				text: data.content.text
-			}
-		};
-
-		if (chelper.hash.hashObject(toHash) !== meta.ownHash) {
-			throw new InvalidMessageData("Invalid Hash");
-		}
-
-		toHash.meta.ownHash = meta.ownHash;
-
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
-		SymKey.createWDecryptors(view, data.content.key, this);
-	}), h.sF(function (key) {
-		data.content.key = key.getRealID();
 		client.incr("message:messages", this);
 	}), h.sF(function (messageid) {
-		data.meta.sender = view.getUserID();
+		data.meta.sender = request.session.getUserID();
 		data.meta.sendTime = new Date().getTime();
 		data.meta.messageid = messageid;
 		theMessageID = messageid;
@@ -268,7 +237,7 @@ Message.create = function (view, data, cb) {
 		client.hmset("message:" + messageid + ":content", data.content, this.parallel());
 	}), h.sF(function () {
 		theMessage = new Message(theMessageID);
-		theTopic.addMessage(view, theMessage, this);
+		theTopic.addMessage(request, theMessage, this);
 	}), cb);
 };
 

@@ -43,11 +43,9 @@ function code(length, callback) {
 			return;
 		}
 
-		var result = "", i = 0;
-
-		for (i = 0; i < numbers.length; i += 1) {
-			result = result + h.codeChars[numbers[i]];
-		}
+		var result = numbers.map(function (number) {
+			return h.codeChars[number];
+		}).join("");
 
 		callback(null, result);
 	});
@@ -59,6 +57,10 @@ var Session = function Session() {
 
 	/** session id, userid, are we loged in, time we logged in, stay forever? */
 	var sid, userid = 0, logedin = false, lastChecked = 0, sessionUser, session = this;
+
+	this.isMyID = function (id) {
+		return session.getUserID() === h.parseDecimal(id);
+	};
 
 	/** get a session id
 	* @param callback called with result (sid)
@@ -229,7 +231,7 @@ var Session = function Session() {
 	* @callback (err, loginSuccess) error if something went wrong, loginSuccess true/false if login ok.
 	* @author Nilos
 	*/
-	this.login = function loginF(view, identifier, externalHash, token, cb) {
+	this.login = function loginF(request, identifier, externalHash, token, cb) {
 		var myUser;
 		step(function () {
 			var User = require("./user.js");
@@ -242,7 +244,7 @@ var Session = function Session() {
 				throw new InvalidToken();
 			}
 
-			myUser.getPassword(view, this);
+			myUser.getPassword(request, this);
 		}), h.sF(function (internalPassword) {
 
 			var crypto = require("crypto");
@@ -265,7 +267,7 @@ var Session = function Session() {
 		}), cb);
 	};
 
-	var registerSymKeys = ["main", "friends", "friendsLevel2", "profile"];
+	var registerSymKeys = ["main", "friends", "profile"];
 	var registerEccKeys = ["sign", "crypt"];
 	var keyName = registerSymKeys.concat(registerEccKeys);
 
@@ -278,7 +280,7 @@ var Session = function Session() {
 	* @param cryptKey ecc crypt key
 	* everything else is added later (profile, groups, etc.)
 	*/
-	this.register = function registerF(mail, nickname, password, keys, settings, view, cb) {
+	this.register = function registerF(mail, nickname, password, keys, settings, signedKeys, signedOwnKeys, request, cb) {
 		//y rule 1: nickname must be set.
 		//y rule 2: main key valid
 		//y rule 3: sign key valid
@@ -311,15 +313,15 @@ var Session = function Session() {
 			result.error = true;
 		}
 
-		function createKeys(view, keys, cb) {
+		function createKeys(request, keys, cb) {
 			step(function () {
 				var i;
 				for (i = 0; i < registerSymKeys.length; i += 1) {
-					SymKey.createWDecryptors(view, keys[registerSymKeys[i]], this.parallel());
+					SymKey.createWDecryptors(request, keys[registerSymKeys[i]], this.parallel());
 				}
 
 				for (i = 0; i < registerEccKeys.length; i += 1) {
-					EccKey.createWDecryptors(view, keys[registerEccKeys[i]], this.parallel());
+					EccKey.createWDecryptors(request, keys[registerEccKeys[i]], this.parallel());
 				}
 			}, h.sF(function (keys) {
 				keys = h.arrayToObject(keys, function (val, index) {
@@ -371,7 +373,7 @@ var Session = function Session() {
 				regErr("invalidIdentifier");
 			}
 
-			if (!h.isPassword(password)) {
+			if (!h.isPassword(password.hash) && h.isHex(password.salt) && password.salt.length === 16) {
 				regErr("invalidPassword");
 			}
 
@@ -413,32 +415,34 @@ var Session = function Session() {
 				myUser = new User();
 
 				if (mail) {
-					myUser.setMail(view, mail, this.parallel());
+					myUser.setMail(request, mail, this.parallel());
 				}
 
 				if (nickname) {
-					myUser.setNickname(view, nickname, this.parallel());
+					myUser.setNickname(request, nickname, this.parallel());
 				}
 
-				myUser.setPassword(view, password, this.parallel());
+				myUser.setPassword(request, password.hash, this.parallel());
+				myUser.setSalt(request, password.salt, this.parallel());
 			}
 		}), h.sF(function userCreation() {
-			myUser.save(view, this);
+			myUser.save(request, this);
 		}), h.sF(function createS() {
 			internalLogin(myUser.getID(), this);
 		}), h.sF(function sessionF(theSid) {
 			mySid = theSid;
 
-			createKeys(view, keys, this);
+			createKeys(request, keys, this);
 		}), h.sF(function keysCreated(theKeys) {
 			keys = theKeys;
 
-			myUser.setMainKey(view, keys.main, this.parallel());
-			myUser.setFriendsKey(view, keys.friends, this.parallel());
-			myUser.setFriendsLevel2Key(view, keys.friendsLevel2, this.parallel());
-			myUser.setCryptKey(view, keys.crypt, this.parallel());
-			myUser.setSignKey(view, keys.sign, this.parallel());
-			settingsService.setOwnSettings(view, settings, this.parallel());
+			myUser.setMainKey(request, keys.main, this.parallel());
+			myUser.setFriendsKey(request, keys.friends, this.parallel());
+			myUser.setCryptKey(request, keys.crypt, this.parallel());
+			myUser.setSignKey(request, keys.sign, this.parallel());
+			myUser.setSignedKeys(request, signedKeys, this.parallel());
+			myUser.setSignedOwnKeys(request, signedOwnKeys, this.parallel());
+			settingsService.setOwnSettings(request, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
 			this.ne(mySid);
 		}), cb);
@@ -452,18 +456,46 @@ var Session = function Session() {
 		return h.parseDecimal(userid);
 	};
 
+	this.ownUserError = function ownUserErrorF(user, cb) {
+		step(function () {
+			if (typeof user === "object" && !user.isSaved()) {
+				this.last.ne();
+			}
+
+			session.logedinError(this);
+		}, h.sF(function () {
+			var sessionUserID = session.getUserID();
+			if (typeof user === "object") {
+				if (sessionUserID !== user.getID()) {
+					throw new AccessViolation();
+				}
+			} else if (typeof user === "string") {
+				if (sessionUserID !== h.parseDecimal(user)) {
+					console.log(session.getUserID() + "-" + parseInt(user, 10));
+					throw new AccessViolation();
+				}
+			} else if (typeof user === "number") {
+				if (sessionUserID !== user) {
+					throw new AccessViolation();
+				}
+			} else {
+				throw new AccessViolation();
+			}
+
+			this.ne();
+		}), cb);
+	};
+
 	this.getOwnUser = function (cb) {
 		step(function checks() {
 			checkLoginError(this);
 		}, h.sF(function () {
-			if (userid > 0) {
-				if (!sessionUser || sessionUser.getID() !== userid) {
-					var User = require("./user.js");
-					sessionUser = new User(userid);
-				}
-
-				this.ne(sessionUser);
+			if (!sessionUser || sessionUser.getID() !== userid) {
+				var User = require("./user.js");
+				sessionUser = new User(userid);
 			}
+
+			this.ne(sessionUser);
 		}), cb);
 	};
 };

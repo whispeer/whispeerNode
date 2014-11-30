@@ -32,9 +32,9 @@ KeyApi.validate = function validateF(data, callback) {
 };
 
 /** validate a decryptor. No Duplicate check. */
-KeyApi.validateDecryptor = function validateDecryptorF(view, data, key, callback) {
+KeyApi.validateDecryptor = function validateDecryptorF(request, data, key, callback) {
 	step(function () {
-		Decryptor.validate(view, data, key, this);
+		Decryptor.validate(request, data, key, this);
 	}, callback);
 };
 
@@ -42,32 +42,105 @@ KeyApi.isKey = function isKeyF(key) {
 	return key instanceof SymKey || key instanceof EccKey;
 };
 
+/** warning: side effects possible */
+KeyApi.removeKeyDecryptorForUser = function (request, realid, userid, cb) {
+	var key, m = client.multi();
+	step(function () {
+		KeyApi.get(realid, this);
+	}, h.sF(function (_key) {
+		key = _key;
+		key.getOwner(this);
+	}), h.sF(function (owner) {
+		if (h.parseDecimal(owner) !== request.session.getUserID()) {
+			throw new Error("can only remove decryptors of own keys!");
+		}
+
+		console.log("removing decryptor for user: " + userid);
+		key.removeDecryptorForUser(m, userid, this);
+	}), h.sF(function () {
+		m.exec(this);
+	}), cb);
+};
+
+/** warning: side effects possible */
+KeyApi.removeKeyDecryptor = function (request, realid, decryptorid, cb) {
+	var key, m = client.multi();
+	step(function () {
+		KeyApi.get(realid, this);
+	}, h.sF(function (_key) {
+		key = _key;
+		key.getOwner(this);
+	}), h.sF(function (owner) {
+		if (h.parseDecimal(owner) !== request.session.getUserID()) {
+			throw new Error("can only remove decryptors of own keys!");
+		}
+
+		key.removeDecryptor(m, decryptorid, this);
+	}), h.sF(function () {
+		m.exec(this);
+	}), cb);
+};
+
+/** warning: side effects possible */
+KeyApi.removeKey = function (request, realid, cb) {
+	var key, m = client.multi();
+	step(function () {
+		KeyApi.get(realid, this);
+	}, h.sF(function (_key) {
+		key = _key;
+		key.getOwner(this);
+	}), h.sF(function (owner) {
+		if (h.parseDecimal(owner) !== request.session.getUserID()) {
+			throw new Error("can only remove decryptors of own keys!");
+		}
+
+		key.remove(m, this);
+	}), h.sF(function () {
+		m.exec(this);
+	}), cb);
+};
+
 /** get a key
 * @param realid keys real id
 */
 KeyApi.get = function getKF(realid, callback) {
+	if (!realid) {
+		throw new Error("invalid realid");
+	}
+
 	step(function () {
-		client.get("key:" + realid, this);
+		client.hget("key:" + realid, "type", this);
 	}, h.sF(function (type) {
 		switch (type) {
-		case "symkey":
+		case "sym":
 			this.last.ne(new SymKey(realid));
 			break;
-		case "ecckey":
+		case "crypt":
+		case "sign":
 			this.last.ne(new EccKey(realid));
 			break;
 		default:
-			this.last.ne(false);
-			break;
+			throw new Error("key not found for realid: " + realid);
 		}
 	}), callback);
 };
 
-KeyApi.getWData = function getDataF(view, realid, callback, wDecryptors) {
+KeyApi.createWithDecryptors = function (request, keyData, cb) {
+	if (keyData.type === "sign" || keyData.type === "crypt") {
+		EccKey.createWDecryptors(request, keyData, cb);
+	} else {
+		SymKey.createWDecryptors(request, keyData, cb);
+	}
+};
+
+KeyApi.getWData = function getDataF(request, realid, callback, wDecryptors) {
 	step(function () {
 		KeyApi.get(realid, this);
 	}, h.sF(function (key) {
-		key.getKData(view, this, wDecryptors);
+		if (!key) {
+			throw new Error("Key not found: " + realid);
+		}
+		key.getKData(request, this, wDecryptors);
 	}), callback);
 };
 

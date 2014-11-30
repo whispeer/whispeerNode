@@ -1,220 +1,216 @@
 "use strict";
 
 var KeyApi = require("./crypto/KeyApi");
-var SymKey = require("./crypto/symKey");
 
 var step = require("step");
 var client = require("./redisClient");
 var h = require("whispeerHelper");
 
+var Session = require("./session");
+
 var validator = require("whispeerValidations");
-var jsonFields = ["profile", "hashObject", "metaData"];
+var RedisObserver = require("./asset/redisObserver");
 
 var Profile = function (userid, profileid) {
 	var theProfile = this;
 	var domain = "user:" + userid + ":profile:" + profileid;
-	this.getPData = function getPDataF(view, cb, wKeyData) {
+	this.getPData = function getPDataF(request, cb) {
 		var result;
 		step(function () {
-			client.hgetall(domain, this);
-		}, h.sF(function (profileData) {
-			result = h.unStringifyCertainAttributes(profileData, jsonFields);
+			this.parallel.unflatten();
+			client.get(domain + ":content", this.parallel());
+			client.hgetall(domain + ":meta", this.parallel());
+		}, h.sF(function (content, meta) {
+			result = {
+				content: JSON.parse(content),
+				meta: meta
+			};
 
-			result.profileid = profileid;
-
-			var err = validator.validate("profileEncrypted", result.profile, 1);
-
-			if (!err) {
-				if (wKeyData) {
-					KeyApi.getWData(view, result.key, this, true);
-				} else {
-					this.ne(result.key);
-				}
-			} else {
-				this.last.ne(false);
-			}
-		}), h.sF(function (key) {
-			result.profile.key = key;
+			request.addKey(result.meta._key, this);
+		}), h.sF(function () {
 			this.last.ne(result);
 		}), cb);
 	};
 
-	this.listen = function doListenF(view, cb) {
-		view.sub(domain, function (data) {
-			cb(JSON.parse(data));
-		});
-	};
-
-	this.setData = function setDataF(view, data, cb) {
+	this.setData = function setDataF(request, data, cb) {
 		step(function () {
-			view.ownUserError(userid, this);
+			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
-			var err = validator.validate("profileEncrypted", data.profile, 1);
+			if (Profile.validate(data)) {
+				var content = data.content, meta = data.meta;
 
-			if (!data.signature || !data.hashObject) {
-				throw new InvalidProfile();
-			}
-
-			data = h.stringifyCertainAttributes(data, jsonFields);
-
-			if (!err) {
-				client.hmset(domain, data, this);
-				client.publish(domain, data.profile);
+				client.multi()
+					.set(domain + ":content", JSON.stringify(content))
+					.hmset(domain + ":meta", meta)
+					.exec(this);
+				theProfile.notify("update", data);
 			} else {
 				throw new InvalidProfile();
 			}
 		}), cb);
 	};
 
-	this.getKey = function getKeyF(view, cb) {
+	this.getKey = function getKeyF(request, cb) {
 		step(function () {
-			view.logedinError(this);
+			request.session.logedinError(this);
 		}, h.sF(function () {
-			client.hget(domain, "key", this);
+			client.hget(domain + ":meta", "_key", this);
 		}), h.sF(function (keyRealID) {
 			KeyApi.get(keyRealID, this);
 		}), cb);
 	};
 
-	this.hasAccess = function hasAccessF(view, cb) {
+	this.hasAccess = function hasAccessF(request, cb) {
 		step(function () {
-			if (view.getUserID() === userid) {
+			if (request.session.getUserID() === userid) {
 				this.last.ne(true);
 			} else {
-				theProfile.getKey(view, this);
+				theProfile.getKey(request, this);
 			}
 		}, h.sF(function (key) {
 			if (!key) {
 				throw new Error("key not existing");
 			}
 
-			key.hasAccess(view, this);
+			key.hasAccess(request, this);
 		}), cb);
 	};
 
-	this.remove = function removeF(view, cb) {
-		step(function () {
-			view.ownUserError(userid, this);
-		}, h.sF(function () {
-			client.srem("user:" + userid + ":profiles", profileid, this);
-		}), cb);
+	this.remove = function removeF(m) {
+		m.srem("user:" + userid + ":profiles", profileid, this).
+		del(domain + ":meta").
+		del(domain + ":content");
 	};
+
+	this.getID = function () {
+		return profileid;
+	};
+
+	RedisObserver.call(this, "user: " + userid + ":profile", profileid);
 };
 
-function getAllProfiles(view, userid, cb) {
+function getAllProfiles(request, userid, cb) {
 	step(function getAP1() {
-		view.logedinError(this);
+		request.session.logedinError(this);
 	}, h.sF(function getAP2() {
 		client.smembers("user:" + userid + ":profiles", this);
 	}), h.sF(function getAP3(profiles) {
-		var result = [];
-		var i;
-		for (i = 0; i < profiles.length; i += 1) {
-			result.push(new Profile(userid, profiles[i]));
-		}
-
-		this.ne(result);
+		this.ne(profiles.map(function (pid) {
+			return new Profile(userid, pid);
+		}));
 	}), cb);
 }
 
-Profile.get = function get(view, profileid, cb) {
+Profile.get = function get(request, profileid, cb) {
 	step(function () {
-		client.sismember("user:" + view.getUserID() + ":profiles", profileid, this);
+		client.sismember("user:" + request.session.getUserID() + ":profiles", profileid, this);
 	}, h.sF(function (exists) {
 		if (exists) {
-			this.ne(new Profile(view.getUserID(), profileid));
+			this.ne(new Profile(request.session.getUserID(), profileid));
 		} else {
 			this.ne(false);
 		}
 	}), cb);
 };
 
-Profile.getOwn = function getOwnF(view, cb) {
-	step(function () {
-		getAllProfiles(view, view.getUserID(), this);
-	}, cb);
-};
-
-Profile.getAccessed = function getAccessedF(view, userid, cb) {
+Profile.getAccessed = function getAccessedF(request, userid, cb) {
 	var profiles;
 	step(function () {
-		getAllProfiles(view, userid, this);
+		getAllProfiles(request, userid, this);
 	}, h.sF(function (p) {
 		profiles = p;
-		if (view.getUserID() === userid) {
-			this.last.ne(p);
-		} else {
-			var i;
-			for (i = 0; i < profiles.length; i += 1) {
-				profiles[i].hasAccess(view, this.parallel());
-			}
-		}
+		profiles.forEach(function (profile) {
+			profile.hasAccess(request, this.parallel());
+		}, this);
 
 		if (profiles.length === 0) {
-			this.ne([]);
+			this.last.ne([]);
 		}
 	}), h.sF(function (acc) {
-		var i, result = [];
-		if (acc.length !== profiles.length) {
-			throw "bug ... length are not the same!";
-		}
-
-		for (i = 0; i < acc.length; i += 1) {
-			if (acc[i]) {
-				result.push(profiles[i]);
-			}
-		}
+		var result = profiles.filter(function (profile, index) {
+			return acc[index];
+		});
 
 		this.ne(result);
 	}), cb);
 };
 
 Profile.validate = function validateF(data) {
-	var err = validator.validate("profileEncrypted", data.profile, 1);
+	var content = data.content, meta = data.meta;
+	var err = validator.validate("profileEncrypted", content, 1);
 
-	return !err && data.signature && data.hashObject;
+	return !err && meta._signature && meta._hashObject && meta._contentHash && meta._key && meta._version;
 };
 
-Profile.create = function createF(view, data, cb) {
-	var profile, userID, profileID;
+function generateProfileID(request, cb) {
+	var pid;
+	step(function () {
+		Session.code(20, this);
+	}, h.sF(function (_pid) {
+		pid = _pid;
+		client.sadd("user:" + request.session.getUserID() + ":profiles", pid, this);
+	}), h.sF(function (added) {
+		if (added === 0) {
+			process.nextTick(function () {
+				generateProfileID(request, cb);
+			});
+		} else {
+			this.ne(pid);
+		}
+	}), cb);
+}
+
+Profile.create = function createF(request, data, cb) {
+	var profile;
 	step(function createP1() {
-		view.logedinError(this);
+		request.session.logedinError(this);
 	}, h.sF(function createP2() {
 		if (!Profile.validate(data)) {
+			console.error("Profile invalid. not creating!");
 			this.last.ne(false);
 			return;
 		}
 
-		if (typeof data.metaData !== "object") {
-			throw new InvalidProfile();
-		}
-
-		if (typeof data.profile.key !== "object") {
-			KeyApi.get(data.profile.key, this);
-		} else if (!KeyApi.isKey(data.profile.key)) {
-			SymKey.createWDecryptors(view, data.profile.key, this);
-		} else {
-			this.ne(data.profile.key);
-		}
+		var meta = data.meta;
+		KeyApi.get(meta._key, this);
 	}), h.sF(function createP3(key) {
-		userID = view.getUserID();
 		if (key && key.isSymKey()) {
-			data.profile.key = key.getRealID();
-			client.incr("user:" + userID + ":profileCount", this);
+			generateProfileID(request, this);
 		} else {
 			throw new NotASymKey();
 		}
-	}), h.sF(function createP4(id) {
-		profileID = id;
-		client.multi()
-			.sadd("user:" + userID + ":profiles", profileID)
-			.hset("user:" + userID + ":profile:" + profileID, "key", data.profile.key)
-			.exec(this);
-	}), h.sF(function () {
-		profile = new Profile(userID, profileID);
-		profile.setData(view, data, this, true);
+	}), h.sF(function createP4(profileID) {
+		profile = new Profile(request.session.getUserID(), profileID);
+		profile.setData(request, data, this);
 	}), h.sF(function () {
 		this.ne(profile);
+	}), cb);
+};
+
+Profile.deleteAllExcept = function (request, except, cb) {
+	step(function () {
+		getAllProfiles(request, request.session.getUserID(), this);
+	}, h.sF(function (profiles) {
+		var toDelete = profiles.filter(function (profile) {
+			return profile.getID() !== except;
+		});
+
+		if (toDelete.length !== profiles.length - 1) {
+			throw new Error("except is not one of our profiles.");
+		}
+
+		if (toDelete.length === 0) {
+			this.ne();
+			return;
+		}
+
+		var m = client.multi();
+
+		toDelete.forEach(function (profile) {
+			profile.remove(m);
+		}, this);
+
+		m.exec(this);
 	}), cb);
 };
 

@@ -10,10 +10,10 @@ var mailer = require("./mailer");
 var INVITELENGTH = 10;
 
 var invites = {
-	generateCode: function (view, cb) {
+	generateCode: function (request, cb) {
 		var inviteCode;
 		step(function () {
-			view.logedinError(this);
+			request.session.logedinError(this);
 		}, h.sF(function () {
 			//generate random invite code
 			code(INVITELENGTH, this);
@@ -27,16 +27,16 @@ var invites = {
 				//add code to list of codes created by current user
 				client.multi()
 					.sadd("invites:unused", inviteCode)
-					.sadd("invites:" + view.getUserID() + ":all", inviteCode)
+					.sadd("invites:" + request.session.getUserID() + ":all", inviteCode)
 					.exec(this);
 			} else {
-				invites.generateInviteCode(view, this);
+				invites.generateInviteCode(request, this);
 			}
 		}), h.sF(function () {
 			this.ne(inviteCode);
 		}), cb);
 	},
-	byMail: function (view, mails, name, cb) {
+	byMail: function (request, mails, name, cb) {
 		step(function () {
 			name = name.replace(/[^\w\s]/);
 
@@ -45,7 +45,7 @@ var invites = {
 			}
 
 			mails.forEach(function () {
-				invites.generateCode(view, this.parallel());
+				invites.generateCode(request, this.parallel());
 			}, this);
 		}, h.sF(function (inviteCodes) {
 			mails.forEach(function (mail, i) {

@@ -26,15 +26,15 @@ EccKey.prototype.isEccKey = function () {
 };
 
 EccKey.prototype.getCurve = function getCurveF(cb) {
-	this._getAttribute(":curve", cb);
+	this._getAttribute("curve", cb);
 };
 
 EccKey.prototype.getPointX = function getPointXF(cb) {
-	this._getAttribute(":point:x", cb);
+	this._getAttribute("x", cb);
 };
 
 EccKey.prototype.getPointY = function getPointYF(cb) {
-	this._getAttribute(":point:y", cb);
+	this._getAttribute("y", cb);
 };
 
 EccKey.prototype.getPoint = function getPointF(cb) {
@@ -50,14 +50,14 @@ EccKey.prototype.getPoint = function getPointF(cb) {
 	}), cb);
 };
 
-EccKey.prototype.getKData = function getKDataF(view, cb, wDecryptors) {
+EccKey.prototype.getKData = function getKDataF(request, cb, wDecryptors) {
 	var theKey = this;
 	var result;
 	step(function () {
 		this.parallel.unflatten();
 		theKey.getPoint(this.parallel());
 		theKey.getCurve(this.parallel());
-		theKey.getBasicData(view, this.parallel(), wDecryptors);
+		theKey.getBasicData(request, this.parallel(), wDecryptors);
 	}, h.sF(function (point, curve, basic) {
 		result = basic;
 		result.point = point;
@@ -109,12 +109,12 @@ EccKey.validateNoThrow = function validateF(data, cb) {
 EccKey.get = function getF(keyRealID, cb) {
 	step(function () {
 		if (h.isRealID(keyRealID)) {
-			client.get("key:" + keyRealID, this);
+			client.hget("key:" + keyRealID, "type", this);
 		} else {
 			throw new InvalidRealID(keyRealID);
 		}
-	}, h.sF(function (keyData) {
-		if (keyData === "ecckey") {
+	}, h.sF(function (type) {
+		if (type === "crypt" || type === "sign") {
 			this.ne(new EccKey(keyRealID));
 		} else {
 			throw new NotAEccKey();
@@ -122,19 +122,19 @@ EccKey.get = function getF(keyRealID, cb) {
 	}), cb);
 };
 
-EccKey.createWDecryptors = function (view, data, cb) {
+EccKey.createWDecryptors = function (request, data, cb) {
 	step(function () {
 		if (!data.decryptors || data.decryptors.length === 0) {
 			throw new InvalidEccKey();
 		}
 
-		EccKey.create(view, data, this);
+		EccKey.create(request, data, this);
 	}, cb);
 };
 
 
 /** create a symmetric key */
-EccKey.create = function (view, data, cb) {
+EccKey.create = function (request, data, cb) {
 	var domain, keyRealID, theKey;
 
 	step(function () {
@@ -143,22 +143,24 @@ EccKey.create = function (view, data, cb) {
 		keyRealID = data.realid;
 		domain = "key:" + keyRealID;
 
-		client.setnx(domain, "ecckey", this);
+		client.setnx(domain + ":used", "1", this);
 	}), h.sF(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
-		client.set(domain + ":curve", data.curve, this.parallel());
-		client.set(domain + ":point:x", data.point.x, this.parallel());
-		client.set(domain + ":point:y", data.point.y, this.parallel());
-		client.set(domain + ":type", data.type, this.parallel());
-		client.set(domain + ":owner", view.getUserID(), this.parallel());
-		client.set(domain + ":comment", data.comment || "", this.parallel());
+		client.hmset(domain, {
+			curve: data.curve,
+			x: data.point.x,
+			y: data.point.y,
+			type: data.type,
+			owner: request.session.getUserID(),
+			comment: data.comment || ""
+		}, this);
 	}), h.sF(function () {
 		theKey = new EccKey(keyRealID);
 		if (data.decryptors) {
-			theKey.addDecryptors(view, data.decryptors, this);
+			theKey.addDecryptors(request, data.decryptors, this);
 		} else {
 			this.last.ne(theKey);
 		}

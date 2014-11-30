@@ -13,9 +13,11 @@ files.forEach(function (name) {
 	}
 });
 
-global.viewStub = {
-	logedinError: function (cb) { cb(); },
-	getUserID: function () { return -1; }
+global.requestStub = {
+	session: {
+		logedinError: function (cb) { cb(); },
+		getUserID: function () { return -1; }
+	}
 };
 
 global.printDebug = function () {

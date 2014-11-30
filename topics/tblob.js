@@ -26,36 +26,36 @@ var streamAPI = {
 			});
 		}), fn);
 	},
-	fullyReserveID: function (data, fn, view) {
+	fullyReserveID: function (data, fn, request) {
 		step(function () {
-			blobStorage.fullyReserveBlobID(view, data.blobid, this);
+			blobStorage.fullyReserveBlobID(request, data.blobid, this);
 		}, h.sF(function (blobid) {
 			this.ne({
 				blobid: blobid
 			});
 		}), fn);
 	},
-	reserveBlobID: function (data, fn, view) {
+	reserveBlobID: function (data, fn, request) {
 		step(function () {
-			blobStorage.reserveBlobID(view, this);
+			blobStorage.reserveBlobID(request, this);
 		}, h.sF(function (blobid) {
 			this.ne({
 				blobid: blobid
 			});
 		}), fn);
 	},
-	getBlob: function (data, fn, view) {
+	getBlob: function (data, fn, request) {
 		step(function () {
-			blobStorage.getBlob(view, data.blobid, this);
+			blobStorage.getBlob(request, data.blobid, this);
 		}, h.sF(function (blob) {
 			this.ne({
 				blob: blob.toString("base64")
 			});
 		}), fn);
 	},
-	upgradeStream: function (data, fn, view) {
+	upgradeStream: function (data, fn, request) {
 		step(function () {
-			view.upgradeStream(pushBlobAPI);
+			request.socketData.upgradeStream(pushBlobAPI);
 
 			this.ne({});
 		}, fn);

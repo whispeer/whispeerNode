@@ -7,14 +7,14 @@ var mailer = require("../includes/mailer");
 var invites = require("../includes/invites");
 
 var s = {
-	logout: function logoutF(data, fn, view) {
+	logout: function logoutF(data, fn, request) {
 		step(function () {
 			if (data && data.logout === true) {
-				view.logout(this);
+				request.session.logout(this);
 			}
 		}, fn);
 	},
-	token: function getToken(data, fn) {
+	token: function getToken(data, fn, request) {
 		step(function () {
 			if (data && data.identifier) {
 				var User = require("../includes/user");
@@ -27,18 +27,20 @@ var s = {
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
-				myUser.generateToken(this);
+				this.parallel.unflatten();
+				myUser.generateToken(this.parallel());
+				myUser.getSalt(request, this.parallel())
 			}
-		}, UserNotExisting), h.sF(function (token) {
+		}, UserNotExisting), h.sF(function (token, salt) {
 			if (token !== false) {
-				this.last.ne({token: token});
+				this.last.ne({token: token, salt: salt});
 			} else {
 				fn.error();
 				this.last.ne();
 			}
 		}), fn);
 	},
-	register: function (data, fn, view) {
+	register: function (data, fn, request) {
 		var res, myUser;
 		step(function () {
 			invites.checkCode(data.inviteCode, this);
@@ -47,31 +49,32 @@ var s = {
 				throw new Error("invalid invite code! Oo");
 			}
 
-			view.getSession().register(data.mail, data.nickname, data.password, data.keys, data.settings, view, this);
+			request.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, data.signedKeys, data.signedOwnKeys, request, this);
 		}), h.sF(function (result) {
 			res = result;
 			if (result.error) {
 				this.last.ne(res);
 			} else {
-				view.getSession().getOwnUser(this);
+				request.session.getOwnUser(this);
 			}
 		}), h.sF(function (user) {
 			myUser = user;
-			if (data.profile) {
-				if (data.profile.pub) {
-					myUser.setPublicProfile(view, data.profile.pub, this.parallel());
-				}
-
-				if (data.profile.priv && data.keys.profile) {
-					var i;
-					for (i = 0; i < data.profile.priv.length; i += 1) {
-						myUser.createPrivateProfile(view, data.profile.priv[i], this.parallel());
-					}
-				}
+			if (data.profile.pub) {
+				myUser.setPublicProfile(request, data.profile.pub, this.parallel());
 			}
 
-			this.parallel()();
-		}), h.sF(function () {
+			if (data.profile.priv && data.keys.profile) {
+				data.profile.priv.forEach(function (profile) {
+					myUser.createPrivateProfile(request, profile, this.parallel());
+				}, this);
+			}
+
+			myUser.setMyProfile(request, data.profile.me, this.parallel());
+		}), h.sF(function (valid) {
+			if (!valid.reduce(h.and, true)) {
+				console.error("could not create profiles. TODO: delete user!");
+			}
+
 			mailer.sendAcceptMail(myUser, this);
 		}), h.sF(function () {
 			invites.useCode(data.inviteCode, this);
@@ -79,12 +82,12 @@ var s = {
 			this.ne(res);
 		}), fn);
 	},
-	login: function (data, fn, view) {
+	login: function (data, fn, request) {
 		var mySession;
 		step(function () {
 			console.log(data);
-			mySession = view.getSession();
-			mySession.login(view, data.identifier, data.password, data.token, this);
+			mySession = request.session;
+			mySession.login(request, data.identifier, data.password, data.token, this);
 		}, h.sF(function (success) {
 			this.ne({
 				login: success

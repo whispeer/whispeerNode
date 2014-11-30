@@ -1,3 +1,4 @@
+"use strict";
 var step = require("step");
 var h = require("whispeerHelper");
 
@@ -5,96 +6,157 @@ var HandlerCallback = require("./includes/handlerCallback");
 var listener = require("./includes/listener");
 var topics = require("./topics.js");
 
-var View = require("./includes/view");
+var SocketData = require("./includes/socketData");
+var RequestData = require("./includes/requestData");
 var Session = require("./includes/session");
 
 var APIVERSION = "0.0.1";
+var KeyApi = require("./includes/crypto/KeyApi");
+
+function registerSocketListener(socketData) {
+	if (socketData.session.getUserID() === 0) {
+		return;
+	}
+
+	step(function () {
+		socketData.session.getOwnUser(this);
+	}, h.sF(function (ownUser) {
+		ownUser.listenAll(socketData, function (channel, data) {
+			if (listener[channel]) {
+				listener[channel](socketData, data);
+			} else {
+				socketData.socket.emit("notify." + channel, JSON.parse(data));
+			}
+		});
+	}), function (e) {
+		if (e) {
+			console.error(e);
+		}
+	});
+}
+
+var reservedNames = ["sid"], handle;
+
+function createKeys(request, keys, cb) {
+	step(function () {
+		request.session.logedinError(this);
+	}, h.sF(function () {
+		//TODO: this might fail if one of the decryptors is a key we also want to add!
+		keys.forEach(function (keyData) {
+			KeyApi.createWithDecryptors(request, keyData, this.parallel());
+		}, this);
+	}), cb);
+}
+
+function callExplicitHandler(handler, data, cb, request) {
+	var explicitHandlerRequest = new RequestData(request, data);
+
+	step(function () {
+		if (Array.isArray(data.keys)) {
+			createKeys(explicitHandlerRequest, data.keys, this);
+		} else {
+			this.ne();
+		}
+	}, h.sF(function () {
+		handler(data, new HandlerCallback(this.ne), explicitHandlerRequest);
+	}), cb);
+}
+
+function callSubHandlers(handlerObject, data, cb, request) {
+	var topics = [];
+
+	step(function () {
+		h.objectEach(data, function (topic, value) {
+			if (reservedNames.indexOf(topic) === -1) {
+				topics.push(topic);
+				handle(handlerObject[topic], value, this.parallel(), request);
+			}
+		}, this);
+	}, h.sF(function (results) {
+		this.ne(h.array.spreadByArray(results, topics));
+	}), cb);
+}
+
+handle = function (handler, data, fn, request) {
+	if (typeof handler === "function") {
+		callExplicitHandler(handler, data, fn, request);
+	} else if (typeof handler === "object" && typeof data === "object") {
+		callSubHandlers(handler, data, fn, request);
+	} else {
+		console.log("could not match handler and data");
+	}
+};
+
+/** adds data which is always present.
+* mainly adds login data
+*/
+function always(request, data, fn) {
+	step(function () {
+		this.parallel.unflatten();
+		request.session.logedin(this.parallel());
+		request.socketData.recentActivity();
+	}, function (e, logedin) {
+		if (e) {
+			console.error(e);
+			data.status = 0;
+		}
+
+		if (data.status !== 0) {
+			data.status = 1;
+		}
+
+		data.version = APIVERSION;
+
+		data.keys = request.getAllKeys();
+
+		data.logedin = logedin;
+
+		if (logedin) {
+			data.sid = request.session.getSID();
+			data.userid = request.session.getUserID();
+			data.serverTime = new Date().getTime();
+		}
+
+		this(data);
+	}, fn);
+}
 
 module.exports = function (socket) {
-	"use strict";
 	console.log("connection received");
 	var session = new Session();
 
-	var myView = new View(socket, session, listener);
+	var socketData = new SocketData(socket, session);
+	registerSocketListener(socketData);
 
-	function handle(handler, data, fn, view) {
-		var topics = [];
-		//console.log("Handling:");
-		//console.log(data);
+	session.changeListener(function sessionChange(logedin) {
 		step(function () {
-			var usedHandler = false;
-			if (typeof handler === "function") {
-				handler(data, new HandlerCallback(this.last.ne), view);
-			} else if (typeof handler === "object" && typeof data === "object") {
-				h.objectEach(data, function (topic, value) {
-					if (typeof handler[topic] !== "undefined") {
-						usedHandler = true;
-						topics.push(topic);
-						handle(handler[topic], value, this.parallel(), view);
-					}
-				}, this);
-
-				if (!usedHandler) {
-					throw new Error("no api called");
-				}
-			}
-		}, h.sF(function (results) {
-			var result = {};
-
-			var i;
-			for (i = 0; i < results.length; i += 1) {
-				result[topics[i]] = results[i];
-			}
-
-			this.ne(result);
-		}), fn);
-	}
-
-	/** adds data which is always present.
-	* mainly adds login data
-	*/
-	function always(view, data, fn) {
-		step(function () {
-			this.parallel.unflatten();
-			view.logedin(this.parallel());
-			view.recentActivity();
-		}, function (e, logedin) {
-			if (e) {
-				console.error(e);
-				data.status = 0;
-			}
-
-			data.version = APIVERSION;
-
-			if (data.status !== 0) {
-				data.status = 1;
-			}
-
-			data.logedin = logedin;
+			socketData.emit("disconnect");
+			socketData = new SocketData(socket, session);
 
 			if (logedin) {
-				data.sid = view.getSession().getSID();
-				data.userid = view.getSession().getUserID();
-				data.serverTime = new Date().getTime();
+				registerSocketListener(socketData);
 			}
-
-			this(data);
-		}, fn);
-	}
+		}, function (e) {
+			if (e) {
+				console.error(e);
+			}
+		});
+	});
 
 	function handleF(handler, channel) {
 		return function handleF(data, fn) {
 			var time = new Date().getTime();
+			var request = new RequestData(socketData, data);
 			step(function () {
 				console.log("Received data on channel " + channel);
 
-				if (myView.session().getSID() !== data.sid) {
-					myView.session().setSID(data.sid, this);
+				if (session.getSID() !== data.sid) {
+					session.setSID(data.sid, this);
 				} else {
 					this.ne();
 				}
 			}, h.sF(function () {
-				handle(handler, data, this, myView);
+				handle(handler, data, this, request);
 			}), function (e, result) {
 				if (e) {
 					result = {
@@ -102,7 +164,7 @@ module.exports = function (socket) {
 					};
 				}
 
-				always(myView, result, fn);
+				always(request, result, fn);
 				console.log("Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
 			});
 		};
@@ -126,7 +188,7 @@ module.exports = function (socket) {
 	});
 
 	socket.on("disconnect", function () {
-		myView.destroy();
+		socketData.emit("disconnect");
 		//unregister listener
 		console.log("client disconnected");
 	});

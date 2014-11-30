@@ -44,10 +44,10 @@ var whispeerAPI = {
 			});
 		}), fn);
 	},
-	logedin: function isLogedinF(data, fn, view) {
+	logedin: function isLogedinF(data, fn, request) {
 		step(function () {
 			if (data === true) {
-				view.logedin(this);
+				request.session.logedin(this);
 			} else {
 				fn.error.protocol();
 			}
@@ -63,44 +63,18 @@ var whispeerAPI = {
 		}, fn);
 	},
 	key: {
-		getMultiple: function (data, fn, view) {
-			var keys, result = [];
+		getMultiple: function (data, fn, request) {
 			step(function () {
 				if (data.realids.length === 0) {
-					this.last.ne({
-						keys: []
-					});
+					this.last.ne();
 				}
 
 				data.realids.forEach(function (e) {
-					KeyApi.get(e, this.parallel());
+					request.addKey(e, this.parallel());
 				}, this);
-			}, h.sF(function (theKeys) {
-				keys = theKeys;
-
-				var loaded = data.loaded || [];
-
-				function addNotLoaded(e) {
-					if (!h.array.contains(loaded, e.getRealID())) {
-						result.push(e);
-						loaded.push(e.getRealID());
-					}
-				}
-
-				keys.forEach(addNotLoaded);
-
-				result.forEach(function (e) {
-					e.getKData(view, this.parallel(), true);
-				}, this);
-
-				this.parallel()();
-			}), h.sF(function (keys) {
-				keys = keys || [];
-
-				this.ne({keys: keys});
-			}), fn);
+			}, fn);
 		},
-		get: function getKeyChainF(data, fn, view) {
+		get: function getKeyChainF(data, fn, request) {
 			var theKey, result = [];
 			step(function () {
 				KeyApi.get(data.realid, this);
@@ -110,7 +84,7 @@ var whispeerAPI = {
 				}
 
 				theKey = key;
-				theKey.getAllAccessedParents(view, this, MAXDEPTH);
+				theKey.getAllAccessedParents(request, this, MAXDEPTH);
 			}), h.sF(function (parents) {
 				var i;
 				if (data.loaded && Array.isArray(data.loaded)) {
@@ -124,13 +98,13 @@ var whispeerAPI = {
 				result.push(theKey);
 
 				for (i = 0; i < result.length; i += 1) {
-					result[i].getKData(view, this.parallel(), true);
+					result[i].getKData(request, this.parallel(), true);
 				}
 			}), h.sF(function (keys) {
 				this.ne({keychain: keys});
 			}), fn);
 		},
-		addFasterDecryptors: function addFasterDecryptorF(data, fn, view) {
+		addFasterDecryptors: function addFasterDecryptorF(data, fn, request) {
 			var keys;
 			step(function () {
 				var key;
@@ -141,48 +115,52 @@ var whispeerAPI = {
 				}
 			}, h.sF(function (k) {
 				keys = k;
-				var i;
-				for (i = 0; i < keys.length; i += 1) {
-					keys[i].addFasterDecryptor(view, data.keys[keys[i].getRealID()][0], this.parallel());
-				}
+
+				keys.forEach(function (key) {
+					key.addFasterDecryptor(request, data.keys[key.getRealID()][0], this.parallel());
+				}, this);
 			}), h.sF(function (success) {
 				var result = {}, i;
 
 				for (i = 0; i < success.length; i += 1) {
 					result[keys[i].getRealID()] = success[i];
 				}
+
+				this.ne({
+					result: result
+				});
 			}), fn);
 		}
 	},
 	signatureCache: {
-		get: function (data, fn, view) {
-			new SimpleUserDataStore("signatureCache").get(view, h.objectifyResult("content", fn));
+		get: function (data, fn, request) {
+			new SimpleUserDataStore("signatureCache").get(request, h.objectifyResult("content", fn));
 		},
-		set: function (data, fn, view) {
-			new SimpleUserDataStore("signatureCache").set(view, data.content, h.objectifyResult("success", fn));
+		set: function (data, fn, request) {
+			new SimpleUserDataStore("signatureCache").set(request, data.content, h.objectifyResult("success", fn));
 		}
 	},
 	trustManager: {
-		get: function (data, fn, view) {
-			new SimpleUserDataStore("trustManager").get(view, h.objectifyResult("content", fn));
+		get: function (data, fn, request) {
+			new SimpleUserDataStore("trustManager").get(request, h.objectifyResult("content", fn));
 		},
-		set: function (data, fn, view) {
-			new SimpleUserDataStore("trustManager").set(view, data.content, h.objectifyResult("success", fn));
+		set: function (data, fn, request) {
+			new SimpleUserDataStore("trustManager").set(request, data.content, h.objectifyResult("success", fn));
 		}
 	},
 	settings: {
-		getSettings: function (data, fn, view) {
+		getSettings: function (data, fn, request) {
 			step(function () {
-				settings.getOwnSettings(view, this);
+				settings.getOwnSettings(request, this);
 			}, h.sF(function (settings) {
 				this.ne({
 					settings: settings
 				});
 			}), fn);
 		},
-		setSettings: function (data, fn, view) {
+		setSettings: function (data, fn, request) {
 			step(function () {
-				settings.setOwnSettings(view, data.settings, this);
+				settings.setOwnSettings(request, data.settings, this);
 			}, h.sF(function (result) {
 				this.ne({
 					success: result
@@ -190,7 +168,7 @@ var whispeerAPI = {
 			}), fn);
 		}
 	},
-	circles: circles,
+	circle: circles,
 	friends: friends,
 	messages: messages,
 	user: user,

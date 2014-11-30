@@ -2,9 +2,11 @@
 
 var invites = require("./includes/invites");
 
-var viewStub = {
-	logedinError: function (cb) { cb(); },
-	getUserID: function () { return -1; }
+global.requestStub = {
+	session: {
+		logedinError: function (cb) { cb(); },
+		getUserID: function () { return -1; }
+	}
 };
 
 var configManager = require("./includes/configManager");
@@ -17,7 +19,7 @@ client.select(config.dbNumber || 0, function (e) {
 	}
 	console.log("Database selected: " + config.dbNumber || 0);
 
-	invites.generateCode(viewStub, function (e, c) {
+	invites.generateCode(requestStub, function (e, c) {
 		if (e) {
 			throw e;
 		}

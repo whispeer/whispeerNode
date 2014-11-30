@@ -20,15 +20,17 @@ var Message = require("../includes/messages");
 	}
 
 	message: {
+		unsignedMeta: {
+			topicid: (int),
+			read: (bool)
+		},
 		meta: {
 			createTime: (int),
 			topicHash: (hex)
 			previousMessage: (int),
 			previousMessageHash: (hex),
 			ownHash: (hex)
-			sender: (int),
-			topicid: (int),
-			read: (bool)
+			sender: (int)
 		}
 		content: {
 			key,
@@ -42,24 +44,24 @@ var Message = require("../includes/messages");
 */
 
 var t = {
-	getTopic: function getTopicF(data, fn, view) {
+	getTopic: function getTopicF(data, fn, request) {
 		step(function () {
 			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
-			topic.getFullData(view, this, true, false);
+			topic.getFullData(request, this, true, false);
 		}), h.sF(function (topicData) {
 			this.ne({
 				topic: topicData
 			});
 		}), fn);
 	},
-	getTopics: function getTopicsF(data, fn, view) {
+	getTopics: function getTopicsF(data, fn, request) {
 		step(function () {
-			Topic.own(view, data.afterTopic, 10, this);
+			Topic.own(request, data.afterTopic, 10, this);
 		}, h.sF(function (topics) {
 			var i;
 			for (i = 0; i < topics.length; i += 1) {
-				topics[i].getFullData(view, this.parallel(), true, false);
+				topics[i].getFullData(request, this.parallel(), true, false);
 			}
 
 			if (topics.length === 0) {
@@ -71,40 +73,40 @@ var t = {
 			});
 		}), fn);
 	},
-	getUserTopic: function (data, fn, view) {
+	getUserTopic: function (data, fn, request) {
 		step(function () {
-			Topic.getUserTopicID(view, data.userid, this);
+			Topic.getUserTopicID(request, data.userid, this);
 		}, h.sF(function (topicid) {
 			this.ne({
 				topicid: topicid
 			});
 		}), fn);
 	},
-	markRead: function markReadF(data, fn, view) {
+	markRead: function markReadF(data, fn, request) {
 		step(function () {
 			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
-			topic.markMessagesRead(view, data.beforeTime, this);
+			topic.markMessagesRead(request, data.beforeTime, this);
 		}), h.sF(function (stillUnread) {
 			this.ne({
 				unread: stillUnread
 			});
 		}), fn);
 	},
-	getTopicMessages: function getMessagesF(data, fn, view) {
+	getTopicMessages: function getMessagesF(data, fn, request) {
 		var remainingCount;
 		step(function () {
 			Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
 			var count = Math.min(data.maximum || 20, 20);
 
-			topic.getMessages(view, data.afterMessage, count, this);
+			topic.getMessages(request, data.afterMessage, count, this);
 		}), h.sF(function (data) {
 			remainingCount = data.remaining;
 			var messages = data.messages;
 			var i;
 			for (i = 0; i < messages.length; i += 1) {
-				messages[i].getFullData(view, this.parallel(), true);
+				messages[i].getFullData(request, this.parallel(), true);
 			}
 
 			this.parallel()();
@@ -115,16 +117,16 @@ var t = {
 			});
 		}), fn);
 	},
-	getUnreadCount: function getUnreadCountF(data, fn, view) {
+	getUnreadCount: function getUnreadCountF(data, fn, request) {
 		step(function () {
-			Topic.unreadCount(view, this);
+			Topic.unreadCount(request, this);
 		}, h.sF(function (unread) {
 			this.ne({unread: unread});
 		}), fn);
 	},
-	send: function sendMessageF(data, fn, view) {
+	send: function sendMessageF(data, fn, request) {
 		step(function () {
-			Message.create(view, data.message, this);
+			Message.create(request, data.message, this);
 		}, h.sF(function () {
 			this.ne({
 				success: true
@@ -132,16 +134,16 @@ var t = {
 		}), fn);
 		//message
 	},
-	sendNewTopic: function sendNewTopicF(data, fn, view) {
+	sendNewTopic: function sendNewTopicF(data, fn, request) {
 		var topic;
 		step(function () {
-			Topic.create(view, data.topic, this);
+			Topic.create(request, data.topic, data.receiverKeys, this);
 		}, h.sF(function (theTopic) {
 			topic = theTopic;
 			data.message.meta.topicid = theTopic.getID();
-			Message.create(view, data.message, this);
+			Message.create(request, data.message, this);
 		}), h.sF(function () {
-			topic.getFullData(view, this, false, false);
+			topic.getFullData(request, this, false, false);
 		}), h.sF(function (data) {
 			this.ne({
 				topic: data,
