@@ -300,11 +300,11 @@ Key.prototype.addEncryptor = function addEncryptorF(realid, cb) {
 Key.prototype.getEncryptors = function getEncryptorsF(cb) {
 	var theKey = this;
 	step(function () {
-		console.log(theKey._domain);
 		client.smembers(theKey._domain + ":encryptors", this);
 	}, h.sF(function (encrs) {
 		var KeyApi = require("./KeyApi");
 		if (encrs.length > 0) {
+			console.log(theKey._domain);
 			KeyApi.getKeys(encrs, this);
 		} else {
 			this.ne([]);
