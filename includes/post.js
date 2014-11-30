@@ -528,10 +528,12 @@ Post.create = function (request, data, cb) {
 	}), h.sF(function (_wallUserObj, keyid) {
 		wallUserObj = _wallUserObj;
 
-		if (_wallUserObj && h.parseDecimal(data.meta.walluser) !== _wallUserObj.getID()) {
-			throw new InvalidPost("invalid walluser id");
-		} else if (data.meta.walluser) {
+		if (!wallUserObj && data.meta.walluser) {
 			throw new InvalidPost("walluser not existing!");
+		}
+
+		if (wallUserObj && h.parseDecimal(data.meta.walluser) !== _wallUserObj.getID()) {
+			throw new InvalidPost("invalid walluser id");
 		}
 
 		data.meta._key = keyid;
