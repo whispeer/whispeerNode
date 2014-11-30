@@ -108,6 +108,9 @@ KeyApi.get = function getKF(realid, callback) {
 		throw new Error("invalid realid");
 	}
 
+	var stack = new Error().stack;
+	console.log(stack);
+
 	step(function () {
 		client.hget("key:" + realid, "type", this);
 	}, h.sF(function (type) {

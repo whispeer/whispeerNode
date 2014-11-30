@@ -720,7 +720,6 @@ var User = function (id) {
 			backupKey = _backupKey;
 			KeyApi.get(mainKey, this);
 		}), h.sF(function (mainKey) {
-			console.log("got here yay");
 			mainKey.addDecryptors(request, decryptors, this);
 		}), h.sF(function () {
 			client.sadd(userDomain + ":backupKeys", backupKey.getRealID(), this);
