@@ -359,7 +359,7 @@ Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 		}
 
 		encryptors.forEach(function (encryptor) {
-			encryptor.addAccessFByRealID(theKey._realid, userids, this.parallel(), added);
+			encryptor.addAccessByRealID(theKey._realid, userids, this.parallel(), added);
 		}, this);
 	}), cb);
 };
