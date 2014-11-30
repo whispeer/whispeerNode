@@ -298,9 +298,6 @@ Key.prototype.addEncryptor = function addEncryptorF(realid, cb) {
 * @param cb callback
 */
 Key.prototype.getEncryptors = function getEncryptorsF(cb) {
-	var stack = new Error().stack;
-	console.log(stack);
-
 	var theKey = this;
 	step(function () {
 		client.smembers(theKey._domain + ":encryptors", this);
@@ -353,6 +350,8 @@ Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
 			client.sadd(theKey._domain + ":accessVia:" + userid, decryptorid, this.parallel());
 		}, this);
 	}, h.sF(function () {
+		var stack = new Error().stack;
+		console.log(stack);
 		theKey.getEncryptors(this);
 	}), h.sF(function (encryptors) {
 		if (encryptors.length === 0) {
