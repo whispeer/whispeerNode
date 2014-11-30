@@ -15,6 +15,8 @@ var search = require("./search");
 var EccKey = require("./crypto/eccKey");
 var SymKey = require("./crypto/symKey");
 
+var KeyApi = require("./crypto/KeyApi");
+
 var RedisObserver = require("./asset/redisObserver");
 
 function logedinF(data, cb) {
