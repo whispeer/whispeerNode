@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /*process.on("uncaughtException", function (err) {
     console.error("An uncaughtException was found, the program will end.");
     //hopefully do some logging.
@@ -24,6 +26,7 @@ if (config.https) {
 }
 
 var io = require("socket.io").listen(config.wsPort, options);
+console.log("Listening on port " + config.wsPort);
 
 if (!config.debug) {
 	io.set("log level", 1);

@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 "use strict";
 
 var invites = require("./includes/invites");
