@@ -4,6 +4,7 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var KeyApi = require("./crypto/KeyApi");
+var mailer = require("./mailer");
 
 function RequestData(socketData, rawRequest) {
 	var request = this;
@@ -65,6 +66,15 @@ function RequestData(socketData, rawRequest) {
 				if (e) {
 					console.error("could not add key with realid: " + realid);
 					console.error(e);
+
+					var errString;
+					try {
+						errString = JSON.stringify(e);
+					} catch (e) {
+						errString = e.toString();
+					}
+					mailer.mailAdmin("An Error occured", errString + "\r\n" + e.stack);
+
 				}
 
 				this.ne();
