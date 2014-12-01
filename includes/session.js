@@ -444,6 +444,8 @@ var Session = function Session() {
 			myUser.setSignedOwnKeys(request, signedOwnKeys, this.parallel());
 			settingsService.setOwnSettings(request, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
+			client.zadd("user:registered", new Date().getTime(), myUser.getID(), this);
+		}), h.sF(function () {
 			this.ne(mySid);
 		}), cb);
 	};
