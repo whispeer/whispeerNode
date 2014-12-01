@@ -47,6 +47,10 @@ function RequestData(socketData, rawRequest) {
 	};
 
 	this.addKey = function (realid, cb) {
+		if (typeof cb !== "function") {
+			throw new Error("did not get a function callback");
+		}
+
 		if (this.rootRequest) {
 			this.rootRequest.addKey(realid, cb);
 		} else {
@@ -56,8 +60,15 @@ function RequestData(socketData, rawRequest) {
 				key.getKData(request, this, true);
 			}), h.sF(function (keyData) {
 				request.keyData.push(keyData);
-				cb();
-			}), cb);
+				this.ne();
+			}), function (e) {
+				if (e) {
+					console.error("could not add key with realid: " + realid);
+					console.error(e);
+				}
+
+				this.ne();
+			}, cb);
 		}		
 	};
 

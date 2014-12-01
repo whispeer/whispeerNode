@@ -496,17 +496,15 @@ var User = function (id) {
 			theUser.getFriendShipKey(request, this.parallel());
 			theUser.getReverseFriendShipKey(request, this.parallel());
 		}, h.sF(function (friendShipKey, reverseFriendShipKey) {
-			var result = {};
-
 			if (friendShipKey) {
-				request.addKey(friendShipKey, this);
+				request.addKey(friendShipKey, this.parallel());
 			}
 
 			if (reverseFriendShipKey) {
-				request.addKey(reverseFriendShipKey, this);
+				request.addKey(reverseFriendShipKey, this.parallel());
 			}
 
-			this.ne(result);
+			this.parallel()();
 		}), cb);
 	};
 
