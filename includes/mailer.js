@@ -17,7 +17,7 @@ var fs = require("fs");
 
 var mail = nodemailer.createTransport(config.mailType, config.mail);
 
-var defaultFrom = config.mailFrom || "support@whispeer.de";
+var defaultFrom = config.mailFrom || "whispeer <support@whispeer.de>";
 
 //mail
 //- <userid>
