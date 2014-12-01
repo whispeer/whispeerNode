@@ -163,22 +163,19 @@ var mailer = {
 			var vm = require("vm");
 
 			for (var i = 0; i < content.length; i++) {
-				if (content[i] === "{" && !inExpression) {
-					if (sawFirstBracket) {
-						inExpression = true;
-						sawFirstBracket = false;	
-					} else {
-						sawFirstBracket = true;
-					}
-				} else if (inExpression) {
+				if (inExpression) {
 					if (content[i] === "}" && content[i+1] === "}") {
-						result += vm.runInNewContext(expression, {});
+						result += vm.runInNewContext(expression, variables);
 
 						inExpression = false;
+						expression = "";
 						i += 1;
 					} else {
 						expression += content[i];
 					}
+				} else if (content[i] === "{" && content[i+1] === "{") {
+					inExpression = true;
+					i += 1;
 				} else {
 					result += content[i];
 					sawFirstBracket = false;
@@ -186,11 +183,11 @@ var mailer = {
 			}
 
 			var cheerio = require("cheerio"),
-				element = cheerio.load(content);
+				element = cheerio.load(result);
 
 			var subject = element("title").text();
 
-			this.ne(content, subject);
+			this.ne(result, subject);
 		}), cb);
 	},
 	sendUserMail: function (user, templateName, variables, subject, cb) {
