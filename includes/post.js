@@ -77,7 +77,7 @@ var Post = function (postid) {
 			var m = client.multi();
 			m.hmset(domain + ":comments:" + id + ":content", content);
 			m.hmset(domain + ":comments:" + id + ":meta", meta);
-			m.zadd(domain + ":comments:list", meta.createTime, id);
+			m.zadd(domain + ":comments:list", new Date().getTime(), id);
 
 			m.exec(this);
 		}), h.sF(function () {
