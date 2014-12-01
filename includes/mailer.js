@@ -150,14 +150,47 @@ var mailer = {
 		step(function () {
 			fs.readFile(TEMPLATEDIR + templateName + ".html", this);
 		}, h.sF(function (content) {
+			content = content.toString();
+
 			variables.host = variables.host || config.remoteHost || config.host;
 
-			content = content.toString();
-			h.objectEach(variables, function (key, value) {
-				content = content.split("{{" + key + "}}").join(value);
-			}, this);
+			var inExpression = false;
+			var sawFirstBracket = false;
 
-			this.ne(content);
+			var result = "";
+			var expression = "";
+
+			var vm = require("vm");
+
+			for (var i = 0; i < content.length; i++) {
+				if (content[i] === "{" && !inExpression) {
+					if (sawFirstBracket) {
+						inExpression = true;
+						sawFirstBracket = false;	
+					} else {
+						sawFirstBracket = true;
+					}
+				} else if (inExpression) {
+					if (content[i] === "}" && content[i+1] === "}") {
+						result += vm.runInNewContext(expression, {});
+
+						inExpression = false;
+						i += 1;
+					} else {
+						expression += content[i];
+					}
+				} else {
+					result += content[i];
+					sawFirstBracket = false;
+				}
+			}
+
+			var cheerio = require("cheerio"),
+				element = cheerio.load(content);
+
+			var subject = element("title").text();
+
+			this.ne(content, subject);
 		}), cb);
 	},
 	sendUserMail: function (user, templateName, variables, subject, cb) {
@@ -175,10 +208,10 @@ var mailer = {
 			}
 		}), cb);
 	},
-	sendMail: function (receiver, templateName, variables, subject, cb) {
+	sendMail: function (receiver, templateName, variables, cb) {
 		step(function () {
 			mailer.fillTemplate(templateName, variables, this);
-		}, h.sF(function (content) {
+		}, h.sF(function (content, subject) {
 			mail.sendMail({
 				to: receiver,
 				from: defaultFrom,

@@ -52,7 +52,7 @@ var invites = {
 				mailer.sendMail(mail, "invite", {
 					name: name,
 					inviteCode: inviteCodes[i]
-				}, "Einladung zu whispeer" + (name ? " von " + name : ""), this.parallel());
+				}, this.parallel());
 			}, this);
 		}), cb);
 	},
