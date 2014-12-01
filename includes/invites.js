@@ -38,7 +38,11 @@ var invites = {
 	},
 	byMail: function (request, mails, name, cb) {
 		step(function () {
-			name = name.replace(/[^\w\s]/);
+			if (name) {
+				name = name.replace(/[^\w\s]/);
+			} else {
+				name = false;
+			}
 
 			if (mails.length === 0) {
 				this.last.ne();
