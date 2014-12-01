@@ -65,8 +65,6 @@ var Post = function (postid) {
 				throw new Error("invalid parent data");
 			}
 
-			console.log(sorting);
-			console.log(meta._sortCounter);
 			if (sorting > meta._sortCounter) {
 				throw new Error("invalid counter");
 			}
