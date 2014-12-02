@@ -256,7 +256,7 @@ var mailer = {
 			this.ne();
 		}), (cb || h.nop));
 	},
-	mailAdmin: function (subject, text) {
+	mailAdmin: function (subject, text, cb) {
 		var mailOptions = {
 			from: defaultFrom,
 			to: "whispeerErrors@ovt.me",
@@ -267,6 +267,9 @@ var mailer = {
 		mail.sendMail(mailOptions, function (e) {
 			if (e) {
 				console.log(e);
+			}
+			if (cb) {
+				cb(e);
 			}
 		});
 	}
