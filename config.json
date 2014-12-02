@@ -4,7 +4,9 @@
 	  "host": "http://localhost",
 	  "ws": "127.0.0.1",
 	  "wsPort": 3000,
-	  "dbNumber": 1,
+	  "db": {
+	    "number": 1
+	  },
 	  "production": false,
 	  "debug": false,
 	  "mail": {
@@ -17,7 +19,9 @@
 	  "host": "http://localhost",
 	  "ws": "127.0.0.1",
 	  "wsPort": 3000,
-	  "dbNumber": 2,
+	  "db": {
+	    "number": 2
+	  },
 	  "production": false,
 	  "debug": false,
 	  "mail": {
