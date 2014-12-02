@@ -53,8 +53,8 @@ var client = require("./includes/redisClient");
 var onSocketConnection = require("./onSocketConnection");
 
 step(function () {
-	console.log("Database selected: " + config.dbNumber || 0);
-	client.select(config.dbNumber || 0, this);
+	console.log("Database selected: " + (config.db.number || 0));
+	client.select(config.db.number || 0, this);
 }, h.sF(function () {
 	client.smembers("user:online", this);
 }), h.sF(function (onlineUsers) {

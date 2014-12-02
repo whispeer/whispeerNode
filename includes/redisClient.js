@@ -2,8 +2,11 @@
 
 var redis = require("redis");
 
+var configManager = require("./configManager");
+var config = configManager.get();
+
 function create() {
-	return redis.createClient();
+	return redis.createClient(config.db.port || 6379, config.db.url || "127.0.0.1", {});
 }
 
 var client = create();
