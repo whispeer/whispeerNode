@@ -30,12 +30,12 @@ var requireConfirmation = function(message, action) {
 
 var emptyRedis = function() {
 
-	client.select(config.dbNumber || 0, function () {
+	client.select(config.db.number || 0, function () {
 		client.flushdb(function (e) {
 			if (e) {
 				console.error("Error! Database was not flushed!");
 			} else {
-				console.log("Database Number " + (config.dbNumber || 0) + " successfully emptied!");
+				console.log("Database Number " + (config.db.number || 0) + " successfully emptied!");
 			}
 			process.exit();
 		});
@@ -43,4 +43,4 @@ var emptyRedis = function() {
 
 };
 
-requireConfirmation("Deleting all data in db number " + config.dbNumber || 0, emptyRedis);
+requireConfirmation("Deleting all data in db number " + config.db.number || 0, emptyRedis);

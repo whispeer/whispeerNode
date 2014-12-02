@@ -28,11 +28,11 @@ var configManager = require("./includes/configManager");
 var config = configManager.get();
 var client = require("./includes/redisClient");
 
-client.select(config.dbNumber || 0, function (e) {
+client.select(config.db.number || 0, function (e) {
 	if (e) {
 		throw e;
 	}
-	console.log("Database selected: " + config.dbNumber || 0);
+	console.log("Database selected: " + config.db.number || 0);
 
 
 	repl.start({useGlobal: true});

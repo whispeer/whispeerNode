@@ -23,12 +23,12 @@ var mails = fs.readFileSync(process.argv[2]).toString().split("\n").filter(funct
 	return str.indexOf("@") > -1;
 });
 
-client.select(config.dbNumber || 0, function (e) {
+client.select(config.db.number || 0, function (e) {
 	if (e) {
 		throw e;
 	}
  
-	util.error(util.format("Database selected: %d", config.dbNumber || 0));
+	util.error(util.format("Database selected: %d", config.db.number || 0));
 
 	invites.byMail(requestStub, mails, "Nils Kenneweg", function (e, c) {
 		if (e) {

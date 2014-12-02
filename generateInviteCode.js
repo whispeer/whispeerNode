@@ -17,13 +17,13 @@ var configManager = require("./includes/configManager");
 var config = configManager.get();
 var client = require("./includes/redisClient");
 
-client.select(config.dbNumber || 0, function (e) {
+client.select(config.db.number || 0, function (e) {
 
 	if (e) {
 		throw e;
 	}
 
-	util.error(util.format("Database selected: %d", config.dbNumber || 0));
+	util.error(util.format("Database selected: %d", config.db.number || 0));
 
 	invites.generateCode(requestStub, function (e, c) {
 		if (e) {

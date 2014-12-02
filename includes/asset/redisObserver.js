@@ -7,7 +7,7 @@ var RedisObserver = function (base, id) {
 	var theObserver = this;
 
 	this._listeners = {};
-	this._namespace = "db:" + (config.dbNumber || 0) + ":observer:" + base + ":" + id + ":";
+	this._namespace = "db:" + (config.db.number || 0) + ":observer:" + base + ":" + id + ":";
 
 	function rewrite(cb) {
 		var namespace = theObserver._namespace;
