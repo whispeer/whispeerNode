@@ -97,18 +97,23 @@ function setSignedList(request, m, signedList, add, remove, cb) {
 	step(function () {
 		client.hgetall("friends:" + ownID + ":signedList", this);
 	}, h.sF(function (oldSignedList) {
-		remove.forEach(function (uid) {
-			if (!oldSignedList[uid] || signedList[uid]) {
-				throw new Error("signedList update error");
-			}
-		});
-		if (oldSignedList) {
-			add.forEach(function (uid) {
-				if (oldSignedList[uid] || !signedList[uid]) {
-					throw new Error("signedList update error");
-				}
-			});
+		oldSignedList = oldSignedList || {};
+
+		var oldUids = Object.keys(oldSignedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
+		var newUids = Object.keys(signedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
+
+		var shouldBeRemoved = h.arraySubtract(oldUids, newUids);
+		var shouldBeAdded = h.arraySubtract(newUids, oldUids);
+
+		if (!h.arrayEqual(remove, shouldBeRemoved)) {
+			throw new Error("signedList update error");
 		}
+
+		if (!h.arrayEqual(add, shouldBeAdded)) {
+			throw new Error("signedList update error");
+		}
+
+		//TODO: get all signed list keys!
 
 		//update signedList
 		m.del("friends:" + ownID + ":signedList");
