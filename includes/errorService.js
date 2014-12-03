@@ -1,7 +1,7 @@
 "use strict";
 
 var errorService = {
-	handleError: function (e) {
+	handleError: function (e, data) {
 		if (e) {
 			try {
 				console.error(e);
@@ -14,7 +14,7 @@ var errorService = {
 				}
 
 				var mailer = require("./mailer");
-				mailer.mailAdmin("An Error occured", errString + "\r\n" + e.stack);
+				mailer.mailAdmin("An Error occured (" + errString + ")", errString + "\r\n" + e.stack);
 			} catch (e) {
 				console.error(e);
 			}

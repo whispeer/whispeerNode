@@ -9,8 +9,9 @@ var Topic = require("../includes/topic.js");
 
 var User = require("../includes/user");
 
-var Profile = require("../includes/profile");
 var mailer = require("../includes/mailer");
+
+var errorService = require("../includes/errorService");
 
 function makeSearchUserData(request, cb, ids, known) {
 	var remaining;
@@ -111,12 +112,14 @@ var u = {
 			}
 		}, h.hE(function (e, theUsers) {
 			if (e) {
+				errorService.handle(e);
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
 				var i;
 				for (i = 0; i < theUsers.length; i += 1) {
 					if (theUsers[i] instanceof UserNotExisting) {
+						errorService.handle(theUsers[i]);
 						this.parallel()({userNotExisting: true});
 					} else {
 						theUsers[i].getUData(request, this.parallel());

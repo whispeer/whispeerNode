@@ -5,6 +5,7 @@ var h = require("whispeerHelper");
 
 var mailer = require("../includes/mailer");
 var invites = require("../includes/invites");
+var errorService = require("../includes/errorService");
 
 var s = {
 	logout: function logoutF(data, fn, request) {
@@ -24,12 +25,13 @@ var s = {
 			}
 		}, h.hE(function (e, myUser) {
 			if (e) {
+				errorService.handle(e);
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
 				this.parallel.unflatten();
 				myUser.generateToken(this.parallel());
-				myUser.getSalt(request, this.parallel())
+				myUser.getSalt(request, this.parallel());
 			}
 		}, UserNotExisting), h.sF(function (token, salt) {
 			if (token !== false) {

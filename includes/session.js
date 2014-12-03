@@ -299,7 +299,11 @@ var Session = function Session() {
 				invalidPassword: false,
 				nicknameInvalid: false,
 				mailInvalid: false,
-				settingsInvalid: false
+				settingsInvalid: false,
+				invalidmainKey: false,
+				invalidprofileKey: false,
+				invalidsignKey: false,
+				invalidcryptKey: false
 			}
 		};
 

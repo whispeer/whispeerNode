@@ -512,9 +512,11 @@ var friends = {
 			client.smembers("friends:" + uid + ":requested", this.parallel());
 			client.smembers("friends:" + uid, this.parallel());
 		}), h.sF(function (signedList, requested, friends) {
-			var signedListIDs = Object.keys(signedList).filter(function (key) {
-				return key[0] !== "_";
-			}).map(h.parseDecimal);
+			if (signedList) {
+				var signedListIDs = Object.keys(signedList).filter(function (key) {
+					return key[0] !== "_";
+				}).map(h.parseDecimal);
+			}
 
 			if (!h.arrayEqual(signedListIDs, requested.concat(friends).map(h.parseDecimal))) {
 				throw new Error("signed lists do not match for uid: " + uid);
