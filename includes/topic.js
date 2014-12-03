@@ -43,7 +43,7 @@ var Topic = function (id) {
 			theTopic.hasAccess(request, this);
 		}, h.sF(function hAE2(access) {
 			if (access !== true) {
-				throw new AccessViolation();
+				throw new AccessViolation("topic");
 			}
 
 			this.ne();

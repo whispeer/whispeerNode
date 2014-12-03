@@ -574,7 +574,7 @@ Post.get = function (request, postid, cb) {
 		if (h.isInt(postid)) {
 			client.get("post:" + postid, this);
 		} else {
-			throw new AccessViolation();
+			throw new AccessViolation("invalid post id");
 		}
 	}, h.sF(function (id) {
 		thePost = makePost(request, id);

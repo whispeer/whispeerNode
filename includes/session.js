@@ -469,16 +469,16 @@ var Session = function Session() {
 			var sessionUserID = session.getUserID();
 			if (typeof user === "object") {
 				if (sessionUserID !== user.getID()) {
-					throw new AccessViolation();
+					throw new AccessViolation("not own user " + sessionUserID + " - " + user.getID());
 				}
 			} else if (typeof user === "string") {
 				if (sessionUserID !== h.parseDecimal(user)) {
 					console.log(session.getUserID() + "-" + parseInt(user, 10));
-					throw new AccessViolation();
+					throw new AccessViolation("not own user " + sessionUserID + " - " + h.parseDecimal(user));
 				}
 			} else if (typeof user === "number") {
 				if (sessionUserID !== user) {
-					throw new AccessViolation();
+					throw new AccessViolation("not own user " + sessionUserID + " - " + user);
 				}
 			} else {
 				throw new AccessViolation();

@@ -44,7 +44,7 @@ var Message = function (id, topic) {
 			theMessage.hasAccess(request, this);
 		}, h.sF(function (access) {
 			if (access !== true) {
-				throw new AccessViolation();
+				throw new AccessViolation("message");
 			}
 
 			this.ne();
