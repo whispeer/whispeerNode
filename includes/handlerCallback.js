@@ -31,7 +31,7 @@ var HandlerCallback = function (fn) {
 				error: true
 			};
 
-			errorService.handle(err);
+			errorService.handleError(err);
 		} else {
 			result = extend(result, value);
 		}

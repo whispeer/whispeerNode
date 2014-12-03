@@ -112,14 +112,14 @@ var u = {
 			}
 		}, h.hE(function (e, theUsers) {
 			if (e) {
-				errorService.handle(e);
+				errorService.handleError(e);
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
 				var i;
 				for (i = 0; i < theUsers.length; i += 1) {
 					if (theUsers[i] instanceof UserNotExisting) {
-						errorService.handle(theUsers[i]);
+						errorService.handleError(theUsers[i]);
 						this.parallel()({userNotExisting: true});
 					} else {
 						theUsers[i].getUData(request, this.parallel());

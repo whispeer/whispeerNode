@@ -18,6 +18,8 @@ var SESSIONKEYLENGTH = 30;
 /** recheck online status every 10 seconds */
 var CHECKTIME = 10 * 1000;
 
+var errorService = require("./errorService");
+
 /** get a random sid of given length 
 * @param length length of sid
 * @param callback callback
@@ -307,7 +309,13 @@ var Session = function Session() {
 			}
 		};
 
-		function regErr(code) {
+		function regErr(code, data) {
+			errorService.handleError({
+				type: "register error",
+				code: code,
+				data: data
+			});
+
 			if (result.errorCodes[code] !== undefined) {
 				result.errorCodes[code] = true;
 			} else {
@@ -350,7 +358,7 @@ var Session = function Session() {
 				var i;
 				for (i = 0; i < res.length; i += 1) {
 					if (!res[i]) {
-						regErr("invalid" + keyName[i] + "Key");
+						regErr("invalid" + keyName[i] + "Key", keys);
 					}
 				}
 

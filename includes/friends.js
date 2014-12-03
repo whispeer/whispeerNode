@@ -516,10 +516,10 @@ var friends = {
 				var signedListIDs = Object.keys(signedList).filter(function (key) {
 					return key[0] !== "_";
 				}).map(h.parseDecimal);
-			}
 
-			if (!h.arrayEqual(signedListIDs, requested.concat(friends).map(h.parseDecimal))) {
-				throw new Error("signed lists do not match for uid: " + uid);
+				if (!h.arrayEqual(signedListIDs, requested.concat(friends).map(h.parseDecimal))) {
+					throw new Error("signed lists do not match for uid: " + uid);
+				}
 			}
 		}), errorService.handleError);
 	}

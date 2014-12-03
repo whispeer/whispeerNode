@@ -63,7 +63,7 @@ function RequestData(socketData, rawRequest) {
 				request.keyData.push(keyData);
 				this.ne();
 			}), function (e) {
-				errorService.handle(e);
+				errorService.handleError(e);
 
 				this.ne();
 			}, cb);
