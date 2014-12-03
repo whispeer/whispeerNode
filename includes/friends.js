@@ -499,6 +499,25 @@ var friends = {
 		}, h.sF(function (ids) {
 			this.ne(ids);
 		}), cb);
+	},
+	validateFriends: function (uid) {
+		step(function () {
+			process.nextTick(this);
+		}, h.sF(function () {
+			this.parallel.unflatten();
+
+			client.hgetall("friends:" + uid + ":signedList", this.parallel());
+			client.smembers("friends:" + uid + ":requested", this.parallel());
+			client.smembers("friends:" + uid, this.parallel());
+		}), h.sF(function (signedList, requested, friends) {
+			var signedListIDs = Object.keys(this._updated.meta).filter(function (key) {
+				return key[0] !== "_";
+			}).map(h.parseDecimal);
+
+			if (!h.arrayEqual(signedListIDs, requested.concat(friends))) {
+				throw new Error("signed lists do not match for uid: " + uid);
+			}
+		}), errorService.handleError);
 	}
 };
 

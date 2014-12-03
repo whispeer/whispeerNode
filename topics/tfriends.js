@@ -88,6 +88,8 @@ var f = {
 			Friends.getIgnored(request, this.parallel());
 			Friends.getSignedList(request, this.parallel());
 		}, h.sF(function (requests, requested, friends, removed, ignored, signedList) {
+			Friends.validateFriends(request.session.getUserID());
+
 			this.ne({
 				requests: requests,
 				requested: requested,
