@@ -105,7 +105,7 @@ KeyApi.removeKey = function (request, realid, cb) {
 */
 KeyApi.get = function getKF(realid, callback) {
 	if (!realid) {
-		throw new Error("invalid realid");
+		throw new Error("invalid realid " + realid);
 	}
 
 	step(function () {
