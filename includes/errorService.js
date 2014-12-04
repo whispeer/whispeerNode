@@ -6,7 +6,10 @@ var errorService = {
 			try {
 				console.error(e);
 
-				var error = e.stack.split("\n")[0];
+				var error = "Unknown Error";
+				if (e.stack) {
+					error = e.stack.split("\n")[0];
+				}
 
 				var errString;
 				try {

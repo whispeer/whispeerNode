@@ -13,6 +13,8 @@ var Session = require("./includes/session");
 var APIVERSION = "0.0.1";
 var KeyApi = require("./includes/crypto/KeyApi");
 
+Error.stackTraceLimit = Infinity;
+
 function registerSocketListener(socketData) {
 	if (socketData.session.getUserID() === 0) {
 		return;
