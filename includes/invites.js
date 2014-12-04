@@ -62,20 +62,20 @@ var invites = {
 		}), cb);
 	},
 	addRequestMail: function (mail, cb) {
-		var code;
+		var requestCode;
 		step(function () {
 			code(REQUESTLENGTH, this);
-		}, h.sF(function (_code) {
-			code = _code;
-			client.sadd("invites:requests", code, this);
+		}, h.sF(function (_requestCode) {
+			requestCode = _requestCode;
+			client.sadd("invites:requests", requestCode, this);
 		}), h.sF(function (added) {
 			if (added) {
-				client.set("invites:requests:" + code, mail, this);
+				client.set("invites:requests:" + requestCode, mail, this);
 			} else {
 				invites.addRequestMail(mail, this);
 			}
 		}), h.sF(function () {
-			mailer.mailAdmin("New Register Request", "Code: " + code, this);
+			mailer.mailAdmin("New Register Request", "Code: " + requestCode, this);
 		}), cb);
 	},
 	acceptRequest: function (request, code, cb) {
