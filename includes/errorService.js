@@ -6,6 +6,8 @@ var errorService = {
 			try {
 				console.error(e);
 
+				var error = e.stack.split("\n")[0];
+
 				var errString;
 				try {
 					errString = JSON.stringify(e);
@@ -14,7 +16,7 @@ var errorService = {
 				}
 
 				var mailer = require("./mailer");
-				mailer.mailAdmin("An Error occured (" + (e.type || errString.substr(0, 20)) + ")", errString + "\r\n" + e.stack);
+				mailer.mailAdmin("An Error occured (" + (e.type || error.substr(0, 30)) + ")", errString + "\r\n" + e.stack);
 			} catch (e) {
 				console.error(e);
 			}
