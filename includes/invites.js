@@ -8,6 +8,7 @@ var client = require("./redisClient");
 var mailer = require("./mailer");
 
 var INVITELENGTH = 10;
+var REQUESTLENGTH = 30;
 
 var invites = {
 	generateCode: function (request, cb) {
@@ -58,6 +59,38 @@ var invites = {
 					inviteCode: inviteCodes[i]
 				}, this.parallel());
 			}, this);
+		}), cb);
+	},
+	addRequestMail: function (mail, cb) {
+		var code;
+		step(function () {
+			code(REQUESTLENGTH, this);
+		}, h.sF(function (_code) {
+			code = _code;
+			client.sadd("invites:requests", code, this);
+		}), h.sF(function (added) {
+			if (added) {
+				client.set("invites:requests:" + code, mail, this);
+			} else {
+				invites.addRequestMail(mail, this);
+			}
+		}), h.sF(function () {
+			mailer.mailAdmin("New Register Request", "Code: " + code, this);
+		}), cb);
+	},
+	acceptRequest: function (request, code, cb) {
+		step(function () {
+			client.get("invites:requests:" + code, this);
+		}, h.sF(function (mail) {
+			if (mail) {
+				invites.byMail(request, [mail], "Whispeer Team", this);
+			} else {
+				this.last.ne(false);
+			}
+		}), h.sF(function () {
+			client.multi().srem("invites:requests", code).del("invites:requests:" + code).exec(this);
+		}), h.sF(function () {
+			this.ne(true);
 		}), cb);
 	},
 	useCode: function (inviteCode, cb) {
