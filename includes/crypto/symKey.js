@@ -53,6 +53,8 @@ SymKey.validate = function validateF(data, cb) {
 			throw new InvalidSymKey("wrong type");
 		}
 
+		//TODO: validate decryptors!
+
 		this.ne();
 	}, cb);
 };

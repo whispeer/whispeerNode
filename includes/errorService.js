@@ -14,7 +14,7 @@ var errorService = {
 				}
 
 				var mailer = require("./mailer");
-				mailer.mailAdmin("An Error occured (" + e.type || errString.substr(0, 20) + ")", errString + "\r\n" + e.stack);
+				mailer.mailAdmin("An Error occured (" + (e.type || errString.substr(0, 20)) + ")", errString + "\r\n" + e.stack);
 			} catch (e) {
 				console.error(e);
 			}

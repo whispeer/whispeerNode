@@ -81,6 +81,8 @@ function validate(data, cb) {
 			this.ne(new InvalidEccKey("wrong type"));
 		}
 
+		//TODO: validate decryptors
+
 		this.ne();
 	}, cb);
 }
