@@ -83,7 +83,7 @@ var invites = {
 			client.get("invites:requests:" + code, this);
 		}, h.sF(function (mail) {
 			if (mail) {
-				invites.byMail(request, [mail], "Whispeer Team", this);
+				invites.byMail(request, [mail], false, this);
 			} else {
 				this.last.ne(false);
 			}
