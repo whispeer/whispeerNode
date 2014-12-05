@@ -20,6 +20,9 @@ var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
 
 var MAXDEPTH = 20;
 
+var signatureCache = new SimpleUserDataStore("signatureCache");
+var trustManager = new SimpleUserDataStore("trustManager");
+
 //change api style:
 //extract objects with methods:
 //get
@@ -141,18 +144,29 @@ var whispeerAPI = {
 	},
 	signatureCache: {
 		get: function (data, fn, request) {
-			new SimpleUserDataStore("signatureCache").get(request, h.objectifyResult("content", fn));
+			signatureCache.get(request, h.objectifyResult("content", fn));
 		},
 		set: function (data, fn, request) {
-			new SimpleUserDataStore("signatureCache").set(request, data.content, h.objectifyResult("success", fn));
+			signatureCache.set(request, data.content, h.objectifyResult("success", fn));
 		}
 	},
 	trustManager: {
 		get: function (data, fn, request) {
-			new SimpleUserDataStore("trustManager").get(request, h.objectifyResult("content", fn));
+			trustManager.get(request, h.objectifyResult("content", fn));
 		},
 		set: function (data, fn, request) {
-			new SimpleUserDataStore("trustManager").set(request, data.content, h.objectifyResult("success", fn));
+			step(function () {
+				trustManager.get(request, this);
+			}, h.sF(function (oldTrustManager) {
+				if (oldTrustManager) {
+					var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(data.content));
+					if (diff.length > 0) {
+						throw new Error("trust manager update blocked because it would delete data " + diff);
+					}
+				}
+
+				trustManager.set(request, data.content, h.objectifyResult("success", this));
+			}), fn);
 		}
 	},
 	settings: {
