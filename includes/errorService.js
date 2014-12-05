@@ -7,9 +7,18 @@ var errorService = {
 				console.error(e);
 
 				var error = "Unknown Error";
-				if (e.stack) {
-					error = e.stack.split("\n")[0];
+				var stack = e.stack;
+
+				if (!e.stack) {
+					//lets get a stack from here on
+					try {
+						throw new Error(error);
+					} catch (e) {
+						stack = e.stack;
+					}
 				}
+
+				error = stack.split("\n")[0];
 
 				var errString;
 				try {
