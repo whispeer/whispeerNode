@@ -733,6 +733,7 @@ User.search = function (text, cb) {
 		if (text.length > 2) {
 			search.user.type("and").query(text, this.parallel());
 		}
+		this.parallel()([]);
 		User.getUser(text, this.parallel(), true);
 	}, h.sF(function (ids, user) {
 		ids = ids.map(h.parseDecimal);
