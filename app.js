@@ -15,6 +15,8 @@ var fs = require("fs");
 var configManager = require("./includes/configManager");
 var config = configManager.get();
 
+var setup = require("./includes/setup");
+
 var options = {};
 
 if (config.https) {
@@ -53,8 +55,7 @@ var client = require("./includes/redisClient");
 var onSocketConnection = require("./onSocketConnection");
 
 step(function () {
-	console.log("Database selected: " + (config.db.number || 0));
-	client.select(config.db.number || 0, this);
+	setup(this);
 }, h.sF(function () {
 	client.smembers("user:online", this);
 }), h.sF(function (onlineUsers) {
