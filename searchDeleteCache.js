@@ -19,8 +19,8 @@ step(function () {
 }, h.sF(function () {
 	client.keys("search:user:search:*", this);
 }), h.sF(function (toDelete) {
-	toDelete.push(this);
 	if (toDelete.length > 0) {
+		toDelete.push(this);
 		client.del.apply(client, toDelete, this);
 	} else {
 		this.ne();
