@@ -19,7 +19,7 @@ step(function () {
 }, h.sF(function () {
 	client.keys("search:user:search:*", this);
 }), h.sF(function (toDelete) {
-	console.log(toDelete);
+	toDelete.push(this);
 	if (toDelete.length > 0) {
 		client.del.apply(client, toDelete, this);
 	} else {
