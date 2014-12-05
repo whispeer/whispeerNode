@@ -30,8 +30,20 @@ SimpleUserDataStore.prototype.set = function (request, newContent, cb) {
 	step(function () {
 		client.set("user:" + request.session.getUserID() + ":" + that._name, JSON.stringify(newContent), this);
 	}, h.sF(function (res) {
-		this.ne(res === "OK");
+		request.session.getOwnUser(function (e, user) {
+			if (!e) {
+				user.notify(that._name, newContent);
+			}
+		});
+
+		if (res === "OK") {
+			this.ne(true);
+		} else {
+			this.ne(false);
+		}
 	}), cb);
 };
+
+
 
 module.exports = SimpleUserDataStore;

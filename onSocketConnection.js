@@ -27,7 +27,7 @@ function registerSocketListener(socketData) {
 			if (listener[channel]) {
 				listener[channel](socketData, data);
 			} else {
-				socketData.socket.emit("notify." + channel, JSON.parse(data));
+				socketData.socket.emit("notify." + channel, (typeof data === "string" ? JSON.parse(data) : data));
 			}
 		});
 	}), function (e) {
