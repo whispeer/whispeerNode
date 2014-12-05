@@ -6,7 +6,8 @@ function makeSearch(key) {
 	return rs.createSearch({
 		service: "",
 		key: key,
-		client: client
+		client: client,
+		cache_time: 1
 	});
 }
 
