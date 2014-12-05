@@ -5,6 +5,8 @@ var client = require("../redisClient");
 var h = require("whispeerHelper");
 var Key = require("./Key");
 
+var Decryptor = require("./decryptor");
+
 var EccKey = function (keyRealID) {
 	if (!h.isRealID(keyRealID)) {
 		throw new InvalidRealID();
@@ -67,44 +69,47 @@ EccKey.prototype.getKData = function getKDataF(request, cb, wDecryptors) {
 	}), cb);
 };
 
-function validate(data, cb) {
-	step(function () {
-		if (!h.isRealID(data.realid)) {
-			this.ne(new InvalidRealID());
+function validateFormat(data) {
+	if (!h.isRealID(data.realid)) {
+		return new InvalidRealID();
+	}
+
+	if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve)) {
+		return new InvalidEccKey("Missing data");
+	}
+
+	if (data.type !== "sign" && data.type !== "crypt") {
+		return new InvalidEccKey("wrong type");
+	}
+
+	if (data.decryptors) {
+		try {
+			data.decryptors.forEach(function (decryptor) {
+				Decryptor.validateFormat(decryptor);
+			});
+		} catch (e) {
+			return e;
 		}
-
-		if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve)) {
-			this.ne(new InvalidEccKey("Missing data"));
-		}
-
-		if (data.type !== "sign" && data.type !== "crypt") {
-			this.ne(new InvalidEccKey("wrong type"));
-		}
-
-		//TODO: validate decryptors
-
-		this.ne();
-	}, cb);
+	}
 }
 
 EccKey.validate = function validateF(data, cb) {
-	step(function () {
-		validate(data, this);
-	}, h.sF(function (e) {
-		this(e);
-	}), cb);
+	var err = validateFormat(data);
+	if (err) {
+		throw err;
+	} else {
+		cb();
+	}
 };
 
 EccKey.validateNoThrow = function validateF(data, cb) {
 	step(function () {
-		validate(data, this);
-	}, h.sF(function (e) {
-		if (e) {
+		if (validateFormat(data)) {
 			this.ne(false);
 		} else {
 			this.ne(true);
 		}
-	}), cb);
+	}, cb);
 };
 
 /** get all decryptors for a certain key id */

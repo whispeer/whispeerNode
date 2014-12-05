@@ -6,6 +6,8 @@ var h = require("whispeerHelper");
 
 var Key = require("./Key");
 
+var Decryptor = require("./decryptor");
+
 var SymKey = function (keyRealID) {
 	if (!h.isRealID(keyRealID)) {
 		throw new InvalidRealID();
@@ -27,11 +29,42 @@ SymKey.prototype.isEccKey = function () {
 
 SymKey.prototype.getKData = Key.prototype.getBasicData;
 
+function validateFormat(data) {
+	if (!data) {
+		return new InvalidSymKey("no data");
+	}
+
+	if (!h.isRealID(data.realid)) {
+		return new InvalidRealID();
+	}
+
+	if (data.type !== "sym") {
+		return new InvalidSymKey("wrong type");
+	}
+
+	if (data.decryptors) {
+		try {
+			data.decryptors.forEach(function (decryptor) {
+				Decryptor.validateFormat(decryptor);
+			});
+		} catch (e) {
+			return e;
+		}
+	}
+}
+
+SymKey.validate = function validateF(data, cb) {
+	var err = validateFormat(data);
+	if (err) {
+		throw err;
+	} else {
+		cb();
+	}
+};
+
 SymKey.validateNoThrow = function validateF(data, cb) {
 	step(function () {
-		SymKey.validate(data, this);
-	}, function (e) {
-		if (e) {
+		if (validateFormat(data)) {
 			this.ne(false);
 		} else {
 			this.ne(true);
@@ -39,25 +72,6 @@ SymKey.validateNoThrow = function validateF(data, cb) {
 	}, cb);
 };
 
-SymKey.validate = function validateF(data, cb) {
-	step(function () {
-		if (!data) {
-			throw new InvalidSymKey("no data");
-		}
-
-		if (!h.isRealID(data.realid)) {
-			throw new InvalidRealID();
-		}
-
-		if (data.type !== "sym") {
-			throw new InvalidSymKey("wrong type");
-		}
-
-		//TODO: validate decryptors!
-
-		this.ne();
-	}, cb);
-};
 
 /** get all decryptors for a certain key id */
 SymKey.get = function getF(keyRealID, cb) {
