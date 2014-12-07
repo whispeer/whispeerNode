@@ -389,7 +389,6 @@ var friends = {
 			friendShip.keys = keys;
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 
-			//TODO: get friends, requests and removed list. check that they are equal to the signed list content.
 			//TODO: check meta format
 
 			this.parallel.unflatten();

@@ -271,7 +271,7 @@ var User = function (id) {
 	var databaseUser = new SaveAbleEntity(validKeys, this, userDomain);
 
 	databaseUser.on("afterSavedHook", updateSearch);
-	databaseUser.on("setAttribute", function (request, field) {
+	databaseUser.on("setAttribute", function (request) {
 		updateSearch(request);
 	});
 

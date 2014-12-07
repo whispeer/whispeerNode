@@ -120,7 +120,7 @@ KeyApi.get = function getKF(realid, callback) {
 			this.last.ne(new EccKey(realid));
 			break;
 		default:
-			throw new Error("key not found for realid: " + realid);
+			throw new KeyNotFound("key not found for realid: " + realid);
 		}
 	}), callback);
 };
@@ -137,9 +137,6 @@ KeyApi.getWData = function getDataF(request, realid, callback, wDecryptors) {
 	step(function () {
 		KeyApi.get(realid, this);
 	}, h.sF(function (key) {
-		if (!key) {
-			throw new Error("Key not found: " + realid);
-		}
 		key.getKData(request, this, wDecryptors);
 	}), callback);
 };

@@ -35,7 +35,8 @@ var f = {
 				this.last.ne({ success: false });
 			}
 		}), h.sF(function (myUser) {
-			myUser.setSignedKeys(request, data.signedKeys, this);
+			myUser.setSignedKeys(request, data.signedKeys, this.parallel());
+			myUser.setFriendsKey(request, data.newFriendsKey.realid, this.parallel());
 		}), h.sF(function () {
 			this.last.ne({ success: true });
 		}), fn);
