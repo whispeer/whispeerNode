@@ -14,6 +14,7 @@ var listener = {
 			status: data.content
 		});
 	},
+	signatureCache: function () {},
 	friendRequest: function fr(socketData, uid) {
 		var request = new RequestData(socketData, {});
 		step(function () {

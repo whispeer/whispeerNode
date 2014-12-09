@@ -125,6 +125,16 @@ function setSignedList(request, m, signedList, add, remove, cb) {
 	}), cb);
 }
 
+function notifySignedListUpdate(request, signedList, cb) {
+	step(function () {
+		request.session.getOwnUser(this);
+	}, h.sF(function (ownUser) {
+		ownUser.notify("signedList", signedList);
+
+		this.ne();
+	}), cb);
+}
+
 var friends = {
 	notifyUsersFriends: function (uid, channel, content) {
 		step(function () {
@@ -294,6 +304,8 @@ var friends = {
 		}, KeyNotFound), h.sF(function () {
 			m.exec(this);
 		}), h.sF(function () {
+			notifySignedListUpdate(request, signedList, this);
+		}), h.sF(function () {
 			this.ne(true);
 		}), cb);
 	},
@@ -426,6 +438,10 @@ var friends = {
 				m.sadd("friends:" + uid + ":requests", ownID);
 			}
 
+			if (key.realid !== signedList[friendShip.user.getID()]) {
+				throw new Error("key realid does not match signedList!");
+			}
+
 			setSignedList(request, m, signedList, [uid], [], this);
 		}), h.sF(function () {
 			SymKey.createWDecryptors(request, key, this);
@@ -447,6 +463,8 @@ var friends = {
 				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
 
+			notifySignedListUpdate(request, signedList, this);
+		}), h.sF(function () {
 			this.ne(!firstRequest);
 		}), cb);
 	},
