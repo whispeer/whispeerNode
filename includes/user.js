@@ -484,6 +484,10 @@ var User = function (id) {
 			}, this);
 		}, h.sF(function (keys) {
 			keys.forEach(function (key) {
+				if (key === null) {
+					throw new Error("key id should not be null for " + arr.join(",") + " - " + id);
+				}
+
 				request.addKey(key, this.parallel());
 			}, this);
 		}), cb);

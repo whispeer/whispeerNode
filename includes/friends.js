@@ -284,10 +284,14 @@ var friends = {
 			client.hget("friends:" + ownID + ":signedList", uid, this);
 		}), h.sF(function (friendShipKey) {
 			KeyApi.get(friendShipKey, this);
-		}), h.sF(function (friendShipKey) {
-			//remove: friendShipKey from ownid for uid
-			friendShipKey.remove(m, this);
-		}), h.sF(function () {
+		}), h.hE(function (e, friendShipKey) {
+			if (e) {
+				this.ne();
+			} else {
+				//remove: friendShipKey from ownid for uid
+				friendShipKey.remove(m, this);
+			}
+		}, KeyNotFound), h.sF(function () {
 			m.exec(this);
 		}), h.sF(function () {
 			this.ne(true);
