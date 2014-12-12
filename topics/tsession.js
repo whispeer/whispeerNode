@@ -25,7 +25,7 @@ var s = {
 			}
 		}, h.hE(function (e, myUser) {
 			if (e) {
-				errorService.handleError(e);
+				errorService.handleError(e, request);
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {

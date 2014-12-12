@@ -1,7 +1,7 @@
 "use strict";
 
 var errorService = {
-	handleError: function (e, data) {
+	handleError: function (e, request) {
 		if (e) {
 			try {
 				console.error(e);
@@ -27,8 +27,16 @@ var errorService = {
 					errString = e.toString();
 				}
 
+				var requestString = "";
+
+				if (request) {
+					requestString += "\n\n";
+					requestString += "User: " + request.session.getUserID() + "\n";
+					requestString += "Raw Request: " + request.rawRequest;
+				}
+
 				var mailer = require("./mailer");
-				mailer.mailAdmin("An Error occured (" + (e.type || error.substr(0, 70)) + ")", errString + "\n" + e.stack + (data ? "\n" + JSON.stringify(data) : ""));
+				mailer.mailAdmin("An Error occured (" + (e.type || error.substr(0, 70)) + ")", errString + "\n" + e.stack + requestString);
 			} catch (e) {
 				console.error(e);
 			}

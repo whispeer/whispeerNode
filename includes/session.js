@@ -314,7 +314,7 @@ var Session = function Session() {
 				type: "register error",
 				code: code,
 				data: data
-			});
+			}, request);
 
 			if (result.errorCodes[code] !== undefined) {
 				result.errorCodes[code] = true;
