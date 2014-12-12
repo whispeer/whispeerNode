@@ -517,7 +517,7 @@ var User = function (id) {
 		addArrayKeys(request, ownKeys, cb);
 	};
 
-	var publicKeys = ["cryptKey", "signKey"];
+	var publicKeys = ["signKey"];
 	this.addPublicKeys = function (request, cb) {
 		addArrayKeys(request, publicKeys, cb);
 	};
