@@ -60,7 +60,7 @@ function callExplicitHandler(handler, data, cb, request) {
 			this.ne();
 		}
 	}, h.sF(function () {
-		handler(data, new HandlerCallback(this.ne), explicitHandlerRequest);
+		handler(data, new HandlerCallback(this.ne, explicitHandlerRequest), explicitHandlerRequest);
 	}), cb);
 }
 

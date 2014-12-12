@@ -3,7 +3,7 @@
 var extend = require("xtend");
 var errorService = require("./errorService");
 
-var HandlerCallback = function (fn) {
+var HandlerCallback = function (fn, request) {
 	var finished = false;
 	var resultErrors = {};
 	var result = {
@@ -31,7 +31,9 @@ var HandlerCallback = function (fn) {
 				error: true
 			};
 
-			errorService.handleError(err);
+			errorService.handleError(err, {
+				user: request.session.getUserID()
+			});
 		} else {
 			result = extend(result, value);
 		}
