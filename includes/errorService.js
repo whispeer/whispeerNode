@@ -32,7 +32,7 @@ var errorService = {
 				if (request) {
 					requestString += "\n\n";
 					requestString += "User: " + request.session.getUserID() + "\n";
-					requestString += "Raw Request: " + request.rawRequest;
+					requestString += "Raw Request: " + JSON.stringify(request.rawRequest);
 				}
 
 				var mailer = require("./mailer");
