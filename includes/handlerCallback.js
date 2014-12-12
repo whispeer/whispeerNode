@@ -32,7 +32,8 @@ var HandlerCallback = function (fn, request) {
 			};
 
 			errorService.handleError(err, {
-				user: request.session.getUserID()
+				user: request.session.getUserID(),
+				request: request.rawRequest
 			});
 		} else {
 			result = extend(result, value);
