@@ -65,8 +65,8 @@ var Post = function (postid) {
 				throw new Error("invalid parent data");
 			}
 
-			if (sorting > meta._sortCounter) {
-				throw new Error("invalid counter");
+			if (sorting > meta._sortCounter || (sorting > 0 && !meta._sortCounter)) {
+				throw new Error("invalid counter - " + sorting + " - " + meta._sortCounter);
 			}
 
 			client.incr(domain + ":comments:count", this);
