@@ -538,8 +538,10 @@ var friends = {
 					return key[0] !== "_";
 				}).map(h.parseDecimal);
 
-				if (!h.arrayEqual(signedListIDs, requested.concat(friends).map(h.parseDecimal))) {
-					throw new Error("signed lists do not match for uid: " + uid);
+				var listFriends = requested.concat(friends).map(h.parseDecimal);
+
+				if (!h.arrayEqual(signedListIDs, listFriends)) {
+					throw new Error("signed lists do not match for uid: " + uid + " - " + signedListIDs + " - " + listFriends);
 				}
 			}
 		}), errorService.handleError);

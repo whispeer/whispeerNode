@@ -5,7 +5,6 @@ var h = require("whispeerHelper");
 
 var Friends = require("../includes/friends");
 var SymKey = require("../includes/crypto/symKey");
-var User = require("../includes/user");
 
 var f = {
 	add: function addFriend(data, fn, request) {
@@ -22,6 +21,11 @@ var f = {
 				friends: areFriends
 			});
 		}), fn);
+	},
+	ignore: function (data, fn, request) {
+		step(function () {
+			Friends.ignoreRequest(request, data.uid, this);
+		}, fn);
 	},
 	remove: function (data, fn, request) {
 		step(function () {
