@@ -54,12 +54,18 @@ function callExplicitHandler(handler, data, cb, request) {
 	var explicitHandlerRequest = new RequestData(request, data);
 
 	step(function () {
+		if (handler.noLoginNeeded) {
+			this.ne();
+		} else {
+			request.session.logedinError(this);
+		}	
+	}, h.sF(function () {
 		if (Array.isArray(data.keys)) {
 			createKeys(explicitHandlerRequest, data.keys, this);
 		} else {
 			this.ne();
 		}
-	}, h.sF(function () {
+	}), h.sF(function () {
 		handler(data, new HandlerCallback(this.ne, explicitHandlerRequest), explicitHandlerRequest);
 	}), cb);
 }

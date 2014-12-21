@@ -98,4 +98,10 @@ var s = {
 	}
 };
 
+s.logout.noLoginNeeded = true;
+s.token.noLoginNeeded = true;
+s.register.noLoginNeeded = true;
+s.login.noLoginNeeded = true;
+
+
 module.exports = s;

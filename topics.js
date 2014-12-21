@@ -249,4 +249,11 @@ var whispeerAPI = {
 	}
 };
 
+whispeerAPI.ping.noLoginNeeded = true;
+whispeerAPI.nicknameFree.noLoginNeeded = true;
+whispeerAPI.mailFree.noLoginNeeded = true;
+whispeerAPI.logedin.noLoginNeeded = true;
+whispeerAPI.verifyMail.noLoginNeeded = true;
+whispeerAPI.errors.noLoginNeeded = true;
+
 module.exports = whispeerAPI;

@@ -8,10 +8,8 @@ var invites = require("../includes/invites");
 var invite = {
 	byMail: function (data, fn, request) {
 		step(function () {
-			request.session.logedinError(this);
-		}, h.sF(function () {
 			invites.byMail(request, data.mails, data.name, this);
-		}), h.sF(function () {
+		}, h.sF(function () {
 			this.ne({});
 		}), fn);
 	},
@@ -48,5 +46,8 @@ var invite = {
 		}), fn);
 	},
 };
+
+invite.requestWithMail.noLoginNeeded = true;
+invite.checkCode.noLoginNeeded = true;
 
 module.exports = invite;
