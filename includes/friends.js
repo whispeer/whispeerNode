@@ -585,7 +585,7 @@ var friends = {
 
 			signedListIDs.forEach(function (id) {
 				KeyApi.checkKey(errors, signedList[id], this.parallel());
-			});
+			}, this);
 
 			if (!h.emptyUnion(requests, requested)) 	{ errors.push("requests  and requested    are not exclusive for " + uid); }
 			if (!h.emptyUnion(requests, friends)) 		{ errors.push("requests  and friends      are not exclusive for " + uid); }
