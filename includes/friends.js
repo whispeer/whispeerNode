@@ -596,7 +596,7 @@ var friends = {
 
 			requests.concat(requested).concat(friends).concat(unfriended).forEach(function (friendID) {
 				friends.checkFriendShip(errors, uid, friendID, this.parallel());
-			});
+			}, this);
 
 			this.parallel()();
 		}), cb);

@@ -37,8 +37,9 @@ client.select(config.db.number || 0, function (e) {
 		} else {
 			errors.forEach(function (e) {
 				console.log(e);
-				console.log(e.stack);
-				console.log(JSON.stringify(e));
+				if (e.stack) {
+					console.log(e.stack);
+				}
 				console.log("=================");
 			});
 		}
