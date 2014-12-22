@@ -17,6 +17,8 @@ var configManager = require("./includes/configManager");
 var config = configManager.get();
 var client = require("./includes/redisClient");
 
+require("./includes/errors");
+
 client.select(config.db.number || 0, function (e) {
 
 	if (e) {
