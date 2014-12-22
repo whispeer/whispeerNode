@@ -530,16 +530,18 @@ var friends = {
 			client.sismember("friends:" + uid + ":requests", friendID, this.parallel());
 			client.sismember("friends:" + uid + ":requested", friendID, this.parallel());
 			client.sismember("friends:" + uid, friendID, this.parallel());
-			client.sismember("friends:" + uid + "unfriended", friendID, this.parallel());
+			client.sismember("friends:" + uid + ":unfriended", friendID, this.parallel());
+			client.sismember("friends:" + uid + ":ignored", friendID, this.parallel());
 
 			client.sismember("friends:" + friendID + ":requests", uid, this.parallel());
 			client.sismember("friends:" + friendID + ":requested", uid, this.parallel());
 			client.sismember("friends:" + friendID, uid, this.parallel());
-			client.sismember("friends:" + friendID + "unfriended", uid, this.parallel());
-		}, h.sF(function (requests1, requested1, friend1, unfriended1, requests2, requested2, friend2, unfriended2) {
-			if (requests1 && !requested2) {
+			client.sismember("friends:" + friendID + ":unfriended", uid, this.parallel());
+			client.sismember("friends:" + friendID + ":ignored", uid, this.parallel());
+		}, h.sF(function (requests1, requested1, friend1, unfriended1, ignored1, requests2, requested2, friend2, unfriended2, ignored2) {
+			if (requests1 && !requested2 && !ignored2) {
 				errors.push("FriendShip invalid: " + uid + "-" + friendID + " request but not requested");
-			} else if (requested1 && !requests2) {
+			} else if (requested1 && !requests2 && !ignored2) {
 				errors.push("FriendShip invalid: " + uid + "-" + friendID + " requested but no request");
 			} else if (friend1 && !friend2 && !unfriended2) {
 				errors.push("FriendShip invalid: " + uid + "-" + friendID + " friend but not friend or unfriended");
@@ -566,12 +568,14 @@ var friends = {
 			client.smembers("friends:" + uid + ":requests", this.parallel());
 			client.smembers("friends:" + uid + ":requested", this.parallel());
 			client.smembers("friends:" + uid, this.parallel());
-			client.smembers("friends:" + uid + "unfriended", this.parallel());
-		}, h.sF(function (signedList, requests, requested, userFriends, unfriended) {
+			client.smembers("friends:" + uid + ":unfriended", this.parallel());
+			client.smembers("friends:" + uid + ":ignored", this.parallel());
+		}, h.sF(function (signedList, requests, requested, userFriends, unfriended, ignored) {
 			requested = requested.map(h.parseDecimal);
 			userFriends = userFriends.map(h.parseDecimal);
 			unfriended = unfriended.map(h.parseDecimal);
 			requests = requests.map(h.parseDecimal);
+			ignored = ignored.map(h.parseDecimal);
 
 			var signedListIDs = Object.keys(signedList || {}).filter(function (key) {
 				return key[0] !== "_";
@@ -588,11 +592,15 @@ var friends = {
 			}, this);
 
 			if (!h.emptyUnion(requests, requested)) 	{ errors.push("requests  and requested    are not exclusive for " + uid); }
-			if (!h.emptyUnion(requests, userFriends)) 		{ errors.push("requests  and friends      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, userFriends)) 	{ errors.push("requests  and friends      are not exclusive for " + uid); }
 			if (!h.emptyUnion(requests, unfriended)) 	{ errors.push("requests  and unfriended   are not exclusive for " + uid); }
-			if (!h.emptyUnion(requested, userFriends)) 		{ errors.push("requested and friends      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, ignored)) 		{ errors.push("requests  and ignored      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, userFriends)) 	{ errors.push("requested and friends      are not exclusive for " + uid); }
 			if (!h.emptyUnion(requested, unfriended)) 	{ errors.push("requested and unfriended   are not exclusive for " + uid); }
-			if (!h.emptyUnion(userFriends, unfriended)) 	{ errors.push("friends   and unfriended   are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, ignored)) 		{ errors.push("requested and ignored      are not exclusive for " + uid); }
+			if (!h.emptyUnion(userFriends, unfriended)) { errors.push("friends   and unfriended   are not exclusive for " + uid); }
+			if (!h.emptyUnion(userFriends, ignored)) 	{ errors.push("friends   and ignored      are not exclusive for " + uid); }
+			if (!h.emptyUnion(unfriended, ignored)) 	{ errors.push("unfriendedand ignored      are not exclusive for " + uid); }
 
 			requests.concat(requested).concat(userFriends).concat(unfriended).forEach(function (friendID) {
 				friends.checkFriendShip(errors, uid, friendID, this.parallel());
