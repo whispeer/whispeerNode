@@ -523,28 +523,83 @@ var friends = {
 			this.ne(ids);
 		}), cb);
 	},
-	validateFriends: function (uid) {
+	checkFriendShip: function (errors, uid, friendID, cb) {
 		step(function () {
-			process.nextTick(this);
-		}, h.sF(function () {
+			this.parallel.unflatten();
+
+			client.sismember("friends:" + uid + ":requests", friendID, this.parallel());
+			client.sismember("friends:" + uid + ":requested", friendID, this.parallel());
+			client.sismember("friends:" + uid, friendID, this.parallel());
+			client.sismember("friends:" + uid + "unfriended", friendID, this.parallel());
+
+			client.sismember("friends:" + friendID + ":requests", uid, this.parallel());
+			client.sismember("friends:" + friendID + ":requested", uid, this.parallel());
+			client.sismember("friends:" + friendID, uid, this.parallel());
+			client.sismember("friends:" + friendID + "unfriended", uid, this.parallel());
+		}, h.sF(function (requests1, requested1, friend1, unfriended1, requests2, requested2, friend2, unfriended2) {
+			if (requests1 && !requested2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " request but not requested");
+			} else if (requested1 && !requests2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " requested but no request");
+			} else if (friend1 && !friend2 && !unfriended2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " friend but not friend or unfriended");
+			} else if (unfriended1 && !friend2 && !unfriended2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " unfriended but not friend or unfriended");
+			}
+
+			if (requests1 || requested1 || friend1) {
+				client.hgetall("friends:" + uid + ":" + friendID, this);
+			} else if (unfriended1) {
+				client.hgetall("friends:" + uid + ":unfriending:" + friendID, this);
+			} else {
+				throw new Error("database changed. Please validate on a duplicate!");
+			}
+
+			this.ne();
+		}),cb);
+	},
+	checkSignedList: function (errors, uid, cb) {
+		step(function () {
 			this.parallel.unflatten();
 
 			client.hgetall("friends:" + uid + ":signedList", this.parallel());
+			client.smembers("friends:" + uid + ":requests", this.parallel());
 			client.smembers("friends:" + uid + ":requested", this.parallel());
 			client.smembers("friends:" + uid, this.parallel());
-		}), h.sF(function (signedList, requested, friends) {
-			if (signedList) {
-				var signedListIDs = Object.keys(signedList).filter(function (key) {
-					return key[0] !== "_";
-				}).map(h.parseDecimal);
+			client.smembers("friends:" + uid + "unfriended", this.parallel());
+		}, h.sF(function (signedList, requests, requested, friends, unfriended) {
+			requested = requested.map(h.parseDecimal);
+			friends = friends.map(h.parseDecimal);
+			unfriended = unfriended.map(h.parseDecimal);
+			requests = requests.map(h.parseDecimal);
 
-				var listFriends = requested.concat(friends).map(h.parseDecimal);
+			var signedListIDs = Object.keys(signedList || {}).filter(function (key) {
+				return key[0] !== "_";
+			}).map(h.parseDecimal);
 
-				if (!h.arrayEqual(signedListIDs, listFriends)) {
-					throw new Error("signed lists do not match for uid: " + uid + " - " + signedListIDs + " - " + listFriends);
-				}
+			var listFriends = requested.concat(friends);
+
+			if (!h.arrayEqual(signedListIDs, listFriends)) {
+				errors.push("signed lists do not match for uid: " + uid + " - " + signedListIDs + " - " + listFriends);
 			}
-		}), errorService.handleError);
+
+			signedListIDs.forEach(function (id) {
+				KeyApi.checkKey(errors, signedList[id], this.parallel());
+			});
+
+			if (!h.emptyUnion(requests, requested)) 	{ errors.push("requests  and requested    are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, friends)) 		{ errors.push("requests  and friends      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, unfriended)) 	{ errors.push("requests  and unfriended   are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, friends)) 		{ errors.push("requested and friends      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, unfriended)) 	{ errors.push("requested and unfriended   are not exclusive for " + uid); }
+			if (!h.emptyUnion(friends, unfriended)) 	{ errors.push("friends   and unfriended   are not exclusive for " + uid); }
+
+			requests.concat(requested).concat(friends).concat(unfriended).forEach(function (friendID) {
+				friends.checkFriendShip(errors, uid, friendID, this.parallel());
+			});
+
+			this.parallel()();
+		}), cb);
 	}
 };
 

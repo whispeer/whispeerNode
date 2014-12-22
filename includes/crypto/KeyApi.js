@@ -151,4 +151,17 @@ KeyApi.getKeys = function getKeysF(realids, callback) {
 	}, callback);
 };
 
+KeyApi.checkKey = function (errors, realid, cb) {
+	step(function () {
+		KeyApi.get(realid, this);
+	}, function (err, key) {
+		if (err) {
+			errors.push(err);
+			this.ne();
+		} else {
+			key.check(errors, this);
+		}
+	}, cb);
+};
+
 module.exports = KeyApi;

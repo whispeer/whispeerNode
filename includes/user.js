@@ -580,6 +580,11 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.check = function (errors, cb) {
+		var friends = require("./friends");
+		friends.checkSignedList(errors, this.getID(), cb);
+	};
+
 	function getProfiles(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
@@ -770,6 +775,28 @@ User.checkUserIDs = function (ids, cb) {
 		});
 
 		this.ne();
+	}), cb);
+};
+
+User.all = function (cb) {
+	step(function () {
+		client.smembers("user:list", this);
+	}, h.sF(function (uids) {
+		uids.forEach(function (uid) {
+			User.getUser(uid, this.parallel());
+		}, this);
+	}), cb);
+};
+
+User.check = function (errors, cb) {
+	step(function () {
+		User.all(this);
+	}, h.sF(function (users) {
+		users.forEach(function (user) {
+			user.check(errors, this.parallel());
+		}, this);
+
+		this.parallel()();
 	}), cb);
 };
 

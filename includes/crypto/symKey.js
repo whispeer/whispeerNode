@@ -29,6 +29,10 @@ SymKey.prototype.isEccKey = function () {
 
 SymKey.prototype.getKData = Key.prototype.getBasicData;
 
+SymKey.prototype.check = function (errors, cb) {
+	cb();
+};
+
 function validateFormat(data) {
 	if (!data) {
 		return new InvalidSymKey("no data");
