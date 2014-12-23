@@ -24,7 +24,7 @@ function SocketData(socket, session) {
 			psubs[channel] = true;
 
 			var closeSubscriber = client.psub(channel, cb);
-			socket.once("disconnect", closeSubscriber);
+			theSocketData.once("disconnect", closeSubscriber);
 		}
 	};
 
@@ -33,7 +33,7 @@ function SocketData(socket, session) {
 			subs[channel] = true;
 
 			var closeSubscriber = client.sub(channel, cb);
-			socket.once("disconnect", closeSubscriber);
+			theSocketData.once("disconnect", closeSubscriber);
 		}
 	};
 

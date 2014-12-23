@@ -42,10 +42,14 @@ var Circle = function (userid, id) {
 		}), cb);
 	};
 
-	this.delete = function (request, cb) {
+	this.remove = function (request, cb) {
 		step(function () {
 			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
+			client.hget(domain + ":meta", "circleKey", this);
+		}), h.sF(function (circleKey) {
+			KeyApi.removeKey(request, circleKey, this);
+		}), h.sF(function () {
 			client.multi()
 				.srem("user:" + userid + ":circle", id)
 				.sadd("user:" + userid + ":circle:deleted", id)
@@ -62,35 +66,46 @@ var Circle = function (userid, id) {
 			this.parallel.unflatten();
 
 			KeyApi.get(oldKeyID, this.parallel());
-			SymKey.createWDecryptors(request, key, this.parallel());
+			if (key) {
+				SymKey.createWDecryptors(request, key, this.parallel());
+			}
 		}), h.sF(function (oldKey) {
 			oldKey.addDecryptors(request, decryptors, this.parallel());
 		}), cb);
 	}
 
 	this.update = function (request, content, meta, key, decryptors, cb) {
+		var usersRemoved;
 		step(function () {
 			request.session.ownUserError(userid, this);
 		}, h.sF(function () {
-			client.hget(domain + ":meta", "users", this);
-		}), h.sF(function (users) {
+			this.parallel.unflatten();
+			client.hget(domain + ":meta", "users", this.parallel());
+			client.hget(domain + ":meta", "circleKey", this.parallel());
+		}), h.sF(function (users, oldKey) {
 			users = JSON.parse(users);
 
-			var removing = h.arraySubtract(users, meta.users).length > 0;
+			usersRemoved = h.arraySubtract(users, meta.users);
+			var removing = usersRemoved.length > 0;
 
-			if (removing) {
-				if (!key || !decryptors) {
-					throw new Error("no new key created for circle update even though users were removed!");
-				}
-
-				createKeysAndDecryptors(request, key, decryptors, this);
-				//add key: key
-				//add decryptors: decryptors
-			} else if (key || decryptors) {
-				throw new Error("new key created for circle update even though no users were removed!");
-			} else {
-				this.ne();
+			if (removing && !key) {
+				throw new Error("no new key created for circle update even though users were removed!");
 			}
+
+			if (!removing && key) {
+				throw new Error("new key created for circle update even though no users were removed!");
+			}
+
+			if (!decryptors) {
+				throw new Error("we need new decryptors!");
+			}
+
+			usersRemoved.forEach(function (userid) {
+				KeyApi.removeKeyDecryptorForUser(request, oldKey, userid, this.parallel());
+			}, this);
+			this.parallel()();
+		}), h.sF(function () {
+			createKeysAndDecryptors(request, key, decryptors, this.parallel());
 		}), h.sF(function () {
 			var multi = client.multi();
 			meta.users = JSON.stringify(meta.users);

@@ -13,6 +13,8 @@ var Session = require("./includes/session");
 var APIVERSION = "0.0.1";
 var KeyApi = require("./includes/crypto/KeyApi");
 
+Error.stackTraceLimit = Infinity;
+
 function registerSocketListener(socketData) {
 	if (socketData.session.getUserID() === 0) {
 		return;
@@ -25,7 +27,7 @@ function registerSocketListener(socketData) {
 			if (listener[channel]) {
 				listener[channel](socketData, data);
 			} else {
-				socketData.socket.emit("notify." + channel, JSON.parse(data));
+				socketData.socket.emit("notify." + channel, (typeof data === "string" ? JSON.parse(data) : data));
 			}
 		});
 	}), function (e) {
@@ -52,13 +54,19 @@ function callExplicitHandler(handler, data, cb, request) {
 	var explicitHandlerRequest = new RequestData(request, data);
 
 	step(function () {
+		if (handler.noLoginNeeded) {
+			this.ne();
+		} else {
+			request.session.logedinError(this);
+		}	
+	}, h.sF(function () {
 		if (Array.isArray(data.keys)) {
 			createKeys(explicitHandlerRequest, data.keys, this);
 		} else {
 			this.ne();
 		}
-	}, h.sF(function () {
-		handler(data, new HandlerCallback(this.ne), explicitHandlerRequest);
+	}), h.sF(function () {
+		handler(data, new HandlerCallback(this.ne, explicitHandlerRequest), explicitHandlerRequest);
 	}), cb);
 }
 
@@ -148,7 +156,7 @@ module.exports = function (socket) {
 			var time = new Date().getTime();
 			var request = new RequestData(socketData, data);
 			step(function () {
-				console.log("Received data on channel " + channel);
+				console.log(new Date() + " Received data on channel " + channel);
 
 				if (session.getSID() !== data.sid) {
 					session.setSID(data.sid, this);
@@ -165,7 +173,7 @@ module.exports = function (socket) {
 				}
 
 				always(request, result, fn);
-				console.log("Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
+				console.log(new Date() + " Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
 			});
 		};
 	}

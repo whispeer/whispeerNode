@@ -13,9 +13,11 @@ var h = require("whispeerHelper");
 
 var code = require("./session").code;
 
+var fs = require("fs");
+
 var mail = nodemailer.createTransport(config.mailType, config.mail);
 
-var defaultFrom = config.mailFrom || "support@whispeer.de";
+var defaultFrom = config.mailFrom || "whispeer <support@whispeer.de>";
 
 //mail
 //- <userid>
@@ -23,6 +25,8 @@ var defaultFrom = config.mailFrom || "support@whispeer.de";
 //-- currentMail
 //-- <mail>Verified 1
 //-- <mail>Challenge <challenge>
+
+var TEMPLATEDIR = "./templates/";
 
 function generateChallenge(cb) {
 	var challenge;
@@ -99,7 +103,7 @@ var mailer = {
 						user: user.getID(),
 						mail: userMail
 					})
-					.expire("mail:challenges:" + challenge, 7*24*60);
+					.expire("mail:challenges:" + challenge, 7*24*60*60);
 
 				var mailOption = {
 					from: defaultFrom,
@@ -142,6 +146,78 @@ var mailer = {
 			mailer.sendMails(usersToNotify, "[Whispeer] Neue Interaktionen", "Jemand hat mit dir auf Whispeer interagiert!\nBesuche " + config.host + " um zu sehen wer mit dir interagiert hat.\n\nMit freundlichen Grüßen,\nDein Whispeer Team!", this);
 		}), (cb || h.nop));
 	},
+	fillTemplate: function (templateName, variables, cb) {
+		step(function () {
+			fs.readFile(TEMPLATEDIR + templateName + ".html", this);
+		}, h.sF(function (content) {
+			content = content.toString();
+
+			variables.host = variables.host || config.remoteHost || config.host;
+
+			var inExpression = false;
+			var sawFirstBracket = false;
+
+			var result = "";
+			var expression = "";
+
+			var vm = require("vm");
+
+			for (var i = 0; i < content.length; i++) {
+				if (inExpression) {
+					if (content[i] === "}" && content[i+1] === "}") {
+						result += vm.runInNewContext(expression, variables);
+
+						inExpression = false;
+						expression = "";
+						i += 1;
+					} else {
+						expression += content[i];
+					}
+				} else if (content[i] === "{" && content[i+1] === "{") {
+					inExpression = true;
+					i += 1;
+				} else {
+					result += content[i];
+					sawFirstBracket = false;
+				}
+			}
+
+			var cheerio = require("cheerio"),
+				element = cheerio.load(result);
+
+			var subject = element("title").text();
+
+			this.ne(result, subject);
+		}), cb);
+	},
+	sendUserMail: function (user, templateName, variables, subject, cb) {
+		var receiver;
+		step(function () {
+			user.getEMail(viewCreator.logedinViewStub, this);
+		}, h.sF(function (_receiver) {
+			receiver = _receiver;
+			mailer.isMailActivatedForUser(user, receiver, this);
+		}), h.sF(function (activated) {
+			if (activated) {
+				mailer.sendMail(receiver, templateName, variables, subject, this);
+			} else {
+				this.last.ne();
+			}
+		}), cb);
+	},
+	sendMail: function (receiver, templateName, variables, cb) {
+		step(function () {
+			mailer.fillTemplate(templateName, variables, this);
+		}, h.sF(function (content, subject) {
+			mail.sendMail({
+				to: receiver,
+				from: defaultFrom,
+				subject: subject,
+				html: content,
+				generateTextFromHTML: true
+			}, this);
+		}), cb);
+	},
 	sendMails: function (users, subject, text, cb) {
 		//todo: add inReplyTo and messageID!
 		var mails;
@@ -180,7 +256,7 @@ var mailer = {
 			this.ne();
 		}), (cb || h.nop));
 	},
-	mailAdmin: function (subject, text) {
+	mailAdmin: function (subject, text, cb) {
 		var mailOptions = {
 			from: defaultFrom,
 			to: "whispeerErrors@ovt.me",
@@ -191,6 +267,9 @@ var mailer = {
 		mail.sendMail(mailOptions, function (e) {
 			if (e) {
 				console.log(e);
+			}
+			if (cb) {
+				cb(e);
 			}
 		});
 	}

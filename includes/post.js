@@ -44,13 +44,83 @@ var newPostsExpireTime = 10 * 60;
 
 var Post = function (postid) {
 	var domain = "post:" + postid, thePost = this, result;
+
+	this.addComment = function (request, content, meta, cb) {
+		var commentID = 0;
+		step(function () {
+			//TODO: check data
+			//TODO: check comment ordering!
+			client.zrevrange(domain + ":comments:list", 0, 0, this);
+		}, h.sF(function (newest) {
+			this.parallel.unflatten();
+
+			client.hget(domain + ":meta", "_ownHash", this.parallel());
+			if (newest.length !== 0) {
+				client.hget(domain + ":comments:" + newest[0] + ":meta", "_sortCounter", this.parallel());
+			}
+		}), h.sF(function (ownHash, sorting) {
+			if (meta._parent !== ownHash) {
+				console.log(meta._parent);
+				console.log(ownHash);
+				throw new Error("invalid parent data");
+			}
+
+			if (sorting > meta._sortCounter || (sorting > 0 && !meta._sortCounter)) {
+				throw new Error("invalid counter - " + sorting + " - " + meta._sortCounter);
+			}
+
+			client.incr(domain + ":comments:count", this);
+		}), h.sF(function (id) {
+			commentID = id;
+			var m = client.multi();
+			m.hmset(domain + ":comments:" + id + ":content", content);
+			m.hmset(domain + ":comments:" + id + ":meta", meta);
+			m.zadd(domain + ":comments:list", new Date().getTime(), id);
+
+			m.exec(this);
+		}), h.sF(function () {
+			thePost.notify("comment:create", commentID);
+			this.ne();
+		}), cb);
+	};
+
+	this.getComment = function (id, cb) {
+		step(function () {
+			this.parallel.unflatten();
+			client.hgetall(domain + ":comments:" + id + ":content", this.parallel());
+			client.hgetall(domain + ":comments:" + id + ":meta", this.parallel());
+		}, h.sF(function (content, meta) {
+			this.ne({
+				id: id,
+				content: content,
+				meta: meta
+			});
+		}), cb);
+	};
+
+	this.getComments = function (request, cb) {
+		step(function () {
+			client.zrange(domain + ":comments:list", 0, -1, this);
+		}, h.sF(function (comments) {
+			if (comments.length === 0) {
+				this.last.ne([]);
+				return;
+			}
+
+			comments.forEach(function (comment) {
+				thePost.getComment(comment, this.parallel());
+			}, this);
+		}), cb);
+	};
+
 	this.getPostData = function getDataF(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
 
 			client.hgetall(domain + ":meta", this.parallel());
 			client.hgetall(domain + ":content", this.parallel());
-		}, h.sF(function (meta, content) {
+			thePost.getComments(request, this.parallel());
+		}, h.sF(function (meta, content, comments) {
 			meta.sender = h.parseDecimal(meta.sender);
 			meta.time = h.parseDecimal(meta.time);
 			meta.walluser = h.parseDecimal(meta.walluser || 0);
@@ -62,7 +132,8 @@ var Post = function (postid) {
 			result = {
 				id: postid,
 				meta: meta,
-				content: content
+				content: content,
+				comments: comments
 			};
 
 			request.addKey(meta._key, this);
@@ -111,12 +182,12 @@ var Post = function (postid) {
 			}
 
 			//remove post from all lists
-			//remove post data
 			var m = client.multi();
 
-			m.del(domain + ":meta");
-			m.del(domain + ":content");
-			m.del(domain);
+			//TODO: remove post data, for now not removing it!
+			//m.del(domain + ":meta");
+			//m.del(domain + ":content");
+			//m.del(domain);
 
 			m.zrem("user:" + sender + ":posts", postid);
 			m.zrem("user:" + sender + ":newPosts", postid);
@@ -126,7 +197,7 @@ var Post = function (postid) {
 				m.zrem("user:" + walluser + ":wall", postid);
 			}
 
-			//remove comments when added!
+			//TODO: remove comments when added!
 
 			m.exec(this);
 		}), cb);
@@ -271,6 +342,26 @@ function accessablePostFilter(request) {
 	};
 }
 
+function makePost(request, id) {
+	var post = new Post(id);
+
+	var socketData = request.socketData;
+	post.listen(socketData, "comment:create", function (channel, data, postID) {
+		step(function () {
+			var p = new Post(postID);
+			p.getComment(data, this);
+		}, h.sF(function (comment) {
+			socketData.socket.emit("post." + postID + ".comment.new", comment);
+		}), function (e) {
+			if (e) {
+				console.error(e);
+			}
+		});
+	});
+
+	return post;
+}
+
 Post.getTimeline = function (request, filter, afterID, count, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
@@ -302,7 +393,9 @@ Post.getTimeline = function (request, filter, afterID, count, cb) {
 			paginator.getRangeAfterID(afterID, this, accessablePostFilter(request));
 		}		
 	}), h.sF(function (ids, remaining) {
-		var result = ids.map(h.newElement(Post));
+		var result = ids.map(function (id) {
+			return makePost(request, id);
+		});
 		this.ne(result, remaining);
 	}), cb);
 };
@@ -452,7 +545,7 @@ Post.create = function (request, data, cb) {
 	}
 	*/
 
-	var postID;
+	var postID, wallUserObj;
 
 	step(function () {
 		if (data.meta.sender !== request.session.getUserID()) {
@@ -494,13 +587,13 @@ Post.create = function (request, data, cb) {
 
 		multi.exec(this);
 	}), h.sF(function () {
-		if (data.meta.walluserObj) {
-			mailer.sendInteractionMails([data.meta.walluserObj]);
+		if (wallUserObj) {
+			mailer.sendInteractionMails([wallUserObj]);
 		}
 		//TODO: notify wall user and mentioned users.
 
 		//collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrangebyscore)
-		this.ne(new Post(postID));
+		this.ne(makePost(request, postID));
 	}), cb);
 };
 
@@ -511,10 +604,10 @@ Post.get = function (request, postid, cb) {
 		if (h.isInt(postid)) {
 			client.get("post:" + postid, this);
 		} else {
-			throw new AccessViolation();
+			throw new AccessViolation("invalid post id");
 		}
 	}, h.sF(function (id) {
-		thePost = new Post(id);
+		thePost = makePost(request, id);
 
 		thePost.throwUserAccess(request, this);
 	}), h.sF(function () {

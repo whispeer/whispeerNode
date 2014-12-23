@@ -71,7 +71,7 @@ SortedSetPaginator.prototype.getFilteredRangeAfterIndex = function (start, filte
 
 	function addBatch() {
 		step(function () {
-			thePaginator.getRange(start + loops * thePaginator._count, this);
+			thePaginator.getRange(start + loops * (thePaginator._count + 1), this);
 		}, h.sF(function (result) {
 			end = result.length < thePaginator._count;
 

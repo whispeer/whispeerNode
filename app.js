@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /*process.on("uncaughtException", function (err) {
     console.error("An uncaughtException was found, the program will end.");
     //hopefully do some logging.
@@ -12,6 +14,8 @@
 var fs = require("fs");
 var configManager = require("./includes/configManager");
 var config = configManager.get();
+
+var setup = require("./includes/setup");
 
 var options = {};
 
@@ -34,8 +38,7 @@ var client = require("./includes/redisClient");
 var onSocketConnection = require("./onSocketConnection");
 
 step(function () {
-	console.log("Database selected: " + config.dbNumber || 0);
-	client.select(config.dbNumber || 0, this);
+	setup(this);
 }, h.sF(function () {
 	client.smembers("user:online", this);
 }), h.sF(function (onlineUsers) {

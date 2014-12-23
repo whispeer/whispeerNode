@@ -9,6 +9,10 @@ var Topic = require("../includes/topic.js");
 
 var User = require("../includes/user");
 
+var mailer = require("../includes/mailer");
+
+var errorService = require("../includes/errorService");
+
 function makeSearchUserData(request, cb, ids, known) {
 	var remaining;
 	step(function () {
@@ -87,6 +91,15 @@ var u = {
 			makeSearchUserData(request, this, ids, data.known);
 		}), fn);
 	},
+	backupKey: function (data, fn, request) {
+		step(function () {
+			request.session.getOwnUser(this);
+		}, h.sF(function (ownUser) {
+			ownUser.addBackupKey(request, data.decryptors, data.innerKey, this);
+		}), h.sF(function () {
+			this.ne({});
+		}), fn);
+	},
 	getMultiple: function getAllF(data, fn, request) {
 		step(function () {
 			if (data && data.identifiers) {
@@ -99,12 +112,14 @@ var u = {
 			}
 		}, h.hE(function (e, theUsers) {
 			if (e) {
+				errorService.handleError(e, request);
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
 				var i;
 				for (i = 0; i < theUsers.length; i += 1) {
 					if (theUsers[i] instanceof UserNotExisting) {
+						errorService.handleError(theUsers[i]);
 						this.parallel()({userNotExisting: true});
 					} else {
 						theUsers[i].getUData(request, this.parallel());
@@ -149,6 +164,19 @@ var u = {
 			this.ne({
 				success: true
 			});
+		}), fn);
+	},
+	mailChange: function (data, fn, request) {
+		var ownUser;
+		step(function () {
+			request.session.getOwnUser(this);
+		}, h.sF(function (_ownUser) {
+			ownUser = _ownUser;
+			ownUser.setMail(request, data.mail, this);
+		}), h.sF(function () {
+			mailer.sendAcceptMail(ownUser, this);
+		}), h.sF(function () {
+			this.ne({});
 		}), fn);
 	},
 	own: function getOwnDataF(data, fn, request) {

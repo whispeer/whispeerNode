@@ -18,6 +18,8 @@ var SESSIONKEYLENGTH = 30;
 /** recheck online status every 10 seconds */
 var CHECKTIME = 10 * 1000;
 
+var errorService = require("./errorService");
+
 /** get a random sid of given length 
 * @param length length of sid
 * @param callback callback
@@ -267,7 +269,7 @@ var Session = function Session() {
 		}), cb);
 	};
 
-	var registerSymKeys = ["main", "friends", "friendsLevel2", "profile"];
+	var registerSymKeys = ["main", "friends", "profile"];
 	var registerEccKeys = ["sign", "crypt"];
 	var keyName = registerSymKeys.concat(registerEccKeys);
 
@@ -299,11 +301,21 @@ var Session = function Session() {
 				invalidPassword: false,
 				nicknameInvalid: false,
 				mailInvalid: false,
-				settingsInvalid: false
+				settingsInvalid: false,
+				invalidmainKey: false,
+				invalidprofileKey: false,
+				invalidsignKey: false,
+				invalidcryptKey: false
 			}
 		};
 
-		function regErr(code) {
+		function regErr(code, data) {
+			errorService.handleError({
+				type: "register error",
+				code: code,
+				data: data
+			}, request);
+
 			if (result.errorCodes[code] !== undefined) {
 				result.errorCodes[code] = true;
 			} else {
@@ -346,7 +358,7 @@ var Session = function Session() {
 				var i;
 				for (i = 0; i < res.length; i += 1) {
 					if (!res[i]) {
-						regErr("invalid" + keyName[i] + "Key");
+						regErr("invalid" + keyName[i] + "Key", keys);
 					}
 				}
 
@@ -373,7 +385,7 @@ var Session = function Session() {
 				regErr("invalidIdentifier");
 			}
 
-			if (!h.isPassword(password)) {
+			if (!h.isPassword(password.hash) && h.isHex(password.salt) && password.salt.length === 16) {
 				regErr("invalidPassword");
 			}
 
@@ -422,7 +434,8 @@ var Session = function Session() {
 					myUser.setNickname(request, nickname, this.parallel());
 				}
 
-				myUser.setPassword(request, password, this.parallel());
+				myUser.setPassword(request, password.hash, this.parallel());
+				myUser.setSalt(request, password.salt, this.parallel());
 			}
 		}), h.sF(function userCreation() {
 			myUser.save(request, this);
@@ -437,13 +450,14 @@ var Session = function Session() {
 
 			myUser.setMainKey(request, keys.main, this.parallel());
 			myUser.setFriendsKey(request, keys.friends, this.parallel());
-			myUser.setFriendsLevel2Key(request, keys.friendsLevel2, this.parallel());
 			myUser.setCryptKey(request, keys.crypt, this.parallel());
 			myUser.setSignKey(request, keys.sign, this.parallel());
 			myUser.setSignedKeys(request, signedKeys, this.parallel());
 			myUser.setSignedOwnKeys(request, signedOwnKeys, this.parallel());
 			settingsService.setOwnSettings(request, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
+			client.zadd("user:registered", new Date().getTime(), myUser.getID(), this);
+		}), h.sF(function () {
 			this.ne(mySid);
 		}), cb);
 	};
@@ -467,16 +481,16 @@ var Session = function Session() {
 			var sessionUserID = session.getUserID();
 			if (typeof user === "object") {
 				if (sessionUserID !== user.getID()) {
-					throw new AccessViolation();
+					throw new AccessViolation("not own user " + sessionUserID + " - " + user.getID());
 				}
 			} else if (typeof user === "string") {
 				if (sessionUserID !== h.parseDecimal(user)) {
 					console.log(session.getUserID() + "-" + parseInt(user, 10));
-					throw new AccessViolation();
+					throw new AccessViolation("not own user " + sessionUserID + " - " + h.parseDecimal(user));
 				}
 			} else if (typeof user === "number") {
 				if (sessionUserID !== user) {
-					throw new AccessViolation();
+					throw new AccessViolation("not own user " + sessionUserID + " - " + user);
 				}
 			} else {
 				throw new AccessViolation();

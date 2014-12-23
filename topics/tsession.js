@@ -4,6 +4,8 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var mailer = require("../includes/mailer");
+var invites = require("../includes/invites");
+var errorService = require("../includes/errorService");
 
 var s = {
 	logout: function logoutF(data, fn, request) {
@@ -13,7 +15,7 @@ var s = {
 			}
 		}, fn);
 	},
-	token: function getToken(data, fn) {
+	token: function getToken(data, fn, request) {
 		step(function () {
 			if (data && data.identifier) {
 				var User = require("../includes/user");
@@ -23,14 +25,17 @@ var s = {
 			}
 		}, h.hE(function (e, myUser) {
 			if (e) {
+				errorService.handleError(e, request);
 				fn.error({userNotExisting: true});
 				this.last.ne();
 			} else {
-				myUser.generateToken(this);
+				this.parallel.unflatten();
+				myUser.generateToken(this.parallel());
+				myUser.getSalt(request, this.parallel());
 			}
-		}, UserNotExisting), h.sF(function (token) {
+		}, UserNotExisting), h.sF(function (token, salt) {
 			if (token !== false) {
-				this.last.ne({token: token});
+				this.last.ne({token: token, salt: salt});
 			} else {
 				fn.error();
 				this.last.ne();
@@ -40,8 +45,14 @@ var s = {
 	register: function (data, fn, request) {
 		var res, myUser;
 		step(function () {
+			invites.checkCode(data.inviteCode, this);
+		}, h.sF(function (valid) {
+			if (!valid) {
+				throw new Error("invalid invite code! Oo");
+			}
+
 			request.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, data.signedKeys, data.signedOwnKeys, request, this);
-		}, h.sF(function (result) {
+		}), h.sF(function (result) {
 			res = result;
 			if (result.error) {
 				this.last.ne(res);
@@ -68,6 +79,8 @@ var s = {
 
 			mailer.sendAcceptMail(myUser, this);
 		}), h.sF(function () {
+			invites.useCode(data.inviteCode, this);
+		}), h.sF(function () {
 			this.ne(res);
 		}), fn);
 	},
@@ -84,5 +97,11 @@ var s = {
 		}), fn);
 	}
 };
+
+s.logout.noLoginNeeded = true;
+s.token.noLoginNeeded = true;
+s.register.noLoginNeeded = true;
+s.login.noLoginNeeded = true;
+
 
 module.exports = s;

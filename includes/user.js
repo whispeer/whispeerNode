@@ -15,9 +15,9 @@ var search = require("./search");
 var EccKey = require("./crypto/eccKey");
 var SymKey = require("./crypto/symKey");
 
-var RedisObserver = require("./asset/redisObserver");
+var KeyApi = require("./crypto/KeyApi");
 
-var UPDATESEARCHON = ["profile", "nickname"];
+var RedisObserver = require("./asset/redisObserver");
 
 function logedinF(data, cb) {
 	step(function () {
@@ -136,7 +136,7 @@ var validKeys = {
 	},
 	password: {
 		read: trueF,
-		match: /^[A-Fa-f0-9]{10}$/,
+		match: /^[A-Fa-f0-9]{64}$/,
 		pre: ownUserF
 	},
 	signedKeys: {
@@ -159,11 +159,6 @@ var validKeys = {
 		transform: keyToRealID
 	},
 	friendsKey: {
-		read: hasFriendKeyAccess,
-		pre: checkKeyExists(SymKey),
-		transform: keyToRealID
-	},
-	friendsLevel2Key: {
 		read: hasFriendKeyAccess,
 		pre: checkKeyExists(SymKey),
 		transform: keyToRealID
@@ -276,10 +271,8 @@ var User = function (id) {
 	var databaseUser = new SaveAbleEntity(validKeys, this, userDomain);
 
 	databaseUser.on("afterSavedHook", updateSearch);
-	databaseUser.on("setAttribute", function (request, field) {
-		if (UPDATESEARCHON.indexOf(field.attr) > -1) {
-			updateSearch(request);
-		}
+	databaseUser.on("setAttribute", function (request) {
+		updateSearch(request);
 	});
 
 	function getAttribute(request, attr, cb, fullHash) {
@@ -304,8 +297,8 @@ var User = function (id) {
 		});
 	}
 
-	createAccessors(["password", "nickname", "migrationState", "email",
-					"mainKey", "cryptKey", "signKey", "friendsKey", "friendsLevel2Key", "signedOwnKeys"]);
+	createAccessors(["password", "salt", "nickname", "migrationState", "email",
+					"mainKey", "cryptKey", "signKey", "friendsKey", "signedOwnKeys"]);
 
 	function deleteUser(cb) {
 		//TODO: think about nickname, mail (unique values)
@@ -369,11 +362,12 @@ var User = function (id) {
 			this.parallel.unflatten();
 
 			theUser.getNickname(request, this.parallel());
-			getAttribute(request, "profile:basic", this.parallel());
-		}, h.sF(function (nickname, basicProfile) {
+			theUser.getPublicProfile(request, this.parallel());
+		}, h.sF(function (nickname, profile) {
 			var res = [], name;
-			if (basicProfile) {
-				basicProfile = JSON.parse(basicProfile);
+			if (profile && profile.content && profile.content.basic)  {
+				var basicProfile = profile.content.basic;
+
 				if (basicProfile.firstname) {
 					res.push(basicProfile.firstname);
 				}
@@ -471,7 +465,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
-			client.hget("friends:" + request.session.getUserID() + ":" + id + ":meta", "friendShipKey", this);
+			client.hget("friends:" + request.session.getUserID() + ":signedList", id, this);
 		}), cb);
 	};
 
@@ -479,7 +473,7 @@ var User = function (id) {
 		step(function getFSKF() {
 			request.session.logedinError(this);
 		}, h.sF(function () {
-			client.hget("friends:" + id + ":" + request.session.getUserID() + ":meta", "friendShipKey", this);
+			client.hget("friends:" + id + ":signedList", request.session.getUserID(), this);
 		}), cb);
 	};
 
@@ -490,6 +484,10 @@ var User = function (id) {
 			}, this);
 		}, h.sF(function (keys) {
 			keys.forEach(function (key) {
+				if (key === null) {
+					throw new Error("key id should not be null for " + arr.join(",") + " - " + id);
+				}
+
 				request.addKey(key, this.parallel());
 			}, this);
 		}), cb);
@@ -502,17 +500,15 @@ var User = function (id) {
 			theUser.getFriendShipKey(request, this.parallel());
 			theUser.getReverseFriendShipKey(request, this.parallel());
 		}, h.sF(function (friendShipKey, reverseFriendShipKey) {
-			var result = {};
-
 			if (friendShipKey) {
-				request.addKey(friendShipKey, this);
+				request.addKey(friendShipKey, this.parallel());
 			}
 
 			if (reverseFriendShipKey) {
-				request.addKey(reverseFriendShipKey, this);
+				request.addKey(reverseFriendShipKey, this.parallel());
 			}
 
-			this.ne(result);
+			this.parallel()();
 		}), cb);
 	};
 
@@ -521,12 +517,12 @@ var User = function (id) {
 		addArrayKeys(request, ownKeys, cb);
 	};
 
-	var publicKeys = ["cryptKey", "signKey"];
+	var publicKeys = ["signKey"];
 	this.addPublicKeys = function (request, cb) {
 		addArrayKeys(request, publicKeys, cb);
 	};
 
-	var friendsKeys = ["friendsKey", "friendsLevel2Key"];
+	var friendsKeys = ["friendsKey"];
 	this.addFriendsKeys = function (request, cb) {
 		addArrayKeys(request, friendsKeys, cb);
 	};
@@ -582,6 +578,11 @@ var User = function (id) {
 				this.ne();
 			}
 		}), cb);
+	};
+
+	this.check = function (errors, cb) {
+		var friends = require("./friends");
+		friends.checkSignedList(errors, this.getID(), cb);
 	};
 
 	function getProfiles(request, cb) {
@@ -713,13 +714,35 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.addBackupKey = function (request, decryptors, key, cb) {
+		var backupKey;
+		step(function () {
+			request.session.ownUserError(theUser, this);
+		}, h.sF(function () {
+			//get main key!
+			this.parallel.unflatten();
+			theUser.getMainKey(request, this.parallel());
+			SymKey.createWDecryptors(request, key, this.parallel());
+		}), h.sF(function (mainKey, _backupKey) {
+			backupKey = _backupKey;
+			KeyApi.get(mainKey, this);
+		}), h.sF(function (mainKey) {
+			mainKey.addDecryptors(request, decryptors, this);
+		}), h.sF(function () {
+			client.sadd(userDomain + ":backupKeys", backupKey.getRealID(), this);
+		}), cb);
+	};
+
 	RedisObserver.call(this, "user", id);
 };
 
 User.search = function (text, cb) {
 	step(function () {
 		this.parallel.unflatten();
-		search.user.type("and").query(text, this.parallel());
+		if (text.length > 2) {
+			search.user.type("and").query(text, this.parallel());
+		}
+		this.parallel()(null, []);
 		User.getUser(text, this.parallel(), true);
 	}, h.sF(function (ids, user) {
 		ids = ids.map(h.parseDecimal);
@@ -752,6 +775,28 @@ User.checkUserIDs = function (ids, cb) {
 		});
 
 		this.ne();
+	}), cb);
+};
+
+User.all = function (cb) {
+	step(function () {
+		client.smembers("user:list", this);
+	}, h.sF(function (uids) {
+		uids.forEach(function (uid) {
+			User.getUser(uid, this.parallel());
+		}, this);
+	}), cb);
+};
+
+User.check = function (errors, cb) {
+	step(function () {
+		User.all(this);
+	}, h.sF(function (users) {
+		users.forEach(function (user) {
+			user.check(errors, this.parallel());
+		}, this);
+
+		this.parallel()();
 	}), cb);
 };
 

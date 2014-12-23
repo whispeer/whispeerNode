@@ -4,6 +4,7 @@
   "dependencies": {
     "amanda": "0.4.x",
     "base64stream": "0.1.1",
+    "cheerio": "^0.18.0",
     "express": "3.x",
     "helmet": "0.1.x",
     "nodemailer": "0.6.x",
@@ -12,7 +13,7 @@
     "secure_random": "0.1.x",
     "socket.io": "^1.1.0",
     "socket.io-stream": "0.5.x",
-    "step": "git+ssh://git@whispeer.de:4351/whispeerStep#master",
+    "step": "git+ssh://git@ovt.me:4351/whispeerStep#master",
     "xtend": "2.0.x"
   },
   "devDependencies": {

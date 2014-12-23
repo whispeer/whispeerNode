@@ -5,6 +5,8 @@ var client = require("../redisClient");
 var h = require("whispeerHelper");
 var Key = require("./Key");
 
+var Decryptor = require("./decryptor");
+
 var EccKey = function (keyRealID) {
 	if (!h.isRealID(keyRealID)) {
 		throw new InvalidRealID();
@@ -26,15 +28,15 @@ EccKey.prototype.isEccKey = function () {
 };
 
 EccKey.prototype.getCurve = function getCurveF(cb) {
-	this._getAttribute(":curve", cb);
+	this._getAttribute("curve", cb);
 };
 
 EccKey.prototype.getPointX = function getPointXF(cb) {
-	this._getAttribute(":point:x", cb);
+	this._getAttribute("x", cb);
 };
 
 EccKey.prototype.getPointY = function getPointYF(cb) {
-	this._getAttribute(":point:y", cb);
+	this._getAttribute("y", cb);
 };
 
 EccKey.prototype.getPoint = function getPointF(cb) {
@@ -67,54 +69,59 @@ EccKey.prototype.getKData = function getKDataF(request, cb, wDecryptors) {
 	}), cb);
 };
 
-function validate(data, cb) {
-	step(function () {
-		if (!h.isRealID(data.realid)) {
-			this.ne(new InvalidRealID());
-		}
+function validateFormat(data) {
+	if (!h.isRealID(data.realid)) {
+		return new InvalidRealID();
+	}
 
-		if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve)) {
-			this.ne(new InvalidEccKey("Missing data"));
-		}
+	if (!data || !data.curve || !data.point || !data.point.x || !data.point.y || !h.isHex(data.point.x) || !h.isHex(data.point.y) || !h.isCurve(data.curve)) {
+		return new InvalidEccKey("Missing data");
+	}
 
-		if (data.type !== "sign" && data.type !== "crypt") {
-			this.ne(new InvalidEccKey("wrong type"));
-		}
+	if (data.type !== "sign" && data.type !== "crypt") {
+		return new InvalidEccKey("wrong type");
+	}
 
-		this.ne();
-	}, cb);
+	if (data.decryptors) {
+		try {
+			data.decryptors.forEach(function (decryptor) {
+				Decryptor.validateFormat(decryptor);
+			});
+		} catch (e) {
+			return e;
+		}
+	}
 }
 
 EccKey.validate = function validateF(data, cb) {
-	step(function () {
-		validate(data, this);
-	}, h.sF(function (e) {
-		this(e);
-	}), cb);
+	var err = validateFormat(data);
+	if (err) {
+		throw err;
+	} else {
+		cb();
+	}
 };
 
 EccKey.validateNoThrow = function validateF(data, cb) {
 	step(function () {
-		validate(data, this);
-	}, h.sF(function (e) {
-		if (e) {
+		if (validateFormat(data)) {
 			this.ne(false);
 		} else {
 			this.ne(true);
 		}
-	}), cb);
+	}, cb);
 };
 
 /** get all decryptors for a certain key id */
 EccKey.get = function getF(keyRealID, cb) {
 	step(function () {
 		if (h.isRealID(keyRealID)) {
-			client.get("key:" + keyRealID, this);
+			client.hget("key:" + keyRealID, "type", this);
 		} else {
 			throw new InvalidRealID(keyRealID);
 		}
-	}, h.sF(function (keyData) {
-		if (keyData === "ecckey") {
+	}, h.sF(function (type) {
+		if (type === "crypt" || type === "sign") {
 			this.ne(new EccKey(keyRealID));
 		} else {
 			throw new NotAEccKey();
@@ -143,18 +150,20 @@ EccKey.create = function (request, data, cb) {
 		keyRealID = data.realid;
 		domain = "key:" + keyRealID;
 
-		client.setnx(domain, "ecckey", this);
+		client.setnx(domain + ":used", "1", this);
 	}), h.sF(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
-		client.set(domain + ":curve", data.curve, this.parallel());
-		client.set(domain + ":point:x", data.point.x, this.parallel());
-		client.set(domain + ":point:y", data.point.y, this.parallel());
-		client.set(domain + ":type", data.type, this.parallel());
-		client.set(domain + ":owner", request.session.getUserID(), this.parallel());
-		client.set(domain + ":comment", data.comment || "", this.parallel());
+		client.hmset(domain, {
+			curve: data.curve,
+			x: data.point.x,
+			y: data.point.y,
+			type: data.type,
+			owner: request.session.getUserID(),
+			comment: data.comment || ""
+		}, this);
 	}), h.sF(function () {
 		theKey = new EccKey(keyRealID);
 		if (data.decryptors) {

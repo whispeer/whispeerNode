@@ -67,6 +67,8 @@ global.InvalidEccKey = addError("invalid elliptic curve key", true);
 
 global.InvalidKey = addError("invalid key", true);
 
+global.KeyNotFound = addError("key not found", true);
+
 global.InvalidHexError = addError("invalid hex", true);
 
 /** end crypto part */

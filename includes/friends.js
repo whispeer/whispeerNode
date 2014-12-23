@@ -10,6 +10,8 @@ var search = require("./search");
 var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
+var errorService = require("./errorService");
+
 /*
 	Friends: {
 
@@ -91,28 +93,43 @@ function getUserOnlineFriendsStatus(uid, cb) {
 	}), cb);
 }
 
-function createAcceptSpecificData(request, friendShip, multi, cb) {
+function setSignedList(request, m, signedList, add, remove, cb) {
+	var ownID = request.session.getUserID();
+
 	step(function () {
-		friendShip.user.getFriendsLevel2Key(request, this);
-	}, h.sF(function (otherFriendsLevel2Key) {
-		KeyApi.get(otherFriendsLevel2Key, this);
-	}), h.sF(function (otherFriendsLevel2Key) {
-		var ownID = request.session.getUserID(),
-			uid = friendShip.user.getID(),
-			decryptors = friendShip.decryptors;
+		client.hgetall("friends:" + ownID + ":signedList", this);
+	}, h.sF(function (oldSignedList) {
+		oldSignedList = oldSignedList || {};
 
-		friendShip.keys.otherFriendsLevel2 = otherFriendsLevel2Key;
+		var oldUids = Object.keys(oldSignedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
+		var newUids = Object.keys(signedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
 
-		multi.sadd("friends:" + uid, ownID);
-		multi.sadd("friends:" + ownID, uid);
-		multi.srem("friends:" + ownID + ":requests", uid);
-		multi.srem("friends:" + uid + ":requested", ownID);
+		var shouldBeRemoved = h.arraySubtract(oldUids, newUids);
+		var shouldBeAdded = h.arraySubtract(newUids, oldUids);
 
-		friendShip.decryptors.friendsLevel2 = decryptors[friendShip.keys.friendsLevel2.getRealID()][0];
-		friendShip.decryptors.otherFriendsLevel2 = decryptors[otherFriendsLevel2Key.getRealID()][0];
+		if (!h.arrayEqual(remove, shouldBeRemoved)) {
+			throw new Error("signedList update error");
+		}
 
-		Decryptor.validateFormat(friendShip.decryptors.friendsLevel2);
-		Decryptor.validateFormat(friendShip.decryptors.otherFriendsLevel2);
+		if (!h.arrayEqual(add, shouldBeAdded)) {
+			throw new Error("signedList update error");
+		}
+
+		//TODO: get all signed list keys!
+
+		//update signedList
+		m.del("friends:" + ownID + ":signedList");
+		m.hmset("friends:" + ownID + ":signedList", signedList);
+
+		this.ne();
+	}), cb);
+}
+
+function notifySignedListUpdate(request, signedList, cb) {
+	step(function () {
+		request.session.getOwnUser(this);
+	}, h.sF(function (ownUser) {
+		ownUser.notify("signedList", signedList);
 
 		this.ne();
 	}), cb);
@@ -218,17 +235,145 @@ var friends = {
 			this.parallel.unflatten();
 
 			ownUser.getFriendsKey(request, this.parallel());
-			ownUser.getFriendsLevel2Key(request, this.parallel());
-		}), h.sF(function (friendsKey, friendsLevel2Key) {
+		}), h.sF(function (friendsKey) {
 			this.parallel.unflatten();
 
 			KeyApi.get(friendsKey, this.parallel());
-			KeyApi.get(friendsLevel2Key, this.parallel());
-		}), h.sF(function (friendsKey, friendsLevel2Key) {
+		}), h.sF(function (friendsKey) {
 			this.ne({
-				friends: friendsKey,
-				friendsLevel2: friendsLevel2Key
+				friends: friendsKey
 			});
+		}), cb);
+	},
+	/** remove a friend
+	* @param request
+	* @param uid uid of friend to remove
+	* @param signedList list of my friends after removal of user uid
+	* @param signedRemove signed removal request
+	* @param cb
+	*/
+	remove: function (request, uid, signedList, signedRemove, cb) {
+		//TODO: maybe invalidate other users friendShipKey? maybe just remove it?
+		var m = client.multi(), ownID = request.session.getUserID();
+		uid = h.parseDecimal(uid);
+
+		step(function () {
+			this.parallel.unflatten();
+			client.sismember("friends:" + uid, ownID, this.parallel());
+			client.sismember("friends:" + ownID, uid, this.parallel());
+			client.sismember("friends:" + ownID + ":unfriended" , uid, this.parallel());
+		}, h.sF(function (friends, friend2, unfriended) {
+			if (friends !== friend2 || friends && unfriended) {
+				throw new Error("data error ... this is not good!");
+			}
+
+			if (!friends && !unfriended) {
+				this.last.ne(false);
+				return;
+			}
+
+			if (friends) {
+				/* remove from both friends list */
+				m.srem("friends:" + uid, ownID);
+				m.srem("friends:" + ownID, uid);
+
+				/* save signed unfriending and add to unfriended list */
+				m.sadd("friends:" + uid + ":unfriended", ownID);
+				m.hmset("friends:" + ownID + ":" + uid + ":unfriending", signedRemove);
+			} else {
+				//remove unfriending "request"
+				m.srem("friends:" + ownID + ":unfriended", uid);
+				m.del("friends:" + uid + ":" + ownID + ":unfriending");
+			}
+
+			/* remove friendship detail data for myself */
+			m.del("friends:" + ownID + ":" + uid);
+
+			setSignedList(request, m, signedList, [], [uid], this);
+		}), h.sF(function () {
+			client.hget("friends:" + ownID + ":signedList", uid, this);
+		}), h.sF(function (friendShipKey) {
+			KeyApi.get(friendShipKey, this);
+		}), h.hE(function (e, friendShipKey) {
+			if (e) {
+				this.ne();
+			} else {
+				//remove: friendShipKey from ownid for uid
+				friendShipKey.remove(m, this);
+			}
+		}, KeyNotFound), h.sF(function () {
+			m.exec(this);
+		}), h.sF(function () {
+			notifySignedListUpdate(request, signedList, this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
+	},
+	ignoreRequest: function (request, uid, cb) {
+		var m = client.multi(), ownID = request.session.getUserID();
+		uid = h.parseDecimal(uid);
+
+		step(function () {
+			client.sismember("friends:" + ownID + ":requests", uid, this);
+		}, h.sF(function (request) {
+			if (!request) {
+				this.last.ne(false);
+				return;
+			}
+
+			m.srem("friends:" + ownID + ":requests", uid);
+			m.sadd("friends:" + ownID + ":ignored", uid);
+
+			m.exec(this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
+	},
+	declineRequest: function (request, uid, signedRemove, cb) {
+		var m = client.multi(), ownID = request.session.getUserID();
+		uid = h.parseDecimal(uid);
+
+		//move a friend request to the ignore list
+		step(function () {
+			client.sismember("friends:" + ownID + ":requests", uid, this);
+		}, h.sF(function (request) {
+			if (!request) {
+				this.last.ne(false);
+				return;
+			}
+
+			/* remove from request lists */
+			m.srem("friends:" + ownID + ":requests", uid);
+			m.srem("friends:" + uid + ":requested", ownID);
+
+			/* save signed unfriending and add to unfriended list */
+			m.sadd("friends:" + uid + ":unfriended", ownID);
+			m.hmset("friends:" + ownID + ":" + uid + ":unfriending", signedRemove);
+
+			client.hget("friends:" + uid + ":signedList", ownID, this);
+		}), h.sF(function (friendShipKey) {
+			KeyApi.get(friendShipKey, this);
+		}), h.sF(function (friendShipKey) {
+			//remove: friendShipKey from uid for ownid
+			friendShipKey.remove(m, this);
+		}), h.sF(function () {
+			m.exec(this);
+		}), h.sF(function () {
+			this.ne(true);
+		}), cb);
+	},
+	getSignedData: function (request, uid, cb) {
+		step(function () {
+			var ownID = request.session.getUserID();
+			this.parallel.unflatten();
+			client.hgetall("friends:" + uid + ":" + ownID, this.parallel());
+			client.hgetall("friends:" + uid + ":" + ownID + ":unfriending", this.parallel());
+		}, h.sF(function (signed1, signed2) {
+			if (signed1 && signed2) {
+				throw new Error("invalid data in database");
+			}
+
+			this.ne(signed1 || signed2);
 		}), cb);
 	},
 	add: function (request, meta, signedList, key, decryptors, cb) {
@@ -240,7 +385,7 @@ var friends = {
 		var domain = "friends:" + request.session.getUserID();
 
 		step(function getUser() {
-			User.getUser(meta.friend, this);
+			User.getUser(meta.user, this);
 		}, h.sF(function checkAlreadyRequested(toAdd) {
 			var uid = toAdd.getID();
 
@@ -260,11 +405,12 @@ var friends = {
 			friendShip.keys = keys;
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 
-			//TODO: get friends and requests list. check that they are equal to the signed list content.
 			//TODO: check meta format
 
-			client.sismember("friends:" + request.session.getUserID() + ":requests", friendShip.user.getID(), this);
-		}), h.sF(function createData(hasOtherRequested) {
+			this.parallel.unflatten();
+			client.sismember(domain + ":requests", friendShip.user.getID(), this.parallel());
+			client.sismember("friends:" + friendShip.user.getID() + ":unfriended", request.session.getUserID(), this.parallel());
+		}), h.sF(function createData(hasOtherRequested, revertRemoval) {
 			firstRequest = !hasOtherRequested;
 
 			Decryptor.validateFormat(friendShip.decryptors.friends);
@@ -272,47 +418,43 @@ var friends = {
 			m = client.multi();
 
 			m.hmset(domain + ":" + friendShip.user.getID(), meta);
-			m.hmset(domain + ":signedList", signedList);
 
-			if (hasOtherRequested) {
-				createAcceptSpecificData(request, friendShip, m, this);
+			var ownID = request.session.getUserID(),
+				uid = friendShip.user.getID();
+
+			if (revertRemoval) {
+				m.sadd("friends:" + uid, ownID);
+				m.sadd("friends:" + ownID, uid);
+
+				m.del("friends:" + ownID + ":" + uid + ":unfriending");
+				m.srem("friends:" + uid + ":unfriended", ownID);
+			} else if (hasOtherRequested) {
+				m.sadd("friends:" + uid, ownID);
+				m.sadd("friends:" + ownID, uid);
+				m.srem("friends:" + ownID + ":requests", uid);
+				m.srem("friends:" + uid + ":requested", ownID);
 			} else {
-				m.sadd(domain + ":requested", friendShip.user.getID());
-				m.sadd("friends:" + friendShip.user.getID() + ":requests", request.session.getUserID());
-				this.ne();
+				m.sadd(domain + ":requested", uid);
+				m.sadd("friends:" + uid + ":requests", ownID);
 			}
-		}), h.sF(function createSymKey() {
+
+			if (key.realid !== signedList[friendShip.user.getID()]) {
+				throw new Error("key realid does not match signedList!");
+			}
+
+			setSignedList(request, m, signedList, [uid], [], this);
+		}), h.sF(function () {
 			SymKey.createWDecryptors(request, key, this);
 		}), h.sF(function keyCreated() {
-			this.parallel.unflatten();
-
-			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this.parallel());
-
-			if (!firstRequest) {
-				Decryptor.validateNoThrow(request, friendShip.decryptors.friendsLevel2, friendShip.keys.friendsLevel2, this.parallel());
-				Decryptor.validateNoThrow(request, friendShip.decryptors.otherFriendsLevel2, friendShip.keys.otherFriendsLevel2, this.parallel());
-			}
-		}), h.sF(function (valid1, valid2, valid3) {
-			var validLevel2 = valid2 && valid3;
-
-			//TODO: remove key;
-
-			if (!firstRequest && !validLevel2) {
-				this.last.ne(false);
-				return;
-			}
-
-			if (!valid1) {
+			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this);
+		}), h.sF(function (valid) {
+			if (!valid) {
 				throw new InvalidDecryptor();
 			}
 
 			m.exec(this.parallel());
 
 			friendShip.keys.friends.addDecryptor(request, friendShip.decryptors.friends, this.parallel());
-			if (!firstRequest) {
-				friendShip.keys.friendsLevel2.addDecryptor(request, friendShip.decryptors.friendsLevel2, this.parallel());
-				friendShip.keys.otherFriendsLevel2.addDecryptor(request, friendShip.decryptors.otherFriendsLevel2, this.parallel());
-			}
 		}), h.sF(function addFriendsName() {
 			addFriendName(request, friendShip.user);
 			if (firstRequest) {
@@ -321,7 +463,9 @@ var friends = {
 				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
 
-			this.ne(true);
+			notifySignedListUpdate(request, signedList, this);
+		}), h.sF(function () {
+			this.ne(!firstRequest);
 		}), cb);
 	},
 	myMutual: function (request, uid, cb) {
@@ -364,17 +508,105 @@ var friends = {
 		client.hgetall("friends:" + request.session.getUserID() + ":signedList", cb);
 	},
 	getRequests: function (request, cb) {
-		step(function () {
-			client.smembers("friends:" + request.session.getUserID() + ":requests", this);
-		}, h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
+		client.smembers("friends:" + request.session.getUserID() + ":requests", cb);
+	},
+	getIgnored: function (request, cb) {
+		client.smembers("friends:" + request.session.getUserID() + ":ignored", cb);
+	},
+	getRemoved: function (request, cb) {
+		client.smembers("friends:" + request.session.getUserID() + ":unfriended", cb);
 	},
 	getRequested: function (request, cb) {
 		step(function () {
 			client.smembers("friends:" + request.session.getUserID() + ":requested", this);
 		}, h.sF(function (ids) {
 			this.ne(ids);
+		}), cb);
+	},
+	checkFriendShip: function (errors, uid, friendID, cb) {
+		step(function () {
+			this.parallel.unflatten();
+
+			client.sismember("friends:" + uid + ":requests", friendID, this.parallel());
+			client.sismember("friends:" + uid + ":requested", friendID, this.parallel());
+			client.sismember("friends:" + uid, friendID, this.parallel());
+			client.sismember("friends:" + uid + ":unfriended", friendID, this.parallel());
+			client.sismember("friends:" + uid + ":ignored", friendID, this.parallel());
+
+			client.sismember("friends:" + friendID + ":requests", uid, this.parallel());
+			client.sismember("friends:" + friendID + ":requested", uid, this.parallel());
+			client.sismember("friends:" + friendID, uid, this.parallel());
+			client.sismember("friends:" + friendID + ":unfriended", uid, this.parallel());
+			client.sismember("friends:" + friendID + ":ignored", uid, this.parallel());
+		}, h.sF(function (requests1, requested1, friend1, unfriended1, ignored1, requests2, requested2, friend2, unfriended2, ignored2) {
+			if (requests1 && !requested2 && !ignored2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " request but not requested");
+			} else if (requested1 && !requests2 && !ignored2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " requested but no request");
+			} else if (friend1 && !friend2 && !unfriended2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " friend but not friend or unfriended");
+			} else if (unfriended1 && !friend2 && !unfriended2) {
+				errors.push("FriendShip invalid: " + uid + "-" + friendID + " unfriended but not friend or unfriended");
+			}
+
+			if (requests1 || requested1 || friend1) {
+				client.hgetall("friends:" + uid + ":" + friendID, this);
+			} else if (unfriended1) {
+				client.hgetall("friends:" + uid + ":unfriending:" + friendID, this);
+			} else {
+				throw new Error("database changed. Please validate on a duplicate!");
+			}
+
+			this.ne();
+		}),cb);
+	},
+	checkSignedList: function (errors, uid, cb) {
+		step(function () {
+			this.parallel.unflatten();
+
+			client.hgetall("friends:" + uid + ":signedList", this.parallel());
+			client.smembers("friends:" + uid + ":requests", this.parallel());
+			client.smembers("friends:" + uid + ":requested", this.parallel());
+			client.smembers("friends:" + uid, this.parallel());
+			client.smembers("friends:" + uid + ":unfriended", this.parallel());
+			client.smembers("friends:" + uid + ":ignored", this.parallel());
+		}, h.sF(function (signedList, requests, requested, userFriends, unfriended, ignored) {
+			requested = requested.map(h.parseDecimal);
+			userFriends = userFriends.map(h.parseDecimal);
+			unfriended = unfriended.map(h.parseDecimal);
+			requests = requests.map(h.parseDecimal);
+			ignored = ignored.map(h.parseDecimal);
+
+			var signedListIDs = Object.keys(signedList || {}).filter(function (key) {
+				return key[0] !== "_";
+			}).map(h.parseDecimal);
+
+			var listFriends = requested.concat(userFriends);
+
+			if (!h.arrayEqual(signedListIDs, listFriends)) {
+				errors.push("signed lists do not match for uid: " + uid + " - " + signedListIDs + " - " + listFriends);
+			}
+
+			signedListIDs.forEach(function (id) {
+				KeyApi.checkKey(errors, signedList[id], this.parallel());
+			}, this);
+
+			if (!h.emptyUnion(requests, requested)) 	{ errors.push("requests  and requested    are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, userFriends)) 	{ errors.push("requests  and friends      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, unfriended)) 	{ errors.push("requests  and unfriended   are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, ignored)) 		{ errors.push("requests  and ignored      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, userFriends)) 	{ errors.push("requested and friends      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, unfriended)) 	{ errors.push("requested and unfriended   are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, ignored)) 		{ errors.push("requested and ignored      are not exclusive for " + uid); }
+			if (!h.emptyUnion(userFriends, unfriended)) { errors.push("friends   and unfriended   are not exclusive for " + uid); }
+			if (!h.emptyUnion(userFriends, ignored)) 	{ errors.push("friends   and ignored      are not exclusive for " + uid); }
+			if (!h.emptyUnion(unfriended, ignored)) 	{ errors.push("unfriendedand ignored      are not exclusive for " + uid); }
+
+			requests.concat(requested).concat(userFriends).concat(unfriended).forEach(function (friendID) {
+				friends.checkFriendShip(errors, uid, friendID, this.parallel());
+			}, this);
+
+			this.parallel()();
 		}), cb);
 	}
 };

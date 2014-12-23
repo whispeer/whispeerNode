@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 "use strict";
 
 var client = require("./includes/redisClient");
@@ -97,8 +99,8 @@ function getNewestMigrationCount(cb) {
 
 if (migrationToRun) {
 	step(function () {
-		console.log("Database selected: " + config.dbNumber || 0);
-		client.select(config.dbNumber || 0, this);
+		console.log("Database selected: " + config.db.number || 0);
+		client.select(config.db.number || 0, this);
 	}, h.sF(function () {
 		loadMigrations(this);
 	}), h.sF(function () {
@@ -113,8 +115,8 @@ if (migrationToRun) {
 	});
 } else {
 	step(function () {
-		console.log("Database selected: " + config.dbNumber || 0);
-		client.select(config.dbNumber || 0, this);
+		console.log("Database selected: " + config.db.number || 0);
+		client.select(config.db.number || 0, this);
 	}, h.sF(function () {
 		client.get("server:migrationState", this);
 	}), h.sF(function (_migrationState) {

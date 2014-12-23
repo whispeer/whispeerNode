@@ -9,6 +9,7 @@ var messages = require("./topics/tmessage");
 var friends = require("./topics/tfriends");
 var circles = require("./topics/tcircles");
 var posts = require("./topics/tposts");
+var invites = require("./topics/tinvites");
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
 
@@ -18,6 +19,9 @@ var mailer = require("./includes/mailer");
 var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
 
 var MAXDEPTH = 20;
+
+var signatureCache = new SimpleUserDataStore("signatureCache");
+var trustManager = new SimpleUserDataStore("trustManager");
 
 //change api style:
 //extract objects with methods:
@@ -33,6 +37,14 @@ var MAXDEPTH = 20;
 
 var whispeerAPI = {
 	blob: blob,
+	invites: invites,
+	errors: function (data, fn) {
+		step(function () {
+			mailer.mailAdmin("User reported an error!", JSON.stringify(data), this);
+		}, h.sF(function () {
+			this.ne();
+		}), fn);
+	},
 	verifyMail: function verifyMailF(data, fn) {
 		step(function () {
 			mailer.verifyUserMail(data.challenge, data.mailsEnabled, this);
@@ -132,18 +144,29 @@ var whispeerAPI = {
 	},
 	signatureCache: {
 		get: function (data, fn, request) {
-			new SimpleUserDataStore("signatureCache").get(request, h.objectifyResult("content", fn));
+			signatureCache.get(request, h.objectifyResult("content", fn));
 		},
 		set: function (data, fn, request) {
-			new SimpleUserDataStore("signatureCache").set(request, data.content, h.objectifyResult("success", fn));
+			signatureCache.set(request, data.content, h.objectifyResult("success", fn));
 		}
 	},
 	trustManager: {
 		get: function (data, fn, request) {
-			new SimpleUserDataStore("trustManager").get(request, h.objectifyResult("content", fn));
+			trustManager.get(request, h.objectifyResult("content", fn));
 		},
 		set: function (data, fn, request) {
-			new SimpleUserDataStore("trustManager").set(request, data.content, h.objectifyResult("success", fn));
+			step(function () {
+				trustManager.get(request, this);
+			}, h.sF(function (oldTrustManager) {
+				if (oldTrustManager) {
+					var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(data.content));
+					if (diff.length > 0) {
+						throw new Error("trust manager update blocked because it would delete data " + diff);
+					}
+				}
+
+				trustManager.set(request, data.content, h.objectifyResult("success", this));
+			}), fn);
 		}
 	},
 	settings: {
@@ -225,5 +248,12 @@ var whispeerAPI = {
 		}, UserNotExisting), fn);
 	}
 };
+
+whispeerAPI.ping.noLoginNeeded = true;
+whispeerAPI.nicknameFree.noLoginNeeded = true;
+whispeerAPI.mailFree.noLoginNeeded = true;
+whispeerAPI.logedin.noLoginNeeded = true;
+whispeerAPI.verifyMail.noLoginNeeded = true;
+whispeerAPI.errors.noLoginNeeded = true;
 
 module.exports = whispeerAPI;

@@ -4,6 +4,7 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var KeyApi = require("./crypto/KeyApi");
+var errorService = require("./errorService");
 
 function RequestData(socketData, rawRequest) {
 	var request = this;
@@ -47,6 +48,10 @@ function RequestData(socketData, rawRequest) {
 	};
 
 	this.addKey = function (realid, cb) {
+		if (typeof cb !== "function") {
+			throw new Error("did not get a function callback");
+		}
+
 		if (this.rootRequest) {
 			this.rootRequest.addKey(realid, cb);
 		} else {
@@ -56,8 +61,12 @@ function RequestData(socketData, rawRequest) {
 				key.getKData(request, this, true);
 			}), h.sF(function (keyData) {
 				request.keyData.push(keyData);
-				cb();
-			}), cb);
+				this.ne();
+			}), function (e) {
+				errorService.handleError(e, request);
+
+				this.ne();
+			}, cb);
 		}		
 	};
 
