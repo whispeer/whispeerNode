@@ -178,12 +178,12 @@ var Post = function (postid) {
 			}
 
 			//remove post from all lists
-			//remove post data
 			var m = client.multi();
 
-			m.del(domain + ":meta");
-			m.del(domain + ":content");
-			m.del(domain);
+			//TODO: remove post data, for now not removing it!
+			//m.del(domain + ":meta");
+			//m.del(domain + ":content");
+			//m.del(domain);
 
 			m.zrem("user:" + sender + ":posts", postid);
 			m.zrem("user:" + sender + ":newPosts", postid);
@@ -193,7 +193,7 @@ var Post = function (postid) {
 				m.zrem("user:" + walluser + ":wall", postid);
 			}
 
-			//remove comments when added!
+			//TODO: remove comments when added!
 
 			m.exec(this);
 		}), cb);
