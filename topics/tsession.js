@@ -45,14 +45,8 @@ var s = {
 	register: function (data, fn, request) {
 		var res, myUser;
 		step(function () {
-			invites.checkCode(data.inviteCode, this);
-		}, h.sF(function (valid) {
-			if (!valid) {
-				throw new Error("invalid invite code! Oo");
-			}
-
 			request.session.register(data.mail, data.nickname, data.password, data.keys, data.settings, data.signedKeys, data.signedOwnKeys, request, this);
-		}), h.sF(function (result) {
+		}, h.sF(function (result) {
 			res = result;
 			if (result.error) {
 				this.last.ne(res);
