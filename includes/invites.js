@@ -77,7 +77,7 @@ var invites = {
 				invites.addRequestMail(mail, this);
 			}
 		}), h.sF(function () {
-			mailer.mailAdmin("New Register Request", "Code: " + requestCode, this);
+			mailer.mailAdmin("New Register Request", "Code: " + requestCode + "\nMail: " + mail, this);
 		}), cb);
 	},
 	acceptRequest: function (request, code, cb) {
