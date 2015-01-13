@@ -226,6 +226,8 @@ var Session = function Session() {
 		}, cb);
 	};
 
+	this._internalLogin = internalLogin;
+
 	/** login
 	* @param identifier who wants to log in (mail or nickname)
 	* @param externalHash the users password (sha256) (see protocol definition)

@@ -733,6 +733,81 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.requestRecovery = function (cb) {
+		var mailer = require("./mailer"), Session = require("./session"), code;
+		step(function () {
+			Session.code(40, this);
+		}, h.sF(function (_code) {
+			code = _code;
+			client.setex(userDomain + ":recoveryCode:" + code, 24*60*60 , "1", this);
+		}), h.sF(function () {
+			mailer.sendUserMail(theUser, "recoveryRequest", {
+				code: code
+			}, this);
+		}), h.sF(function (mailSent) {
+			if (!mailSent) {
+				throw new Error("did not send recovery mail!");
+			}
+
+			this.ne();
+		}), cb);
+	};
+
+	function findCorrectKey(keys, decryptorFP, cb) {
+		step(function () {
+			keys.forEach(function (keyID) {
+				client.hget("key:" + keyID + ":decryptor:map", decryptorFP, this.parallel());
+			}, this);
+		}, h.sF(function (vals) {
+			var key;
+			vals.forEach(function (val, index) {
+				if (val) {
+					key = keys[index];
+				}
+			}, this);
+
+			if (key) {
+				this.ne(key);
+			} else {
+				throw new Error("backup key not found!");
+			}
+		}), cb);
+	}
+
+	/**
+	* Recover an account
+	* @param code: the recovery code
+	* @param backupKeyFingerPrint: the key fingerprint of the backup key
+	* @param cb: cb
+	* @cb: mainKey of the user and backupKey.
+	*/
+	this.useRecoveryCode = function (request, code, backupKeyFingerPrint, cb) {
+		var backupKey;
+
+		step(function () {
+			client.get(userDomain + ":recoveryCode:" + code, this);
+		}, h.sF(function (codeExists) {
+			if (codeExists) {
+				client.smembers(userDomain + ":backupKeys", this);
+			} else {
+				throw new Error("invalid code");
+			}
+		}), h.sF(function (backupKeys) {
+			//find the correct key by searching the map attributes of the keys
+			findCorrectKey(backupKeys, backupKeyFingerPrint, this);
+		}), h.sF(function (_backupKey) {
+			backupKey = _backupKey;
+			//generate a session for the user so he is now logged in
+			request.session._internalLogin(theUser.getID(), this);
+		}), h.sF(function () {
+			//sent correct key and main key for download purposes!
+			request.addKey(backupKey, this.parallel());
+			theUser.addOwnKeys(request, this.parallel());
+			
+			//receive password change request hopefully
+		}), cb);
+	};
+
 	RedisObserver.call(this, "user", id);
 };
 

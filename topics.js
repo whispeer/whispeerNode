@@ -10,10 +10,11 @@ var friends = require("./topics/tfriends");
 var circles = require("./topics/tcircles");
 var posts = require("./topics/tposts");
 var invites = require("./topics/tinvites");
+var blob = require("./topics/tblob");
+var recovery = require("./topics/trecovery");
+
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
-
-var blob = require("./topics/tblob");
 var mailer = require("./includes/mailer");
 
 var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
@@ -38,6 +39,7 @@ var trustManager = new SimpleUserDataStore("trustManager");
 var whispeerAPI = {
 	blob: blob,
 	invites: invites,
+	recovery: recovery,
 	errors: function (data, fn) {
 		step(function () {
 			mailer.mailAdmin("User reported an error!", JSON.stringify(data), this);
