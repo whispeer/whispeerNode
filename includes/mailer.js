@@ -190,18 +190,18 @@ var mailer = {
 			this.ne(result, subject);
 		}), cb);
 	},
-	sendUserMail: function (user, templateName, variables, subject, cb) {
+	sendUserMail: function (user, templateName, variables, cb) {
 		var receiver;
 		step(function () {
-			user.getEMail(viewCreator.logedinViewStub, this);
+			user.getEMail(socketDataCreator.logedinStub, this);
 		}, h.sF(function (_receiver) {
 			receiver = _receiver;
 			mailer.isMailActivatedForUser(user, receiver, this);
 		}), h.sF(function (activated) {
 			if (activated) {
-				mailer.sendMail(receiver, templateName, variables, subject, this);
+				mailer.sendMail(receiver, templateName, variables, this);
 			} else {
-				this.last.ne();
+				this.last.ne(false);
 			}
 		}), cb);
 	},
