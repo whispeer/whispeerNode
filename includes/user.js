@@ -164,17 +164,17 @@ var validKeys = {
 		transform: keyToRealID
 	},
 	cryptKey: {
-		read: logedinF,
+		read: trueF,
 		pre: checkKeyExists(EccKey),
 		transform: keyToRealID
 	},
 	signKey: {
-		read: logedinF,
+		read: trueF,
 		pre: checkKeyExists(EccKey),
 		transform: keyToRealID
 	},
 	nickname: {
-		read: logedinF,
+		read: trueF,
 		match: /^[A-z][A-z0-9]*$/,
 		pre: function (data, cb) {
 			step(function nPre1() {
@@ -733,16 +733,25 @@ var User = function (id) {
 		}), cb);
 	};
 
-	this.requestRecovery = function (cb) {
+	this.requestRecovery = function (request, cb) {
 		var mailer = require("./mailer"), Session = require("./session"), code;
 		step(function () {
 			Session.code(40, this);
 		}, h.sF(function (_code) {
 			code = _code;
-			client.setex(userDomain + ":recoveryCode:" + code, 24*60*60 , "1", this);
-		}), h.sF(function () {
+			client.setnx("recovery:" + code, theUser.getID(), this);
+		}), h.sF(function (wasSet) {
+			if (wasSet) {
+				this.parallel.unflatten();
+				theUser.getNickname(request, this.parallel());
+				client.expire("recovery:" + code, 24*60*60, this.parallel());
+			} else {
+				theUser.requestRecovery(cb);
+			}
+		}), h.sF(function (nick) {
 			mailer.sendUserMail(theUser, "recoveryRequest", {
-				code: code
+				code: code,
+				nick: nick
 			}, this);
 		}), h.sF(function (mailSent) {
 			if (!mailSent) {
