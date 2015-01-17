@@ -37,7 +37,7 @@ function registerSocketListener(socketData) {
 	});
 }
 
-var reservedNames = ["sid"], handle;
+var reservedNames = ["sid", "version"], handle;
 
 function createKeys(request, keys, cb) {
 	step(function () {
