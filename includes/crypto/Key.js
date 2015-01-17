@@ -175,6 +175,38 @@ Key.prototype.removeDecryptorForUser = function (m, userid, cb) {
 	}), cb);
 };
 
+Key.prototype.getPWDecryptors = function (request, cb) {
+	var theKey = this, decryptors;
+	step(function () {
+		theKey.getDecryptors(request, this);
+	}, h.sF(function (_decryptors) {
+		decryptors = _decryptors;
+		decryptors.forEach(function (decryptor) {
+			decryptor.getType(this.parallel());
+		}, this);
+	}), h.sF(function (types) {
+		this.ne(decryptors.filter(function (decryptor, index) {
+			return types[index] === "pw";
+		}));
+	}), cb);
+};
+
+Key.prototype.removeAllPWDecryptors = function (request, cb) {
+	var theKey = this, m = client.multi();
+	step(function () {
+		theKey.getPWDecryptors(request, this);
+	}, h.sF(function (decryptors) {
+		this.parallel.unflatten();
+
+		decryptors.forEach(function (decryptor) {
+			client.srem(theKey._domain + ":accessVia:" + request.session.getUserID(), decryptor.getID(), this.parallel());
+			decryptor.removeData(m, this.parallel());
+		}, this);
+	}), h.sF(function () {
+		m.exec(this);
+	}), cb);
+};
+
 Key.prototype.removeDecryptor = function (m, decryptorid, cb) {
 	var theKey = this;
 	step(function () {

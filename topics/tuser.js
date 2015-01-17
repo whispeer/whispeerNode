@@ -84,6 +84,15 @@ var u = {
 		}), fn);
 		//TODO
 	},
+	changePassword: function (data, fn, request) {
+		step(function () {
+			request.session.getOwnUser(this);
+		}, h.sF(function (ownUser) {
+			ownUser.changePassword(request, data.password, data.signedOwnKeys, data.decryptor, this);
+		}), h.sF(function () {
+			this.ne();
+		}), fn);
+	},
 	search: function searchF(data, fn, request) {
 		step(function () {
 			User.search(data.text, this);
