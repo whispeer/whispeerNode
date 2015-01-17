@@ -156,7 +156,7 @@ module.exports = function (socket) {
 			var time = new Date().getTime();
 			var request = new RequestData(socketData, data);
 			step(function () {
-				console.log(new Date() + " Received data on channel " + channel);
+				console.log(new Date() + " (v" + data.version + ") Received data on channel " + channel);
 
 				if (session.getSID() !== data.sid) {
 					session.setSID(data.sid, this);

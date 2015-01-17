@@ -714,6 +714,26 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.changePassword = function (request, password, signedOwnKeys, mainDecryptor, cb) {
+		var mainKey;
+		step(function () {
+			request.session.ownUserError(theUser, this);
+		}, h.sF(function () {
+			theUser.getMainKey(request, this);
+		}), h.sF(function (mainKey) {
+			KeyApi.get(mainKey, this);
+		}), h.sF(function (_mainKey) {
+			mainKey = _mainKey;
+			mainKey.removeAllPWDecryptors(request, this);
+		}), h.sF(function () {
+			mainKey.addDecryptor(request, mainDecryptor, this.parallel());
+			theUser.setPassword(request, password.hash, this.parallel());
+			theUser.setSalt(request, password.salt, this.parallel());
+
+			theUser.setSignedOwnKeys(request, signedOwnKeys, this.parallel());
+		}), cb);
+	};
+
 	this.addBackupKey = function (request, decryptors, key, cb) {
 		var backupKey;
 		step(function () {
