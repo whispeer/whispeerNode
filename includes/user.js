@@ -814,7 +814,7 @@ var User = function (id) {
 		var backupKey;
 
 		step(function () {
-			client.get(userDomain + ":recoveryCode:" + code, this);
+			client.get("recovery:" + code, this);
 		}, h.sF(function (codeExists) {
 			if (codeExists) {
 				client.smembers(userDomain + ":backupKeys", this);
