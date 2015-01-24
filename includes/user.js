@@ -164,17 +164,17 @@ var validKeys = {
 		transform: keyToRealID
 	},
 	cryptKey: {
-		read: logedinF,
+		read: trueF,
 		pre: checkKeyExists(EccKey),
 		transform: keyToRealID
 	},
 	signKey: {
-		read: logedinF,
+		read: trueF,
 		pre: checkKeyExists(EccKey),
 		transform: keyToRealID
 	},
 	nickname: {
-		read: logedinF,
+		read: trueF,
 		match: /^[A-z][A-z0-9]*$/,
 		pre: function (data, cb) {
 			step(function nPre1() {
@@ -750,6 +750,90 @@ var User = function (id) {
 			mainKey.addDecryptors(request, decryptors, this);
 		}), h.sF(function () {
 			client.sadd(userDomain + ":backupKeys", backupKey.getRealID(), this);
+		}), cb);
+	};
+
+	this.requestRecovery = function (request, cb) {
+		var mailer = require("./mailer"), Session = require("./session"), code;
+		step(function () {
+			Session.code(40, this);
+		}, h.sF(function (_code) {
+			code = _code;
+			client.setnx("recovery:" + code, theUser.getID(), this);
+		}), h.sF(function (wasSet) {
+			if (wasSet) {
+				this.parallel.unflatten();
+				theUser.getNickname(request, this.parallel());
+				client.expire("recovery:" + code, 24*60*60, this.parallel());
+			} else {
+				theUser.requestRecovery(cb);
+			}
+		}), h.sF(function (nick) {
+			mailer.sendUserMail(theUser, "recoveryRequest", {
+				code: code,
+				nick: nick
+			}, this);
+		}), h.sF(function (mailSent) {
+			if (!mailSent) {
+				throw new Error("did not send recovery mail!");
+			}
+
+			this.ne();
+		}), cb);
+	};
+
+	function findCorrectKey(keys, decryptorFP, cb) {
+		step(function () {
+			keys.forEach(function (keyID) {
+				client.hget("key:" + keyID + ":decryptor:map", decryptorFP, this.parallel());
+			}, this);
+		}, h.sF(function (vals) {
+			var key;
+			vals.forEach(function (val, index) {
+				if (val) {
+					key = keys[index];
+				}
+			}, this);
+
+			if (key) {
+				this.ne(key);
+			} else {
+				throw new Error("backup key not found!");
+			}
+		}), cb);
+	}
+
+	/**
+	* Recover an account
+	* @param code: the recovery code
+	* @param backupKeyFingerPrint: the key fingerprint of the backup key
+	* @param cb: cb
+	* @cb: mainKey of the user and backupKey.
+	*/
+	this.useRecoveryCode = function (request, code, backupKeyFingerPrint, cb) {
+		var backupKey;
+
+		step(function () {
+			client.get("recovery:" + code, this);
+		}, h.sF(function (codeExists) {
+			if (codeExists) {
+				client.smembers(userDomain + ":backupKeys", this);
+			} else {
+				throw new Error("invalid code");
+			}
+		}), h.sF(function (backupKeys) {
+			//find the correct key by searching the map attributes of the keys
+			findCorrectKey(backupKeys, backupKeyFingerPrint, this);
+		}), h.sF(function (_backupKey) {
+			backupKey = _backupKey;
+			//generate a session for the user so he is now logged in
+			request.session._internalLogin(theUser.getID(), this);
+		}), h.sF(function () {
+			//sent correct key and main key for download purposes!
+			request.addKey(backupKey, this.parallel());
+			theUser.addOwnKeys(request, this.parallel());
+			
+			//receive password change request hopefully
 		}), cb);
 	};
 
