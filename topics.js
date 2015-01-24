@@ -202,7 +202,7 @@ var whispeerAPI = {
 			if (data && data.nickname) {
 				if (h.isNickname(data.nickname)) {
 					var User = require("./includes/user");
-					User.getUser(data.nickname, this);
+					User.isNicknameFree(data.nickname, this);
 				} else {
 					this.last.ne({
 						nicknameUsed: true
@@ -211,17 +211,11 @@ var whispeerAPI = {
 			} else {
 				fn.error.protocol();
 			}
-		}, h.hE(function (e) {
-			if (e) {
-				this.ne({
-					nicknameUsed: false
-				});
-			} else {
-				this.ne({
-					nicknameUsed: true
-				});
-			}
-		}, UserNotExisting), fn);
+		}, h.sF(function (free) {
+			this.ne({
+				nicknameUsed: !free
+			});
+		}), fn);
 	},
 	mailFree: function isMailFree(data, fn) {
 		step(function () {

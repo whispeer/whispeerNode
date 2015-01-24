@@ -932,4 +932,16 @@ User.getUser = function (identifier, callback, returnError) {
 	}), callback);
 };
 
+User.isNicknameFree = function (nickname, cb) {
+	step(function () {
+		if (h.isNickname(nickname)) {
+			client.get("user:nickname:" + nickname, this);
+		} else {
+			throw new Error("invalid nickname");
+		}
+	}, h.sF(function (id) {
+		this.ne(!id);
+	}), cb);
+};
+
 module.exports = User;

@@ -404,13 +404,9 @@ var Session = function Session() {
 				regErr("mailUsed");
 			}
 
-			if (nickname) {
-				User.getUser(nickname, this);
-			} else {
-				this();
-			}
-		}, UserNotExisting), h.hE(function checkMainKey(e) {
-			if (!e && nickname) {
+			User.isNicknameFree(nickname, this);
+		}, UserNotExisting), h.sF(function checkMainKey(nicknameFree) {
+			if (!nicknameFree) {
 				regErr("nicknameUsed");
 			}
 
