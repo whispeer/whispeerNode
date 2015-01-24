@@ -836,7 +836,7 @@ User.getUser = function (identifier, callback, returnError) {
 			}
 		}
 	}, h.sF(function (id) {
-		if (id) {
+		if (id && id !== "-1") {
 			this.ne(new User(id));
 		} else {
 			if (returnError) {
