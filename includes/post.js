@@ -502,11 +502,8 @@ function processKey(request, keyData, cb) {
 
 function processImages(request, images, keys, cb) {
 	step(function () {
-		images.forEach(function () {
-			SymKey.createWDecryptors(request, keys.shift(), this.parallel());
-		}, this);
-		images.forEach(function () {
-			SymKey.createWDecryptors(request, keys.shift(), this.parallel());
+		keys.forEach(function (key) {
+			SymKey.createWDecryptors(request, key, this.parallel());
 		}, this);
 	}, cb);
 }
