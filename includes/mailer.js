@@ -109,7 +109,7 @@ var mailer = {
 					from: defaultFrom,
 					to: userMail,
 					subject: "[Whispeer] E-Mail Verifizierung",
-					text: "Bitte verifiziere deine E-Mail Adresse!\nUm deine E-Mail zu aktivieren klicke bitte auf den folgenden Link: " + config.host + "/verifyMail/" + challenge
+					text: "Bitte verifiziere deine E-Mail Adresse!\nUm deine E-Mail zu aktivieren, klicke bitte auf den folgenden Link: " + config.host + "/verifyMail/" + challenge
 				};
 
 				mail.sendMail(mailOption, this.parallel());
