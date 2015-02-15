@@ -10,10 +10,11 @@ var friends = require("./topics/tfriends");
 var circles = require("./topics/tcircles");
 var posts = require("./topics/tposts");
 var invites = require("./topics/tinvites");
+var blob = require("./topics/tblob");
+var recovery = require("./topics/trecovery");
+
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
-
-var blob = require("./topics/tblob");
 var mailer = require("./includes/mailer");
 
 var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
@@ -38,6 +39,7 @@ var trustManager = new SimpleUserDataStore("trustManager");
 var whispeerAPI = {
 	blob: blob,
 	invites: invites,
+	recovery: recovery,
 	errors: function (data, fn) {
 		step(function () {
 			mailer.mailAdmin("User reported an error!", JSON.stringify(data), this);
@@ -200,7 +202,7 @@ var whispeerAPI = {
 			if (data && data.nickname) {
 				if (h.isNickname(data.nickname)) {
 					var User = require("./includes/user");
-					User.getUser(data.nickname, this);
+					User.isNicknameFree(data.nickname, this);
 				} else {
 					this.last.ne({
 						nicknameUsed: true
@@ -209,17 +211,11 @@ var whispeerAPI = {
 			} else {
 				fn.error.protocol();
 			}
-		}, h.hE(function (e) {
-			if (e) {
-				this.ne({
-					nicknameUsed: false
-				});
-			} else {
-				this.ne({
-					nicknameUsed: true
-				});
-			}
-		}, UserNotExisting), fn);
+		}, h.sF(function (free) {
+			this.ne({
+				nicknameUsed: !free
+			});
+		}), fn);
 	},
 	mailFree: function isMailFree(data, fn) {
 		step(function () {

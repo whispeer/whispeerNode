@@ -226,6 +226,8 @@ var Session = function Session() {
 		}, cb);
 	};
 
+	this._internalLogin = internalLogin;
+
 	/** login
 	* @param identifier who wants to log in (mail or nickname)
 	* @param externalHash the users password (sha256) (see protocol definition)
@@ -402,13 +404,9 @@ var Session = function Session() {
 				regErr("mailUsed");
 			}
 
-			if (nickname) {
-				User.getUser(nickname, this);
-			} else {
-				this();
-			}
-		}, UserNotExisting), h.hE(function checkMainKey(e) {
-			if (!e && nickname) {
+			User.isNicknameFree(nickname, this);
+		}, UserNotExisting), h.sF(function checkMainKey(nicknameFree) {
+			if (!nicknameFree) {
 				regErr("nicknameUsed");
 			}
 
