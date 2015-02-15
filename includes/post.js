@@ -516,7 +516,6 @@ function processMetaInformation(request, meta, cb) {
 		processKey(request, meta._key, this.parallel());
 	}, h.sF(function (user, keyid) {
 		if (user) {
-			meta.walluserObj = user;
 			meta.walluser = user.getID();
 		} else {
 			delete meta.walluser;
