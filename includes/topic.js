@@ -433,11 +433,11 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 		}
 
 		if (!request.session.isMyID(topicMeta.creator)) {
-			throw new InvalidTopicData();
+			throw new InvalidTopicData("session changed? invalid creator!");
 		}
 
 		if (Math.abs(topicMeta.createTime - new Date().getTime()) > MAXTIME) {
-			throw new InvalidTopicData();
+			throw new InvalidTopicData("max time exceeded!");
 		}
 
 		receiverIDs = topicMeta.receiver;
