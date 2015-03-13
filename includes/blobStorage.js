@@ -6,6 +6,7 @@ var h = require("whispeerHelper");
 var fs = require("fs");
 
 var client = require("./redisClient");
+var SymKey = require("./crypto/symKey");
 
 function isBlobID(blobid) {
 	return blobid.match(/^[A-z0-9]*$/);
@@ -55,8 +56,8 @@ function createBlobID(cb) {
 	}, h.sF(function (bid) {
 		blobid = bid;
 		client.sadd("blobs:allids", blobid, this);
-	}), h.sF(function (isMember) {
-		if (isMember === 1) {
+	}), h.sF(function (isNoMember) {
+		if (isNoMember === 1) {
 			this.ne(blobid);
 		} else {
 			createBlobID(cb);
@@ -65,7 +66,7 @@ function createBlobID(cb) {
 }
 
 var blobStorage = {
-	reserveBlobID: function (request, cb) {
+	reserveBlobID: function (request, meta, cb) {
 		var blobid;
 
 		step(function () {
@@ -75,12 +76,16 @@ var blobStorage = {
 		}), h.sF(function (bid) {
 			blobid = bid;
 			client.sadd("blobs:reserved", blobid, this);
-		}), h.sF(function (isMember) {
-			if (isMember === 1) {
-				this.ne(blobid);
+		}), h.sF(function (isNoMember) {
+			if (isNoMember === 1) {
+				this.ne();
 			} else {
 				throw "Per logical deduction this should not have happened";
 			}
+		}), h.sF(function () {
+			client.hmset("blobs:" + blobid, meta, this);
+		}), h.sF(function () {
+			this.ne(blobid);
 		}), cb);
 	},
 	preReserveBlobID: function (cb) {
@@ -92,15 +97,15 @@ var blobStorage = {
 			blobid = bid;
 
 			client.sadd("blobs:prereserved", blobid, this);
-		}), h.sF(function (isMember) {
-			if (isMember === 1) {
+		}), h.sF(function (isNoMember) {
+			if (isNoMember === 1) {
 				this.ne(blobid);
 			} else {
 				throw "Per logical deduction this should not have happened";
 			}
 		}), cb);
 	},
-	fullyReserveBlobID: function (request, blobid, cb) {
+	fullyReserveBlobID: function (request, blobid, meta, cb) {
 		step(function () {
 			request.session.logedinError(this);
 		}, h.sF(function () {
@@ -111,6 +116,8 @@ var blobStorage = {
 			} else {
 				throw new InvalidBlobID("blob not prereserved");
 			}
+		}), h.sF(function () {
+			client.hmset("blobs:" + blobid, meta, this);
 		}), h.sF(function () {
 			this.ne(blobid);
 		}), cb);
@@ -127,6 +134,7 @@ var blobStorage = {
 		}), cb);
 	},
 	getBlob: function (request, blobid, cb) {
+		var result;
 		step(function () {
 			request.session.logedinError(this);
 		}, h.sF(function () {
@@ -135,12 +143,24 @@ var blobStorage = {
 			client.sismember("blobs:usedids", blobid, this);
 		}), h.sF(function (exists) {
 			if (exists) {
-				fs.readFile(blobIDtoFile(blobid), this);
+				this.parallel.unflatten();
+				fs.readFile(blobIDtoFile(blobid), this.parallel());
+				client.hgetall("blobs:" + blobid, this.parallel());
 			} else {
 				throw new Error("Blob not found");
 			}
-		}), h.sF(function (data) {
-			var result = new Buffer(data).toString("base64");
+		}), h.sF(function (data, meta) {
+			result = {
+				blob: new Buffer(data).toString("base64"),
+				meta: meta
+			};
+
+			if (meta._key) {
+				request.addKey(meta._key, this);
+			} else {
+				this.ne();
+			}
+		}), h.sF(function () {
 			this.ne(result);
 		}), cb);
 	}

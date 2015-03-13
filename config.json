@@ -8,7 +8,6 @@
 	    "number": 1
 	  },
 	  "production": false,
-	  "debug": false,
 	  "mail": {
 	  	"directory": "./mails"
 	  },
@@ -23,7 +22,6 @@
 	    "number": 2
 	  },
 	  "production": false,
-	  "debug": false,
 	  "mail": {
 	  	"directory": "./mails"
 	  },

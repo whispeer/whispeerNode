@@ -125,6 +125,10 @@ var Post = function (postid) {
 			meta.time = h.parseDecimal(meta.time);
 			meta.walluser = h.parseDecimal(meta.walluser || 0);
 
+			if (meta.images) {
+				meta.images = JSON.parse(meta.images);
+			}
+
 			result = {
 				id: postid,
 				meta: meta,
@@ -496,6 +500,33 @@ function processKey(request, keyData, cb) {
 	}
 }
 
+function processImages(request, images, keys, cb) {
+	step(function () {
+		keys.forEach(function (key) {
+			SymKey.createWDecryptors(request, key, this.parallel());
+		}, this);
+	}, cb);
+}
+
+function processMetaInformation(request, meta, cb) {
+	step(function () {
+		this.parallel.unflatten();
+
+		processWallUser(meta.walluser, this.parallel());
+		processKey(request, meta._key, this.parallel());
+	}, h.sF(function (user, keyid) {
+		if (user) {
+			meta.walluser = user.getID();
+		} else {
+			delete meta.walluser;
+		}
+
+		meta._key = keyid;
+
+		this.ne();
+	}), cb);
+}
+
 Post.create = function (request, data, cb) {
 	/*
 	post: {
@@ -519,25 +550,20 @@ Post.create = function (request, data, cb) {
 
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
-		this.parallel.unflatten();
-
-		processWallUser(data.meta.walluser, this.parallel());
-		processKey(request, data.meta._key, this.parallel());
-	}), h.sF(function (_wallUserObj, keyid) {
-		wallUserObj = _wallUserObj;
-
-		if (!wallUserObj && data.meta.walluser) {
-			throw new InvalidPost("walluser not existing!");
+		processMetaInformation(request, data.meta, this);
+	}), h.sF(function () {
+		if (data.meta.images.length > 0) {
+			processImages(request, data.meta.images, data.imageKeys, this);
+		} else {
+			this.ne();
 		}
-
-		if (wallUserObj && h.parseDecimal(data.meta.walluser) !== _wallUserObj.getID()) {
-			throw new InvalidPost("invalid walluser id");
-		}
-
-		data.meta._key = keyid;
-
+	}), h.sF(function () {
 		client.incr("post", this);
 	}), h.sF(function (id) {
+		if (data.meta.images) {
+			data.meta.images = JSON.stringify(data.meta.images);
+		}
+
 		postID = id;
 		var multi = client.multi();
 		multi.zadd("user:" + request.session.getUserID() + ":posts", data.meta.time, id);

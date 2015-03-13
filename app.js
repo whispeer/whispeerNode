@@ -27,24 +27,7 @@ if (config.https) {
 	};
 }
 
-var io = require("socket.io").listen(config.wsPort, options);
-console.log("Listening on port " + config.wsPort);
-
-if (!config.debug) {
-	io.set("log level", 1);
-} else {
-	console.log("Verbose Mode started!");
-}
-
-if (config.production) {
-	console.log("Production Mode started!");
-	io.disable("browser client");
-	io.set("flash policy port", config.wsPort);
-	io.set("transports", ["websocket", "flashsocket", "htmlfile", "xhr-polling"]);
-} else {
-	console.log("Dev Mode started!");
-	io.set("transports", ["websocket"]);
-}
+var io = require("socket.io")();
 
 require("./includes/errors");
 
@@ -68,7 +51,18 @@ step(function () {
 
 	client.del("user:online", this.parallel());
 }), h.sF(function () {
-	io.sockets.on("connection", onSocketConnection);
+	io.on("connection", onSocketConnection);
+
+	io.listen(config.wsPort, options);
+
+	if (config.production) {
+		console.log("Production Mode started!");
+		//io.disable("browser client");
+		io.set("transports", ["websocket", "flashsocket", "htmlfile", "xhr-polling", "polling"]);
+	} else {
+		console.log("Dev Mode started!");
+		io.set("transports", ["websocket", "polling"]);
+	}
 }));
 
 console.log("App started");
