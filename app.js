@@ -61,7 +61,7 @@ step(function () {
 }), h.sF(function () {
 	io.on("connection", onSocketConnection);
 
-	io.listen(config.wsPort, options);
+	server.listen(config.wsPort);
 
 	if (config.production) {
 		console.log("Production Mode started!");
