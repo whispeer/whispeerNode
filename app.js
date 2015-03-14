@@ -27,7 +27,15 @@ if (config.https) {
 	};
 }
 
-var io = require("socket.io")();
+var server;
+
+if (config.https) {
+	server = require("https").createServer(options);
+} else {
+	server = require("http").createServer();
+}
+
+var io = require("socket.io")(server);
 
 require("./includes/errors");
 
