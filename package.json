@@ -13,7 +13,7 @@
     "secure_random": "0.1.x",
     "socket.io": "^1.3.2",
     "semver": "^4.2.0",
-    "socket.io-stream": "0.5.x",
+    "socket.io-stream": "0.6.x",
     "step": "git+ssh://git@ovt.me:4351/whispeerStep#master",
     "xtend": "2.0.x"
   },
