@@ -155,7 +155,7 @@ var blobStorage = {
 				meta: meta
 			};
 
-			if (typeof meta === "object" && meta._key) {
+			if (meta && typeof meta === "object" && meta._key) {
 				request.addKey(meta._key, this);
 			} else {
 				this.ne();
