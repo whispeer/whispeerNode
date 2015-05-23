@@ -17,6 +17,9 @@ function updateUserNicknames(cb) {
 		}, this);
 	}), h.sF(function (nicknames) {
 		var nicknamesHashMap = {};
+		var nicknamesToDelete = nicknames.slice(0);
+		var nicknamesOldFormat = [];
+
 		nicknames.forEach(function (nickname, i) {
 			if (!nickname) {
 				console.log("no nickname for " + userids[i]);
@@ -26,12 +29,56 @@ function updateUserNicknames(cb) {
 			var nick = nickname.toLowerCase();
 
 			if (!nicknamesHashMap[nick]) {
-				nicknamesHashMap[nick] = userids[i];
+				nicknamesHashMap[nick] = {
+					id: userids[i],
+					original: nickname
+				};
 			} else {
+				nicknamesOldFormat.push({
+					nick: nickname,
+					id: userids[i]
+				});
+
+				if (nicknamesHashMap[nick].id !== -1) {
+					nicknamesOldFormat.push({
+						nick: nicknamesHashMap[nick].original,
+						id: nicknamesHashMap[nick].id
+					});
+				}
+
+				nicknamesHashMap[nick] = {
+					id: -1
+				};
+
 				console.log("duplicate nick :( " + nick + " - " + userids[i] + " - " + nicknamesHashMap[nick]);
 			}
 		});
-		return;
+
+		var nicknamesToChange = Object.keys(nicknamesHashMap).map(function (nick) {
+			return {
+				nick: nick,
+				id: nicknamesHashMap[nick].id
+			};
+		});
+
+		var m = client.multi();
+
+		nicknamesToDelete.forEach(function (nickname) {
+			m.del("user:nickname:" + nickname);
+		});
+
+		nicknamesToChange.forEach(function (nickname) {
+			m.set("user:nickname:" + nickname.nick, nickname.id);
+		});
+
+		nicknamesOldFormat.forEach(function (nickname) {
+			m.set("user:nickname:old:" + nickname.nick, nickname.id);
+		});
+
+		console.log(nicknamesToChange);
+		console.log(nicknamesOldFormat);
+
+		m.exec(this);
 	}), cb);
 }
 

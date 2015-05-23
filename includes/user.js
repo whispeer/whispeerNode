@@ -909,7 +909,7 @@ User.getUser = function (identifier, callback, returnError) {
 		if (h.isMail(identifier)) {
 			client.get("user:mail:" + identifier, this);
 		} else if (h.isNickname(identifier)) {
-			client.get("user:nickname:" + identifier, this);
+			client.get("user:nickname:" + identifier.toLowerCase(), this);
 		} else if (h.isID(identifier)) {
 			client.get("user:id:" + identifier, this);
 		} else {
@@ -920,8 +920,14 @@ User.getUser = function (identifier, callback, returnError) {
 			}
 		}
 	}, h.sF(function (id) {
+		if (id === "-1" && h.isNickname(identifier)) {
+			client.get("user:nickname:old:" + identifier, this);
+		} else {
+			this.ne(id);
+		}
+	}), h.sF(function (id) {
 		if (id && id !== "-1") {
-			this.ne(new User(id));
+			this.last.ne(new User(id));
 		} else {
 			if (returnError) {
 				this.ne(new UserNotExisting(identifier));
