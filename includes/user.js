@@ -941,7 +941,7 @@ User.getUser = function (identifier, callback, returnError) {
 User.isNicknameFree = function (nickname, cb) {
 	step(function () {
 		if (h.isNickname(nickname)) {
-			client.get("user:nickname:" + nickname, this);
+			client.get("user:nickname:" + nickname.toLowerCase(), this);
 		} else {
 			throw new Error("invalid nickname");
 		}
