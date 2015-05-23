@@ -26,9 +26,9 @@ function updateUserNicknames(cb) {
 			var nick = nickname.toLowerCase();
 
 			if (!nicknamesHashMap[nick]) {
-				nicknamesHashMap[nick] = 1;
+				nicknamesHashMap[nick] = userids[i];
 			} else {
-				console.log("duplicate nick :( " + nick + " - " + userids[i]);
+				console.log("duplicate nick :( " + nick + " - " + userids[i] + " - " + nicknamesHashMap[nick]);
 			}
 		});
 		return;
