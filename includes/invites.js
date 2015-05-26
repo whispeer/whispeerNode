@@ -63,7 +63,11 @@ var invites = {
 			//bind new user to old user
 			client.hget("invites:active", inviteCode, this);
 		}, h.sF(function (user) {
-			myUser.addFriendRecommendation(user, this);
+			if (user) {
+				myUser.addFriendRecommendation(user, this);
+			} else {
+				this.ne();
+			}
 		}), cb);
 	}
 };
