@@ -71,9 +71,8 @@ var s = {
 				console.error("could not create profiles. TODO: delete user!");
 			}
 
-			mailer.sendAcceptMail(myUser, this);
-		}), h.sF(function () {
-			invites.useCode(data.inviteCode, this);
+			mailer.sendAcceptMail(myUser, this.parallel());
+			invites.useCode(myUser, data.inviteCode, this.parallel());
 		}), h.sF(function () {
 			this.ne(res);
 		}), fn);

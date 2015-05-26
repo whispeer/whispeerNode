@@ -13,20 +13,6 @@ var invite = {
 			this.ne({});
 		}), fn);
 	},
-	requestWithMail: function (data, fn) {
-		step(function () {
-			invites.addRequestMail(data.mail, this);
-		}, h.sF(function () {
-			this.ne({});
-		}), fn);
-	},
-	acceptRequest: function (data, fn, request) {
-		step(function () {
-			invites.acceptRequest(request, data.code, this);
-		}, h.sF(function (success) {
-			this.ne({ success: success });
-		}), fn);
-	},
 	generateCode: function (data, fn, request) {
 		step(function () {
 			invites.generateCode(request, this);
@@ -35,19 +21,7 @@ var invite = {
 				inviteCode: code
 			});
 		}), fn);
-	},
-	checkCode: function (data, fn) {
-		step(function () {
-			invites.checkCode(data.inviteCode, this);
-		}, h.sF(function (valid) {
-			this.ne({
-				valid: valid
-			});
-		}), fn);
-	},
+	}
 };
-
-invite.requestWithMail.noLoginNeeded = true;
-invite.checkCode.noLoginNeeded = true;
 
 module.exports = invite;

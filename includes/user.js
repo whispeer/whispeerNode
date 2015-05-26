@@ -685,6 +685,31 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.addFriendRecommendation = function (user, cb) {
+		var userid;
+
+		step(function () {
+			if (typeof user === "string") {
+				userid = h.parseDecimal(user);
+			} else if (typeof user === "number") {
+				userid = user;
+			} else if (typeof user === "object") {
+				userid = user.getID();
+			} else {
+				throw new Error("invalid user for friend recommendation");
+			}
+
+			client.sadd(userDomain + ":recommendations", userid, this);
+		}, h.sF(function (addedCount) {
+			if (addedCount === 1) {
+				client.lpush(userDomain + ":orderedRecommendations", userid, this);
+			} else {
+				//user is already in recommendations
+				this.ne();
+			}
+		}), cb);
+	};
+
 	this.getOnlineStatus = function(cb) {
 		step(function () {
 			client.scard(userDomain + ":sockets", this.parallel());
