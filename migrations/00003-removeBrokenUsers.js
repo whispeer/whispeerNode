@@ -5,22 +5,8 @@ var h = require("whispeerHelper");
 
 var client = require("../includes/redisClient");
 
-function deleteUser(id, cb) {
-	if (h.parseDecimal(id) > 0) {
-		console.log(id);
-		step(function () {
-			client.keys("user:" + id, this);
-		}, h.sF(function (keys) {
-			console.log(keys);
-		}));
-	} else {
-		console.log("that is not an id: " + id);
-		cb();
-	}
-}
-
 function updateUserNicknames(cb) {
-	var userids;
+	var userids, m = client.multi();
 
 	step(function () {
 		client.smembers("user:list", this);
@@ -38,8 +24,14 @@ function updateUserNicknames(cb) {
 		}).filter(function (user) {
 			return !user.nickname;
 		}).forEach(function (user) {
-			deleteUser(user.id, this.parallel());
-		}, this);
+			if (h.parseDecimal(user.id) > 0) {
+				console.log("removing user: " + user.id);
+				m.srem("user:list", user.id, this);
+				m.del("user:id:" + user.id);
+			}
+		});
+
+		m.exec(this);
 	}), cb);
 }
 
