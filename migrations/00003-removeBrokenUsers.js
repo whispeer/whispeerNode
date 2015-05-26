@@ -7,6 +7,7 @@ var client = require("../includes/redisClient");
 
 function deleteUser(id, cb) {
 	if (h.parseDecimal(id) > 0) {
+		console.log(id);
 		step(function () {
 			client.keys("user:" + id, this);
 		}, h.sF(function (keys) {
