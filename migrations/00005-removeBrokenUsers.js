@@ -31,11 +31,11 @@ function updateUserNicknames(cb) {
 				m.srem("user:list", user.id, this);
 				m.del("user:id:" + user.id);
 
-				//search.user.remove(user.id, this.parallel());
+				search.user.remove(user.id, this.parallel());
 			}
 		}, this);
 
-		//m.exec(this);
+		m.exec(this);
 	}), cb);
 }
 
