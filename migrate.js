@@ -49,6 +49,7 @@ function updateMigrationState(state, cb) {
 }
 
 function runMigration(id, cb) {
+	console.log("runing migration " + id);
 	step(function () {
 		var toRun = getMigrationPath(id);
 

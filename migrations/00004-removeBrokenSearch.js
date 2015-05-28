@@ -26,6 +26,10 @@ function updateUserNicknames(cb) {
 		}).forEach(function (userid) {
 			search.user.remove(userid, this.parallel());
 		}, this);
+
+		this.parallel()();
+	}), h.sF(function () {
+		this.ne(true);
 	}), cb);
 }
 
