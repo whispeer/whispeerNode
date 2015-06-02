@@ -72,7 +72,7 @@ var s = {
 			}
 
 			mailer.sendAcceptMail(myUser, this.parallel());
-			invites.useCode(myUser, data.inviteCode, this.parallel());
+			invites.useCode(myUser, data.inviteCode, this.parallel().bind(this, null));
 		}), h.sF(function () {
 			this.ne(res);
 		}), fn);

@@ -685,28 +685,12 @@ var User = function (id) {
 		}), cb);
 	};
 
-	this.addFriendRecommendation = function (user, cb) {
-		var userid;
-
+	this.addFriendRecommendation = function (user, score, cb) {
 		step(function () {
-			if (typeof user === "string") {
-				userid = h.parseDecimal(user);
-			} else if (typeof user === "number") {
-				userid = user;
-			} else if (typeof user === "object") {
-				userid = user.getID();
-			} else {
-				throw new Error("invalid user for friend recommendation");
-			}
-
-			client.sadd(userDomain + ":recommendations", userid, this);
-		}, h.sF(function (addedCount) {
-			if (addedCount === 1) {
-				client.lpush(userDomain + ":orderedRecommendations", userid, this);
-			} else {
-				//user is already in recommendations
-				this.ne();
-			}
+			var userid = user.getID();
+			client.zadd(userDomain + ":recommendations", score, userid, this);
+		}, h.sF(function () {
+			this.ne();
 		}), cb);
 	};
 

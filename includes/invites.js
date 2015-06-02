@@ -6,6 +6,7 @@ var h = require("whispeerHelper");
 var code = require("./session").code;
 var client = require("./redisClient");
 var mailer = require("./mailer");
+var User = require("./user");
 
 var INVITELENGTH = 10;
 
@@ -64,10 +65,13 @@ var invites = {
 			client.hget("invites:active", inviteCode, this);
 		}, h.sF(function (user) {
 			if (user) {
-				myUser.addFriendRecommendation(user, this);
+				User.getUser(user, this);
 			} else {
-				this.ne();
+				this.last.ne();
 			}
+		}), h.sF(function (otherUser) {
+			otherUser.addFriendRecommendation(myUser, 0, this.parallel());
+			myUser.addFriendRecommendation(otherUser, 0, this.parallel());
 		}), cb);
 	}
 };
