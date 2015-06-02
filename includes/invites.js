@@ -8,10 +8,12 @@ var client = require("./redisClient");
 var mailer = require("./mailer");
 var User = require("./user");
 
+var Bluebird = require("bluebird");
+
 var INVITELENGTH = 10;
 
 var invites = {
-	generateCode: function (request, cb) {
+	generateCode: function (request, reference, cb) {
 		var inviteCode;
 		step(function () {
 			request.session.logedinError(this);
@@ -24,11 +26,16 @@ var invites = {
 			client.sadd("invites:all", inviteCode, this);
 		}), h.sF(function (addedCount) {
 			if (addedCount === 1) {
-				//add code to not used list
+				var userid = request.session.getUserID();
+
 				//add code to list of codes created by current user
 				client.multi()
-					.hset("invites:active", inviteCode, request.session.getUserID(), this)
-					.sadd("invites:" + request.session.getUserID() + ":all", inviteCode)
+					.hmset("invites:code:" + inviteCode, {
+						user: userid,
+						added: new Date().getTime(),
+						reference: reference
+					})
+					.sadd("invites:user:" + userid, inviteCode)
 					.exec(this);
 			} else {
 				invites.generateInviteCode(request, this);
@@ -38,31 +45,40 @@ var invites = {
 		}), cb);
 	},
 	byMail: function (request, mails, name, cb) {
-		step(function () {
+		var resultPromise = Bluebird.try(function () {
 			if (name) {
 				name = name.replace(/[^\w\s]/);
 			} else {
 				name = false;
 			}
 
-			if (mails.length === 0) {
-				this.last.ne();
-			}
+			return mails;
+		}).map(function (mail) {
+			var generateCode = Bluebird.promisify(invites.generateCode, mailer);
 
-			invites.generateCode(request, this);
-		}, h.sF(function (inviteCode) {
-			mails.forEach(function (mail) {
-				mailer.sendMail(mail, "invite", {
-					name: name,
-					inviteCode: inviteCode
-				}, this.parallel());
-			}, this);
-		}), cb);
+			return generateCode(request, mail).then(function (code) {
+				return {
+					code: code,
+					mail: mail
+				};
+			});
+		}).map(function (invite) {
+			var sendMail = Bluebird.promisify(mailer.sendMail, mailer);
+			sendMail(invite.mail, "invite", {
+				name: name,
+				inviteCode: invite.code
+			});
+		});
+
+		if (cb) {
+			step.unpromisify(resultPromise, cb);
+		} else {
+			return resultPromise;
+		}
 	},
 	useCode: function (myUser, inviteCode, cb) {
 		step(function () {
-			//bind new user to old user
-			client.hget("invites:active", inviteCode, this);
+			client.hget("invites:code:" + inviteCode, "user", this);
 		}, h.sF(function (user) {
 			if (user) {
 				User.getUser(user, this);
@@ -70,6 +86,7 @@ var invites = {
 				this.last.ne();
 			}
 		}), h.sF(function (otherUser) {
+			client.sadd("invites:code:" + inviteCode + ":used", myUser.getID(), this.parallel());
 			otherUser.addFriendRecommendation(myUser, 0, this.parallel());
 			myUser.addFriendRecommendation(otherUser, 0, this.parallel());
 		}), cb);

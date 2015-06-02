@@ -15,7 +15,7 @@ var invite = {
 	},
 	generateCode: function (data, fn, request) {
 		step(function () {
-			invites.generateCode(request, this);
+			invites.generateCode(request, "", this);
 		}, h.sF(function (code) {
 			this.ne({
 				inviteCode: code
