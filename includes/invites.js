@@ -13,7 +13,7 @@ var Bluebird = require("bluebird");
 var INVITELENGTH = 10;
 
 var invites = {
-	generateCode: function (request, reference, cb) {
+	generateCode: function (request, reference, active, cb) {
 		var inviteCode;
 		step(function () {
 			request.session.logedinError(this);
@@ -33,7 +33,8 @@ var invites = {
 					.hmset("invites:code:" + inviteCode, {
 						user: userid,
 						added: new Date().getTime(),
-						reference: reference
+						reference: reference,
+						active: (active ? 1 : 0)
 					})
 					.sadd("invites:user:" + userid, inviteCode)
 					.exec(this);
@@ -42,6 +43,17 @@ var invites = {
 			}
 		}), h.sF(function () {
 			this.ne(inviteCode);
+		}), cb);
+	},
+	activateCode: function (inviteCode, cb) {
+		step(function () {
+			client.sismember("invites:all", inviteCode, this);
+		}, h.sF(function (isMember) {
+			if (isMember) {
+				client.hset("invites:code:" + inviteCode, "active", 1, this);
+			} else {
+				this.ne();
+			}
 		}), cb);
 	},
 	getMyInvites: function (request, cb) {
@@ -80,7 +92,7 @@ var invites = {
 		}).map(function (mail) {
 			var generateCode = Bluebird.promisify(invites.generateCode, mailer);
 
-			return generateCode(request, mail).then(function (code) {
+			return generateCode(request, mail, true).then(function (code) {
 				return {
 					code: code,
 					mail: mail

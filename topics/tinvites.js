@@ -22,9 +22,14 @@ var invite = {
 			});
 		}), fn);
 	},
+	activateCode: function (data, fn) {
+		step(function () {
+			invites.activateCode(data.code, this);
+		}, fn);
+	},
 	generateCode: function (data, fn, request) {
 		step(function () {
-			invites.generateCode(request, data.reference || "", this);
+			invites.generateCode(request, data.reference || "", false, this);
 		}, h.sF(function (code) {
 			this.ne({
 				inviteCode: code
