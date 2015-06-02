@@ -180,12 +180,12 @@ var validKeys = {
 			step(function nPre1() {
 				ownUserF(data, this);
 			}, h.sF(function () {
-				client.setnx("user:nickname:" + data.value, data.reference.getID(), this);
+				client.setnx("user:nickname:" + data.value.toLowerCase(), data.reference.getID(), this);
 			}), h.sF(function nPre2(set) {
 				if (set) {
 					this.last.ne();
 				} else {
-					client.get("user:nickname:" + data.value, this);
+					client.get("user:nickname:" + data.value.toLowerCase(), this);
 				}
 			}), h.sF(function nPre3(id) {
 				if (id === data.reference.getID()) {
@@ -198,7 +198,7 @@ var validKeys = {
 		post: function (data, cb) {
 			step(function () {
 				if (data.oldValue) {
-					client.del("user:nickname:" + data.oldValue);
+					client.del("user:nickname:" + data.oldValue.toLowerCase());
 				}
 
 				this.ne();

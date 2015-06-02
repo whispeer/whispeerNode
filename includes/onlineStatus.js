@@ -66,9 +66,39 @@ function OnlineStatusUpdater(socketData, session) {
 		}
 	}
 
+	function track() {
+		var now = new Date();
+
+		now.setMilliseconds(0);
+		now.setSeconds(0);
+		now.setMinutes(0);
+
+		var month = now.getFullYear() + "-" + (now.getMonth() + 1);
+		var week = month + " W" + h.getWeekNumber(now);
+		var day = month + "-" + now.getDate();
+		var hour = day + " " + now.getHours() + "h";
+
+		client.multi()
+			.sadd("analytics:online:hour:" + hour, userid)
+			.sadd("analytics:online:day:" + day, userid)
+			.sadd("analytics:online:week:" + week, userid)
+			.sadd("analytics:online:month:" + month, userid)
+			.exec(function (e) {
+				if (e) {
+					console.error(e);
+				}
+			});
+	}
+
 	function addSocket() {
 		userid = socketData.session.getUserID();
 		var alreadyNotified = false;
+
+		try {
+			track();
+		} catch (e) {
+			console.error(e);
+		}
 
 		//add current user to online users - add current socket to users connections
 		client.multi()
