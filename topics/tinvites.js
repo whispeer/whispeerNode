@@ -13,6 +13,15 @@ var invite = {
 			this.ne({});
 		}), fn);
 	},
+	getMyInvites: function (data, fn, request) {
+		step(function () {
+			invites.getMyInvites(request, this);
+		}, h.sF(function (invites) {
+			this.ne({
+				invites: invites
+			});
+		}), fn);
+	},
 	generateCode: function (data, fn, request) {
 		step(function () {
 			invites.generateCode(request, "", this);

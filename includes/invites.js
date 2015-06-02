@@ -44,6 +44,30 @@ var invites = {
 			this.ne(inviteCode);
 		}), cb);
 	},
+	getMyInvites: function (request, cb) {
+		var smembers = Bluebird.promisify(client.smembers, client);
+		var hgetall = Bluebird.promisify(client.hgetall, client);
+		var logedinError = Bluebird.promisifiy(request.session.logedinError, request.session);
+
+		var resultPromise = logedinError.then(function () {
+			return smembers("invites:user:" + request.session.getUserID());
+		}).map(function (inviteCode) {
+			return Promise.resolve([
+				hgetall("invites:code:" + inviteCode),
+				smembers("invites:code:" + inviteCode + ":used")
+			]).spread(function (data, usedBy) {
+				data.usedBy = usedBy;
+				data.code = inviteCode;
+				return data;
+			});
+		});
+
+		if (cb) {
+			step.unpromisify(resultPromise, cb);
+		} else {
+			return resultPromise;
+		}
+	},
 	byMail: function (request, mails, name, cb) {
 		var resultPromise = Bluebird.try(function () {
 			if (name) {
