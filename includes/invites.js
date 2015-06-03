@@ -39,7 +39,7 @@ var invites = {
 					.sadd("invites:v2:user:" + userid, inviteCode)
 					.exec(this);
 			} else {
-				invites.generateInviteCode(request, this);
+				invites.generateCode(request, reference, active, this);
 			}
 		}), h.sF(function () {
 			this.ne(inviteCode);
