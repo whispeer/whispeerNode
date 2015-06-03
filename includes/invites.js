@@ -59,12 +59,12 @@ var invites = {
 	getMyInvites: function (request, cb) {
 		var smembers = Bluebird.promisify(client.smembers, client);
 		var hgetall = Bluebird.promisify(client.hgetall, client);
-		var logedinError = Bluebird.promisifiy(request.session.logedinError, request.session);
+		var logedinError = Bluebird.promisify(request.session.logedinError, request.session);
 
-		var resultPromise = logedinError.then(function () {
+		var resultPromise = logedinError().then(function () {
 			return smembers("invites:user:" + request.session.getUserID());
 		}).map(function (inviteCode) {
-			return Promise.resolve([
+			return Bluebird.all([
 				hgetall("invites:code:" + inviteCode),
 				smembers("invites:code:" + inviteCode + ":used")
 			]).spread(function (data, usedBy) {
@@ -72,6 +72,8 @@ var invites = {
 				data.code = inviteCode;
 				return data;
 			});
+		}).filter(function (inviteData) {
+			return inviteData.active === "1";
 		});
 
 		if (cb) {
