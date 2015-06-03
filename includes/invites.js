@@ -125,6 +125,7 @@ var invites = {
 			}
 		}), h.sF(function (otherUser) {
 			client.sadd("invites:v2:code:" + inviteCode + ":used", myUser.getID(), this.parallel());
+			client.hset("invites:v2:code:" + inviteCode, "active", 1, this.parallel());
 			otherUser.addFriendRecommendation(myUser, 0, this.parallel());
 			myUser.addFriendRecommendation(otherUser, 0, this.parallel());
 		}), cb);
