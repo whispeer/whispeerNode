@@ -23,20 +23,20 @@ var invites = {
 		}), h.sF(function (_inviteCode) {
 			inviteCode = _inviteCode;
 			//add invite code to list of all codes
-			client.sadd("invites:all", inviteCode, this);
+			client.sadd("invites:v2:all", inviteCode, this);
 		}), h.sF(function (addedCount) {
 			if (addedCount === 1) {
 				var userid = request.session.getUserID();
 
 				//add code to list of codes created by current user
 				client.multi()
-					.hmset("invites:code:" + inviteCode, {
+					.hmset("invites:v2:code:" + inviteCode, {
 						user: userid,
 						added: new Date().getTime(),
 						reference: reference,
 						active: (active ? 1 : 0)
 					})
-					.sadd("invites:user:" + userid, inviteCode)
+					.sadd("invites:v2:user:" + userid, inviteCode)
 					.exec(this);
 			} else {
 				invites.generateInviteCode(request, this);
@@ -47,10 +47,10 @@ var invites = {
 	},
 	activateCode: function (inviteCode, cb) {
 		step(function () {
-			client.sismember("invites:all", inviteCode, this);
+			client.sismember("invites:v2:all", inviteCode, this);
 		}, h.sF(function (isMember) {
 			if (isMember) {
-				client.hset("invites:code:" + inviteCode, "active", 1, this);
+				client.hset("invites:v2:code:" + inviteCode, "active", 1, this);
 			} else {
 				this.ne();
 			}
@@ -62,11 +62,11 @@ var invites = {
 		var logedinError = Bluebird.promisify(request.session.logedinError, request.session);
 
 		var resultPromise = logedinError().then(function () {
-			return smembers("invites:user:" + request.session.getUserID());
+			return smembers("invites:v2:user:" + request.session.getUserID());
 		}).map(function (inviteCode) {
 			return Bluebird.all([
-				hgetall("invites:code:" + inviteCode),
-				smembers("invites:code:" + inviteCode + ":used")
+				hgetall("invites:v2:code:" + inviteCode),
+				smembers("invites:v2:code:" + inviteCode + ":used")
 			]).spread(function (data, usedBy) {
 				data.usedBy = usedBy;
 				data.code = inviteCode;
@@ -116,7 +116,7 @@ var invites = {
 	},
 	useCode: function (myUser, inviteCode, cb) {
 		step(function () {
-			client.hget("invites:code:" + inviteCode, "user", this);
+			client.hget("invites:v2:code:" + inviteCode, "user", this);
 		}, h.sF(function (user) {
 			if (user) {
 				User.getUser(user, this);
@@ -124,7 +124,7 @@ var invites = {
 				this.last.ne();
 			}
 		}), h.sF(function (otherUser) {
-			client.sadd("invites:code:" + inviteCode + ":used", myUser.getID(), this.parallel());
+			client.sadd("invites:v2:code:" + inviteCode + ":used", myUser.getID(), this.parallel());
 			otherUser.addFriendRecommendation(myUser, 0, this.parallel());
 			myUser.addFriendRecommendation(otherUser, 0, this.parallel());
 		}), cb);
