@@ -24,7 +24,7 @@ var invite = {
 	},
 	activateCode: function (data, fn) {
 		step(function () {
-			invites.activateCode(data.code, this);
+			invites.activateCode(data.code, data.reference, this);
 		}, fn);
 	},
 	generateCode: function (data, fn, request) {

@@ -45,12 +45,15 @@ var invites = {
 			this.ne(inviteCode);
 		}), cb);
 	},
-	activateCode: function (inviteCode, cb) {
+	activateCode: function (inviteCode, reference, cb) {
 		step(function () {
 			client.sismember("invites:v2:all", inviteCode, this);
 		}, h.sF(function (isMember) {
 			if (isMember) {
 				client.hset("invites:v2:code:" + inviteCode, "active", 1, this);
+				if (reference) {
+					client.hset("invites:v2:code:" + inviteCode, "reference", reference, this);
+				}
 			} else {
 				this.ne();
 			}
