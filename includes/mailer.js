@@ -26,7 +26,7 @@ var defaultFrom = config.mailFrom || "whispeer <support@whispeer.de>";
 //-- <mail>Verified 1
 //-- <mail>Challenge <challenge>
 
-var TEMPLATEDIR = "./templates/";
+var TEMPLATEDIR = "./mailTemplates/_site/";
 
 function generateChallenge(cb) {
 	var challenge;
@@ -105,27 +105,15 @@ var mailer = {
 					})
 					.expire("mail:challenges:" + challenge, 7*24*60*60);
 
-				var mailOption = {
-					from: defaultFrom,
-					to: userMail,
-					subject: "[Whispeer] E-Mail Verifizierung",
-					text: "Bitte verifiziere deine E-Mail Adresse!\nUm deine E-Mail zu aktivieren, klicke bitte auf den folgenden Link: " + config.host + "/verifyMail/" + challenge
-				};
+				mailer.sendMail(userMail, "verification", {
+					challenge: challenge
+				}, this.parallel());
 
-				mail.sendMail(mailOption, this.parallel());
 				m.exec(this.parallel());
 			} else {
 				this.last.ne();
 			}
 		}), cb);
-	},
-	delaySendMails: function () {
-		var args = arguments;
-		step(function () {
-			process.nextTick(this);
-		}, function () {
-			mailer.sendMails.apply(mailer, args);
-		});
 	},
 	sendInteractionMails: function (users, cb) {
 		var usersToNotify;
@@ -143,7 +131,9 @@ var mailer = {
 				client.sadd("mail:notifiedUsers", user.getID(), this.parallel());
 			}, this);
 		}), h.sF(function () {
-			mailer.sendMails(usersToNotify, "[Whispeer] Neue Interaktionen", "Jemand hat mit dir auf Whispeer interagiert!\nBesuche " + config.host + " um zu sehen wer mit dir interagiert hat.\n\nMit freundlichen Grüßen,\nDein Whispeer Team!", this);
+			usersToNotify.forEach(function (user) {
+				mailer.sendUserMail(user, "interaction", {}, this.parallel());
+			}, this);
 		}), (cb || h.nop));
 	},
 	fillTemplate: function (templateName, variables, cb) {
@@ -164,7 +154,7 @@ var mailer = {
 
 			for (var i = 0; i < content.length; i++) {
 				if (inExpression) {
-					if (content[i] === "}" && content[i+1] === "}") {
+					if (content[i] === ">" && content[i+1] === ">") {
 						result += vm.runInNewContext(expression, variables);
 
 						inExpression = false;
@@ -173,7 +163,7 @@ var mailer = {
 					} else {
 						expression += content[i];
 					}
-				} else if (content[i] === "{" && content[i+1] === "{") {
+				} else if (content[i] === "<" && content[i+1] === "<") {
 					inExpression = true;
 					i += 1;
 				} else {
@@ -205,56 +195,18 @@ var mailer = {
 			}
 		}), cb);
 	},
-	sendMail: function (receiver, templateName, variables, cb) {
+	sendMail: function (receiverAddress, templateName, variables, cb) {
 		step(function () {
 			mailer.fillTemplate(templateName, variables, this);
 		}, h.sF(function (content, subject) {
 			mail.sendMail({
-				to: receiver,
+				to: receiverAddress,
 				from: defaultFrom,
 				subject: subject,
 				html: content,
 				generateTextFromHTML: true
 			}, this);
 		}), cb);
-	},
-	sendMails: function (users, subject, text, cb) {
-		//todo: add inReplyTo and messageID!
-		var mails;
-
-		step(function () {
-			if (users.length === 0) {
-				this.last.ne();
-			}
-
-			users.forEach(function (user) {
-				user.getEMail(socketDataCreator.logedinStub, this.parallel());
-			}, this);
-		}, h.sF(function (theMails) {
-			mails = theMails;
-
-			users.forEach(function (user, i) {
-				if (mails[i]) {
-					mailer.isMailActivatedForUser(user, mails[i], this.parallel());
-				} else {
-					this.parallel()();
-				}
-			}, this);
-		}), h.sF(function (verified) {
-			//TODO: text replacements (e.g. user name!)
-			users.forEach(function (user, i) {
-				if (verified[i]) {
-					mail.sendMail({
-						from: defaultFrom,
-						to: mails[i],
-						subject: subject.toString(),
-						text: text.toString()
-					});
-				}
-			});
-
-			this.ne();
-		}), (cb || h.nop));
 	},
 	mailAdmin: function (subject, text, cb) {
 		var mailOptions = {
