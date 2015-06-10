@@ -256,17 +256,13 @@ var Topic = function (id) {
 				user.isOnline(this.parallel());
 			}, this);
 		}), h.sF(function (onlineUsers) {
-			var offlineUsers = [];
-
 			theReceiver.forEach(function (user, index) {
 				if (onlineUsers[index]) {
 					user.notify("message", messageID);
-				} else {
-					offlineUsers.push(user);
 				}
 			});
 
-			mailer.sendInteractionMails(offlineUsers);
+			mailer.sendInteractionMails(theReceiver);
 
 			this.ne();
 		}), cb);
