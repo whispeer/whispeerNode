@@ -80,7 +80,9 @@ var Post = function (postid) {
 			m.exec(this);
 		}), h.sF(function () {
 			thePost.notify("comment:create", commentID);
-			mailer.sendInteractionMails(this.getSender());
+			thePost.getSender(this);
+		}), h.sF(function (sender) {
+			mailer.sendInteractionMails([sender]);
 
 			this.ne();
 		}), cb);
@@ -90,7 +92,7 @@ var Post = function (postid) {
 		step(function () {
 			client.hget(domain + ":meta", "sender", this);
 		}, h.sF(function (senderID) {
-			return User.getUser(senderID, this);
+			User.getUser(senderID, this);
 		}), cb);
 	};
 
