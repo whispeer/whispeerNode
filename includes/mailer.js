@@ -19,6 +19,8 @@ var mail = nodemailer.createTransport(config.mailType, config.mail);
 
 var defaultFrom = config.mailFrom || "whispeer <support@whispeer.de>";
 
+var Bluebird = require("bluebird");
+
 //mail
 //- <userid>
 //-- mails set
@@ -116,25 +118,30 @@ var mailer = {
 		}), cb);
 	},
 	sendInteractionMails: function (users, cb) {
-		var usersToNotify;
+		var sismember = Bluebird.promisify(client.sismember, client);
+		var sadd = Bluebird.promisify(client.sadd, client);
+		var sendUserMail = Bluebird.promisify(mailer.sendUserMail, mailer);
 
-		step(function () {
-			users.forEach(function (user) {
-				client.sismember("mail:notifiedUsers", user.getID(), this.parallel());
-			}, this);
-		}, h.sF(function (notified) {
-			usersToNotify = users.filter(function (user, i) {
-				return !notified[i];
+		var resultPromise = Bluebird.resolve(users).filter(function (user) {
+			var isOnline = Bluebird.promisify(user.isOnline, user);
+
+			return Bluebird.all([
+				sismember("mail:notifiedUsers", user.getID()),
+				isOnline()
+			]).spread(function (alreadyNotified, isOnline) {
+				return !alreadyNotified && !isOnline;
 			});
+		}).each(function (user) {
+			return sadd("mail:notifiedUsers", user.getID()).then(function () {
+				return sendUserMail(user, "interaction", {});
+			});
+		});
 
-			usersToNotify.forEach(function (user) {
-				client.sadd("mail:notifiedUsers", user.getID(), this.parallel());
-			}, this);
-		}), h.sF(function () {
-			usersToNotify.forEach(function (user) {
-				mailer.sendUserMail(user, "interaction", {}, this.parallel());
-			}, this);
-		}), (cb || h.nop));
+		if (cb) {
+			step.unpromisify(resultPromise, cb);
+		}
+
+		return resultPromise;
 	},
 	fillTemplate: function (templateName, variables, cb) {
 		step(function () {
