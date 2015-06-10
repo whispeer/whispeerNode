@@ -10,7 +10,7 @@ var search = require("./search");
 var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
-var errorService = require("./errorService");
+var mailer = require("./mailer");
 
 /*
 	Friends: {
@@ -459,6 +459,7 @@ var friends = {
 			addFriendName(request, friendShip.user);
 			if (firstRequest) {
 				friendShip.user.notify("friendRequest", request.session.getUserID());
+				mailer.sendInteractionMails([friendShip.user]);
 			} else {
 				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
