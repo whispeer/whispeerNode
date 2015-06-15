@@ -567,13 +567,13 @@ var User = function (id) {
 		}
 	};
 
-	this.isMailVerified = function (request, cb) {
+	this.isMailVerified = function (request, cb, overwrite) {
 		step(function () {
 			theUser.getEMail(request, this);
 		}, h.sF(function (mail) {
 			if (mail) {
 				var mailer = require("./mailer");
-				mailer.isMailActivatedForUser(theUser, mail, this);
+				mailer.isMailActivatedForUser(theUser, mail, this, overwrite);
 			} else {
 				this.ne();
 			}
@@ -781,7 +781,7 @@ var User = function (id) {
 			mailer.sendUserMail(theUser, "recoveryRequest", {
 				code: code,
 				nick: nick
-			}, this);
+			}, this, true);
 		}), h.sF(function (mailSent) {
 			if (!mailSent) {
 				throw new Error("did not send recovery mail!");

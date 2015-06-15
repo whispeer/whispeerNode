@@ -47,14 +47,14 @@ function generateChallenge(cb) {
 }
 
 var mailer = {
-	isMailActivatedForUser: function (user, mail, cb) {
+	isMailActivatedForUser: function (user, mail, cb, overwrite) {
 		step(function () {
 			this.parallel.unflatten();
 
 			client.sismember("mail:" + user.getID(), mail, this.parallel());
 			client.hget("settings:" + user.getID(), "mailsEnabled", this.parallel());
 		}, h.sF(function (verified, mailsEnabled) {
-			this.ne(verified && mailsEnabled === "1");
+			this.ne(verified && (mailsEnabled === "1" || overwrite));
 		}), cb);
 	},
 	verifyUserMail: function (challenge, mailsEnabled, cb) {
@@ -187,13 +187,13 @@ var mailer = {
 			this.ne(result, subject);
 		}), cb);
 	},
-	sendUserMail: function (user, templateName, variables, cb) {
+	sendUserMail: function (user, templateName, variables, cb, overwriteActive) {
 		var receiver;
 		step(function () {
 			user.getEMail(socketDataCreator.logedinStub, this);
 		}, h.sF(function (_receiver) {
 			receiver = _receiver;
-			mailer.isMailActivatedForUser(user, receiver, this);
+			mailer.isMailActivatedForUser(user, receiver, this, overwriteActive);
 		}), h.sF(function (activated) {
 			if (activated) {
 				mailer.sendMail(receiver, templateName, variables, this);
