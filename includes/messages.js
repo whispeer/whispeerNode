@@ -153,6 +153,10 @@ var Message = function (id, topic) {
 				data._sortCounter = h.parseDecimal(data._sortCounter);
 			}
 
+			if (data.images) {
+				data.images = JSON.parse(data.images);
+			}
+
 			this.ne(data);
 		}), cb);
 	};
@@ -229,6 +233,10 @@ Message.create = function (request, data, cb) {
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 		client.incr("message:messages", this);
 	}), h.sF(function (messageid) {
+		if (data.meta.images) {
+			data.meta.images = JSON.stringify(data.meta.images);
+		}
+
 		data.meta.sender = request.session.getUserID();
 		data.meta.sendTime = new Date().getTime();
 		data.meta.messageid = messageid;
