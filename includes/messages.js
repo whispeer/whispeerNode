@@ -9,6 +9,8 @@ var client = require("./redisClient");
 
 var User = require("./user");
 
+var SymKey = require("./crypto/symKey");
+
 /*
 	message: {
 		meta: {
@@ -194,6 +196,14 @@ var Message = function (id, topic) {
 	};
 };
 
+function processImages(request, images, keys, cb) {
+	step(function () {
+		keys.forEach(function (key) {
+			SymKey.createWDecryptors(request, key, this.parallel());
+		}, this);
+	}, cb);
+}
+
 Message.create = function (request, data, cb) {
 	var theTopic, theMessageID, theMessage;
 	var meta = data.meta;
@@ -229,6 +239,12 @@ Message.create = function (request, data, cb) {
 			return;
 		}
 
+		if (data.meta.images && data.meta.images.length > 0) {
+			processImages(request, data.meta.images, data.imageKeys, this);
+		} else {
+			this.ne();
+		}
+	}), h.sF(function () {
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 		client.incr("message:messages", this);
