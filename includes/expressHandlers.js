@@ -11,15 +11,11 @@ module.exports = function (express) {
 		step(function () {
 			mailer.mailAdmin("B2B Request!", JSON.stringify(req.body), this);
 		}, h.sF(function () {
-			res.send(JSON.stringify({
-				success: true
-			}));
+			res.send("Thank you! We will handle your request soon! <a href='https://whispeer.de/en/b2b'>Take me back</a>");
 			next();
 		}), function (e) {
 			console.error(e);
-			res.send(JSON.stringify({
-				success: false
-			}));
+			res.send("An error occured. Please send us a mail directly: <a href='mailto:nils@whispeer.de'>nils@whispeer.de</a>");
 			next();
 		});
 		console.log(JSON.stringify(req.body));
