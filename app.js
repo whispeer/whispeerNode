@@ -29,10 +29,13 @@ if (config.https) {
 
 var server;
 
+var express = require("express")();
+var expressHandlers = require("./includes/expressHandlers");
+
 if (config.https) {
-	server = require("https").createServer(options);
+	server = require("https").createServer(options, express);
 } else {
-	server = require("http").createServer();
+	server = require("http").createServer(express);
 }
 
 var io = require("socket.io")(server);
@@ -60,6 +63,7 @@ step(function () {
 	client.del("user:online", this.parallel());
 }), h.sF(function () {
 	io.on("connection", onSocketConnection);
+	expressHandlers(express, client);
 
 	server.listen(config.wsPort);
 
