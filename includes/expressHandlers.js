@@ -26,7 +26,7 @@ module.exports = function (express) {
 	});
 
 	express.get("/b2b", function (req, res, next) {
-		res.send("Heyho!<form method='POST'><input type='text' name='bla'></form>");
+		res.send("<form method='POST'><input type='text' name='mail'></form>");
 		next();
 	});
 };
