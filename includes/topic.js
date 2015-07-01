@@ -12,7 +12,7 @@ var KeyApi = require("./crypto/KeyApi");
 var mailer = require("./mailer");
 
 //maximum difference: 5 minutes.
-var MAXTIME = 5 * 60 * 1000;
+var MAXTIME = 60 * 60 * 1000;
 
 /*
 	topic: {

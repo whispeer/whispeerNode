@@ -42,6 +42,8 @@ var newPostsExpireTime = 10 * 60;
 
 */
 
+var MAXTIME = 60 * 60 * 1000;
+
 var Post = function (postid) {
 	var domain = "post:" + postid, thePost = this, result;
 
@@ -482,7 +484,7 @@ Post.validateFormat = function (data, cb) {
 
 		var current = new Date().getTime();
 
-		if (Math.abs(data.meta.time - current) > 5 * 60 * 1000) {
+		if (Math.abs(data.meta.time - current) > MAXTIME) {
 			throw new InvalidPost("time too old");
 		}
 
