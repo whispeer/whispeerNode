@@ -74,7 +74,7 @@ function OnlineStatusUpdater(socketData, session) {
 		now.setMinutes(0);
 
 		var month = now.getFullYear() + "-" + (now.getMonth() + 1);
-		var week = month + " W" + h.getWeekNumber(now);
+		var week = now.getFullYear() + " W" + h.getWeekNumber(now);
 		var day = month + "-" + now.getDate();
 		var hour = day + " " + now.getHours() + "h";
 
