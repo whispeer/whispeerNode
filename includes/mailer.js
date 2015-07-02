@@ -28,7 +28,7 @@ var Bluebird = require("bluebird");
 //-- <mail>Verified 1
 //-- <mail>Challenge <challenge>
 
-var TEMPLATEDIR = "./mailTemplates/_site/";
+var TEMPLATEDIR = "./mailTemplates/_site/de/";
 
 function generateChallenge(cb) {
 	var challenge;
