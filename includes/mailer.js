@@ -28,7 +28,9 @@ var Bluebird = require("bluebird");
 //-- <mail>Verified 1
 //-- <mail>Challenge <challenge>
 
-var TEMPLATEDIR = "./mailTemplates/_site/de/";
+var TEMPLATEDIR = "./mailTemplates/_site/";
+
+var languages = ["en", "de"];
 
 function generateChallenge(cb) {
 	var challenge;
@@ -145,7 +147,13 @@ var mailer = {
 	},
 	fillTemplate: function (templateName, variables, cb) {
 		step(function () {
-			fs.readFile(TEMPLATEDIR + templateName + ".html", this);
+			var language = variables.language;
+
+			if (languages.indexOf(language) === -1) {
+				language = languages[0];
+			}
+
+			fs.readFile(TEMPLATEDIR + language + "/" + templateName + ".html", this);
 		}, h.sF(function (content) {
 			content = content.toString();
 
