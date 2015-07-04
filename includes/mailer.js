@@ -198,8 +198,17 @@ var mailer = {
 	sendUserMail: function (user, templateName, variables, cb, overwriteActive) {
 		var receiver;
 		step(function () {
-			user.getEMail(socketDataCreator.logedinStub, this);
-		}, h.sF(function (_receiver) {
+			this.parallel.unflatten();
+
+			user.getEMail(socketDataCreator.logedinStub, this.parallel());
+			client.get("user:" + user.getID() + ":settings", this.parallel());
+		}, h.sF(function (_receiver, settings) {
+			settings = JSON.parse(settings);
+
+			if (settings && settings.meta && settings.meta.uiLanguage) {
+				variables.language = settings.meta.uiLanguage;
+			}	
+
 			receiver = _receiver;
 			mailer.isMailActivatedForUser(user, receiver, this, overwriteActive);
 		}), h.sF(function (activated) {
