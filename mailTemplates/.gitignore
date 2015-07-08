@@ -1,1 +1,4 @@
 .sass-cache
+assets/css/*
+node_modules/
+config.codekit
