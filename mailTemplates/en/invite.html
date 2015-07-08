@@ -1,0 +1,29 @@
+---
+layout: mail
+lang: en
+title: "whispeer invitation <<(name ? 'from ' + name : '')>>"
+---
+<table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateBody">
+	<tr>
+		<td valign="top" class="bodyContent" mc:edit="body_content00">
+			<h1>You have been invited to whispeer<<(name ? 'by ' + name : '')>>!</h1>
+			<h3>Join whispeer and become a part of a growing family of members.</h3>
+			whispeer is a social network, which is specialized in securing your data! We technically ensure that only you and the choosen receiver can read your messages, images and posts. we can not read any of your content!
+		</td>
+	</tr>
+	<tr>
+		<td valign="top" class="bodyContent" mc:edit="body_content01">
+			<h2>Your personal invitation</h2>
+			Click the button to join whispeer:
+			<div class="padding-top padding-bottom center with-detail">
+				<a href="<<host>>/?code=<<inviteCode>>"><span class="button">Register</span></a><br/>
+			</div>
+			If the button does not work, please copy the following link into your browser!
+			<div class="padding-bottom padding-top center">
+				<span class="detail"><<host>>/?code=<<inviteCode>></span>
+			</div>
+			You can invite your friends after registration. We are looking forward to having you!
+		</td>
+	</tr>
+</table>
+

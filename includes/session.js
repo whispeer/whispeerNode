@@ -412,7 +412,7 @@ var Session = function Session() {
 
 			validateKeys(keys, this);
 		}, UserNotExisting), h.sF(function validateSettings() {
-			if (!settings || !settings.iv || !settings.ct) {
+			if (!settings || !settings.content.iv || !settings.content.ct) {
 				regErr("settingsInvalid");
 			}
 

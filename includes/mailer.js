@@ -30,6 +30,8 @@ var Bluebird = require("bluebird");
 
 var TEMPLATEDIR = "./mailTemplates/_site/";
 
+var languages = ["en", "de"];
+
 function generateChallenge(cb) {
 	var challenge;
 	step(function () {
@@ -145,7 +147,13 @@ var mailer = {
 	},
 	fillTemplate: function (templateName, variables, cb) {
 		step(function () {
-			fs.readFile(TEMPLATEDIR + templateName + ".html", this);
+			var language = variables.language;
+
+			if (languages.indexOf(language) === -1) {
+				language = languages[0];
+			}
+
+			fs.readFile(TEMPLATEDIR + language + "/" + templateName + ".html", this);
 		}, h.sF(function (content) {
 			content = content.toString();
 
@@ -190,8 +198,17 @@ var mailer = {
 	sendUserMail: function (user, templateName, variables, cb, overwriteActive) {
 		var receiver;
 		step(function () {
-			user.getEMail(socketDataCreator.logedinStub, this);
-		}, h.sF(function (_receiver) {
+			this.parallel.unflatten();
+
+			user.getEMail(socketDataCreator.logedinStub, this.parallel());
+			client.get("user:" + user.getID() + ":settings", this.parallel());
+		}, h.sF(function (_receiver, settings) {
+			settings = JSON.parse(settings);
+
+			if (settings && settings.meta) {
+				variables.language = settings.meta.uiLanguage || settings.meta.initialLanguage;
+			}	
+
 			receiver = _receiver;
 			mailer.isMailActivatedForUser(user, receiver, this, overwriteActive);
 		}), h.sF(function (activated) {
