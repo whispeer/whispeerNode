@@ -205,8 +205,8 @@ var mailer = {
 		}, h.sF(function (_receiver, settings) {
 			settings = JSON.parse(settings);
 
-			if (settings && settings.meta && settings.meta.uiLanguage) {
-				variables.language = settings.meta.uiLanguage;
+			if (settings && settings.meta) {
+				variables.language = settings.meta.uiLanguage || settings.meta.initialLanguage;
 			}	
 
 			receiver = _receiver;
