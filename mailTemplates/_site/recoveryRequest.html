@@ -3,622 +3,172 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>[whispeer] Stelle deinen whispeer-Account wieder her!</title>
-    <style type="text/css">
-		/* /\/\/\/\/\/\/\/\/ CLIENT-SPECIFIC STYLES /\/\/\/\/\/\/\/\/ */
-		#outlook a{padding:0;} /* Force Outlook to provide a "view in browser" message */
-		.ReadMsgBody{width:100%;} .ExternalClass{width:100%;} /* Force Hotmail to display emails at full width */
-		.ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {line-height: 100%;} /* Force Hotmail to display normal line spacing */
-		body, table, td, p, a, li, blockquote{-webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;} /* Prevent WebKit and Windows mobile changing default text sizes */
-		table, td{mso-table-lspace:0pt; mso-table-rspace:0pt;} /* Remove spacing between tables in Outlook 2007 and up */
-		img{-ms-interpolation-mode:bicubic;} /* Allow smoother rendering of resized image in Internet Explorer */
+	<style type="text/css" data-embed>
+		/****** EMAIL CLIENT BUG FIXES - BEST NOT TO CHANGE THESE ********/
 
-		/* /\/\/\/\/\/\/\/\/ RESET STYLES /\/\/\/\/\/\/\/\/ */
-		body{margin:0; padding:0;}
-		img{border:0; height:auto; line-height:100%; outline:none; text-decoration:none;}
-		table{border-collapse:collapse !important;}
-		body, #bodyTable, #bodyCell{height:100% !important; margin:0; padding:0; width:100% !important;}
-
-		/* /\/\/\/\/\/\/\/\/ WHISPEER STYLES /\/\/\/\/\/\/\/\/ */
-
-		.logo {
-			width: 100%;
-			text-align: center;
-			background-color: #3a8100;
-
-			font-size: 48px;
-			line-height: 1.426em;
-			font-weight: 700;
-			font-family: ubuntulight, 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-
-			padding-top: 32px;
-			padding-bottom: 32px;
-		}
-
-		.brand-one {
-			height: 30px;
-			color: #fff;
-			text-shadow: 0px 0px 2px #377900;
-		}
-
-		.brand-two {
-			color: #54ab0c;
-			text-shadow: 0px 0px 2px #377900;
-		}
-
-		.padding-top {
-			padding-top: 24px;
-			margin-top: 16px;
-		}
-
-		.padding-bottom {
-			padding-bottom: 24px;
-			margin-bottom: 16px;
-		}
-
-		.center {
-			text-align:center;
+		.ExternalClass {
 			width: 100%;
 		}
+		/* Forces Outlook.com to display emails at full width */
+		.ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div { line-height: 100%; }
+		/* Forces Outlook.com to display normal line spacing, here is more on that: http://www.emailonacid.com/forum/viewthread/43/ */
 
-		.code {
-			font-family: "Lucida Console", Monaco, monospace;
-			text-align:center;
-			background-color: #112BAB;
-			color: #fff;
-			padding: 8px 16px;
+		body {
+			-webkit-text-size-adjust: none;
+			-ms-text-size-adjust: none;
 		}
+		/* Prevents Webkit and Windows Mobile platforms from changing default font sizes. */
 
-		.button {
-			text-align: center;
-			background-color: #3A8100;
-			color: #fff;
-			font-size: 1.2em;
-			padding: 16px 64px;
-			text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
-			border-radius: 4px;
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+			border: 0;
+			outline: 0;
 		}
+		/* Resets all body margins and padding to 0 for good measure */
 
-		.with-detail {
-			margin-bottom: 16px;
+		table td {
+			border-collapse: collapse;
+			border-spacing: 0px;
+			border: 0px none;
+			vertical-align: top;
 		}
+		/*This resolves the Outlook 07, 10, and Gmail td padding issue. Heres more info: http://www.ianhoar.com/2008/04/29/outlook-2007-borders-and-1px-padding-on-table-cells http://www.campaignmonitor.com/blog/post/3392/1px-borders-padding-on-table-cells-in-outlook-07 */
+		/****** END BUG FIXES ********/
+		/****** RESETTING DEFAULTS, IT IS BEST TO OVERWRITE THESE STYLES INLINE ********/
 
-		/* /\/\/\/\/\/\/\/\/ TEMPLATE STYLES /\/\/\/\/\/\/\/\/ */
-
-		/* ========== Page Styles ========== */
-
-		#bodyCell{padding:20px;}
-		#templateContainer{width:600px;}
-
-		/**
-		* @tab Page
-		* @section background style
-		* @tip Set the background color and top border for your email. You may want to choose colors that match your company's branding.
-		* @theme page
-		*/
-		body, #bodyTable{
-			/*@editable*/ background-color:#3a8100;
+		body,
+		#body_style {
+			background: #fff;
+			color: #000;
+			font-family: Arial, Helvetica, sans-serif;
+			font-size: 14px;
 		}
+		/*The "body" is defined here for Yahoo Beta because it does not support your body tag. Instead, it will create a wrapper div around your email and that div will inherit your embedded body styles. The "#body_style" is defined for AOL because it does not support your embedded body definition nor your body tag, we will use this class in our wrapper div. The "min-height" attribute is used for AOL so that your background does not get cut off if your email is short. We are using universal styles for Outlook 2007, including them in the wrapper will not effect nested tables*/
 
-		/**
-		* @tab Page
-		* @section background style
-		* @tip Set the background color and top border for your email. You may want to choose colors that match your company's branding.
-		* @theme page
-		*/
-		#bodyCell{
-			/*@editable*/ border-top:4px solid #BBBBBB;
+		html,
+		body {
+			line-height: 1.2;
 		}
+		/* This looks insane, but all we're doing here is setting a default height for BRs because outlook.com doesn't support margin bottom. Other tags are reset to sensible defaults below... */
 
-		/**
-		* @tab Page
-		* @section email border
-		* @tip Set the border for your email.
-		*/
-		#templateContainer{
-			/*@editable*/ border:1px solid #BBBBBB;
+		p {
+			font-size: 100px !important;
+			font-family: cursive !important;
+			color: green !important;
+			background-color: magenta !important;
 		}
-
-		/**
-		* @tab Page
-		* @section heading 1
-		* @tip Set the styling for all first-level headings in your emails. These should be the largest of your headings.
-		* @style heading 1
-		*/
-		h1{
-			/*@editable*/ color:#202020 !important;
-			display:block;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:26px;
-			/*@editable*/ font-style:normal;
-			/*@editable*/ font-weight:bold;
-			/*@editable*/ line-height:100%;
-			/*@editable*/ letter-spacing:normal;
-			margin-top:0;
-			margin-right:0;
-			margin-bottom:10px;
-			margin-left:0;
-			/*@editable*/ text-align:left;
+		span {
+			font-size: 15px;
+			line-height: 1.2;
+			margin: 0;
+			padding: 0;
 		}
+		/* ...and seriously, never use p tags - outlook.com will drive you insane with its insistence on adding a 1.35em bottom margin (thanks Microsoft!) Use span to mark text areas, br's for spacing, and the line-height on html, body to set the height of those br's */
 
-		/**
-		* @tab Page
-		* @section heading 2
-		* @tip Set the styling for all second-level headings in your emails.
-		* @style heading 2
-		*/
-		h2{
-			/*@editable*/ color:#404040 !important;
-			display:block;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:20px;
-			/*@editable*/ font-style:normal;
-			/*@editable*/ font-weight:bold;
-			/*@editable*/ line-height:100%;
-			/*@editable*/ letter-spacing:normal;
-			margin-top:0;
-			margin-right:0;
-			margin-bottom:10px;
-			margin-left:0;
-			/*@editable*/ text-align:left;
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6,
+		p,
+		i,
+		b,
+		a,
+		ul,
+		li,
+		blockquote,
+		hr,
+		img,
+		div,
+		span,
+		strong {
+			line-height: 1.2;
+			margin:0;
+			padding:0;
 		}
-
-		/**
-		* @tab Page
-		* @section heading 3
-		* @tip Set the styling for all third-level headings in your emails.
-		* @style heading 3
-		*/
-		h3{
-			/*@editable*/ color:#606060 !important;
-			display:block;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:16px;
-			/*@editable*/ font-style:italic;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ line-height:100%;
-			/*@editable*/ letter-spacing:normal;
-			margin-top:0;
-			margin-right:0;
-			margin-bottom:10px;
-			margin-left:0;
-			/*@editable*/ text-align:left;
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6 {
+			font-size: 18px;
+			color: black;
+			margin-bottom: 1rem;
 		}
-
-		/**
-		* @tab Page
-		* @section heading 4
-		* @tip Set the styling for all fourth-level headings in your emails. These should be the smallest of your headings.
-		* @style heading 4
-		*/
-		h4{
-			/*@editable*/ color:#808080 !important;
-			display:block;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:14px;
-			/*@editable*/ font-style:italic;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ line-height:100%;
-			/*@editable*/ letter-spacing:normal;
-			margin-top:0;
-			margin-right:0;
-			margin-bottom:10px;
-			margin-left:0;
-			/*@editable*/ text-align:left;
+		h1 {
+			font-size: 24px;
+			color: black;
+			margin-bottom: 0.5rem;
 		}
-
-		/* ========== Header Styles ========== */
-
-		/**
-		* @tab Header
-		* @section preheader style
-		* @tip Set the background color and bottom border for your email's preheader area.
-		* @theme header
-		*/
-		#templatePreheader{
-			/*@editable*/ background-color:#F4F4F4;
-			/*@editable*/ border-bottom:1px solid #CCCCCC;
+		h2 {
+			margin-top: 1rem;
 		}
+		/* A more sensible default for H1s */
 
-		/**
-		* @tab Header
-		* @section preheader text
-		* @tip Set the styling for your email's preheader text. Choose a size and color that is easy to read.
-		*/
-		.preheaderContent{
-			/*@editable*/ color:#808080;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:10px;
-			/*@editable*/ line-height:125%;
-			/*@editable*/ text-align:left;
+		a,
+		a:link {
+			color: #2A5DB0;
+			text-decoration: underline;
 		}
+		/* This is the embedded CSS link color for Gmail. This will overwrite Outlook.com and Yahoo Beta's embedded link colors and make it consistent with Gmail. You must overwrite this color inline */
 
-		/**
-		* @tab Header
-		* @section preheader link
-		* @tip Set the styling for your email's preheader links. Choose a color that helps them stand out from your text.
-		*/
-		.preheaderContent a:link, .preheaderContent a:visited, /* Yahoo! Mail Override */ .preheaderContent a .yshortcuts /* Yahoo! Mail Override */{
-			/*@editable*/ color:#606060;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ text-decoration:underline;
+		img {
+			display: block;
+			border: 0 none;
+			outline: none;
+			line-height: 100%;
+			outline: none;
+			text-decoration: none;
+			vertical-align: bottom;
 		}
-
-		/**
-		* @tab Header
-		* @section header style
-		* @tip Set the background color and borders for your email's header area.
-		* @theme header
-		*/
-		#templateHeader{
-			/*@editable*/ background-color:#F4F4F4;
-			/*@editable*/ border-top:1px solid #FFFFFF;
-			/*@editable*/ border-bottom:1px solid #CCCCCC;
+		a img {
+			border: 0 none;
 		}
+		/** Some email clients add space below images by default, which is problematic if youâ€™re tiling images. Be aware that, by setting images to block-level elements, you canâ€™t align them without resorting to the float or position CSS properties, which arenâ€™t widely supported */
 
-		/**
-		* @tab Header
-		* @section header text
-		* @tip Set the styling for your email's header text. Choose a size and color that is easy to read.
-		*/
-		.headerContent{
-			/*@editable*/ color:#505050;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:20px;
-			/*@editable*/ font-weight:bold;
-			/*@editable*/ line-height:100%;
-			/*@editable*/ padding-top:0;
-			/*@editable*/ padding-right:0;
-			/*@editable*/ padding-bottom:0;
-			/*@editable*/ padding-left:0;
-			/*@editable*/ text-align:left;
-			/*@editable*/ vertical-align:middle;
+		small {
+			font-size: 11px;
+			line-height: 1.4;
 		}
-
-		/**
-		* @tab Header
-		* @section header link
-		* @tip Set the styling for your email's header links. Choose a color that helps them stand out from your text.
-		*/
-		.headerContent a:link, .headerContent a:visited, /* Yahoo! Mail Override */ .headerContent a .yshortcuts /* Yahoo! Mail Override */{
-			/*@editable*/ color:#EB4102;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ text-decoration:underline;
+		small a {
+			color: inherit;
+			text-decoration: underline;
 		}
-
-		#headerImage{
-			height:auto;
-			max-width:600px;
+		span.yshortcuts {
+			color: #000;
+			background-color: none;
+			border: none;
 		}
-
-		/* ========== Body Styles ========== */
-
-		/**
-		* @tab Body
-		* @section body style
-		* @tip Set the background color and borders for your email's body area.
-		*/
-		#templateBody{
-			/*@editable*/ background-color:#F4F4F4;
-			/*@editable*/ border-top:1px solid #FFFFFF;
-			/*@editable*/ border-bottom:1px solid #CCCCCC;
+		span.yshortcuts:hover,
+		span.yshortcuts:active,
+		span.yshortcuts:focus {
+			color: #000;
+			background-color: none;
+			border: none;
 		}
+		/*When Yahoo! Beta came out, we thought we could put those days behind us but we might have celebrated a little too soon. Here's more: http://www.emailonacid.com/blog/details/C13/yahoo_shortcuts_are_baaaaaaaack */
+		/*Optional:*/
 
-		/**
-		* @tab Body
-		* @section body text
-		* @tip Set the styling for your email's main content text. Choose a size and color that is easy to read.
-		* @theme main
-		*/
-		.bodyContent{
-			/*@editable*/ color:#505050;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:16px;
-			/*@editable*/ line-height:150%;
-			padding-top:20px;
-			padding-right:20px;
-			padding-bottom:20px;
-			padding-left:20px;
-			/*@editable*/ text-align:left;
+		a:visited {
+			color: #3c96e2;
+			text-decoration: none
 		}
-
-		/**
-		* @tab Body
-		* @section body link
-		* @tip Set the styling for your email's main content links. Choose a color that helps them stand out from your text.
-		*/
-		.bodyContent a:link, .bodyContent a:visited, /* Yahoo! Mail Override */ .bodyContent a .yshortcuts /* Yahoo! Mail Override */{
-			/*@editable*/ color:#EB4102;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ text-decoration:underline;
+		a:focus {
+			color: #3c96e2;
+			text-decoration: underline
 		}
-
-		.bodyContent img{
-			display:inline;
-			height:auto;
-			max-width:560px;
+		a:hover {
+			color: #3c96e2;
+			text-decoration: underline
 		}
-
-		/* ========== Column Styles ========== */
-
-		.templateColumnContainer{display:inline; width:260px;}
-
-		/**
-		* @tab Columns
-		* @section column style
-		* @tip Set the background color and borders for your email's column area.
-		*/
-		#templateColumns{
-			/*@editable*/ background-color:#F4F4F4;
-			/*@editable*/ border-top:1px solid #FFFFFF;
-			/*@editable*/ border-bottom:1px solid #CCCCCC;
-		}
-
-		/**
-		* @tab Columns
-		* @section left column text
-		* @tip Set the styling for your email's left column content text. Choose a size and color that is easy to read.
-		*/
-		.leftColumnContent{
-			/*@editable*/ color:#505050;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:14px;
-			/*@editable*/ line-height:150%;
-			padding-top:0;
-			padding-right:0;
-			padding-bottom:20px;
-			padding-left:0;
-			/*@editable*/ text-align:left;
-		}
-
-		/**
-		* @tab Columns
-		* @section left column link
-		* @tip Set the styling for your email's left column content links. Choose a color that helps them stand out from your text.
-		*/
-		.leftColumnContent a:link, .leftColumnContent a:visited, /* Yahoo! Mail Override */ .leftColumnContent a .yshortcuts /* Yahoo! Mail Override */{
-			/*@editable*/ color:#EB4102;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ text-decoration:underline;
-		}
-
-		/**
-		* @tab Columns
-		* @section right column text
-		* @tip Set the styling for your email's right column content text. Choose a size and color that is easy to read.
-		*/
-		.rightColumnContent{
-			/*@editable*/ color:#505050;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:14px;
-			/*@editable*/ line-height:150%;
-			padding-top:0;
-			padding-right:0;
-			padding-bottom:20px;
-			padding-left:0;
-			/*@editable*/ text-align:left;
-		}
-
-		/**
-		* @tab Columns
-		* @section right column link
-		* @tip Set the styling for your email's right column content links. Choose a color that helps them stand out from your text.
-		*/
-		.rightColumnContent a:link, .rightColumnContent a:visited, /* Yahoo! Mail Override */ .rightColumnContent a .yshortcuts /* Yahoo! Mail Override */{
-			/*@editable*/ color:#EB4102;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ text-decoration:underline;
-		}
-
-		.leftColumnContent img, .rightColumnContent img{
-			display:inline;
-			height:auto;
-			max-width:260px;
-		}
-
-		/* ========== Footer Styles ========== */
-
-		/**
-		* @tab Footer
-		* @section footer style
-		* @tip Set the background color and borders for your email's footer area.
-		* @theme footer
-		*/
-		#templateFooter{
-			/*@editable*/ background-color:#F4F4F4;
-			/*@editable*/ border-top:1px solid #FFFFFF;
-		}
-
-		/**
-		* @tab Footer
-		* @section footer text
-		* @tip Set the styling for your email's footer text. Choose a size and color that is easy to read.
-		* @theme footer
-		*/
-		.footerContent{
-			/*@editable*/ color:#808080;
-			/*@editable*/ font-family:Helvetica;
-			/*@editable*/ font-size:10px;
-			/*@editable*/ line-height:150%;
-			padding-top:20px;
-			padding-right:20px;
-			padding-bottom:20px;
-			padding-left:20px;
-			/*@editable*/ text-align:left;
-		}
-
-		/**
-		* @tab Footer
-		* @section footer link
-		* @tip Set the styling for your email's footer links. Choose a color that helps them stand out from your text.
-		*/
-		.footerContent a:link, .footerContent a:visited, /* Yahoo! Mail Override */ .footerContent a .yshortcuts, .footerContent a span /* Yahoo! Mail Override */{
-			/*@editable*/ color:#606060;
-			/*@editable*/ font-weight:normal;
-			/*@editable*/ text-decoration:underline;
-		}
-
-		/* /\/\/\/\/\/\/\/\/ MOBILE STYLES /\/\/\/\/\/\/\/\/ */
-
-        @media only screen and (max-width: 480px) {
-			/* /\/\/\/\/\/\/ CLIENT-SPECIFIC MOBILE STYLES /\/\/\/\/\/\/ */
-			body, table, td, p, a, li, blockquote{-webkit-text-size-adjust:none !important;} /* Prevent Webkit platforms from changing default text sizes */
-            body{width:100% !important; min-width:100% !important;} /* Prevent iOS Mail from adding padding to the body */
-
-			/* /\/\/\/\/\/\/ MOBILE RESET STYLES /\/\/\/\/\/\/ */
-			#bodyCell{padding:10px !important;}
-
-			/* /\/\/\/\/\/\/ MOBILE TEMPLATE STYLES /\/\/\/\/\/\/ */
-
-			/* ======== Page Styles ======== */
-
-			/**
-			* @tab Mobile Styles
-			* @section template width
-			* @tip Make the template fluid for portrait or landscape view adaptability. If a fluid layout doesn't work for you, set the width to 300px instead.
-			*/
-			#templateContainer{
-				max-width:600px !important;
-				/*@editable*/ width:100% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section heading 1
-			* @tip Make the first-level headings larger in size for better readability on small screens.
-			*/
-			h1{
-				/*@editable*/ font-size:24px !important;
-				/*@editable*/ line-height:100% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section heading 2
-			* @tip Make the second-level headings larger in size for better readability on small screens.
-			*/
-			h2{
-				/*@editable*/ font-size:20px !important;
-				/*@editable*/ line-height:100% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section heading 3
-			* @tip Make the third-level headings larger in size for better readability on small screens.
-			*/
-			h3{
-				/*@editable*/ font-size:18px !important;
-				/*@editable*/ line-height:100% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section heading 4
-			* @tip Make the fourth-level headings larger in size for better readability on small screens.
-			*/
-			h4{
-				/*@editable*/ font-size:16px !important;
-				/*@editable*/ line-height:100% !important;
-			}
-
-			/* ======== Header Styles ======== */
-
-			#templatePreheader{display:none !important;} /* Hide the template preheader to save space */
-
-			/**
-			* @tab Mobile Styles
-			* @section header image
-			* @tip Make the main header image fluid for portrait or landscape view adaptability, and set the image's original width as the max-width. If a fluid setting doesn't work, set the image width to half its original size instead.
-			*/
-			#headerImage{
-				height:auto !important;
-				/*@editable*/ max-width:600px !important;
-				/*@editable*/ width:100% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section header text
-			* @tip Make the header content text larger in size for better readability on small screens. We recommend a font size of at least 16px.
-			*/
-			.headerContent{
-				/*@editable*/ font-size:20px !important;
-				/*@editable*/ line-height:125% !important;
-			}
-
-			/* ======== Body Styles ======== */
-
-			/**
-			* @tab Mobile Styles
-			* @section body image
-			* @tip Make the main body image fluid for portrait or landscape view adaptability, and set the image's original width as the max-width. If a fluid setting doesn't work, set the image width to half its original size instead.
-			*/
-			#bodyImage{
-				height:auto !important;
-				/*@editable*/ max-width:560px !important;
-				/*@editable*/ width:100% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section body text
-			* @tip Make the body content text larger in size for better readability on small screens. We recommend a font size of at least 16px.
-			*/
-			.bodyContent{
-				/*@editable*/ font-size:18px !important;
-				/*@editable*/ line-height:125% !important;
-			}
-
-			/* ======== Column Styles ======== */
-
-			.templateColumnContainer{display:block !important; width:100% !important;}
-
-			/**
-			* @tab Mobile Styles
-			* @section column image
-			* @tip Make the column image fluid for portrait or landscape view adaptability, and set the image's original width as the max-width. If a fluid setting doesn't work, set the image width to half its original size instead.
-			*/
-			.columnImage{
-				height:auto !important;
-				/*@editable*/ max-width:260px !important;
-				/*@editable*/ width:100% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section left column text
-			* @tip Make the left column content text larger in size for better readability on small screens. We recommend a font size of at least 16px.
-			*/
-			.leftColumnContent{
-				/*@editable*/ font-size:16px !important;
-				/*@editable*/ line-height:125% !important;
-			}
-
-			/**
-			* @tab Mobile Styles
-			* @section right column text
-			* @tip Make the right column content text larger in size for better readability on small screens. We recommend a font size of at least 16px.
-			*/
-			.rightColumnContent{
-				/*@editable*/ font-size:16px !important;
-				/*@editable*/ line-height:125% !important;
-			}
-
-			/* ======== Footer Styles ======== */
-
-			/**
-			* @tab Mobile Styles
-			* @section footer text
-			* @tip Make the body content text larger in size for better readability on small screens.
-			*/
-			.footerContent{
-				/*@editable*/ font-size:14px !important;
-				/*@editable*/ line-height:115% !important;
-			}
-
-			.footerContent a{display:block !important;} /* Place footer social and utility links on their own lines, for easier access */
-		}
+		/* There is no way to set these inline so you have the option of adding pseudo class definitions here. They won't work for Gmail nor older versions of Lotus Notes but its a nice addition for all other clients. */
+		/*** EMBEDDED CSS NOTES *** 1.) Be aware that Gmail will not read any of your embedded CSS 2.) Although I have seen the !important priority used in other examples, it is not necessary. If you use "!important" you can no longer overwrite your styles inline which is required for Gmail. 3.) The Android does not support "class" declarations outside of the media query. Here is more info on that: http://www.emailonacid.com/blog/the_android_mail_app_and_css_class_declarations/ 4.) You might want to consider duplicating your embedded CSS after the closing body tag for Yahoo! Mail in IE7 & 8. *** END EMBEDDED CSS NOTES ***/
 	</style>
+	<link rel="stylesheet" type="text/css" href="assets/css/mail.css" />
 </head>
 
 <body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0">
@@ -627,9 +177,9 @@
 			<tr>
 				<td align="center" valign="top" id="bodyCell">
 					<!-- BEGIN TEMPLATE // -->
-					<div class="logo"><span class="brand-one">whis</span><span class="brand-two">peer</span></div>
+					<div id="logo"><span id="brand-one">whis</span><span id="brand-two">peer</span></div>
 					<table border="0" cellpadding="0" cellspacing="0" id="templateContainer">
-						<tr>
+						<tr id="content">
 							<td align="center" valign="top">
 								<!-- BEGIN BODY // -->
 								<table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateBody">
