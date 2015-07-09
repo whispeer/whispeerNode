@@ -169,7 +169,7 @@ var mailer = {
 
 			for (var i = 0; i < content.length; i++) {
 				if (inExpression) {
-					if (content[i] === ">" && content[i+1] === ">") {
+					if (content[i] === "]" && content[i+1] === "]") {
 						result += vm.runInNewContext(expression, variables);
 
 						inExpression = false;
@@ -178,7 +178,7 @@ var mailer = {
 					} else {
 						expression += content[i];
 					}
-				} else if (content[i] === "<" && content[i+1] === "<") {
+				} else if (content[i] === "[" && content[i+1] === "[") {
 					inExpression = true;
 					i += 1;
 				} else {
