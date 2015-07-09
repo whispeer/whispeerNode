@@ -364,37 +364,58 @@ var User = function (id) {
 			.exec(cb);
 	};
 
-	function getNameF(request, cb) {
+	function getNamesF(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
 
 			theUser.getNickname(request, this.parallel());
 			theUser.getPublicProfile(request, this.parallel());
 		}, h.sF(function (nickname, profile) {
-			var res = [], name;
+			var res = {};
 			if (profile && profile.content && profile.content.basic)  {
 				var basicProfile = profile.content.basic;
 
 				if (basicProfile.firstname) {
-					res.push(basicProfile.firstname);
+					res.firstName = basicProfile.firstname;
 				}
 
 				if (basicProfile.lastname) {
-					res.push(basicProfile.lastname);
+					res.lastName = basicProfile.lastname;
 				}
 			}
 
 			if (nickname) {
-				res.push(nickname);
+				res.nickname = nickname;
 			}
 
-			name = res.join(" ");
+			this.ne(res);
+		}), cb);		
+	}
 
-			this.ne(name);
+	function getNameF(request, cb) {
+		step(function () {
+			theUser.getNames(request, this);
+		}, h.sF(function (names) {
+			var namesList = [];
+
+			if (names.firstName) {
+				namesList.push(names.firstName);
+			}
+
+			if (names.lastName) {
+				namesList.push(names.lastName);
+			}
+
+			if (names.nickname) {
+				namesList.push(names.nickname);
+			}
+
+			this.ne(namesList.join(" "));
 		}), cb);
 	}
 
 	this.getName = getNameF;
+	this.getNames = getNamesF;
 
 	this.getEMail = function(request, cb) {
 		step(function () {

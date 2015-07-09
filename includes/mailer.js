@@ -202,11 +202,17 @@ var mailer = {
 
 			user.getEMail(socketDataCreator.logedinStub, this.parallel());
 			client.get("user:" + user.getID() + ":settings", this.parallel());
-			user.getName(socketDataCreator.logedinStub, this.parallel());
-		}, h.sF(function (_receiver, settings, name) {
+			user.getNames(socketDataCreator.logedinStub, this.parallel());
+		}, h.sF(function (_receiver, settings, names) {
 			settings = JSON.parse(settings);
 
-			variables.name = name;
+			if (names.firstName && names.lastName) {
+				variables.name = names.firstName + " " + names.lastName;
+			} else if (names.firstName || names.lastName) {
+				variables.name = names.firstName || names.lastName;
+			} else {
+				variables.name = names.nickname;
+			}
 
 			if (settings && settings.meta) {
 				variables.language = settings.meta.uiLanguage || settings.meta.initialLanguage;
