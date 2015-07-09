@@ -5,6 +5,10 @@ module.exports = function (express) {
 	var h = require("whispeerHelper");
 	var mailer = require("./mailer");
 
+	var client = require("./redisClient");
+
+	var path = require("path");
+
 	express.use(bodyParser.urlencoded({ extended: true }));
 
 	express.post("/b2b", function (req, res, next) {
@@ -19,6 +23,33 @@ module.exports = function (express) {
 			next();
 		});
 		console.log(JSON.stringify(req.body));
+	});
+
+	express.get("/pixel/:id.png", function (req, res) {
+		console.log(req.params.id);
+
+		client.zadd("analytics:mail:tracked", new Date().getTime(), req.params.id, function (e) {
+			if (e) {
+				console.error(e);
+			}
+		});
+
+		var pixelPath = "pixel.png";
+
+		var options = {
+			root: path.dirname(require.main.filename),
+			dotfiles: "deny",
+			headers: {
+				"x-timestamp": Date.now(),
+				"x-sent": true
+			}
+		};
+
+		res.sendFile(pixelPath, options, function (err) {
+			if (err) {
+				console.error(err);
+			}
+		});
 	});
 
 	express.get("/b2b", function (req, res, next) {
