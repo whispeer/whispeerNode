@@ -49,14 +49,14 @@ function generateChallenge(cb) {
 }
 
 var mailer = {
-	isMailActivatedForUser: function (user, mail, cb, overwrite) {
+	isMailActivatedForUser: function (user, mail, cb, overwrite, overwriteVerified) {
 		step(function () {
 			this.parallel.unflatten();
 
 			client.sismember("mail:" + user.getID(), mail, this.parallel());
 			client.hget("settings:" + user.getID(), "mailsEnabled", this.parallel());
 		}, h.sF(function (verified, mailsEnabled) {
-			this.ne(verified && (mailsEnabled === "1" || overwrite));
+			this.ne((verified || overwriteVerified) && (mailsEnabled === "1" || overwrite));
 		}), cb);
 	},
 	verifyUserMail: function (challenge, mailsEnabled, cb) {
@@ -109,9 +109,9 @@ var mailer = {
 					})
 					.expire("mail:challenges:" + challenge, 7*24*60*60);
 
-				mailer.sendMail(userMail, "verification", {
-					challenge: challenge
-				}, this.parallel());
+					mailer.sendUserMail(user, "verification", {
+						challenge: challenge
+					}, this.parallel(), true, true);
 
 				m.exec(this.parallel());
 			} else {
@@ -195,22 +195,25 @@ var mailer = {
 			this.ne(result, subject);
 		}), cb);
 	},
-	sendUserMail: function (user, templateName, variables, cb, overwriteActive) {
+	sendUserMail: function (user, templateName, variables, cb, overwriteActive, overwriteVerified) {
 		var receiver;
 		step(function () {
 			this.parallel.unflatten();
 
 			user.getEMail(socketDataCreator.logedinStub, this.parallel());
 			client.get("user:" + user.getID() + ":settings", this.parallel());
-		}, h.sF(function (_receiver, settings) {
+			user.getName(socketDataCreator.logedinStub, this.parallel());
+		}, h.sF(function (_receiver, settings, name) {
 			settings = JSON.parse(settings);
+
+			variables.name = name;
 
 			if (settings && settings.meta) {
 				variables.language = settings.meta.uiLanguage || settings.meta.initialLanguage;
 			}
 
 			receiver = _receiver;
-			mailer.isMailActivatedForUser(user, receiver, this, overwriteActive);
+			mailer.isMailActivatedForUser(user, receiver, this, overwriteActive, overwriteVerified);
 		}), h.sF(function (activated) {
 			if (activated) {
 				mailer.sendMail(receiver, templateName, variables, this);
