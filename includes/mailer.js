@@ -206,13 +206,7 @@ var mailer = {
 		}, h.sF(function (_receiver, settings, names) {
 			settings = JSON.parse(settings);
 
-			if (names.firstName && names.lastName) {
-				variables.name = names.firstName + " " + names.lastName;
-			} else if (names.firstName || names.lastName) {
-				variables.name = names.firstName || names.lastName;
-			} else {
-				variables.name = names.nickname;
-			}
+			variables.name = names.firstName || names.lastName || names.nickname;
 
 			if (settings && settings.meta) {
 				variables.language = settings.meta.uiLanguage || settings.meta.initialLanguage;
