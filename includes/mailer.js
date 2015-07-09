@@ -28,7 +28,7 @@ var Bluebird = require("bluebird");
 //-- <mail>Verified 1
 //-- <mail>Challenge <challenge>
 
-var TEMPLATEDIR = "./mailTemplates/_site/";
+var TEMPLATEDIR = "./mailTemplates/_build/";
 
 var languages = ["en", "de"];
 
@@ -207,7 +207,7 @@ var mailer = {
 
 			if (settings && settings.meta) {
 				variables.language = settings.meta.uiLanguage || settings.meta.initialLanguage;
-			}	
+			}
 
 			receiver = _receiver;
 			mailer.isMailActivatedForUser(user, receiver, this, overwriteActive);

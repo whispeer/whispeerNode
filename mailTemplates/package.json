@@ -2,7 +2,10 @@
   "name": "mailtemplates",
   "version": "0.0.0",
   "dependencies": {
-    "grunt-contrib-less": "^1.0.1"
+    "email-builder-core": "^1.2.4",
+    "grunt-contrib-less": "^1.0.1",
+    "grunt-email-builder": "^3.0.1",
+    "grunt-jekyll": "^0.4.2"
   },
   "devDependencies": {
     "grunt": "~0.4.2",
