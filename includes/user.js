@@ -357,6 +357,13 @@ var User = function (id) {
 		client.sismember("user:online", id, cb);
 	};
 
+	this.donated = function (request, cb) {
+		client.multi()
+			.sadd("user:donated", id)
+			.sadd("user:" + id + ":donations", new Date().getTime())
+			.exec(cb);
+	};
+
 	function getNameF(request, cb) {
 		step(function () {
 			this.parallel.unflatten();

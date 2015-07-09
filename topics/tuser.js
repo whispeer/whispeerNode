@@ -188,6 +188,15 @@ var u = {
 			this.ne({});
 		}), fn);
 	},
+	donated: function (data, fn, request) {
+		step(function () {
+			request.session.getOwnUser(this);
+		}, h.sF(function (ownUser) {
+			ownUser.donated(request, this);
+		}), h.sF(function () {
+			this.ne({});
+		}), fn);
+	},
 	own: function getOwnDataF(data, fn, request) {
 		var userData;
 		step(function () {
