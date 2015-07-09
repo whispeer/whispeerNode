@@ -3,7 +3,7 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>[whispeer] {{page.title}}</title>
-	<style type="text/css" data-embed>
+	<style type="text/css">
 		/****** EMAIL CLIENT BUG FIXES - BEST NOT TO CHANGE THESE ********/
 
 		.ExternalClass {
@@ -41,7 +41,7 @@
 		body,
 		#body_style {
 			background: #fff;
-			color: #000;
+			color: #242424 !important;
 			font-family: Arial, Helvetica, sans-serif;
 			font-size: 14px;
 		}
@@ -57,13 +57,13 @@
 			font-size: 100px !important;
 			font-family: cursive !important;
 			color: green !important;
-			background-color: magenta !important;
 		}
 		span {
 			font-size: 15px;
 			line-height: 1.639em;
 			margin: 0;
 			padding: 0;
+			color: #242424;
 		}
 		/* ...and seriously, never use p tags - outlook.com will drive you insane with its insistence on adding a 1.35em bottom margin (thanks Microsoft!) Use span to mark text areas, br's for spacing, and the line-height on html, body to set the height of those br's */
 
@@ -165,6 +165,10 @@
 			color: #3c96e2;
 			text-decoration: underline
 		}
+		.im {
+			color: #242424 !important; /* reset gmail strange stuff */
+		}
+
 		/* There is no way to set these inline so you have the option of adding pseudo class definitions here. They won't work for Gmail nor older versions of Lotus Notes but its a nice addition for all other clients. */
 		/*** EMBEDDED CSS NOTES *** 1.) Be aware that Gmail will not read any of your embedded CSS 2.) Although I have seen the !important priority used in other examples, it is not necessary. If you use "!important" you can no longer overwrite your styles inline which is required for Gmail. 3.) The Android does not support "class" declarations outside of the media query. Here is more info on that: http://www.emailonacid.com/blog/the_android_mail_app_and_css_class_declarations/ 4.) You might want to consider duplicating your embedded CSS after the closing body tag for Yahoo! Mail in IE7 & 8. *** END EMBEDDED CSS NOTES ***/
 	</style>

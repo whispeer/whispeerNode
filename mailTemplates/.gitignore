@@ -1,4 +1,5 @@
 .sass-cache
 assets/css/*
 node_modules/
+_site/
 config.codekit

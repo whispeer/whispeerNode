@@ -1,12 +1,12 @@
 ---
 layout: mail
 lang: de
-title: "Einladung zu whispeer <<(name ? 'von ' + name : '')>>"
+title: "Einladung zu whispeer [[(name ? 'von ' + name : '')]]"
 ---
 <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateBody">
 	<tr>
 		<td valign="top" class="bodyContent" mc:edit="body_content00">
-			<h1>Du wurdest <<(name ? 'von ' + name : '')>> zu whispeer eingeladen!</h1>
+			<h1>Du wurdest [[(name ? 'von ' + name : '')]] zu whispeer eingeladen!</h1>
 			<h3>Komm und werde Teil einer wachsenden Familie von Nutzern</h3>
 			whispeer ist ein soziales Netzwerk, dass sich auf die Sicherheit deiner Daten spezialisiert hat. Hierbei stellen wir sicher, dass nur du und der gewünschte Empfänger deine Nachrichten, Bilder oder Posts lesen kann. Wir können nicht mitlesen.
 		</td>
@@ -16,11 +16,11 @@ title: "Einladung zu whispeer <<(name ? 'von ' + name : '')>>"
 			<br>
 			Klicke auf den folgenden Button um dich bei whispeer anzumelden:
 			<div class="padding-top padding-bottom center with-detail">
-				<a href="<<host>>/?code=<<inviteCode>>" class="button">Registrieren</a><br/>
+				<a href="[[host]]/?code=[[inviteCode]]" class="button">Registrieren</a><br/>
 			</div>
 			Sollte der Button nicht funktionieren kannst du auch den folgenden Link in deinen Browser kopieren!
 			<div class="padding-bottom padding-top center">
-				<span class="detail"><<host>>/?code=<<inviteCode>></span>
+				<span class="detail">[[host]]/?code=[[inviteCode]]</span>
 			</div>
 			Nach der Registrierung kannst du Freunde und Bekannte einladen. Wir freuen uns auf dich!
 		</td>

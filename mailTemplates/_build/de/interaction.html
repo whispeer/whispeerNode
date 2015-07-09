@@ -1,206 +1,42 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html xmlns="http://www.w3.org/1999/xhtml" style="margin: 0; padding: 0; border: 0; outline: 0; line-height: 1.426em;">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <title>[whispeer] Jemand hat mit dir interagiert</title>
-	<style type="text/css">
-		/****** EMAIL CLIENT BUG FIXES - BEST NOT TO CHANGE THESE ********/
-
-		.ExternalClass {
-			width: 100%;
-		}
-		/* Forces Outlook.com to display emails at full width */
-		.ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div { line-height: 100%; }
-		/* Forces Outlook.com to display normal line spacing, here is more on that: http://www.emailonacid.com/forum/viewthread/43/ */
-
-		body {
-			-webkit-text-size-adjust: none;
-			-ms-text-size-adjust: none;
-		}
-		/* Prevents Webkit and Windows Mobile platforms from changing default font sizes. */
-
-		html,
-		body {
-			margin: 0;
-			padding: 0;
-			border: 0;
-			outline: 0;
-		}
-		/* Resets all body margins and padding to 0 for good measure */
-
-		table td {
-			border-collapse: collapse;
-			border-spacing: 0px;
-			border: 0px none;
-			vertical-align: top;
-		}
-		/*This resolves the Outlook 07, 10, and Gmail td padding issue. Heres more info: http://www.ianhoar.com/2008/04/29/outlook-2007-borders-and-1px-padding-on-table-cells http://www.campaignmonitor.com/blog/post/3392/1px-borders-padding-on-table-cells-in-outlook-07 */
-		/****** END BUG FIXES ********/
-		/****** RESETTING DEFAULTS, IT IS BEST TO OVERWRITE THESE STYLES INLINE ********/
-
-		body,
-		#body_style {
-			background: #fff;
-			color: #000;
-			font-family: Arial, Helvetica, sans-serif;
-			font-size: 14px;
-		}
-		/*The "body" is defined here for Yahoo Beta because it does not support your body tag. Instead, it will create a wrapper div around your email and that div will inherit your embedded body styles. The "#body_style" is defined for AOL because it does not support your embedded body definition nor your body tag, we will use this class in our wrapper div. The "min-height" attribute is used for AOL so that your background does not get cut off if your email is short. We are using universal styles for Outlook 2007, including them in the wrapper will not effect nested tables*/
-
-		html,
-		body {
-			line-height: 1.426em;
-		}
-		/* This looks insane, but all we're doing here is setting a default height for BRs because outlook.com doesn't support margin bottom. Other tags are reset to sensible defaults below... */
-
-		p {
-			font-size: 100px !important;
-			font-family: cursive !important;
-			color: green !important;
-			background-color: magenta !important;
-		}
-		span {
-			font-size: 15px;
-			line-height: 1.639em;
-			margin: 0;
-			padding: 0;
-		}
-		/* ...and seriously, never use p tags - outlook.com will drive you insane with its insistence on adding a 1.35em bottom margin (thanks Microsoft!) Use span to mark text areas, br's for spacing, and the line-height on html, body to set the height of those br's */
-
-		h1,
-		h2,
-		h3,
-		h4,
-		h5,
-		h6,
-		p,
-		i,
-		b,
-		a,
-		ul,
-		li,
-		blockquote,
-		hr,
-		img,
-		div,
-		span,
-		strong {
-			line-height: 1.426em;
-			margin:0;
-			padding:0;
-		}
-		h1,
-		h2,
-		h3,
-		h4,
-		h5,
-		h6 {
-			font-size: 18px;
-			color: black;
-			margin-bottom: 1rem;
-		}
-		h1 {
-			font-size: 24px;
-			color: black;
-			margin-bottom: 0.5rem;
-		}
-		h2 {
-			margin-top: 1rem;
-		}
-		/* A more sensible default for H1s */
-
-		a,
-		a:link {
-			color: #2A5DB0;
-			text-decoration: underline;
-		}
-		/* This is the embedded CSS link color for Gmail. This will overwrite Outlook.com and Yahoo Beta's embedded link colors and make it consistent with Gmail. You must overwrite this color inline */
-
-		img {
-			display: block;
-			border: 0 none;
-			outline: none;
-			line-height: 100%;
-			outline: none;
-			text-decoration: none;
-			vertical-align: bottom;
-		}
-		a img {
-			border: 0 none;
-		}
-		/** Some email clients add space below images by default, which is problematic if you&#226;&#8364;&#8482;re tiling images. Be aware that, by setting images to block-level elements, you can&#226;&#8364;&#8482;t align them without resorting to the float or position CSS properties, which aren&#226;&#8364;&#8482;t widely supported */
-
-		small {
-			font-size: 11px;
-			line-height: 1.4;
-		}
-		small a {
-			color: inherit;
-			text-decoration: underline;
-		}
-		span.yshortcuts {
-			color: #000;
-			background-color: none;
-			border: none;
-		}
-		span.yshortcuts:hover,
-		span.yshortcuts:active,
-		span.yshortcuts:focus {
-			color: #000;
-			background-color: none;
-			border: none;
-		}
-		/*When Yahoo! Beta came out, we thought we could put those days behind us but we might have celebrated a little too soon. Here's more: http://www.emailonacid.com/blog/details/C13/yahoo_shortcuts_are_baaaaaaaack */
-		/*Optional:*/
-
-		a:visited {
-			color: #3c96e2;
-			text-decoration: none
-		}
-		a:focus {
-			color: #3c96e2;
-			text-decoration: underline
-		}
-		a:hover {
-			color: #3c96e2;
-			text-decoration: underline
-		}
-		/* There is no way to set these inline so you have the option of adding pseudo class definitions here. They won't work for Gmail nor older versions of Lotus Notes but its a nice addition for all other clients. */
-		/*** EMBEDDED CSS NOTES *** 1.) Be aware that Gmail will not read any of your embedded CSS 2.) Although I have seen the !important priority used in other examples, it is not necessary. If you use "!important" you can no longer overwrite your styles inline which is required for Gmail. 3.) The Android does not support "class" declarations outside of the media query. Here is more info on that: http://www.emailonacid.com/blog/the_android_mail_app_and_css_class_declarations/ 4.) You might want to consider duplicating your embedded CSS after the closing body tag for Yahoo! Mail in IE7 & 8. *** END EMBEDDED CSS NOTES ***/
-	</style>
+	
 	
 </head>
 
 
-<body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0" style="width: 100%; height: 100%; background: #f0f0f0; font-family: 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 400;">
+<body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0" style="-webkit-text-size-adjust: none; font-weight: 400; margin: 0; padding: 0; border: 0; outline: 0; background: #f0f0f0; -ms-text-size-adjust: none; font-family: 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.426em; width: 100%; height: 100%; color: #242424;">
 	<center>
 		<table align="center" border="0" cellpadding="0" cellspacing="0" height="100%" width="100%" id="bodyTable" style="width: 100%; height: 100%; background: #f0f0f0; font-family: 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 400;">
 			<tr>
-				<td align="center" valign="top" id="bodyCell" style="margin: 0 auto; display: block;">
+				<td align="center" valign="top" id="bodyCell" style="margin: 0 auto; display: block; border-collapse: collapse; border-spacing: 0px; border: 0px none; vertical-align: top;">
 					<!-- BEGIN TEMPLATE // -->
-					<div id="logo" style="height: 5rem; line-height: 5rem; width: 100%; text-align: center; margin: 1rem 0;"><span id="brand-one" style="font-size: 3.5rem; font-weight: 700; text-shadow: 1px 1px 2px rgba(20, 20, 20, 0.45); color: #ffffff;">whis</span><span id="brand-two" style="font-size: 3.5rem; font-weight: 700; text-shadow: 1px 1px 2px rgba(20, 20, 20, 0.45); color: #54ab0c;">peer</span></div>
+					<div id="logo" style="padding: 0; line-height: 5rem; margin: 0.5rem 0 1rem 0; height: 5rem; width: 100%; text-align: center;"><span id="brand-one" style="line-height: 1.426em; margin: 0; padding: 0; font-size: 3.5rem; color: #ffffff; font-weight: 700; text-shadow: 1px 1px 2px rgba(20, 20, 20, 0.45);">whis</span><span id="brand-two" style="line-height: 1.426em; margin: 0; padding: 0; font-size: 3.5rem; color: #54ab0c; font-weight: 700; text-shadow: 1px 1px 2px rgba(20, 20, 20, 0.45);">peer</span></div>
 					<table border="0" cellpadding="0" cellspacing="0" id="templateContainer" style="width: 90%; max-width: 600px;">
 						<tr id="content" style="display: block; background: #f9f9f9; padding: 1rem; margin-bottom: 2rem; box-shadow: 0 0 5px #e9e9e9; border-radius: 3px;">
-							<td align="center" valign="top" style="margin: 0 auto; display: block;">
+							<td align="center" valign="top" style="margin: 0 auto; display: block; border-collapse: collapse; border-spacing: 0px; border: 0px none; vertical-align: top;">
 								<!-- BEGIN BODY // -->
 								<table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateBody" style="width: 100%;">
 	<tr>
-		<td valign="top" class="bodyContent" mc:edit="body_content00" style="margin: 0 auto; display: block; text-align: center;">
-			<h1>Neuigkeiten bei whispeer!</h1>
-			<h3 style="color: #555555;">Jemand hat mit dir interagiert.</h3>
-			Hallo <<name>>!<br>
+		<td valign="top" class="bodyContent" mc:edit="body_content00" style="margin: 0 auto; display: block; border-collapse: collapse; border-spacing: 0px; border: 0px none; vertical-align: top; text-align: center;">
+			<h1 style="line-height: 1.426em; margin: 0; padding: 0; font-size: 24px; color: black; margin-bottom: 0.5rem;">Neuigkeiten bei whispeer!</h1>
+			<h3 style="line-height: 1.426em; margin: 0; padding: 0; font-size: 18px; color: #555555; margin-bottom: 1rem;">Jemand hat mit dir interagiert.</h3>
+			Hallo [[name]]!<br>
 			Jemand hat mit dir auf whispeer interagiert!<br>
 			Besuche jetzt whispeer um zu erfahren was es neues gibt!
-		</name></td>
+		</td>
 	</tr>
 	<tr>
-		<td valign="top" class="bodyContent" mc:edit="body_content01" style="margin: 0 auto; display: block; text-align: center;">
+		<td valign="top" class="bodyContent" mc:edit="body_content01" style="margin: 0 auto; display: block; border-collapse: collapse; border-spacing: 0px; border: 0px none; vertical-align: top; text-align: center;">
 			Klicke auf den folgenden Button um zu whispeer zu gelangen:
-			<div class="padding-top padding-bottom center with-detail">
-				<a class="button" href="<<host>>" style="display: inline-block; margin: 1rem; padding: 1.5rem 6rem; background: #54ab0c; border-radius: 3px; color: #ffffff; font-weight: 500; font-size: 1.639rem; text-decoration: none;">Schau nach was passiert ist</a><br>
+			<div class="padding-top padding-bottom center with-detail" style="line-height: 1.426em; margin: 0; padding: 0;">
+				<a class="button" href="[[host]]" style="line-height: 1.426em; margin: 1rem; padding: 1.5rem 6rem; display: inline-block; background: #54ab0c; border-radius: 3px; color: #ffffff; text-decoration: none; font-weight: 500; font-size: 1.639rem;">Schau nach was passiert ist</a><br>
 			</div>
-			Alternativ kannst du auch direkt <<host>> in deinen Browser eingeben!<br>
-		</host></td>
+			Alternativ kannst du auch direkt [[host]] in deinen Browser eingeben!<br>
+		</td>
 	</tr>
 </table>
 
@@ -209,20 +45,22 @@
 							</td>
 						</tr>
 						<tr>
-							<td align="center" valign="top" style="margin: 0 auto; display: block;">
+							<td align="center" valign="top" style="margin: 0 auto; display: block; border-collapse: collapse; border-spacing: 0px; border: 0px none; vertical-align: top;">
 								<!-- BEGIN FOOTER // -->
 								<table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateFooter" style="padding: 0 1rem; font-size: 0.8em; color: #555555;">
 									<tr>
-										<td valign="top" class="footerContent" mc:edit="footer_content01" style="margin: 0 auto; display: block;">
+										<td valign="top" class="footerContent" mc:edit="footer_content01" style="margin: 0 auto; display: block; border-collapse: collapse; border-spacing: 0px; border: 0px none; vertical-align: top;">
+											<strong style="line-height: 1.426em; margin: 0; padding: 0;">
+												Fragen zu whispeer? Wir haben Antworten!<br>
+												Mail: <a href="mailto:support@whispeer.de" style="line-height: 1.426em; margin: 0; padding: 0; color: #2A5DB0; text-decoration: underline;">support@whispeer.de</a><br>
+												Telefon: +49 30 12089542<br>
+											</strong>
+											<br>
+											Handelsregister: AG Berlin-Charlottenburg, HRB 162914 B. <br> Gesch&#228;ftsf&#252;hrer: Nils Kenneweg.<br> Rosenthaler Stra&#223;e 72 a, 10119 Berlin, Deutschland<br>
+											<br>
 											<em>
 												Copyright &copy; 2015 whispeer UG (haftungsbeschr&#228;nkt). Alle Rechte vorbehalten.<br>
 											</em>
-											<strong>
-												Mail: <a href="mailto:support@whispeer.de">support@whispeer.de</a><br>
-												Telefon: +49 30 12089542<br>
-											</strong>
-											Handelsregister: AG Berlin-Charlottenburg, HRB 162914 B. <br> Gesch&#228;ftsf&#252;hrer: Nils Kenneweg.<br> Rosenthaler Stra&#223;e 72 a, 10119 Berlin, Deutschland<br>
-											<br>
 										</td>
 									</tr>
 								</table>
