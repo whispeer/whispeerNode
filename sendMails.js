@@ -30,7 +30,7 @@ client.select(config.db.number || 0, function (e) {
  
 	util.error(util.format("Database selected: %d", config.db.number || 0));
 
-	invites.byMail(requestStub, mails, "Nils Kenneweg", function (e, c) {
+	invites.byMail(requestStub, mails, "Nils Kenneweg", "de", function (e, c) {
 		if (e) {
 			throw e;
 		}

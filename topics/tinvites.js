@@ -8,7 +8,7 @@ var invites = require("../includes/invites");
 var invite = {
 	byMail: function (data, fn, request) {
 		step(function () {
-			invites.byMail(request, data.mails, data.name, this);
+			invites.byMail(request, data.mails, data.name, data.language, this);
 		}, h.sF(function () {
 			this.ne({});
 		}), fn);

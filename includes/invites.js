@@ -85,7 +85,7 @@ var invites = {
 			return resultPromise;
 		}
 	},
-	byMail: function (request, mails, name, cb) {
+	byMail: function (request, mails, name, language, cb) {
 		var resultPromise = Bluebird.try(function () {
 			if (name) {
 				name = name.replace(/[^\w\s]/);
@@ -107,6 +107,7 @@ var invites = {
 			var sendMail = Bluebird.promisify(mailer.sendMail, mailer);
 			sendMail(invite.mail, "invite", {
 				name: name,
+				language: language,
 				inviteCode: invite.code
 			});
 		});
