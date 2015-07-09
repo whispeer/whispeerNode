@@ -1,6 +1,7 @@
 ---
 layout: mail
 title: "Recover your account!"
+lang: en
 ---
 
 <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateBody">
@@ -10,12 +11,13 @@ title: "Recover your account!"
 			<h4>You can recover your account by clicking the following link:</h4>
 
 			<div class="padding-top center with-detail">
-				<a href="<<host>>/recovery/<<nick>>/<<code>>"><span class="button">Recover account</span></a><br/>
+				<a href="[[host]]/recovery/[[nick]]/[[code]]"><span class="button">Recover account</span></a><br/>
 			</div>
+			If the button does not work, please copy the following link into your browser:
 			<div class="padding-bottom center">
-				<span class="footerContent detail"><<host>>/recovery/<<nick>>/<<code>></span>
+				<span class="footerContent detail">[[host]]/recovery/[[nick]]/[[code]]</span>
 			</div>
-
+			<br />
 			You will need your backup-file for recovery. This is necessary because we can not access your data, because it is encrypted. The recovery link is invalidated automatically after one day.
 		</td>
 	</tr>

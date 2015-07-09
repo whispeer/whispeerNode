@@ -1,25 +1,26 @@
 ---
 layout: mail
 title: "E-Mail Verification"
+lang: en
 ---
 <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateBody">
 	<tr>
 		<td valign="top" class="bodyContent" mc:edit="body_content00">
-			<h1>Verify your mail for whispeer!</h1>
-			Hey!<br>
-			You have added an e-mail adress to whispeer.<br>
+			<h1>Verify your E-Mail for whispeer</h1>
+			Hey [[name]]!<br>
+			You have added an E-Mail address to whispeer.<br>
 
 			Click the following button to verify your mail:
 			<div class="padding-top padding-bottom center with-detail">
-				<a href="<<host>>/verifyMail/<<challenge>>"><span class="button">Verify mail</span></a><br/>
+				<a href="[[host]]/verifyMail/[[challenge]]"><span class="button">Verify mail</span></a><br/>
 			</div>
 
 			If the button does not work, please copy the following link into your browser:
 			<div class="padding-bottom padding-top center">
-				<span class="detail"><<host>>/verifyMail/<<challenge>></span>
+				<span class="detail">[[host]]/verifyMail/[[challenge]]</span>
 			</div>
-
-			If you have not triggered this verification, you can just ignore this mail!<br>
+			<br />
+			If you have not triggered this verification, you can just ignore this mail.<br>
 		</td>
 	</tr>
 </table>
