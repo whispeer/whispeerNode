@@ -59,6 +59,24 @@ var mailer = {
 			this.ne((verified || overwriteVerified) && (mailsEnabled === "1" || overwrite));
 		}), cb);
 	},
+	generateTrackingCode: function (variables, cb) {
+		var resultCode;
+
+		step(function () {
+			code(20, this);
+		}, h.sF(function (_code) {
+			resultCode = _code;
+			client.sadd("analytics:mail:trackingCodes", resultCode, this);
+		}), h.sF(function (inserted) {
+			if (inserted) {
+				client.set("analytics:mail:trackingCodes:" + resultCode, JSON.stringify(variables), this);
+			} else {
+				mailer.generateTrackingCode(variables, cb);
+			}
+		}), h.sF(function () {
+			this.ne(resultCode);
+		}), cb);
+	},
 	verifyUserMail: function (challenge, mailsEnabled, cb) {
 		var challengeData;
 		step(function () {
@@ -153,11 +171,17 @@ var mailer = {
 				language = languages[0];
 			}
 
-			fs.readFile(TEMPLATEDIR + language + "/" + templateName + ".html", this);
-		}, h.sF(function (content) {
+			this.parallel.unflatten();
+
+			fs.readFile(TEMPLATEDIR + language + "/" + templateName + ".html", this.parallel());
+			mailer.generateTrackingCode(variables, this.parallel());
+		}, h.sF(function (content, trackingCode) {
 			content = content.toString();
 
 			variables.host = variables.host || config.remoteHost || config.host;
+			variables.server = config.serverUrl;
+
+			variables.tracking = trackingCode;
 
 			var inExpression = false;
 			var sawFirstBracket = false;

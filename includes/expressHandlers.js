@@ -26,8 +26,6 @@ module.exports = function (express) {
 	});
 
 	express.get("/pixel/:id.png", function (req, res) {
-		console.log(req.params.id);
-
 		client.zadd("analytics:mail:tracked", new Date().getTime(), req.params.id, function (e) {
 			if (e) {
 				console.error(e);
