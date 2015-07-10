@@ -3,7 +3,7 @@
 "use strict";
 
 var util = require("util");
-var invites = require("./includes/invites");
+var invites = require("../includes/invites");
 
 var requestStub = {
 	session: {
@@ -13,9 +13,9 @@ var requestStub = {
 };
 
 
-var configManager = require("./includes/configManager");
+var configManager = require("../includes/configManager");
 var config = configManager.get();
-var client = require("./includes/redisClient");
+var client = require("../includes/redisClient");
 
 var fs = require("fs");
 

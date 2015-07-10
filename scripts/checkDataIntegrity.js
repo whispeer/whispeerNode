@@ -3,7 +3,7 @@
 "use strict";
 
 var util = require("util");
-var User = require("./includes/user");
+var User = require("../includes/user");
 
 global.requestStub = {
 	session: {
@@ -13,11 +13,11 @@ global.requestStub = {
 };
 
 
-var configManager = require("./includes/configManager");
+var configManager = require("../includes/configManager");
 var config = configManager.get();
-var client = require("./includes/redisClient");
+var client = require("../includes/redisClient");
 
-require("./includes/errors");
+require("../includes/errors");
 
 client.select(config.db.number || 0, function (e) {
 

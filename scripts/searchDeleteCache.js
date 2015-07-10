@@ -9,9 +9,9 @@ global.requestStub = {
 	}
 };
 
-var setup = require("./includes/setup");
+var setup = require("../includes/setup");
 var step = require("step");
-var client = require("./includes/redisClient");
+var client = require("../includes/redisClient");
 var h = require("whispeerHelper");
 
 step(function () {

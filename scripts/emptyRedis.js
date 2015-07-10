@@ -2,9 +2,9 @@
 
 "use strict";
 
-var client = require("./includes/redisClient");
+var client = require("../includes/redisClient");
 
-var configManager = require("./includes/configManager");
+var configManager = require("../includes/configManager");
 var config = configManager.get();
 
 // requireConfirmation will ask the user to confirm by typing 'y'. When
