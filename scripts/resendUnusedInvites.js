@@ -2,6 +2,8 @@
 
 "use strict";
 
+var DAY = 24 * 60 * 60 * 1000;
+
 var setup = require("../includes/setup");
 var client = require("../includes/redisClient");
 var invites = require("../includes/invites");
@@ -38,7 +40,7 @@ setupP().then(function () {
 
 	invites.forEach(function (invite) {
 		if (seenMails[invite.reference]) {
-			if (seenMails[invite.reference].accepted === 0) {
+			if (invite.accepted > 0 || h.parseDecimal(invite.added) < h.parseDecimal(seenMails[invite.reference].added)) {
 				seenMails[invite.reference] = invite;
 			}
 		} else {
@@ -52,7 +54,8 @@ setupP().then(function () {
 
 	return noDuplicateMailInvites;
 }).filter(function (invite) {
-	return invite.accepted === 0;
+	var dateDiff = new Date().getTime() - h.parseDecimal(invite.added);
+	return invite.accepted === 0 && dateDiff > 4 * DAY;
 }).each(function (invite) {
 	var requestStub = {
 		session: {
