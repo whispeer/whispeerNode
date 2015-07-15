@@ -15,7 +15,7 @@ var SymKey = require("./crypto/symKey");
 
 var RedisObserver = require("./asset/redisObserver");
 
-var mailer = require("./mailer");
+var Notification = require("./notification");
 
 var newPostsExpireTime = 10 * 60;
 
@@ -84,7 +84,7 @@ var Post = function (postid) {
 			thePost.notify("comment:create", commentID);
 			thePost.getSender(this);
 		}), h.sF(function (sender) {
-			mailer.sendInteractionMails([sender]);
+			Notification.add([sender], "post", "comment", postid);
 
 			this.ne();
 		}), cb);
@@ -537,7 +537,7 @@ function processMetaInformation(request, meta, cb) {
 
 		meta._key = keyid;
 
-		this.ne();
+		this.ne(user);
 	}), cb);
 }
 
@@ -555,7 +555,7 @@ Post.create = function (request, data, cb) {
 	}
 	*/
 
-	var postID, wallUserObj;
+	var postID, wallUser;
 
 	step(function () {
 		if (data.meta.sender !== request.session.getUserID()) {
@@ -565,7 +565,9 @@ Post.create = function (request, data, cb) {
 		Post.validateFormat(data, this);
 	}, h.sF(function () {
 		processMetaInformation(request, data.meta, this);
-	}), h.sF(function () {
+	}), h.sF(function (_wallUser) {
+		wallUser = _wallUser;
+
 		if (data.meta.images.length > 0) {
 			processImages(request, data.meta.images, data.imageKeys, this);
 		} else {
@@ -597,10 +599,9 @@ Post.create = function (request, data, cb) {
 
 		multi.exec(this);
 	}), h.sF(function () {
-		if (wallUserObj) {
-			mailer.sendInteractionMails([wallUserObj]);
+		if (wallUser) {
+			Notification.add([wallUser], "post", "wall", postID);
 		}
-		//TODO: notify wall user and mentioned users.
 
 		//collect new posts and let the readers grab them time by time? -> yes (mainly zinterstore, zrevrangebyscore)
 		this.ne(makePost(request, postID));

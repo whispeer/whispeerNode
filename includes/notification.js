@@ -1,87 +1,87 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
-
-//var validator = require("whispeerValidations");
 var client = require("./redisClient");
-//var KeyApi = require("./crypto/KeyApi");
-//var User = require("./user");
 
-/*
-	signature is of meta without signature.
+var Bluebird = require("bluebird");
 
-	indizes for:
-	- wall
-	- posterid
-
-	notification: {
-		user: userid
-		theme: ["wallpost", "comment", "like/whatever"]
-		referenceid: {number}
-	}
-
-	
-
-*/
-
-var Notification = function (request, id) {
-	this._userid = request.session.getUserID();
+var Notification = function (id) {
 	this._id = id;
 };
 
-Notification.prototype.getNData = function () {
-	var that = this;
-	step(function () {
-		client.hgetall("user:" + that._userid + ":notifications:" + that._id, this);
-	}, this);
+Notification.prototype.hasAccess = function (userid) {
+	return client.sismemberAsync("notifications:user:" + userid + ":all", this._id);
 };
 
-Notification.prototype.getUserID = function () {
-	return this._userid;
+Notification.prototype.getNotificationData = function (request) {
+	var ownUserID = request.session.getUserID();
+
+	return Bluebird.all([
+		client.hgetallAsync("notifications:byID:" + this._id),
+		this.hasAccess(ownUserID),
+		this.isUnread(ownUserID)
+	]).spread(function (notificationData, hasAccess, unread) {
+		notificationData.receivers = JSON.parse(notificationData.receivers);
+		notificationData.unread = unread;
+
+		return notificationData;
+	});
+};
+
+Notification.prototype.isUnread = function (userid) {
+	return client.sismemberAsync("notifications:user:" + userid + ":unread");
 };
 
 Notification.prototype.getID = function () {
 	return this._id;
 };
 
-Notification.prototype.getUniqueID = function () {
-	return this._userid + ":" + this._id;
+Notification.prototype.markRead = function (request) {
+	return client.sremAsync("notifications:user:" + request.session.getUserID() + ":unread", this._id);
 };
 
-Notification.prototype.getTheme = function (cb) {
-	var that = this;
-	step(function () {
-		client.get("user:" + that._userid + ":notifications:" + that._id, this);
-	}, cb);
+Notification.getOwnUnreadCount = function (request) {
+	return client.scardAsync("notifications:user:" + request.session.getUserID() + ":unread");
 };
 
-Notification.getOwnUnreadCount = function () {
+Notification.getOwn = function (request, start, count) {
+	var ownUserID = request.session.getUserID();
 
+	return client.zrangeAsync("notifications:user:" +  ownUserID + ":sorted", start, start + count - 1);
 };
 
-Notification.getOwn = function () {
-
-};
-
-Notification.add = function (userid, theme, referenceid, cb) {
-	var theID;
-	step(function () {
-		client.incr("user:" + userid + ":notifications", this);
-	}, h.sF(function (newid) {
-		theID = newid;
-		var multi = client.multi();
-		multi.hmset("user:" + userid + ":notifications:" + newid, {
-			id: newid,
-			theme: theme,
-			referenceid: referenceid,
-			unread: true
+Notification.add = function (users, type, subType, referenceID) {
+	return client.incrAsync("notifications:count").then(function (notificationID) {
+		var userIDs = users.map(function (user) {
+			return user.getID();
 		});
-		multi.sadd("user:" + userid + ":notifications:all", newid);
-		multi.sadd("user:" + userid + ":notifications:unread", newid);
-	}), h.sF(function () {
-		this.ne(theID);
-	}), cb);
+
+		var multi = client.multi();
+		multi.hmset("notifications:byID:" + notificationID, {
+			id: notificationID,
+			type: type,
+			subType: subType,
+			referenceID: referenceID,
+			time: new Date().getTime(),
+			receivers: JSON.stringify(userIDs)
+		});
+
+		userIDs.forEach(function (userid) {
+			multi.zadd("notifications:user:" + userid + ":sorted", notificationID, new Date().getTime());
+			multi.sadd("notifications:user:" + userid + ":all", notificationID);
+			multi.sadd("notifications:user:" + userid + ":type:" + type, notificationID);
+			multi.sadd("notifications:user:" + userid + ":unread", notificationID);
+		});
+
+		var exec = Bluebird.promisify(multi.exec, multi);
+		var mailer = require("./mailer");
+
+		return Promise.all([
+			exec(),
+			mailer.sendInteractionMails(users, type, subType, referenceID)
+		]).then(function () {
+			return notificationID;
+		});
+	});
 };
 
 module.exports = Notification;

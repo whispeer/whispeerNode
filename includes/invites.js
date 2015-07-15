@@ -60,16 +60,14 @@ var invites = {
 		}), cb);
 	},
 	getMyInvites: function (request, cb) {
-		var smembers = Bluebird.promisify(client.smembers, client);
-		var hgetall = Bluebird.promisify(client.hgetall, client);
 		var logedinError = Bluebird.promisify(request.session.logedinError, request.session);
 
 		var resultPromise = logedinError().then(function () {
-			return smembers("invites:v2:user:" + request.session.getUserID());
+			return client.smembersAsync("invites:v2:user:" + request.session.getUserID());
 		}).map(function (inviteCode) {
 			return Bluebird.all([
-				hgetall("invites:v2:code:" + inviteCode),
-				smembers("invites:v2:code:" + inviteCode + ":used")
+				client.hgetallAsync("invites:v2:code:" + inviteCode),
+				client.smembersAsync("invites:v2:code:" + inviteCode + ":used")
 			]).spread(function (data, usedBy) {
 				data.usedBy = usedBy;
 				data.code = inviteCode;

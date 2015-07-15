@@ -1,6 +1,9 @@
 "use strict";
 
 var redis = require("redis");
+var Bluebird = require("bluebird");
+
+Bluebird.promisifyAll(redis);
 
 var configManager = require("./configManager");
 var config = configManager.get();
