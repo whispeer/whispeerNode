@@ -165,6 +165,7 @@ var mailer = {
 			}
 
 			if (e) {
+				console.log("unable to find matching template:" + templateName.join("-"));
 				templateName.pop();
 			}
 
