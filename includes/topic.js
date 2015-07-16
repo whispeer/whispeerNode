@@ -262,7 +262,7 @@ var Topic = function (id) {
 				}
 			});
 
-			mailer.sendInteractionMails(theReceiver);
+			mailer.sendInteractionMails(theReceiver, "message", "new", id);
 
 			this.ne();
 		}), cb);

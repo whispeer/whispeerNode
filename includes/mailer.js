@@ -20,6 +20,7 @@ var mail = nodemailer.createTransport(config.mailType, config.mail);
 var defaultFrom = config.mailFrom || "whispeer <support@whispeer.de>";
 
 var Bluebird = require("bluebird");
+var readFile = Bluebird.promisify(fs.readFile, fs);
 
 //mail
 //- <userid>
@@ -137,31 +138,50 @@ var mailer = {
 			}
 		}), cb);
 	},
-	sendInteractionMails: function (users, cb) {
-		var sismember = Bluebird.promisify(client.sismember, client);
-		var sadd = Bluebird.promisify(client.sadd, client);
+	sendInteractionMails: function (users, type, subType, interactionID) {
 		var sendUserMail = Bluebird.promisify(mailer.sendUserMail, mailer);
 
-		var resultPromise = Bluebird.resolve(users).filter(function (user) {
+		return Bluebird.resolve(users).filter(function (user) {
 			var isOnline = Bluebird.promisify(user.isOnline, user);
 
 			return Bluebird.all([
-				sismember("mail:notifiedUsers", user.getID()),
+				client.sismemberAsync("mail:notifiedUsers", user.getID()),
 				isOnline()
 			]).spread(function (alreadyNotified, isOnline) {
-				return !alreadyNotified && !isOnline;
+				return !isOnline;
 			});
 		}).each(function (user) {
-			return sadd("mail:notifiedUsers", user.getID()).then(function () {
-				return sendUserMail(user, "interaction", {});
+			return client.saddAsync("mail:notifiedUsers", user.getID()).then(function () {
+				return sendUserMail(user, ["interaction", type, subType], {
+					interactionID: interactionID
+				});
 			});
 		});
+	},
+	tryNextTemplate: function (templateName, language) {
+		return function (e) {
+			if (templateName.length === 1) {
+				return e;
+			}
 
-		if (cb) {
-			step.unpromisify(resultPromise, cb);
+			if (e) {
+				console.log("unable to find matching template:" + templateName.join("-"));
+				templateName.pop();
+			}
+
+			return readFile(TEMPLATEDIR + language + "/" + templateName.join("-") + ".html").catch(mailer.tryNextTemplate(templateName, language));
+		};
+	},
+	getCorrectTemplate: function (templateName, language, cb) {
+		var resultPromise;
+
+		if (typeof templateName === "string") {
+			resultPromise = readFile(TEMPLATEDIR + language + "/" + templateName + ".html");
+		} else {
+			resultPromise = mailer.tryNextTemplate(templateName, language)();
 		}
 
-		return resultPromise;
+		return step.unpromisify(resultPromise, cb);
 	},
 	fillTemplate: function (templateName, variables, cb) {
 		step(function () {
@@ -173,7 +193,7 @@ var mailer = {
 
 			this.parallel.unflatten();
 
-			fs.readFile(TEMPLATEDIR + language + "/" + templateName + ".html", this.parallel());
+			mailer.getCorrectTemplate(templateName, language, this.parallel());
 			mailer.generateTrackingCode(variables, this.parallel());
 		}, h.sF(function (content, trackingCode) {
 			content = content.toString();

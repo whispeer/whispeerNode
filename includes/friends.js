@@ -17,6 +17,8 @@ var SymKey = require("./crypto/symKey");
 
 */
 
+var Notification = require("./notification");
+
 function hasFriend(uid, friendid, cb) {
 	client.sismember("friends:" + uid, friendid, cb);
 }
@@ -457,9 +459,11 @@ var friends = {
 			addFriendName(request, friendShip.user);
 			if (firstRequest) {
 				friendShip.user.notify("friendRequest", request.session.getUserID());
-				var mailer = require("./mailer");
-				mailer.sendInteractionMails([friendShip.user]);
+
+				Notification.add([friendShip.user], "friend", "new", request.session.getUserID());
 			} else {
+				Notification.add([friendShip.user], "friend", "accept", request.session.getUserID());
+
 				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
 
