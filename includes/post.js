@@ -62,8 +62,6 @@ var Post = function (postid) {
 			}
 		}), h.sF(function (ownHash, sorting) {
 			if (meta._parent !== ownHash) {
-				console.log(meta._parent);
-				console.log(ownHash);
 				throw new Error("invalid parent data");
 			}
 
