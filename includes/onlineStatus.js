@@ -5,68 +5,70 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var friends = require("./friends");
+var errorService = require("./errorService");
+var Bluebird = require("bluebird");
 
-var awayTimeout = 10*60*1000;
+var onlineTimeout = 30 * 1000;
 
-setInterval(function () {
-	var time = new Date().getTime();
-	step(function () {
-		client.zrangebyscore("user:awayCheck", "-inf", time, this);
-	}, h.sF(function (awayUsers) {
-		awayUsers.map(function (userid) {
-			friends.notifyUsersFriends(userid, "online", 1);
-			client.del("user:" + userid + ":recentActivity", function (e)  {
-				if (e) {
-					console.error(e);
-				}
+setInterval(function removeOffline() {
+	client.zrangebyscoreAsync("user:online:timed", 0, new Date().getTime() - onlineTimeout).then(function (offlineUsers) {
+		if (offlineUsers.length > 0) {
+			console.log("removed " + offlineUsers.length + " stale users");
+
+			offlineUsers.forEach(function (userID) {
+				friends.notifyUsersFriends(userID, "online", 0);
 			});
-		});
 
-		client.zremrangebyscore("user:awayCheck", "-inf", time, this);
-	}), function (e) {
-		if (e) {
-			console.error(e);
+			return Bluebird.all([
+				client.zremAsync.apply(client, ["user:online:timed"].concat(offlineUsers)),
+				client.sremAsync.apply(client, ["user:online"].concat(offlineUsers))
+			]);
 		}
-	});
-
-}, 10*1000);
-
+	}).catch(errorService.handleError);
+}, onlineTimeout);
 
 function OnlineStatusUpdater(socketData, session) {
-	var userid, timeout;
+	var userIDToRemove, intervalID;
 
 	function removeSocket() {
-		if (userid) {
-			var socketID =  socketData.socket.id;
-			var userIDToRemove = userid;
-			timeout = 0;
+		if (!userIDToRemove) {
+			return;
+		}
 
-			userid = 0;
+		var internalUserIDToRemove = userIDToRemove;
+		var socketID =  socketData.socket.id;
+		userIDToRemove = 0;
 
-			step(function () {
-				client.srem("user:" + userIDToRemove + ":sockets", socketID, this);
-			}, h.sF(function () {
-				client.scard("user:" + userIDToRemove + ":sockets", this);
-			}), h.sF(function (count) {
-				if (count > 0) {
-					this.ne();
-				} else {
-					client.multi()
-						.srem("user:online", userIDToRemove)
-						.zrem("user:awayCheck", userIDToRemove)
-						.exec(this);
-					friends.notifyUsersFriends(userIDToRemove, "online", 0);
-					this.ne();
-				}
-			}), function (e) {
-				if (e) {
-					console.error(e);
-				}
-			});
+		step(function () {
+			client.srem("user:" + internalUserIDToRemove + ":sockets", socketID, this);
+		}, h.sF(function () {
+			client.scard("user:" + internalUserIDToRemove + ":sockets", this);
+		}), h.sF(function (count) {
+			if (count > 0) {
+				this.ne();
+			} else {
+				client.multi()
+					.zrem("user:online:timed", internalUserIDToRemove)
+					.srem("user:online", internalUserIDToRemove)
+					.exec(this);
+				friends.notifyUsersFriends(internalUserIDToRemove, "online", 0);
+				this.ne();
+			}
+		}), errorService.handleError);
+	}
+
+	function updateOnline() {
+		var userID = socketData.session.getUserID();
+		if (socketData.isConnected() && userID) {
+			//check that socket is still connected
+			client.zadd("user:online:timed", new Date().getTime(), userID, errorService.handleError);
+		} else {
+			clearInterval(intervalID);
 		}
 	}
 
 	function track() {
+		var userID = socketData.session.getUserID();
 		var now = new Date();
 
 		now.setMilliseconds(0);
@@ -79,69 +81,57 @@ function OnlineStatusUpdater(socketData, session) {
 		var hour = day + " " + now.getHours() + "h";
 
 		client.multi()
-			.sadd("analytics:online:hour:" + hour, userid)
-			.sadd("analytics:online:day:" + day, userid)
-			.sadd("analytics:online:week:" + week, userid)
-			.sadd("analytics:online:month:" + month, userid)
-			.exec(function (e) {
-				if (e) {
-					console.error(e);
-				}
-			});
+			.sadd("analytics:online:hour:" + hour, userID)
+			.sadd("analytics:online:day:" + day, userID)
+			.sadd("analytics:online:week:" + week, userID)
+			.sadd("analytics:online:month:" + month, userID)
+			.exec(errorService.handleError);
 	}
 
 	function addSocket() {
-		userid = socketData.session.getUserID();
-		var alreadyNotified = false;
+		userIDToRemove = socketData.session.getUserID();
+
+		var userid = userIDToRemove;
+		var socketID =  socketData.socket.id;
+
+		intervalID = setInterval(updateOnline, onlineTimeout / 4);
 
 		try {
 			track();
 		} catch (e) {
-			console.error(e);
+			errorService.handleError(e);
 		}
 
 		//add current user to online users - add current socket to users connections
 		client.multi()
-			.sadd("user:online", userid, function (error, added) {
+			.zadd("user:online:timed", new Date().getTime(), userid, function (error, added) {
 				if (error) {
-					console.error(error);
+					errorService.handleError(error);
+					return;
 				}
 
 				if (added) {
-					alreadyNotified = true;
 					friends.notifyAllFriends(socketData, "online", 2);
 				}
 			})
+			.sadd("user:online", userid)
+			.sadd("user:" + userid + ":sockets", socketID)
 			//user went online so remove from notifiedUsers. maybe move to listener pattern later on.
-			.srem("mail:notifiedUsers", socketData.session.getUserID())
-			.sadd("user:" + userid + ":sockets", socketData.socket.id)
-			.getset("user:" + userid + ":recentActivity", "1", function (error, oldValue) {
-				if (!oldValue && !alreadyNotified) {
-					friends.notifyAllFriends(socketData, "online", 2);
-				}
-			})
-			.zadd("user:awayCheck", new Date().getTime() + awayTimeout, userid)
-			.expire("user:" + userid + ":recentActivity", awayTimeout / 1000)
-			.exec(function (e) {
-				if (e) {
-					console.error(e);
-				}
-			});
+			.srem("mail:notifiedUsers", userid)
+			.exec(errorService.handleError);
 	}
 
 	session.changeListener(function (logedin) {
 		if (logedin) {
 			addSocket();
+		} else {
+			removeSocket();
 		}
 	});
 
 	socketData.once("disconnect", removeSocket);
 
-	this.recentActivity = function () {
-		if (socketData.session.getUserID()) {
-			addSocket();
-		}
-	};
+	this.recentActivity = function () {};
 }
 
 module.exports = OnlineStatusUpdater;
