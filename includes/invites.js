@@ -10,6 +10,8 @@ var User = require("./user");
 
 var Bluebird = require("bluebird");
 
+var Notification = require("./notification");
+
 var INVITELENGTH = 10;
 
 var invites = {
@@ -126,6 +128,8 @@ var invites = {
 				this.last.ne();
 			}
 		}), h.sF(function (otherUser) {
+			Notification.add([otherUser], "invite", "accepted", myUser.getID());
+
 			client.sadd("invites:v2:code:" + inviteCode + ":used", myUser.getID(), this.parallel());
 			client.hset("invites:v2:code:" + inviteCode, "active", 1, this.parallel());
 			otherUser.addFriendRecommendation(myUser, 0, this.parallel());
