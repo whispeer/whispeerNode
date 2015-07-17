@@ -4,6 +4,7 @@
 var client = require("./redisClient");
 
 var onlineStatusUpdater = require("./onlineStatus");
+var errorService = require("./errorService");
 var step = require("step");
 var h = require("whispeerHelper");
 
@@ -18,13 +19,31 @@ function SocketData(socket, session) {
 	var psubs = {};
 	var subs = {};
 
+	var closeSubscribers = [];
+
+	theSocketData.once("disconnect", function () {
+		console.log("removing subscribers");
+		closeSubscribers.forEach(function (closeSubscriber) {
+			try {
+				closeSubscriber();
+			} catch (e) {
+				errorService.handleError(e);
+			}
+		});
+
+		closeSubscribers = [];
+	});
+
+	this.isConnected = function () {
+		return socket.connected;
+	};
+
 	/* helper functions. Please use redisObserver where possible */
 	this.psub = function (channel, cb) {
 		if (!psubs[channel]) {
 			psubs[channel] = true;
 
-			var closeSubscriber = client.psub(channel, cb);
-			theSocketData.once("disconnect", closeSubscriber);
+			closeSubscribers.push(client.psub(channel, cb));
 		}
 	};
 
@@ -32,8 +51,7 @@ function SocketData(socket, session) {
 		if (!subs[channel]) {
 			subs[channel] = true;
 
-			var closeSubscriber = client.sub(channel, cb);
-			theSocketData.once("disconnect", closeSubscriber);
+			closeSubscribers.push(client.sub(channel, cb));
 		}
 	};
 
