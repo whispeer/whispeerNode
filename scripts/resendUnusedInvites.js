@@ -12,17 +12,13 @@ var h = require("whispeerHelper");
 var Bluebird = require("bluebird");
 
 var setupP = Bluebird.promisify(setup);
-var smembers = Bluebird.promisify(client.smembers, client);
-
-var hgetall = Bluebird.promisify(client.hgetall, client);
-var scard = Bluebird.promisify(client.scard, client);
 
 var byMail = Bluebird.promisify(invites.byMail, invites);
 
 setupP().then(function () {
-	return smembers("invites:v2:all");
+	return client.smembersAsync("invites:v2:all");
 }).map(function (inviteCode) {
-	return hgetall("invites:v2:code:" + inviteCode).then(function (data) {
+	return client.hgetallAsync("invites:v2:code:" + inviteCode).then(function (data) {
 		data.code = inviteCode;
 		return data;
 	});
@@ -31,7 +27,7 @@ setupP().then(function () {
 		return invite.reference.indexOf("@") > -1;
 	});
 }).map(function (invite) {
-	return scard("invites:v2:code:" + invite.code + ":used").then(function (card) {
+	return client.scardAsync("invites:v2:code:" + invite.code + ":used").then(function (card) {
 		invite.accepted = card;
 		return invite;
 	});
