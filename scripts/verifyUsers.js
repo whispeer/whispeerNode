@@ -44,6 +44,19 @@ function verifyTrustManager(request) {
 	});
 }
 
+function verifySignedFriendsList(request) {
+	client.hgetallAsync("friends:" + request.session.getUserID() + ":signedList").then(function (signedFriendList) {
+		if (!signedFriendList) {
+			console.log("no signedFriendList set for user: " + request.session.getUserID());
+			return;
+		}
+
+		return verifySecuredMeta(request, signedFriendList, "signedFriendList");
+	}).catch(function () {
+		console.log("Broken signedFriendList: " + request.session.getUserID());
+	});
+}
+
 function verifyUser(userID) {
 	var requestStub = {
 		session: {
@@ -55,7 +68,8 @@ function verifyUser(userID) {
 	return getUser(userID).then(function (theUser) {
 		return Bluebird.all([
 			verifySettings(requestStub, theUser),
-			verifyTrustManager(requestStub, theUser)
+			verifyTrustManager(requestStub, theUser),
+			verifySignedFriendsList(requestStub, theUser)
 		]);
 		//get settings
 		//get trustManager
