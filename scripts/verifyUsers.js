@@ -33,6 +33,11 @@ function verifySettings(request) {
 
 function verifyTrustManager(request) {
 	return getTrustManager(request).then(function (trustManager) {
+		if (!trustManager) {
+			console.log("no trustmanager set for user: " + request.session.getUserID());
+			return;
+		}
+
 		return verifySecuredMeta(request, trustManager, "trustManager");
 	}).catch(function () {
 		console.log("Broken trustManager: " + request.session.getUserID());
