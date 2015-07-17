@@ -10,6 +10,8 @@ var search = require("./search");
 var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
+var verifySecuredMeta = require("./includes/verifyObject");
+
 /*
 	Friends: {
 
@@ -115,6 +117,8 @@ function setSignedList(request, m, signedList, add, remove, cb) {
 			throw new Error("signedList update error");
 		}
 
+		verifySecuredMeta(request, signedList, "signedFriendList", this);
+	}), h.sF(function () {
 		//TODO: get all signed list keys!
 
 		//update signedList
