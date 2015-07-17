@@ -3,6 +3,8 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
+var verifySecuredMeta = require("./includes/verifyObject");
+
 var user = require("./topics/tuser");
 var session = require("./topics/tsession");
 var messages = require("./topics/tmessage");
@@ -167,6 +169,10 @@ var whispeerAPI = {
 					}
 				}
 
+				verifySecuredMeta(request, data.content, "trustManager", this);
+			}), h.sF(function () {
+				//signedFriendList
+
 				trustManager.set(request, data.content, h.objectifyResult("success", this));
 			}), fn);
 		}
@@ -183,8 +189,10 @@ var whispeerAPI = {
 		},
 		setSettings: function (data, fn, request) {
 			step(function () {
+				verifySecuredMeta(request, data.settings.meta, "settings", this);
+			}, h.sF(function () {
 				settings.setOwnSettings(request, data.settings, this);
-			}, h.sF(function (result) {
+			}), h.sF(function (result) {
 				this.ne({
 					success: result
 				});

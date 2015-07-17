@@ -20,6 +20,8 @@ var CHECKTIME = 10 * 1000;
 
 var errorService = require("./errorService");
 
+var verifySecuredMeta = require("./verifyObject");
+
 /** get a random sid of given length 
 * @param length length of sid
 * @param callback callback
@@ -412,14 +414,12 @@ var Session = function Session() {
 
 			validateKeys(keys, this);
 		}, UserNotExisting), h.sF(function validateSettings() {
-			if (!settings ||
-				(!settings.iv && !settings.content.iv) ||
-				(!settings.ct && !settings.content.ct)
-				) {
+			if (!settings || !settings.content.iv || !settings.content.ct) {
 				regErr("settingsInvalid");
 			}
 
-			this.ne();
+			verifySecuredMeta.byKey(keys.sign, signedKeys, "signedKeys", this.parallel());
+			verifySecuredMeta.byKey(keys.sign, settings.meta, "settings", this.parallel());
 		}), h.sF(function createActualUser() {
 			if (result.error === true) {
 				this.last.ne(result);
