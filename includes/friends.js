@@ -10,7 +10,7 @@ var search = require("./search");
 var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
-var verifySecuredMeta = require("./includes/verifyObject");
+var verifySecuredMeta = require("./verifyObject");
 
 /*
 	Friends: {
