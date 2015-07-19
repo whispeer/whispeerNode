@@ -26,6 +26,21 @@ var MAXDEPTH = 20;
 var signatureCache = new SimpleUserDataStore("signatureCache");
 var trustManager = new SimpleUserDataStore("trustManager");
 
+trustManager.preSet(function (request, newContent, cb) {
+	step(function () {
+		trustManager.get(request, this);
+	}, h.sF(function (oldTrustManager) {
+		if (oldTrustManager) {
+			var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(newContent));
+			if (diff.length > 0) {
+				throw new Error("trust manager update blocked because it would delete data " + diff);
+			}
+		}
+
+		verifySecuredMeta(request, newContent, "trustManager", this);
+	}), cb);
+});
+
 //change api style:
 //extract objects with methods:
 //get
@@ -147,35 +162,12 @@ var whispeerAPI = {
 		}
 	},
 	signatureCache: {
-		get: function (data, fn, request) {
-			signatureCache.get(request, h.objectifyResult("content", fn));
-		},
-		set: function (data, fn, request) {
-			signatureCache.set(request, data.content, h.objectifyResult("success", fn));
-		}
+		get: signatureCache.apiGet.bind(signatureCache),
+		set: signatureCache.apiSet.bind(signatureCache)
 	},
 	trustManager: {
-		get: function (data, fn, request) {
-			trustManager.get(request, h.objectifyResult("content", fn));
-		},
-		set: function (data, fn, request) {
-			step(function () {
-				trustManager.get(request, this);
-			}, h.sF(function (oldTrustManager) {
-				if (oldTrustManager) {
-					var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(data.content));
-					if (diff.length > 0) {
-						throw new Error("trust manager update blocked because it would delete data " + diff);
-					}
-				}
-
-				verifySecuredMeta(request, data.content, "trustManager", this);
-			}), h.sF(function () {
-				//signedFriendList
-
-				trustManager.set(request, data.content, h.objectifyResult("success", this));
-			}), fn);
-		}
+		get: trustManager.apiGet.bind(trustManager),
+		set: trustManager.apiSet.bind(trustManager),
 	},
 	settings: {
 		getSettings: function (data, fn, request) {

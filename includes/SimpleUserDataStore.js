@@ -28,8 +28,14 @@ SimpleUserDataStore.prototype.get = function (request, cb) {
 SimpleUserDataStore.prototype.set = function (request, newContent, cb) {
 	var that = this;
 	step(function () {
+		if (that._preSet) {
+			that._preSet(request, newContent, this);
+		} else {
+			this.ne();
+		}
+	}, h.sF(function () {
 		client.set("user:" + request.session.getUserID() + ":" + that._name, JSON.stringify(newContent), this);
-	}, h.sF(function (res) {
+	}), h.sF(function (res) {
 		request.session.getOwnUser(function (e, user) {
 			if (!e) {
 				user.notify(that._name, newContent);
@@ -44,6 +50,17 @@ SimpleUserDataStore.prototype.set = function (request, newContent, cb) {
 	}), cb);
 };
 
+SimpleUserDataStore.prototype.preSet = function (fn) {
+	this._preSet = fn;
+};
+
+SimpleUserDataStore.prototype.apiGet = function (data, fn, request) {
+	this.get(request, h.objectifyResult("content", fn));
+};
+
+SimpleUserDataStore.prototype.apiSet = function (data, fn, request) {
+	this.set(request, data.content, h.objectifyResult("success", fn));
+};
 
 
 module.exports = SimpleUserDataStore;
