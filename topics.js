@@ -25,6 +25,13 @@ var MAXDEPTH = 20;
 
 var signatureCache = new SimpleUserDataStore("signatureCache");
 var trustManager = new SimpleUserDataStore("trustManager");
+var settings = new SimpleUserDataStore("settings");
+
+settings.preSet(function (request, newContent, cb) {
+	step(function () {
+		verifySecuredMeta(request, newContent.meta, "settings", this);
+	}, cb);
+});
 
 trustManager.preSet(function (request, newContent, cb) {
 	step(function () {
@@ -171,24 +178,10 @@ var whispeerAPI = {
 	},
 	settings: {
 		getSettings: function (data, fn, request) {
-			step(function () {
-				settings.getOwnSettings(request, this);
-			}, h.sF(function (settings) {
-				this.ne({
-					settings: settings
-				});
-			}), fn);
+			settings.get(request, h.objectifyResult("settings", fn));
 		},
 		setSettings: function (data, fn, request) {
-			step(function () {
-				verifySecuredMeta(request, data.settings.meta, "settings", this);
-			}, h.sF(function () {
-				settings.setOwnSettings(request, data.settings, this);
-			}), h.sF(function (result) {
-				this.ne({
-					success: result
-				});
-			}), fn);
+			settings.set(request, data.settings, h.objectifyResult("success", fn));
 		}
 	},
 	circle: circles,
