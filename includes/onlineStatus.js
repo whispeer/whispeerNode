@@ -131,7 +131,9 @@ function OnlineStatusUpdater(socketData, session) {
 
 	socketData.once("disconnect", removeSocket);
 
-	this.recentActivity = function () {};
+	this.recentActivity = function () {
+		track();
+	};
 }
 
 module.exports = OnlineStatusUpdater;
