@@ -724,15 +724,10 @@ var User = function (id) {
 
 	this.getOnlineStatus = function(cb) {
 		step(function () {
-			client.scard(userDomain + ":sockets", this.parallel());
-			client.get(userDomain + ":recentActivity", this.parallel());
-		}, h.sF(function (socketCount, activity) {
-			if (socketCount > 0) {
-				if (activity) {
-					this.ne(2);
-				} else {
-					this.ne(1);
-				}
+			client.sismember("user:online", id, this.parallel());
+		}, h.sF(function (online) {
+			if (online) {
+				this.ne(2);
 			} else {
 				this.ne(0);
 			}
