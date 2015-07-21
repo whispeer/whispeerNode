@@ -22,7 +22,9 @@ setInterval(function removeOffline() {
 			return Bluebird.all([
 				client.zremAsync.apply(client, ["user:online:timed"].concat(offlineUsers)),
 				client.sremAsync.apply(client, ["user:online"].concat(offlineUsers))
-			]);
+			].concat(offlineUsers.map(function (userid) {
+				return client.delAsync("user:" + userid + ":sockets");
+			})));
 		}
 	}).catch(errorService.handleError);
 }, onlineTimeout);
