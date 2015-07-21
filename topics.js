@@ -25,6 +25,7 @@ var MAXDEPTH = 20;
 
 var signatureCache = new SimpleUserDataStore("signatureCache");
 var trustManager = new SimpleUserDataStore("trustManager");
+var passwordSafe = new SimpleUserDataStore("passwordSafe");
 var settings = new SimpleUserDataStore("settings");
 
 settings.preSet(function (request, newContent, cb) {
@@ -175,6 +176,10 @@ var whispeerAPI = {
 	trustManager: {
 		get: trustManager.apiGet.bind(trustManager),
 		set: trustManager.apiSet.bind(trustManager),
+	},
+	pwSafe: {
+		get: passwordSafe.apiGet.bind(passwordSafe),
+		set: passwordSafe.apiSet.bind(passwordSafe)
 	},
 	settings: {
 		getSettings: function (data, fn, request) {
