@@ -132,7 +132,11 @@ function OnlineStatusUpdater(socketData, session) {
 	socketData.once("disconnect", removeSocket);
 
 	this.recentActivity = function () {
-		track();
+		try {
+			track();
+		} catch (e) {
+			errorService.handleError(e);
+		}
 	};
 }
 
