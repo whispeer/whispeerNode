@@ -65,30 +65,13 @@ function getUserOnlineFriends(uid, cb) {
 }
 
 function getUserOnlineFriendsStatus(uid, cb) {
-	var onlineFriends = [];
 	step(function () {
 		getUserOnlineFriends(uid, this);
-	}, h.sF(function (friends) {
-		onlineFriends = friends;
-
-		friends.forEach(function (friend) {
-			client.get("user:" + friend + ":recentActivity", this.parallel());
-		}, this);
-
-		if (friends.length === 0) {
-			this.last.ne({});
-		}
-	}), h.sF(function (recentActivity) {
+	}, h.sF(function (onlineFriends) {
 		var result = {};
-		recentActivity = recentActivity || [];
-		h.assert(recentActivity.length === onlineFriends.length);
 
-		onlineFriends.forEach(function (friend, index) {
-			if (recentActivity[index]) {
-				result[friend] = 2;
-			} else {
-				result[friend] = 1;
-			}
+		onlineFriends.forEach(function (friend) {
+			result[friend] = 2;
 		});
 
 		this.ne(result);
@@ -191,16 +174,13 @@ var friends = {
 			this.parallel.unflatten();
 			client.sismember("friends:" + ownID, uid, this.parallel());
 			client.sismember("user:online", uid, this.parallel());
-			client.get("user:" + uid + ":recentActivity", this.parallel());
-		}, h.sF(function (isFriend, isOnline, recentActivity) {
+		}, h.sF(function (isFriend, isOnline) {
 			if (!isFriend) {
 				this.ne(-1);
 			} else if (!isOnline) {
 				this.ne(0);
-			} else if (!recentActivity) {
-				this.ne(2);
 			} else {
-				this.ne(1);
+				this.ne(2);
 			}
 		}), cb);
 	},
