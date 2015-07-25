@@ -6,12 +6,13 @@ var h = require("whispeerHelper");
 var KeyApi = require("./crypto/KeyApi");
 var errorService = require("./errorService");
 
-function RequestData(socketData, rawRequest) {
+function RequestData(socketData, rawRequest, channel) {
 	var request = this;
 
 	this.session = socketData.session;
 	this.socket = socketData.socket;
 	this.rawRequest = rawRequest;
+	this.channel = channel;
 
 	this.children = [];
 

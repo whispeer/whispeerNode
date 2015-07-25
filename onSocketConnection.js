@@ -162,7 +162,7 @@ module.exports = function (socket) {
 	function handleF(handler, channel) {
 		return function handleF(data, fn) {
 			var time = new Date().getTime();
-			var request = new RequestData(socketData, data);
+			var request = new RequestData(socketData, data, channel);
 			step(function () {
 				console.log(new Date() + " (v" + data.version + ") Received data on channel " + channel);
 
