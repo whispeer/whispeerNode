@@ -60,8 +60,8 @@ function makeSearchUserData(request, cb, ids, known) {
 var u = {
 	get: function getUserF(data, fn, request) {
 		step(function () {
-			if (data && data.identifier) {
-				User.getUser(data.identifier, this);
+			if (data && (data.identifier || data.id)) {
+				User.getUser(data.identifier || data.id, this);
 			} else {
 				fn.error.protocol();
 			}
