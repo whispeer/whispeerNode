@@ -32,6 +32,7 @@ var errorService = {
 				if (request) {
 					requestString += "\n\n";
 					requestString += "User: " + request.session.getUserID() + "\n";
+					requestString += "Channel: " + request.channel + "\n";
 					requestString += "Raw Request: " + JSON.stringify(request.rawRequest);
 				}
 
