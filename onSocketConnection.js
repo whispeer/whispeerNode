@@ -98,7 +98,15 @@ handle = function (handler, data, fn, request) {
 /** adds data which is always present.
 * mainly adds login data
 */
-function always(request, data, fn) {
+function always(request, response, fn) {
+	var data = {};
+
+	if (request.rawRequest.responseKey) {
+		data[request.rawRequest.responseKey] = response;
+	} else {
+		data = response;
+	}
+
 	step(function () {
 		this.parallel.unflatten();
 		request.session.logedin(this.parallel());
