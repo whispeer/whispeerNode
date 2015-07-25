@@ -49,7 +49,7 @@ Notification.getOwn = function (request, start, count) {
 	return client.zrangeAsync("notifications:user:" +  ownUserID + ":sorted", start, start + count - 1);
 };
 
-Notification.add = function (users, type, subType, referenceID) {
+Notification.add = function (users, type, subType, referenceID, options) {
 	return client.incrAsync("notifications:count").then(function (notificationID) {
 		var userIDs = users.map(function (user) {
 			return user.getID();
@@ -77,7 +77,7 @@ Notification.add = function (users, type, subType, referenceID) {
 
 		return Promise.all([
 			exec(),
-			mailer.sendInteractionMails(users, type, subType, referenceID)
+			mailer.sendInteractionMails(users, type, subType, referenceID, options)
 		]).then(function () {
 			return notificationID;
 		});

@@ -138,7 +138,7 @@ var mailer = {
 			}
 		}), cb);
 	},
-	sendInteractionMails: function (users, type, subType, interactionID) {
+	sendInteractionMails: function (users, type, subType, interactionID, options) {
 		var sendUserMail = Bluebird.promisify(mailer.sendUserMail, mailer);
 
 		return Bluebird.resolve(users).filter(function (user) {
@@ -148,6 +148,10 @@ var mailer = {
 				client.sismemberAsync("mail:notifiedUsers", user.getID()),
 				isOnline()
 			]).spread(function (alreadyNotified, isOnline) {
+				if (options.sendMailWhileOnline) {
+					return true;
+				}
+
 				return !isOnline;
 			});
 		}).each(function (user) {

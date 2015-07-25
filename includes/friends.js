@@ -442,12 +442,15 @@ var friends = {
 		}), h.sF(function addFriendsName() {
 			addFriendName(request, friendShip.user);
 			if (firstRequest) {
+				Notification.add([friendShip.user], "friend", "new", request.session.getUserID(), {
+					sendMailWhileOnline: true
+				});
+
 				friendShip.user.notify("friendRequest", request.session.getUserID());
-
-				Notification.add([friendShip.user], "friend", "new", request.session.getUserID());
 			} else {
-				Notification.add([friendShip.user], "friend", "accept", request.session.getUserID());
-
+				Notification.add([friendShip.user], "friend", "accept", request.session.getUserID(), {
+					sendMailWhileOnline: true
+				});
 				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
 
