@@ -73,10 +73,13 @@ var whispeerAPI = {
 			client.multi()
 				.sadd("analytics:registration:ids", id)
 				.hmset("analytics:registration:id:" + id, {
-					added: new Date().getTime(),
-					shortIP: request.getShortIP()
-				});
-		}, fn);
+					added: new Date().getTime()
+				})
+				.sadd("analytics:registration:id:" + id + ":ips", request.getShortIP())
+				.exec(this);
+		}, h.sF(function () {
+			this.ne({});
+		}), fn);
 	},
 	errors: function (data, fn) {
 		step(function () {
@@ -252,6 +255,7 @@ var whispeerAPI = {
 	}
 };
 
+whispeerAPI.preRegisterID.noLoginNeeded = true;
 whispeerAPI.ping.noLoginNeeded = true;
 whispeerAPI.nicknameFree.noLoginNeeded = true;
 whispeerAPI.mailFree.noLoginNeeded = true;
