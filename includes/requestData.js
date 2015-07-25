@@ -27,6 +27,10 @@ function RequestData(socketData, rawRequest, channel) {
 		this.keyData = [];
 	}
 
+	this.getShortIP = function () {
+		return socketData.getShortIP();
+	};
+
 	this.addChildRequest = function (child) {
 		this.children.push(child);
 	};

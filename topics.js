@@ -27,6 +27,8 @@ var signatureCache = new SimpleUserDataStore("signatureCache");
 var trustManager = new SimpleUserDataStore("trustManager");
 var settings = new SimpleUserDataStore("settings");
 
+var client = require("./includes/redisClient");
+
 settings.preSet(function (request, newContent, cb) {
 	step(function () {
 		verifySecuredMeta(request, newContent.meta, "settings", this);
@@ -64,6 +66,18 @@ var whispeerAPI = {
 	blob: blob,
 	invites: invites,
 	recovery: recovery,
+	preRegisterID: function (data, fn, request) {
+		step(function () {
+			var id = data.id;
+
+			client.multi()
+				.sadd("analytics:registration:ids", id)
+				.hmset("analytics:registration:id:" + id, {
+					added: new Date().getTime(),
+					shortIP: request.getShortIP()
+				});
+		}, fn);
+	},
 	errors: function (data, fn) {
 		step(function () {
 			mailer.mailAdmin("User reported an error!", JSON.stringify(data), this);

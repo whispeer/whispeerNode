@@ -34,6 +34,29 @@ function SocketData(socket, session) {
 		closeSubscribers = [];
 	});
 
+	this.getShortIP = function () {
+		var address = socket.request.connection.remoteAddress, ipV4, ipV6;
+
+		var lastDouble = address.lastIndexOf(":");
+		var lastSingle = address.lastIndexOf(".");
+
+		if (lastSingle > -1 && lastDouble > -1) {
+			ipV6 = address.substr(0, lastDouble);
+			ipV4 = address.substr(lastDouble + 1, lastSingle);
+		} else if (lastDouble === -1) {
+			ipV4 = address;
+		} else {
+			return "ipV6";
+		}
+
+		var splittedAddress = ipV4.split(".");
+		splittedAddress.pop();
+
+		var shortIP = splittedAddress.join(".") + ".0";
+
+		return shortIP;
+	};
+
 	this.isConnected = function () {
 		return socket.connected;
 	};
