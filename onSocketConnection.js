@@ -99,14 +99,6 @@ handle = function (handler, data, fn, request) {
 * mainly adds login data
 */
 function always(request, response, fn) {
-	var data = {};
-
-	if (request.rawRequest.responseKey) {
-		data[request.rawRequest.responseKey] = response;
-	} else {
-		data = response;
-	}
-
 	step(function () {
 		this.parallel.unflatten();
 		request.session.logedin(this.parallel());
@@ -114,26 +106,26 @@ function always(request, response, fn) {
 	}, function (e, logedin) {
 		if (e) {
 			console.error(e);
-			data.status = 0;
+			response.status = 0;
 		}
 
-		if (data.status !== 0) {
-			data.status = 1;
+		if (response.status !== 0) {
+			response.status = 1;
 		}
 
-		data.version = APIVERSION;
+		response.version = APIVERSION;
 
-		data.keys = request.getAllKeys();
+		response.keys = request.getAllKeys();
 
-		data.logedin = logedin;
+		response.logedin = logedin;
 
 		if (logedin) {
-			data.sid = request.session.getSID();
-			data.userid = request.session.getUserID();
-			data.serverTime = new Date().getTime();
+			response.sid = request.session.getSID();
+			response.userid = request.session.getUserID();
+			response.serverTime = new Date().getTime();
 		}
 
-		this(data);
+		this(response);
 	}, fn);
 }
 

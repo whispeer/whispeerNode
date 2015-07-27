@@ -55,7 +55,21 @@ SimpleUserDataStore.prototype.preSet = function (fn) {
 };
 
 SimpleUserDataStore.prototype.apiGet = function (data, fn, request) {
-	this.get(request, h.objectifyResult("content", fn));
+	var that = this;
+
+	step(function () {
+		that.get(request, this);
+	}, h.sF(function (result) {
+		if (result._signature === data.cacheSignature) {
+			this.ne({
+				unChanged: true
+			});
+		} else {
+			this.ne({
+				content: result
+			});
+		}
+	}), fn);
 };
 
 SimpleUserDataStore.prototype.apiSet = function (data, fn, request) {

@@ -33,7 +33,11 @@ var HandlerCallback = function (fn, request) {
 
 			errorService.handleError(err, request);
 		} else {
-			result = extend(result, value);
+			if (request.rawRequest.responseKey) {
+				result[request.rawRequest.responseKey] = value;
+			} else {
+				result = extend(result, value);
+			}
 		}
 
 		finish();
