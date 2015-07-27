@@ -457,10 +457,11 @@ var Session = function Session() {
 			myUser.setSignedOwnKeys(request, signedOwnKeys, this.parallel());
 			settingsService.setOwnSettings(request, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
-			client.multi()
-				.sadd("analytics:registration:id:" + preID + ":user", myUser.getID())
-				.zadd("user:registered", new Date().getTime(), myUser.getID())
-				.exec(this);
+			if (preID) {
+				client.sadd("analytics:registration:id:" + preID + ":user", myUser.getID());
+			}
+
+			client.zadd("user:registered", new Date().getTime(), myUser.getID(), this);
 		}), h.sF(function () {
 			this.ne(mySid);
 		}), cb);
