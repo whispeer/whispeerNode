@@ -52,19 +52,23 @@ function RequestData(socketData, rawRequest, channel) {
 		return allKeys;
 	};
 
-	this.addKey = function (realid, cb) {
+	this.addKey = function (realid, cb, filter) {
 		if (typeof cb !== "function") {
 			throw new Error("did not get a function callback");
 		}
 
 		if (this.rootRequest) {
-			this.rootRequest.addKey(realid, cb);
+			this.rootRequest.addKey(realid, cb, filter);
 		} else {
 			step(function () {
 				KeyApi.get(realid, this);
 			}, h.sF(function (key) {
 				key.getKData(request, this, true);
 			}), h.sF(function (keyData) {
+				if (typeof filter === "function") {
+					keyData.decryptors = keyData.decryptors.filter(filter);
+				}
+
 				request.keyData.push(keyData);
 				this.ne();
 			}), function (e) {

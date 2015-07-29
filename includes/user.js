@@ -505,19 +505,15 @@ var User = function (id) {
 		}), cb);
 	};
 
-	function addArrayKeys(request, arr, cb) {
+	function addKey(request, keyName, cb, filter) {
 		step(function () {
-			arr.forEach(function (keyName) {
-				getAttribute(request, keyName, this.parallel());
-			}, this);
-		}, h.sF(function (keys) {
-			keys.forEach(function (key) {
-				if (key === null) {
-					throw new Error("key id should not be null for " + arr.join(",") + " - " + id);
-				}
+			getAttribute(request, keyName, this);
+		}, h.sF(function (key) {
+			if (key === null) {
+				throw new Error("key id should not be null for " + keyName + " - " + id);
+			}
 
-				request.addKey(key, this.parallel());
-			}, this);
+			request.addKey(key, this, filter);
 		}), cb);
 	}
 
@@ -540,19 +536,25 @@ var User = function (id) {
 		}), cb);
 	};
 
-	var ownKeys = ["mainKey"];
 	this.addOwnKeys = function (request, cb) {
-		addArrayKeys(request, ownKeys, cb);
+		addKey(request, "mainKey", cb, function (decryptor) {
+			return decryptor.type === "pw";
+		});
 	};
 
-	var publicKeys = ["signKey"];
 	this.addPublicKeys = function (request, cb) {
-		addArrayKeys(request, publicKeys, cb);
+		addKey(request, "signKey", cb);
 	};
 
-	var friendsKeys = ["friendsKey"];
 	this.addFriendsKeys = function (request, cb) {
-		addArrayKeys(request, friendsKeys, cb);
+		step(function () {
+			getAttribute(request, "mainKey", this);
+		}, h.sF(function (mainKey) {
+			addKey(request, "friendsKey", this, function (decryptor) {
+				return !theUser.isOwnUser(request) || decryptor.decryptorid === mainKey;
+			});		
+		}), cb);
+	
 	};
 
 	this.addKeys = function (request, cb) {
