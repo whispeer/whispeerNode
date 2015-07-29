@@ -548,7 +548,11 @@ var User = function (id) {
 
 	this.addFriendsKeys = function (request, cb) {
 		step(function () {
-			getAttribute(request, "mainKey", this);
+			if (theUser.isOwnUser(request)) {
+				getAttribute(request, "mainKey", this);
+			} else {
+				this.ne("");
+			}
 		}, h.sF(function (mainKey) {
 			addKey(request, "friendsKey", this, function (decryptor) {
 				return !theUser.isOwnUser(request) || decryptor.decryptorid === mainKey;
