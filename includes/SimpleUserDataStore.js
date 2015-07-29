@@ -60,7 +60,7 @@ SimpleUserDataStore.prototype.apiGet = function (data, fn, request) {
 	step(function () {
 		that.get(request, this);
 	}, h.sF(function (result) {
-		if (result._signature === data.cacheSignature) {
+		if (result && data && result._signature === data.cacheSignature) {
 			this.ne({
 				unChanged: true
 			});
