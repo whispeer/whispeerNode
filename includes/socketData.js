@@ -35,7 +35,7 @@ function SocketData(socket, session) {
 	});
 
 	this.getShortIP = function () {
-		var address = socket.request.connection.remoteAddress, ipV4, ipV6;
+		var address = socket.handshake.address, ipV4, ipV6;
 
 		var lastDouble = address.lastIndexOf(":");
 		var lastSingle = address.lastIndexOf(".");
