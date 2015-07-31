@@ -111,6 +111,22 @@ function removeUserComments(userid) {
 	});
 }
 
+function removeUserNotifications(userid) {
+	return client.smembersAsync("notifications:user:" + userid + ":all").then(function (notifications) {
+		return client.delAsync.apply(client, notifications.map(function (id) {
+			return "notifications:byID:" + id;
+		}));
+	}).then(function () {
+		return client.keysAsync("notifications:user:" + userid + ":*");
+	}).then(function (keys) {
+		if (keys.length === 0) {
+			return;
+		}
+
+		return client.delAsync.apply(client, keys);
+	}).then(function () {
+		console.log("deleted user notifications");
+	});
 }
 
 function removeUserSettings() {
