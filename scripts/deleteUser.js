@@ -48,7 +48,19 @@ function removePost(postID) {
 }
 
 function removeUserPosts(userid) {
+	return client.zrangeAsync("user:" + userid + ":posts", 0, -1).map(removePost).then(function () {
+		return client.delAsync("user:" + userid + ":posts");
+	}).then(function () {
+		console.log("Removed Users Posts");
+	});
+}
 
+function removeUserWall(userid) {
+	return client.zrangeAsync("user:" + userid + ":wall", 0, -1).map(removePost).then(function () {
+		return client.delAsync("user:" + userid + ":wall");
+	}).then(function () {
+		console.log("Removed Users Wall");
+	});	
 }
 
 function removeUserFromSearch(userid) {
