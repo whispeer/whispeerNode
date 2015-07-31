@@ -33,16 +33,16 @@ var requireConfirmation = Bluebird.promisify(function(message, action) {
 	}
 });
 
-function removePost(postID) {
-	return client.keysAsync("post:" + postID + ":*").then(function (keys) {
-		if (keys.length === 0) {
-			return;
-		}
-
-		keys.push("post:" + postID);
+function removeKeyAndSubKeys(key) {
+	return client.keysAsync(key + ":*").then(function (keys) {
+		keys.push(key);
 
 		return client.delAsync.apply(client, keys);
-	}).then(function () {
+	});
+}
+
+function removePost(postID) {
+	return removeKeyAndSubKeys("post:" + postID).then(function () {
 		console.log("removed post: " + postID);
 	});
 }
@@ -113,17 +113,15 @@ function removeUserComments(userid) {
 
 function removeUserNotifications(userid) {
 	return client.smembersAsync("notifications:user:" + userid + ":all").then(function (notifications) {
+		if (notifications.length === 0) {
+			return;
+		}
+
 		return client.delAsync.apply(client, notifications.map(function (id) {
 			return "notifications:byID:" + id;
 		}));
 	}).then(function () {
-		return client.keysAsync("notifications:user:" + userid + ":*");
-	}).then(function (keys) {
-		if (keys.length === 0) {
-			return;
-		}
-
-		return client.delAsync.apply(client, keys);
+		return removeKeyAndSubKeys("notifications:user:" + userid);
 	}).then(function () {
 		console.log("deleted user notifications");
 	});
