@@ -127,31 +127,55 @@ function removeUserNotifications(userid) {
 	});
 }
 
-function removeUserSettings() {
-
+function removeUserSettings(userid) {
+	return client.delAsync("user:" + userid + ":settings").then(function () {
+		console.log("removed user settings");
+	});
 }
 
-function removeUserProfiles() {
-
+function removeUserProfiles(userid) {
+	return client.smembersAsync("user:" + userid + ":profiles").then(function (profiles) {
+		return client.delAsync.apply(client, profiles.map(function (profile) {
+			return "user:" + userid + ":profile:" + profile;
+		}));
+	}).then(function () {
+		console.log("removed user profiles");
+	});
 }
 
-function removeUserTrustManager() {
-
+function removeUserTrustManager(userid) {
+	return client.delAsync("user:" + userid + ":trustManager").then(function () {
+		console.log("removed user trustmanager");
+	});
 }
 
-function removeUserSignatureCache() {
-
+function removeUserSignatureCache(userid) {
+	return client.delAsync("user:" + userid + ":signatureCache").then(function () {
+		console.log("removed user signatureCache");
+	});
 }
 
-function removeUserSignedKeys() {
+function removeUserSignedKeys(userid) {
 	
 }
 
-function removeUserBackupKeys() {
+function removeUserBackupKeys(userid) {
 	
 }
 
-function removeUserFriends() {
+function removeUserFriends(userid) {
+
+}
+
+function removeUserKeys(userid) {
+	
+}
+
+function removeUserMainData(userid) {
+
+}
+
+function disableUserLogin(userid) {
 
 }
 
