@@ -179,12 +179,20 @@ function disableUserLogin(userid) {
 
 }
 
-function removeUserKeys() {
-	
-}
+function removeUserSessions(userid) {
+	return client.keysAsync("session:*").filter(function (key) {
+		return client.getAsync(key).then(function (value) {
+			return parseInt(value, 10) === userid;
+		});
+	}).then(function (sessionKeys) {
+		console.log("deleting " + sessionKeys.length + " sessions");
 
-function removeUserMainData() {
+		if (sessionKeys.length === 0) {
+			return;
+		}
 
+		return client.delAsync.apply(client, sessionKeys);
+	});
 }
 
 var deleteUserID = parseInt(process.argv[2], 10);
@@ -196,6 +204,8 @@ if (deleteUserID < 1 || !deleteUserID) {
 
 requireConfirmation("Deleting user " + deleteUserID).then(function () {
 	return setupP();
+}).then(function () {
+	return removeUserSessions(deleteUserID);
 }).then(function () {
 	return removeUserFromSearch(deleteUserID);
 }).then(function () {
