@@ -179,5 +179,11 @@ requireConfirmation("Deleting user " + deleteUserID).then(function () {
 }).then(function () {
 	return removeUserPosts(deleteUserID);
 }).then(function () {
+	return removeUserWall(deleteUserID);
+}).then(function () {
+	return removeUserComments(deleteUserID);
+}).then(function () {
+	return removeUserNotifications(deleteUserID);
+}).then(function () {
 	process.exit();
 });
