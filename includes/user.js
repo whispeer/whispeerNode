@@ -810,7 +810,7 @@ var User = function (id) {
 			mailer.sendUserMail(theUser, "recoveryRequest", {
 				code: code,
 				nick: nick
-			}, this, true);
+			}, this, true, true);
 		}), h.sF(function (mailSent) {
 			if (!mailSent) {
 				throw new Error("did not send recovery mail!");
