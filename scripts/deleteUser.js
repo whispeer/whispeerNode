@@ -80,11 +80,36 @@ function removeUserFromSearch(userid) {
 	});
 }
 
-function removeUserComments() {
+function removeComment(id) {
+	var postID = id.postID;
+	var commentID = id.commentID;
 
+	var postDomain = "post:" + postID + ":comments:";
+
+	return client.multi()
+		.del(postDomain + commentID + ":meta", postDomain + commentID + ":content")
+		.zrem(postDomain + "list", commentID)
+		.execAsync().then(function () {
+			console.log("Removed comment " + id.postID + ":" + id.commentID);
+		});
 }
 
-function removeUserNotifications() {
+function removeUserComments(userid) {
+	return client.keysAsync("post:*:comments:*:meta").filter(function (key) {
+		return client.hgetAsync(key, "sender").then(function (senderID) {
+			return parseInt(senderID, 10) === userid;
+		});
+	}).map(function (key) {
+		var data = key.split(":");
+
+		return {
+			postID: data[1],
+			commentID: data[3]
+		};
+	}).map(removeComment).then(function () {
+		console.log("removed user comments");
+	});
+}
 
 }
 
