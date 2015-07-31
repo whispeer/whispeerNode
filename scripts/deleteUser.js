@@ -33,6 +33,20 @@ var requireConfirmation = Bluebird.promisify(function(message, action) {
 	}
 });
 
+function removePost(postID) {
+	return client.keysAsync("post:" + postID + ":*").then(function (keys) {
+		if (keys.length === 0) {
+			return;
+		}
+
+		keys.push("post:" + postID);
+
+		return client.delAsync.apply(client, keys);
+	}).then(function () {
+		console.log("removed post: " + postID);
+	});
+}
+
 function removeUserPosts(userid) {
 
 }
