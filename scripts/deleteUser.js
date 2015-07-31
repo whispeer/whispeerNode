@@ -8,6 +8,7 @@ var h = require("whispeerHelper");
 var User = require("../includes/user");
 
 var Bluebird = require("bluebird");
+Bluebird.longStackTraces();
 
 var setupP = Bluebird.promisify(setup);
 
