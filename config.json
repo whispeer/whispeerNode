@@ -1,6 +1,7 @@
 {
 
   "development": {
+	  "pushServerUrl": "http://localhost:7777",
 	  "host": "http://localhost:8080",
 	  "ws": "127.0.0.1",
 	  "wsPort": 3000,
