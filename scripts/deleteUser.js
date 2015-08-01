@@ -154,6 +154,57 @@ function removeUserSignatureCache(userid) {
 	});
 }
 
+function deleteMessage(messageID, topicID, userid) {
+	return Bluebird.all([
+		client.zremAsync("topic:" + topicID + ":messages", messageID),
+		client.zremAsync("topic:" + topicID + ":user:" + userid + ":messages", messageID)
+	]).then(function () {
+		return removeKeyAndSubKeys("message:" + messageID);
+	});
+}
+
+function getReceivers(topicID) {
+	return client.smembersAsync("topic:" + topicID + ":receiver");
+}
+
+function removeTopic(topicID) {
+	return getReceivers(topicID).each(function (receiverID) {
+		return client.sremAsync("topic:user:" + receiverID + ":topics", topicID);
+	}).then(function () {
+		return removeKeyAndSubKeys("topic:" + topicID);
+	}).then(function () {
+		console.log("removed topic: " + topicID);
+	});
+}
+
+function updateNewest(topicID) {
+	return client.zrangeAsync("topic:" + topicID + ":messages", -1, -1).then(function (newest) {
+		if (newest.length === 0) {
+			return removeTopic(topicID);
+		}
+
+		return client.hsetAsync("topic:" + topicID + ":server", "newest", newest[0]);
+	});
+}
+
+function removeUserMessagesFromTopic(topicID, userid) {
+	return client.zrangeAsync("topic:" + topicID + ":user:" + userid + ":messages", 0, -1).each(function (messageID) {
+		return deleteMessage(messageID, topicID, userid);
+	}).then(function () {
+		return updateNewest(topicID);
+	});
+}
+
+function removeUserMessages(userid) {
+	return client.zrangeAsync("topic:user:" + userid + ":topics", 0, -1).each(function (topicID) {
+		return removeUserMessagesFromTopic(topicID, userid);
+	}).then(function () {
+		return removeKeyAndSubKeys("topic:user:" + userid);
+	}).then(function () {
+		console.log("removed user messages");
+	});
+}
+
 function removeUserBackupKeys(userid) {
 	
 }
@@ -168,12 +219,6 @@ function removeUserKeys(userid) {
 
 function removeUserMainData(userid) {
 
-}
-
-function removeUserReferences(userid) {
-	return Promise.all([
-		removeUserFriends(userid)
-	]);
 }
 
 function disableUserLogin(userid) {
@@ -227,6 +272,8 @@ requireConfirmation("Deleting user " + deleteUserID).then(function () {
 	return removeUserTrustManager(deleteUserID);
 }).then(function () {
 	return removeUserSignatureCache(deleteUserID);
+}).then(function () {
+	return removeUserMessages(deleteUserID);
 }).then(function () {
 	process.exit();
 });
