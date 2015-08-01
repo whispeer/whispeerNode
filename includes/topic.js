@@ -27,6 +27,23 @@ var MAXTIME = 60 * 60 * 1000;
 
 */
 
+var pushAPI = require("./pushAPI");
+var errorService = require("./errorService");
+
+function pushMessage(request, theReceiver, message) {
+	step(function () {
+		message.getFullData(request, this, true);
+	}, h.sF(function (messageData) {
+		pushAPI.notifyUsers(theReceiver.filter(function (user) {
+			return user.getID() !== request.session.getUserID();
+		}), {
+			message: messageData
+		});
+	}), function (err) {
+		errorService.handleError(err, request);
+	});
+}
+
 var Topic = function (id) {
 	var theTopic = this;
 	var domain = "topic:" + id;
@@ -261,6 +278,8 @@ var Topic = function (id) {
 					user.notify("message", messageID);
 				}
 			});
+
+			pushMessage(request, theReceiver, message);
 
 			mailer.sendInteractionMails(theReceiver, "message", "new", id);
 

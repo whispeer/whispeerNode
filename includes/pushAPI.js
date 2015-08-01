@@ -51,7 +51,7 @@ var pushAPI = {
 		}, cb);
 	}, notifyUsers: function (users, data) {
 		return Bluebird.resolve(users).map(function (user) {
-			return pushAPI.notifyUsers(user, data);
+			return pushAPI.notifyUser(user, data);
 		});
 	}, notifyUser: function (user, data) {
 		return Bluebird.all([
