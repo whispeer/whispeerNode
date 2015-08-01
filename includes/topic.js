@@ -28,7 +28,6 @@ var MAXTIME = 60 * 60 * 1000;
 */
 
 var pushAPI = require("./pushAPI");
-var errorService = require("./errorService");
 
 function pushMessage(request, theReceiver, message) {
 	step(function () {
@@ -39,9 +38,7 @@ function pushMessage(request, theReceiver, message) {
 		}), {
 			message: messageData
 		});
-	}), function (err) {
-		errorService.handleError(err, request);
-	});
+	}));
 }
 
 var Topic = function (id) {
