@@ -176,7 +176,7 @@ function removeUserMainData(userid) {
 }
 
 function disableUserLogin(userid) {
-
+	return client.hsetAsync("user:" + userid, "disabled", 1);
 }
 
 function removeUserSessions(userid) {
@@ -204,6 +204,8 @@ if (deleteUserID < 1 || !deleteUserID) {
 
 requireConfirmation("Deleting user " + deleteUserID).then(function () {
 	return setupP();
+}).then(function () {
+	return disableUserLogin(deleteUserID);
 }).then(function () {
 	return removeUserSessions(deleteUserID);
 }).then(function () {
