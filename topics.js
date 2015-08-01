@@ -62,27 +62,27 @@ trustManager.preSet(function (request, newContent, cb) {
 //seperate timeline, post
 //more crud
 
+var pushAPI = require("./includes/pushAPI");
+
 var whispeerAPI = {
 	blob: blob,
 	invites: invites,
 	recovery: recovery,
-	subscribePushNotification: function (data, fn, request) {
-		step(function () {
-			if (data.type !== "android" && data.type !== "ios") {
-				fn.error.protocol("invalid type");
-				this.last.ne();
-			}
+	pushNotification: {
+		subscribe: function (data, fn, request) {
+			step(function () {
+				if (data.type !== "android" && data.type !== "ios") {
+					fn.error.protocol("invalid type");
+					this.last.ne();
+				}
 
-			var givenData = {
-				"user": request.session.getUserID(),
-				"type": data.type,
-				"token": data.token
-			};
-
-			var url = config.pushServerUrl + "/subscribe";
-			var simpleRequest = require("request");
-			simpleRequest.post(url, givenData);
-		}, fn);
+				pushAPI.subscribe(request, data.type, data.token, this);
+			}, h.sF(function () {
+				this.ne({
+					success: true
+				});
+			}), fn);
+		}
 	},
 	preRegisterID: function (data, fn, request) {
 		step(function () {
