@@ -123,7 +123,7 @@ function removeUserNotifications(userid) {
 	}).then(function () {
 		return removeKeyAndSubKeys("notifications:user:" + userid);
 	}).then(function () {
-		console.log("deleted user notifications");
+		console.log("removed user notifications");
 	});
 }
 
@@ -134,11 +134,10 @@ function removeUserSettings(userid) {
 }
 
 function removeUserProfiles(userid) {
-	return client.smembersAsync("user:" + userid + ":profiles").then(function (profiles) {
-		return client.delAsync.apply(client, profiles.map(function (profile) {
-			return "user:" + userid + ":profile:" + profile;
-		}));
-	}).then(function () {
+	return Bluebird.all([
+		removeKeyAndSubKeys("user:" + userid + ":profiles"),
+		removeKeyAndSubKeys("user:" + userid + ":profile")
+	]).then(function () {
 		console.log("removed user profiles");
 	});
 }
@@ -155,10 +154,6 @@ function removeUserSignatureCache(userid) {
 	});
 }
 
-function removeUserSignedKeys(userid) {
-	
-}
-
 function removeUserBackupKeys(userid) {
 	
 }
@@ -173,6 +168,12 @@ function removeUserKeys(userid) {
 
 function removeUserMainData(userid) {
 
+}
+
+function removeUserReferences(userid) {
+	return Promise.all([
+		removeUserFriends(userid)
+	]);
 }
 
 function disableUserLogin(userid) {
@@ -218,6 +219,14 @@ requireConfirmation("Deleting user " + deleteUserID).then(function () {
 	return removeUserComments(deleteUserID);
 }).then(function () {
 	return removeUserNotifications(deleteUserID);
+}).then(function () {
+	return removeUserSettings(deleteUserID);
+}).then(function () {
+	return removeUserProfiles(deleteUserID);
+}).then(function () {
+	return removeUserTrustManager(deleteUserID);
+}).then(function () {
+	return removeUserSignatureCache(deleteUserID);
 }).then(function () {
 	process.exit();
 });
