@@ -148,7 +148,7 @@ var mailer = {
 				client.sismemberAsync("mail:notifiedUsers", user.getID()),
 				isOnline()
 			]).spread(function (alreadyNotified, isOnline) {
-				if (options.sendMailWhileOnline) {
+				if (options && options.sendMailWhileOnline) {
 					return true;
 				}
 
