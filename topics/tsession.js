@@ -16,6 +16,8 @@ var s = {
 		}, fn);
 	},
 	token: function getToken(data, fn, request) {
+		var myUser;
+
 		step(function () {
 			if (data && data.identifier) {
 				var User = require("../includes/user");
@@ -23,17 +25,25 @@ var s = {
 			} else {
 				fn.error.protocol();
 			}
-		}, h.hE(function (e, myUser) {
+		}, h.hE(function (e, _myUser) {
 			if (e) {
 				errorService.handleError(e, request);
 				fn.error({userNotExisting: true});
+				this.last.ne();
+			} else {
+				myUser = _myUser;
+				myUser.getDisabled(request, this);
+			}
+		}, UserNotExisting), h.sF(function (isDisabled) {
+			if (isDisabled) {
+				fn.error({ userDisabled: true });
 				this.last.ne();
 			} else {
 				this.parallel.unflatten();
 				myUser.generateToken(this.parallel());
 				myUser.getSalt(request, this.parallel());
 			}
-		}, UserNotExisting), h.sF(function (token, salt) {
+		}), h.sF(function (token, salt) {
 			if (token !== false) {
 				this.last.ne({token: token, salt: salt});
 			} else {
