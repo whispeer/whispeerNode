@@ -354,7 +354,7 @@ var User = function (id) {
 			return JSON.parse(settings);
 		}).then(function (settings) {
 			if (settings && settings.meta) {
-				return settings.meta.uiLanguage || settings.meta.initialLanguage;
+				return settings.meta.uiLanguage || settings.meta.initialLanguage || "en";
 			}
 
 			return "en";
