@@ -351,10 +351,15 @@ var User = function (id) {
 
 	this.getLanguage = function () {
 		return client.getAsync("user:" + this.getID() + ":settings").then(function (settings) {
+			return JSON.parse(settings);
+		}).then(function (settings) {
 			if (settings && settings.meta) {
 				return settings.meta.uiLanguage || settings.meta.initialLanguage;
 			}
 
+			return "en";
+		}).catch(function (err) {
+			console.error(err);
 			return "en";
 		});
 	};

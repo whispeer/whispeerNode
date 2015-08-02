@@ -11,8 +11,14 @@ var Bluebird = require("bluebird");
 var client = require("./redisClient");
 
 var translations = {
-	"en": "New message",
-	"de": "Neue Nachricht"
+	"en": {
+		title: "New message on whispeer",
+		message: "{count} unread messages"
+	},
+	"de": {
+		title: "Neue Nachricht auf whispeer",
+		message: "{count} ungelesene Nachrichten"
+	}
 };
 
 function serverRequest(path, data, cb) {
@@ -58,22 +64,29 @@ var pushAPI = {
 			client.zcardAsync("topic:user:" + user.getID() + ":unreadTopics"),
 			user.getLanguage()
 		]).spread(function (unreadMessageCount, userLanguage) {
-			return pushAPI.sendNotification([user.getID()], data, unreadMessageCount, translations[userLanguage]);
+			return pushAPI.sendNotification(
+				[user.getID()],
+				data,
+				unreadMessageCount,
+				translations[userLanguage].title,
+				translations[userLanguage].message.replace("{count}", unreadMessageCount)
+			);
 		});
-	}, sendNotification: function (users, data, unreadMessageCount, alert) {
+	}, sendNotification: function (users, data, unreadMessageCount, title, message) {
 		var serverRequestAsync = Bluebird.promisify(serverRequest);
 
 		return serverRequestAsync("/send", {
 			users: users,
 			android: {
 				data: {
-					message: alert,
+					title: title,
+					message: message,
 					content: data
 				}
 			},
 			ios: {
 				badge: unreadMessageCount,
-				alert: alert
+				alert: title
 			}
 		});
 	}
