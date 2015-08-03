@@ -66,18 +66,17 @@ var pushAPI = {
 				[user.getID()],
 				data,
 				unreadMessageCount,
-				translations[userLanguage].title,
-				translations[userLanguage].message.replace("{count}", unreadMessageCount)
+				translations[userLanguage].title.replace("{user}", data.user)
 			);
 		});
-	}, sendNotification: function (users, data, unreadMessageCount, title, message) {
+	}, sendNotification: function (users, data, unreadMessageCount, title) {
 		var serverRequestAsync = Bluebird.promisify(serverRequest);
 
 		return serverRequestAsync("/send", {
 			users: users,
 			android: {
 				data: {
-					title: title
+					title: title,
 					content: data
 				}
 			},

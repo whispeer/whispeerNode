@@ -29,14 +29,18 @@ var MAXTIME = 60 * 60 * 1000;
 
 var pushAPI = require("./pushAPI");
 
-function pushMessage(request, theReceiver, message) {
+function pushMessage(request, theReceiver, theSender, message) {
 	step(function () {
-		message.getFullData(request, this, true);
-	}, h.sF(function (messageData) {
+		this.parallel.unflatten();
+
+		message.getFullData(request, this.parallel(), true);
+		theSender.getNames(request, this.parallel());
+	}, h.sF(function (messageData, names) {
 		pushAPI.notifyUsers(theReceiver.filter(function (user) {
 			return user.getID() !== request.session.getUserID();
 		}), {
-			message: messageData
+			message: messageData,
+			user: names.firstName || names.lastName || names.nickname
 		});
 	}));
 }
@@ -276,7 +280,7 @@ var Topic = function (id) {
 				}
 			});
 
-			pushMessage(request, theReceiver, message);
+			pushMessage(request, theReceiver, theSender, message);
 
 			mailer.sendInteractionMails(theReceiver, "message", "new", id);
 
