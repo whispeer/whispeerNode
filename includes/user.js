@@ -537,9 +537,7 @@ var User = function (id) {
 	};
 
 	this.addOwnKeys = function (request, cb) {
-		addKey(request, "mainKey", cb, function (decryptor) {
-			return decryptor.type === "pw";
-		});
+		addKey(request, "mainKey", cb);
 	};
 
 	this.addPublicKeys = function (request, cb) {
