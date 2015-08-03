@@ -12,12 +12,10 @@ var client = require("./redisClient");
 
 var translations = {
 	"en": {
-		title: "New message on whispeer",
-		message: "{count} unread messages"
+		title: "New message from {user}"
 	},
 	"de": {
-		title: "Neue Nachricht auf whispeer",
-		message: "{count} ungelesene Nachrichten"
+		title: "Neue Nachricht von {user}"
 	}
 };
 
@@ -63,7 +61,7 @@ var pushAPI = {
 		return Bluebird.all([
 			client.zcardAsync("topic:user:" + user.getID() + ":unreadTopics"),
 			user.getLanguage()
-		]).spread(function (unreadMessageCount, userLanguage) {
+		]).spread(function (unreadMessageCount, userLanguage) { // TODO change this to replace {user} with the senders username!
 			return pushAPI.sendNotification(
 				[user.getID()],
 				data,
@@ -79,8 +77,7 @@ var pushAPI = {
 			users: users,
 			android: {
 				data: {
-					title: title,
-					message: message,
+					title: title
 					content: data
 				}
 			},
