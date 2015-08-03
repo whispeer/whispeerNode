@@ -10,3 +10,4 @@ tmp/*
 node_modules/*
 !node_modules/whispeerHelper
 !node_modules/whispeerValidations
+pushServerConfig.conf.json
