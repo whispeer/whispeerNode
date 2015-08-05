@@ -60,15 +60,21 @@ SimpleUserDataStore.prototype.apiGet = function (data, fn, request) {
 	step(function () {
 		that.get(request, this);
 	}, h.sF(function (result) {
-		if (result && data && result._signature === data.cacheSignature) {
-			this.ne({
-				unChanged: true
-			});
-		} else {
-			this.ne({
-				content: result
-			});
+		if (result && data) {
+			if (result._signature && result._signature === data.cacheSignature) {
+				this.ne({ unChanged: true });
+				return;
+			}
+
+			if (result.meta && result.meta._signature && result.meta._signature === data.cacheSignature) {
+				this.ne({ unChanged: true });
+				return;
+			}
 		}
+
+		this.ne({
+			content: result
+		});
 	}), fn);
 };
 

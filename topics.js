@@ -194,6 +194,7 @@ var whispeerAPI = {
 		set: trustManager.apiSet.bind(trustManager),
 	},
 	settings: {
+		get: settings.apiGet.bind(settings),
 		getSettings: function (data, fn, request) {
 			settings.get(request, h.objectifyResult("settings", fn));
 		},

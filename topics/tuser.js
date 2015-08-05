@@ -129,7 +129,7 @@ var u = {
 				for (i = 0; i < theUsers.length; i += 1) {
 					if (theUsers[i] instanceof UserNotExisting) {
 						errorService.handleError(theUsers[i]);
-						this.parallel()({userNotExisting: true});
+						this.parallel()(null, {userNotExisting: true});
 					} else {
 						theUsers[i].getUData(request, this.parallel());
 					}
