@@ -280,7 +280,11 @@ var Topic = function (id) {
 				}
 			});
 
-			pushMessage(request, theReceiver, theSender, message);
+			var senderObject = theReceiver.filter(function (u) {
+				return u.getID() === h.parseDecimal(theSender);
+			})[0];
+
+			pushMessage(request, theReceiver, senderObject, message);
 
 			mailer.sendInteractionMails(theReceiver, "message", "new", id);
 
