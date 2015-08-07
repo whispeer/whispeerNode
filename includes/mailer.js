@@ -152,7 +152,7 @@ var mailer = {
 					return true;
 				}
 
-				return !isOnline;
+				return !isOnline && !alreadyNotified;
 			});
 		}).each(function (user) {
 			return client.saddAsync("mail:notifiedUsers", user.getID()).then(function () {
