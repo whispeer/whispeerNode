@@ -62,10 +62,28 @@ trustManager.preSet(function (request, newContent, cb) {
 //seperate timeline, post
 //more crud
 
+var pushAPI = require("./includes/pushAPI");
+
 var whispeerAPI = {
 	blob: blob,
 	invites: invites,
 	recovery: recovery,
+	pushNotification: {
+		subscribe: function (data, fn, request) {
+			step(function () {
+				if (data.type !== "android" && data.type !== "ios") {
+					fn.error.protocol("invalid type");
+					this.last.ne();
+				}
+
+				pushAPI.subscribe(request, data.type, data.token, this);
+			}, h.sF(function () {
+				this.ne({
+					success: true
+				});
+			}), fn);
+		}
+	},
 	preRegisterID: function (data, fn, request) {
 		step(function () {
 			var id = data.id;

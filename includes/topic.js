@@ -27,6 +27,24 @@ var MAXTIME = 60 * 60 * 1000;
 
 */
 
+var pushAPI = require("./pushAPI");
+
+function pushMessage(request, theReceiver, theSender, message) {
+	step(function () {
+		this.parallel.unflatten();
+
+		message.getFullData(request, this.parallel(), true);
+		theSender.getNames(request, this.parallel());
+	}, h.sF(function (messageData, names) {
+		pushAPI.notifyUsers(theReceiver.filter(function (user) {
+			return user.getID() !== request.session.getUserID();
+		}), {
+			message: messageData,
+			user: names.firstName || names.lastName || names.nickname
+		});
+	}));
+}
+
 var Topic = function (id) {
 	var theTopic = this;
 	var domain = "topic:" + id;
@@ -261,6 +279,12 @@ var Topic = function (id) {
 					user.notify("message", messageID);
 				}
 			});
+
+			var senderObject = theReceiver.filter(function (u) {
+				return u.getID() === h.parseDecimal(theSender);
+			})[0];
+
+			pushMessage(request, theReceiver, senderObject, message);
 
 			mailer.sendInteractionMails(theReceiver, "message", "new", id);
 

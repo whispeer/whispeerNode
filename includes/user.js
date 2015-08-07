@@ -349,6 +349,21 @@ var User = function (id) {
 		return id;
 	};
 
+	this.getLanguage = function () {
+		return client.getAsync("user:" + this.getID() + ":settings").then(function (settings) {
+			return JSON.parse(settings);
+		}).then(function (settings) {
+			if (settings && settings.meta) {
+				return settings.meta.uiLanguage || settings.meta.initialLanguage || "en";
+			}
+
+			return "en";
+		}).catch(function (err) {
+			console.error(err);
+			return "en";
+		});
+	};
+
 	this.isOwnUser = function isOwnUserF(request) {
 		return parseInt(request.session.getUserID(), 10) === id;
 	};

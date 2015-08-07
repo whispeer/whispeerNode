@@ -45,4 +45,8 @@ var errorService = {
 	}
 };
 
+process.on("unhandledRejection", function(reason) {
+    errorService.handleError(reason);
+});
+
 module.exports = errorService;
