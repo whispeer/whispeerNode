@@ -82,6 +82,7 @@ var pushAPI = {
 			android: {
 				data: {
 					title: title,
+					message: "-",
 					content: data
 				}
 			},
