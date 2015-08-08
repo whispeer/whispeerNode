@@ -61,7 +61,12 @@ var pushAPI = {
 		return Bluebird.all([
 			client.zcardAsync("topic:user:" + user.getID() + ":unreadTopics"),
 			user.getLanguage()
-		]).spread(function (unreadMessageCount, userLanguage) { // TODO change this to replace {user} with the senders username!
+		]).spread(function (unreadMessageCount, userLanguage) {
+			if (!translations[userLanguage]) {
+				console.warn("Language not found for push: " + userLanguage);
+				userLanguage = "en";
+			}
+
 			return pushAPI.sendNotification(
 				[user.getID()],
 				data,
