@@ -75,7 +75,7 @@ Notification.add = function (users, type, subType, referenceID, options) {
 		var exec = Bluebird.promisify(multi.exec, multi);
 		var mailer = require("./mailer");
 
-		return Promise.all([
+		return Bluebird.all([
 			exec(),
 			mailer.sendInteractionMails(users, type, subType, referenceID, options)
 		]).then(function () {
