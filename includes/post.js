@@ -324,7 +324,9 @@ function getUserIDsForFilter(request, filter, cb) {
 				userFilter.push(map[1]);
 				break;
 			default:
-				throw new InvalidFilter("unknown group");
+				alwaysFilter.push("allfriends");
+				break;
+				//throw new InvalidFilter("unknown group");
 		}
 	}
 
