@@ -286,7 +286,7 @@ var Topic = function (id) {
 			senderObject.getNames(request, this);
 
 		}), h.sF(function (sender) {
-			sender = sender.firstName || senderName.lastName || senderName.nickname;
+			sender = sender.firstName || sender.lastName || sender.nickname;
 			pushMessage(request, theReceiver, sender, message);
 			mailer.sendInteractionMails(theReceiver, "message", "new", {
 				sender: sender,
