@@ -77,7 +77,7 @@ Notification.add = function (users, type, subType, referenceID, options) {
 
 		return Bluebird.all([
 			exec(),
-			mailer.sendInteractionMails(users, type, subType, referenceID, options)
+			mailer.sendInteractionMails(users, type, subType, {interactionID: referenceID}, options)
 		]).then(function () {
 			return notificationID;
 		});
