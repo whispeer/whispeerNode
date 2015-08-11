@@ -29,18 +29,17 @@ var MAXTIME = 60 * 60 * 1000;
 
 var pushAPI = require("./pushAPI");
 
-function pushMessage(request, theReceiver, theSender, message) {
+function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
 		this.parallel.unflatten();
 
 		message.getFullData(request, this.parallel(), true);
-		theSender.getNames(request, this.parallel());
-	}, h.sF(function (messageData, names) {
+	}, h.sF(function (messageData) {
 		pushAPI.notifyUsers(theReceiver.filter(function (user) {
 			return user.getID() !== request.session.getUserID();
 		}), {
 			message: messageData,
-			user: names.firstName || names.lastName || names.nickname
+			user: senderName
 		});
 	}));
 }
@@ -257,7 +256,7 @@ var Topic = function (id) {
 
 				if (rid !== h.parseDecimal(theSender)) {
 					multi.zadd("topic:user:" + rid + ":unreadTopics", time, id);
-					multi.zadd(domain + ":user:" + rid + ":unread", time, messageID);					
+					multi.zadd(domain + ":user:" + rid + ":unread", time, messageID);
 				}
 
 				multi.zadd("topic:user:" + rid + ":topics", time, id);
@@ -284,9 +283,15 @@ var Topic = function (id) {
 				return u.getID() === h.parseDecimal(theSender);
 			})[0];
 
-			pushMessage(request, theReceiver, senderObject, message);
+			senderObject.getNames(request, this);
 
-			mailer.sendInteractionMails(theReceiver, "message", "new", id);
+		}), h.sF(function (sender) {
+			sender = sender.firstName || senderName.lastName || senderName.nickname;
+			pushMessage(request, theReceiver, sender, message);
+			mailer.sendInteractionMails(theReceiver, "message", "new", {
+				sender: sender,
+				interactionID: id
+			});
 
 			this.ne();
 		}), cb);

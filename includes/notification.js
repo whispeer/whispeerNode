@@ -77,7 +77,7 @@ Notification.add = function (users, type, subType, referenceID, options) {
 
 		return Promise.all([
 			exec(),
-			mailer.sendInteractionMails(users, type, subType, referenceID, options)
+			mailer.sendInteractionMails(users, type, subType, {referenceID: referenceID}, options)
 		]).then(function () {
 			return notificationID;
 		});
