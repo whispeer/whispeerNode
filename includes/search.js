@@ -26,6 +26,10 @@ var search = {
 			mySearch.index(name, id);
 		};
 
+		this.remove = function (id, cb) {
+			mySearch.remove(id, cb);
+		};
+
 		this.updateOwn = function (friends, name) {
 			var i;
 			for (i = 0; i < friends.length; i += 1) {

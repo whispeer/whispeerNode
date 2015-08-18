@@ -298,7 +298,7 @@ var User = function (id) {
 	}
 
 	createAccessors(["password", "salt", "nickname", "migrationState", "email",
-					"mainKey", "cryptKey", "signKey", "friendsKey", "signedOwnKeys"]);
+					"mainKey", "cryptKey", "signKey", "friendsKey", "signedOwnKeys", "disabled"]);
 
 	function deleteUser(cb) {
 		//TODO: think about nickname, mail (unique values)
