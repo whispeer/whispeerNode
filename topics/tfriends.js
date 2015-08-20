@@ -90,15 +90,17 @@ var f = {
 			Friends.getRequested(request, this.parallel());
 			Friends.get(request, this.parallel());
 			Friends.getRemoved(request, this.parallel());
+			Friends.getDeleted(request, this.parallel());
 			Friends.getIgnored(request, this.parallel());
 			Friends.getSignedList(request, this.parallel());
-		}, h.sF(function (requests, requested, friends, removed, ignored, signedList) {
+		}, h.sF(function (requests, requested, friends, removed, deleted, ignored, signedList) {
 			this.ne({
 				requests: requests,
 				requested: requested,
 				friends: friends,
 				ignored: ignored,
 				removed: removed,
+				deleted: deleted,
 				signedList: signedList
 			});
 		}), fn);

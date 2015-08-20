@@ -507,6 +507,9 @@ var friends = {
 	getRemoved: function (request, cb) {
 		client.smembers("friends:" + request.session.getUserID() + ":unfriended", cb);
 	},
+	getDeleted: function (request, cb) {
+		client.smembers("friends:" + request.session.getUserID() + ":deleted", cb);
+	},
 	getRequested: function (request, cb) {
 		step(function () {
 			client.smembers("friends:" + request.session.getUserID() + ":requested", this);

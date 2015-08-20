@@ -4,13 +4,15 @@
 
 var setup = require("../includes/setup");
 var client = require("../includes/redisClient");
-var h = require("whispeerHelper");
-var User = require("../includes/user");
+
+var KeyApi = require("../includes/crypto/KeyApi");
 
 var Bluebird = require("bluebird");
 Bluebird.longStackTraces();
 
 var setupP = Bluebird.promisify(setup);
+var getKey = Bluebird.promisify(KeyApi.get);
+
 
 // requireConfirmation will ask the user to confirm by typing 'y'. When
 // not in a tty, the action is performed w/o confirmation.
@@ -52,6 +54,12 @@ function removeUserPosts(userid) {
 		return client.delAsync("user:" + userid + ":posts");
 	}).then(function () {
 		console.log("Removed Users Posts");
+	});
+}
+
+function removeUserCircles(userid) {
+	return removeKeyAndSubKeys("user:" + userid + ":circle").then(function () {
+		console.log("Removed Users Circles");
 	});
 }
 
@@ -169,7 +177,7 @@ function getReceivers(topicID) {
 
 function removeTopic(topicID) {
 	return getReceivers(topicID).each(function (receiverID) {
-		return client.sremAsync("topic:user:" + receiverID + ":topics", topicID);
+		return client.zremAsync("topic:user:" + receiverID + ":topics", topicID);
 	}).then(function () {
 		return removeKeyAndSubKeys("topic:" + topicID);
 	}).then(function () {
@@ -205,20 +213,80 @@ function removeUserMessages(userid) {
 	});
 }
 
-function removeUserBackupKeys(userid) {
-	
-}
+function removeKey(key) {
+	key = key.replace(/key:/, "");
+	console.log(key);
 
-function removeUserFriends(userid) {
+	return getKey(key).then(function (theKey) {
+		var removeKey = Bluebird.promisify(theKey.remove, theKey);
+		var multi = client.multi();
 
+		return removeKey(multi).then(function () {
+			var exec = Bluebird.promisify(multi.exec, multi);
+			return exec();
+		});
+	}).catch(function (e) {
+		console.error(e);
+	});
 }
 
 function removeUserKeys(userid) {
-	
+	return client.hgetAsync("user:" + userid, "nickname").then(function (nickname) {
+		return client.keysAsync("key:" + nickname + ":*");
+	}).filter(function (key) {
+		return key.split(":").length === 3;
+	}).filter(function (key) {
+		return client.smembersAsync(key + ":access").then(function (access) {
+			return access.length === 1 && parseInt(access[0], 10) === userid;
+		});
+	}).map(function (key) {
+		return removeKey(key);
+	}, { concurrency: 1 });
+}
+
+function removeUserFriends(userid) {
+	return client.smembersAsync("friends:" + userid + ":requested").map(function (friendID) {
+		return client.sremAsync("friends:" + friendID + ":requests", userid);
+	}).then(function () {
+		return client.smembersAsync("friends:" + userid);
+	}).map(function (friendID) {
+		console.log("removing from friend list: " + friendID);
+		return client.smove("friends:" + friendID, "friends:" + friendID + ":deleted", userid);
+	}).then(function () {
+		return client.smembersAsync("friends:" + userid + ":requests");
+	}).map(function (friendID) {
+		console.log("removing from friend requested list: " + friendID);
+		return client.smove("friends:" + friendID + ":requested", "friends:" + friendID + ":deleted", userid);
+	}).then(function () {
+		return removeKeyAndSubKeys("friends:" + userid);
+	});
 }
 
 function removeUserMainData(userid) {
-
+	return client.hgetAsync("user:" + userid, "mail").then(function (mail) {
+		if (mail) {
+			return client.delAsync("user:mail:" + mail);
+		}
+	}).then(function () {
+		return client.delAsync("user:id:" + userid);
+	}).then(function () {
+		return client.sremAsync("user:list", userid);
+	}).then(function () {
+		return client.hgetAsync("user:" + userid, "nickname");
+	}).then(function (nickname) {
+		console.log("disabling nickname " + nickname + " forever (todo: better solution)");
+		return client.setAsync("user:nickname:" + nickname, -1);
+	}).then(function () {
+		return removeKeyAndSubKeys("user:" + userid);
+	}).then(function () {
+		return Bluebird.all([
+			client.zremAsync("user:registered", userid),
+			client.sremAsync("user:online", userid),
+			client.zremAsync("user:online:timed", userid)
+		]);
+	}).then(function () {
+		console.log("removed user main data!");
+	});
 }
 
 function disableUserLogin(userid) {
@@ -274,6 +342,14 @@ requireConfirmation("Deleting user " + deleteUserID).then(function () {
 	return removeUserSignatureCache(deleteUserID);
 }).then(function () {
 	return removeUserMessages(deleteUserID);
+}).then(function () {
+	return removeUserCircles(deleteUserID);
+}).then(function () {
+	return removeUserKeys(deleteUserID);
+}).then(function () {
+	return removeUserFriends(deleteUserID);
+}).then(function () {
+	return removeUserMainData(deleteUserID);
 }).then(function () {
 	process.exit();
 });
