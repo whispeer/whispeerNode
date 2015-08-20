@@ -215,7 +215,6 @@ function removeUserMessages(userid) {
 
 function removeKey(key) {
 	key = key.replace(/key:/, "");
-	console.log(key);
 
 	return getKey(key).then(function (theKey) {
 		var removeKey = Bluebird.promisify(theKey.remove, theKey);
