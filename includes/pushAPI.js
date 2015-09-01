@@ -83,10 +83,14 @@ var pushAPI = {
 				data: {
 					title: title,
 					message: "-",
-					content: data
+					content: data,
+					topicid: data.content.message.meta.topicid
 				}
 			},
 			ios: {
+				payload: {
+					topicid: data.content.message.meta.topicid
+				},
 				badge: unreadMessageCount,
 				alert: title
 			}
