@@ -2,7 +2,8 @@
 
 var Waterline = require("waterline"),
     redisAdapter = require("sails-redis"),
-    config = require("../configManager").get();
+    config = require("../configManager").get(),
+    Bluebird = require("bluebird");
 
 var waterlineConfig = {
   // 2. Specify `adapters` config
@@ -33,5 +34,7 @@ models.forEach(function (modelName) {
   waterline.loadCollection(require("./" + modelName + "Model"));
 });
 
+var initializeWaterline = Bluebird.promisify(waterline.initialize, waterline);
+
 // 5. Initialize Waterline
-module.exports = waterline.initialize(waterlineConfig);
+module.exports = initializeWaterline(waterlineConfig);

@@ -8,6 +8,18 @@ var config = configManager.get();
 
 var Bluebird = require("bluebird");
 
+if (!config.push) {
+	console.warn("No Push Service Configured");
+
+	module.exports = {
+		listenFeedback: function () {},
+		pushAndroid: function () { return Promise.resolve(); },
+		pushIOS: function () { return Promise.resolve(); },
+	};
+
+	return;
+}
+
 var sender = new gcm.Sender(config.push.gcmAPIKey);
 var apnConnection = new apn.Connection(config.push.apn);
 
