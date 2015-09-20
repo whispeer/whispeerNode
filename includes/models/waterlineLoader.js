@@ -26,7 +26,7 @@ var waterlineConfig = {
   }
 };
 
-var models = ["pushKey"];
+var models = ["pushToken"];
 
 var waterline = new Waterline();
 

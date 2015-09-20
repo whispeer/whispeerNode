@@ -6,7 +6,7 @@ var Bluebird = require("bluebird");
 var pushService = require("../pushService");
 var errorService = require("../errorService");
 
-var PushKey = Waterline.Collection.extend({
+var PushToken = Waterline.Collection.extend({
  
 	// Define a custom table name 
 	tableName: "pushToken",
@@ -56,9 +56,9 @@ pushService.listenFeedback(function (devices) {
 		deviceInfo.token.toString("hex");
 	});
 
-	PushKey.findByTokenIn(tokens).map(function (obj) {
+	PushToken.findByTokenIn(tokens).map(function (obj) {
 		return obj.destroy();
 	}).catch(errorService.handleError);
 });
 
-module.exports = PushKey;
+module.exports = PushToken;
