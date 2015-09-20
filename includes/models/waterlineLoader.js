@@ -1,11 +1,19 @@
+"use strict";
+
 var Waterline = require("waterline"),
-    redisAdapter = require("sails-postgresql"),
+    redisAdapter = require("sails-redis"),
     config = require("../configManager").get();
 
 var waterlineConfig = {
   // 2. Specify `adapters` config
   adapters: {
     redis: redisAdapter
+  },
+
+  connections: {
+    redis: {
+      adapter: "redis"
+    }
   },
 
   // 3. Specify `connections` config
@@ -17,11 +25,13 @@ var waterlineConfig = {
   }
 };
 
-// 4. Define and load your collections
-var PushKey;
+var models = ["pushKey"];
 
 var waterline = new Waterline();
-waterline.loadCollection(PushKey);
+
+models.forEach(function (modelName) {
+  waterline.loadCollection(require("./" + modelName + "Model"));
+});
 
 // 5. Initialize Waterline
 module.exports = waterline.initialize(waterlineConfig);

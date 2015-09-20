@@ -13,9 +13,7 @@ var PushKey = Waterline.Collection.extend({
  
 	// Set schema true/false for adapters that support schemaless 
 	schema: true,
- 
-	// Define an adapter to use 
-	adapter: "redis",
+	connection: "redis",
  
 	// Define attributes for this collection 
 	attributes: {

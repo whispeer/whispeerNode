@@ -3,7 +3,7 @@
 var gcm = require("node-gcm");
 var apn = require("apn");
 
-var configManager = require("../configManager");
+var configManager = require("./configManager");
 var config = configManager.get();
 
 var Bluebird = require("bluebird");

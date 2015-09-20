@@ -10,6 +10,8 @@ var Bluebird = require("bluebird");
 
 var client = require("./redisClient");
 
+var waterlineLoader = require("./models/waterlineLoader");
+
 var translations = {
 	"en": {
 		title: "New message from {user}"
