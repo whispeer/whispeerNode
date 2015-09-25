@@ -13,16 +13,11 @@ var waterlineConfig = {
 
   connections: {
     redis: {
-      adapter: "redis"
+      adapter: "redis",
+      port: config.db.port || 6379, 
+      host: config.db.url || "127.0.0.1",
+      database: config.db.number
     }
-  },
-
-  // 3. Specify `connections` config
-  redisConfig: {
-    adapter: "redis",
-    port: config.db.port || 6379, 
-    host: config.db.url || "127.0.0.1",
-    database: config.db.number
   }
 };
 
