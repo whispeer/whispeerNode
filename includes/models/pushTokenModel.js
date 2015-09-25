@@ -4,7 +4,6 @@ var Waterline = require("waterline");
 var Bluebird = require("bluebird");
 
 var pushService = require("../pushService");
-var errorService = require("../errorService");
 
 var PushToken = Waterline.Collection.extend({
  
@@ -49,16 +48,6 @@ var PushToken = Waterline.Collection.extend({
 			}
 		}
 	}
-});
-
-pushService.listenFeedback(function (devices) {
-	var tokens = devices.map(function (deviceInfo) {
-		deviceInfo.token.toString("hex");
-	});
-
-	PushToken.findByTokenIn(tokens).map(function (obj) {
-		return obj.destroy();
-	}).catch(errorService.handleError);
 });
 
 module.exports = PushToken;

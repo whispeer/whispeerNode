@@ -9,8 +9,25 @@ var config = configManager.get();
 var Bluebird = require("bluebird");
 
 var client = require("./redisClient");
-
+var errorService = require("./errorService");
 var waterlineLoader = require("./models/waterlineLoader");
+
+var pushService = require("./pushService");
+
+waterlineLoader.then(function (ontology) {
+	var pushToken = ontology.collections.pushtoken;
+
+	pushService.listenFeedback(function (devices) {
+		var tokens = devices.map(function (deviceInfo) {
+			deviceInfo.token.toString("hex");
+		});
+
+		console.info("removing ios devices from database: " + JSON.stringify(tokens));
+
+		pushToken.destroy({ token: tokens }).catch(errorService.handleError);
+	});
+
+});
 
 var translations = {
 	"en": {
@@ -47,14 +64,18 @@ var pushAPI = {
 				throw new Error("invalid type");
 			}
 
+			waterlineLoader.then(this.ne, this);
+		}, h.sF(function (ontology) {
+			var pushToken = ontology.collections.pushtoken;
+
 			var givenData = {
-				"user": request.session.getUserID(),
-				"type": type,
+				"userID": request.session.getUserID(),
+				"deviceType": type,
 				"token": token
 			};
 
-			serverRequest("/subscribe", givenData, this);
-		}, cb);
+			pushToken.create(givenData).then(this.ne, this);
+		}), cb);
 	}, notifyUsers: function (users, data) {
 		return Bluebird.resolve(users).map(function (user) {
 			return pushAPI.notifyUser(user, data);
@@ -79,7 +100,9 @@ var pushAPI = {
 	}, sendNotification: function (users, data, unreadMessageCount, title) {
 		var serverRequestAsync = Bluebird.promisify(serverRequest);
 
-		return serverRequestAsync("/send", {
+		console.warn("push is not implemented yet!");
+
+		/*return serverRequestAsync("/send", {
 			users: users,
 			android: {
 				data: {
@@ -96,7 +119,7 @@ var pushAPI = {
 				badge: unreadMessageCount,
 				alert: title
 			}
-		});
+		});*/
 	}
 };
 
