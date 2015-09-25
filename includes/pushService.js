@@ -28,17 +28,17 @@ var pushService = {
 		var feedback = new apn.Feedback(config.push.apn);
 		feedback.on("feedback", cb);
 	},
-	pushAndroid: function (data) {
+	pushAndroid: function (token, data) {
 		var notification = new gcm.Message({
 			data: data
 		});
 
 		var sendPushToGCM = Bluebird.promisify(sender.send, sender);
 
-		return sendPushToGCM(notification, [this.token], 4);
+		return sendPushToGCM(notification, [token], 4);
 	},
-	pushIOS: function (payload, title, badge, expiry) {
-		var myDevice = new apn.Device(this.token);
+	pushIOS: function (token, payload, title, badge, expiry) {
+		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
 		notification.payload = payload;
