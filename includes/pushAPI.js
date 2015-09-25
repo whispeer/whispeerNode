@@ -98,11 +98,10 @@ var pushAPI = {
 			);
 		});
 	}, sendNotification: function (users, data, unreadMessageCount, title) {
-
-		console.warn("push is not implemented yet!");
-
 		return waterlineLoader.then(function (ontology) {
 			var pushToken = ontology.collections.pushtoken;
+
+			console.log(users);
 
 			return pushToken.find({ userID: users });
 		}).map(function (user) {
