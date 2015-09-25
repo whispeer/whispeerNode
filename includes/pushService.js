@@ -13,8 +13,8 @@ if (!config.push) {
 
 	module.exports = {
 		listenFeedback: function () {},
-		pushAndroid: function () { return Promise.resolve(); },
-		pushIOS: function () { return Promise.resolve(); },
+		pushAndroid: function () { return Bluebird.resolve(); },
+		pushIOS: function () { return Bluebird.resolve(); },
 	};
 
 	return;
@@ -48,7 +48,7 @@ var pushService = {
 
 		apnConnection.pushNotification(notification, myDevice);
 
-		return Promise.resolve();
+		return Bluebird.resolve();
 	}
 };
 
