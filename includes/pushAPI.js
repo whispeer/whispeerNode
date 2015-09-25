@@ -98,11 +98,21 @@ var pushAPI = {
 			);
 		});
 	}, sendNotification: function (users, data, unreadMessageCount, title) {
-		var serverRequestAsync = Bluebird.promisify(serverRequest);
 
 		console.warn("push is not implemented yet!");
 
-		/*return serverRequestAsync("/send", {
+		return waterlineLoader.then(function (ontology) {
+			var pushToken = ontology.collections.pushtoken;
+
+			return pushToken.find({ userID: users });
+		}).map(function (user) {
+			return user.push(data, title, unreadMessageCount, data.message.meta.topicid);
+		});
+
+		/*
+		var serverRequestAsync = Bluebird.promisify(serverRequest);
+
+		return serverRequestAsync("/send", {
 			users: users,
 			android: {
 				data: {
