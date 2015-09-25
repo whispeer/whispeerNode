@@ -34,14 +34,14 @@ var PushToken = Waterline.Collection.extend({
 		},
 
 		push: function (data, title, badge, referenceID) {
-			if (this.type === "android") {
+			if (this.deviceType === "android") {
 				return pushService.pushAndroid({
 					title: title,
 					message: "-",
 					content: data,
 					topicid: referenceID
 				});
-			} else if (this.type === "ios") {
+			} else if (this.deviceType === "ios") {
 				return pushService.pushIOS({ referenceID: referenceID }, title, badge);
 			} else {
 				return Bluebird.reject("push: invalid type");
