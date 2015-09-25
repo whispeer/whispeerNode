@@ -69,12 +69,12 @@ var pushAPI = {
 			var pushToken = ontology.collections.pushtoken;
 
 			var givenData = {
-				"userID": request.session.getUserID(),
-				"deviceType": type,
-				"token": token
+				userID: request.session.getUserID(),
+				deviceType: type,
+				token: token
 			};
 
-			pushToken.create(givenData).then(this.ne, this);
+			pushToken.findOrCreate({ token: token }, givenData).then(this.ne, this);
 		}), cb);
 	}, notifyUsers: function (users, data) {
 		return Bluebird.resolve(users).map(function (user) {
