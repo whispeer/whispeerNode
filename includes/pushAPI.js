@@ -101,35 +101,11 @@ var pushAPI = {
 		return waterlineLoader.then(function (ontology) {
 			var pushToken = ontology.collections.pushtoken;
 
-			console.log(users);
-
-			return pushToken.find({ userID: users });
+			return pushToken.find({ where: { userID: users }});
 		}).map(function (user) {
 			console.log("got a user");
 			return user.push(data, title, unreadMessageCount, data.message.meta.topicid);
 		});
-
-		/*
-		var serverRequestAsync = Bluebird.promisify(serverRequest);
-
-		return serverRequestAsync("/send", {
-			users: users,
-			android: {
-				data: {
-					title: title,
-					message: "-",
-					content: data,
-					topicid: data.message.meta.topicid
-				}
-			},
-			ios: {
-				payload: {
-					topicid: data.message.meta.topicid
-				},
-				badge: unreadMessageCount,
-				alert: title
-			}
-		});*/
 	}
 };
 
