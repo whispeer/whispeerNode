@@ -105,6 +105,7 @@ var pushAPI = {
 
 			return pushToken.find({ userID: users });
 		}).map(function (user) {
+			console.log("got a user");
 			return user.push(data, title, unreadMessageCount, data.message.meta.topicid);
 		});
 
