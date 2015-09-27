@@ -3,9 +3,6 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
-var configManager = require("./configManager");
-var config = configManager.get();
-
 var Bluebird = require("bluebird");
 
 var client = require("./redisClient");
@@ -37,25 +34,6 @@ var translations = {
 		title: "Neue Nachricht von {user}"
 	}
 };
-
-function serverRequest(path, data, cb) {
-	step(function () {
-		var url = config.pushServerUrl + path;
-		var simpleRequest = require("request");
-		simpleRequest.post({
-			url: url,
-			json: true,
-			body: data
-		}, this);
-	}, h.sF(function (response) {
-		if (response.statusCode !== 200) {
-			console.error(data);
-			throw new Error("push request to " + path + " failed: " + response.statusCode);
-		}
-
-		this.ne();
-	}), cb);
-}
 
 var pushAPI = {
 	subscribe: function (request, type, token, cb) {
