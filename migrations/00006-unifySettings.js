@@ -14,6 +14,13 @@ function unifySettings(cb) {
 			client.hgetallAsync("settings:" + uid)
 		]).spread(function (userSettings, userServerSettings) {
 			userSettings.server = userSettings.server || userServerSettings || {};
+
+			if (userSettings.server.mailsEnabled === "1") {
+				userSettings.server.mailsEnabled = true;
+			} else if (userSettings.server.mailsEnabled === "0") {
+				userSettings.server.mailsEnabled = false;
+			}
+
 			return settingsAPI.setUserSettings(uid, userSettings);
 		}).then(function () {
 			return client.delAsync("settings:" + uid);
