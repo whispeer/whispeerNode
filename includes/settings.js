@@ -1,8 +1,6 @@
 "use strict";
 
 var step = require("step");
-var h = require("whispeerHelper");
-
 var client = require("./redisClient");
 
 /*
@@ -12,21 +10,38 @@ var client = require("./redisClient");
 
 */
 
-var settings = {
-	getOwnSettings: function (request, cb) {
-		step(function () {
-			client.get("user:" + request.session.getUserID() + ":settings", this);
-		}, h.sF(function (result) {
-			this.ne(JSON.parse(result));
+var settingsAPI = {
+	updateServer: function (uid, key, val, cb) {
+		return step.unpromisify(settingsAPI.getUserSettings(uid).then(function (settings) {
+			settings.server = settings.server || {};
+			settings.server[key] = val;
+			return settingsAPI.setUserSettings(uid, settings, this);
 		}), cb);
 	},
-	setOwnSettings: function (request, settings, cb) {
-		step(function () {
-			client.set("user:" + request.session.getUserID() + ":settings", JSON.stringify(settings), this);
-		}, h.sF(function (res) {
-			this.ne(res === "OK");
+	getUserSettings: function (uid, cb) {
+		return step.unpromisify(client.getAsync("user:" + uid + ":settings").then(function (result) {
+			return JSON.parse(result);
 		}), cb);
+	},
+	setUserSettings: function (uid, settings, cb) {
+		return step.unpromisify(settingsAPI.getUserSettings(uid).then(function (oldSettings) {
+			if (!settings.server) {
+				settings.server = oldSettings.server;
+			}
+
+			return settings;
+		}).then(function (settings) {
+			return client.setAsync("user:" + uid + ":settings", JSON.stringify(settings));
+		}).then(function (res) {
+			return res === "OK";
+		}), cb);
+	},
+	getOwnSettings: function (request, cb) {
+		return settingsAPI.getUserSettings(request.session.getUserID(), cb);
+	},
+	setOwnSettings: function (request, settings, cb) {
+		return settingsAPI.setUserSettings(request.session.getUserID(), settings, cb);
 	}
 };
 
-module.exports = settings;
+module.exports = settingsAPI;
