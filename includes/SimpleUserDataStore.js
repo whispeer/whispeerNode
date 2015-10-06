@@ -61,13 +61,17 @@ SimpleUserDataStore.prototype.apiGet = function (data, fn, request) {
 		that.get(request, this);
 	}, h.sF(function (result) {
 		if (result && data) {
-			if (result._signature && result._signature === data.cacheSignature) {
-				this.ne({ unChanged: true });
-				return;
-			}
+			var unchanged = result._signature && result._signature === data.cacheSignature ||
+							result.meta && result.meta._signature && result.meta._signature === data.cacheSignature;
 
-			if (result.meta && result.meta._signature && result.meta._signature === data.cacheSignature) {
-				this.ne({ unChanged: true });
+			if (unchanged) {
+				var response = { unChanged: true };
+
+				if (result.server) {
+					response.content = { server: result.server };
+				}
+
+				this.ne(response);
 				return;
 			}
 		}

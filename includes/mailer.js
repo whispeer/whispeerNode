@@ -22,6 +22,8 @@ var defaultFrom = config.mailFrom || "whispeer <support@whispeer.de>";
 var Bluebird = require("bluebird");
 var readFile = Bluebird.promisify(fs.readFile, fs);
 
+var settingsAPI = require("./settings");
+
 //mail
 //- <userid>
 //-- mails set
@@ -55,9 +57,9 @@ var mailer = {
 			this.parallel.unflatten();
 
 			client.sismember("mail:" + user.getID(), mail, this.parallel());
-			client.hget("settings:" + user.getID(), "mailsEnabled", this.parallel());
-		}, h.sF(function (verified, mailsEnabled) {
-			this.ne((verified || overwriteVerified) && (mailsEnabled === "1" || overwrite));
+			settingsAPI.getUserSettings(user.getID(), this.parallel());
+		}, h.sF(function (verified, settings) {
+			this.ne((verified || overwriteVerified) && (settings.server.mailsEnabled || overwrite));
 		}), cb);
 	},
 	generateTrackingCode: function (variables, cb) {
@@ -97,12 +99,12 @@ var mailer = {
 			}
 		}), h.sF(function (userMail) {
 			if (userMail === challengeData.mail) {
+				settingsAPI.updateServer(challengeData.user, "mailsEnabled", mailsEnabled, this.parallel());
 				client.multi()
 					.sadd("mail:" + challengeData.user, challengeData.mail)
 					.srem("mail:codes", challenge)
 					.del("mail:challenges:" + challenge)
-					.hset("settings:" + challengeData.user, "mailsEnabled", (mailsEnabled ? 1 : 0))
-					.exec(this);
+					.exec(this.parallel());
 			} else {
 				this.last.ne(false);
 			}
@@ -247,11 +249,9 @@ var mailer = {
 			this.parallel.unflatten();
 
 			user.getEMail(socketDataCreator.logedinStub, this.parallel());
-			client.get("user:" + user.getID() + ":settings", this.parallel());
+			settingsAPI.getUserSettings(user.getID(), this.parallel());
 			user.getNames(socketDataCreator.logedinStub, this.parallel());
 		}, h.sF(function (_receiver, settings, names) {
-			settings = JSON.parse(settings);
-
 			variables.name = names.firstName || names.lastName || names.nickname;
 
 			if (settings && settings.meta) {
