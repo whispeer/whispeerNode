@@ -32,9 +32,8 @@ var pushAPI = require("./pushAPI");
 
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
-		this.parallel.unflatten();
-
-		message.getFullData(request, this.parallel(), true);
+		console.log("push1!!");
+		message.getFullData(request, this, true);
 	}, h.sF(function (messageData) {
 		console.log("push!!");
 		pushAPI.notifyUsers(theReceiver.filter(function (user) {
