@@ -20,6 +20,10 @@ var settingsAPI = {
 	},
 	getUserSettings: function (uid, cb) {
 		return step.unpromisify(client.getAsync("user:" + uid + ":settings").then(function (result) {
+			if (!result) {
+				return {};
+			}
+
 			return JSON.parse(result);
 		}), cb);
 	},
