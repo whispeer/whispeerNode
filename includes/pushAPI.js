@@ -76,6 +76,7 @@ var pushAPI = {
 			);
 		});
 	}, sendNotification: function (users, data, unreadMessageCount, title) {
+		console.log("pushing to users: " + JSON.stringify(users));
 		return waterlineLoader.then(function (ontology) {
 			var pushToken = ontology.collections.pushtoken;
 
