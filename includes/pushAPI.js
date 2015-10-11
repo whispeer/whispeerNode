@@ -19,6 +19,10 @@ waterlineLoader.then(function (ontology) {
 			deviceInfo.token.toString("hex");
 		});
 
+		if (tokens.length === 0) {
+			return;
+		}
+
 		console.info("removing ios devices from database: " + JSON.stringify(tokens));
 
 		pushToken.destroy({ token: tokens }).catch(errorService.handleError);

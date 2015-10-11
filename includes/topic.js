@@ -32,10 +32,8 @@ var pushAPI = require("./pushAPI");
 
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
-		console.log("push1!!");
 		message.getFullData(request, this, true);
 	}, h.sF(function (messageData) {
-		console.log("push!!");
 		pushAPI.notifyUsers(theReceiver.filter(function (user) {
 			return user.getID() !== request.session.getUserID();
 		}), {
