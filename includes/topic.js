@@ -27,6 +27,7 @@ var MAXTIME = 60 * 60 * 1000;
 
 */
 
+var errorService = require("./errorService");
 var pushAPI = require("./pushAPI");
 
 function pushMessage(request, theReceiver, senderName, message) {
@@ -35,13 +36,14 @@ function pushMessage(request, theReceiver, senderName, message) {
 
 		message.getFullData(request, this.parallel(), true);
 	}, h.sF(function (messageData) {
+		console.log("push!!");
 		pushAPI.notifyUsers(theReceiver.filter(function (user) {
 			return user.getID() !== request.session.getUserID();
 		}), {
 			message: messageData,
 			user: senderName
 		});
-	}));
+	}), errorService.handleError);
 }
 
 var Topic = function (id) {
