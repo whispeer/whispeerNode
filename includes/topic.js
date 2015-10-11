@@ -233,6 +233,7 @@ var Topic = function (id) {
 
 	/** add a message to this topic */
 	this.addMessage = function addMessageF(request, message, cb) {
+		console.log("addmessage");
 		var theReceiver, theSender, messageID;
 		step(function () {
 			hasAccessError(request, this);
