@@ -274,7 +274,7 @@ function removeUserMainData(userid) {
 		return client.hgetAsync("user:" + userid, "nickname");
 	}).then(function (nickname) {
 		console.log("disabling nickname " + nickname + " forever (todo: better solution)");
-		return client.setAsync("user:nickname:" + nickname, -1);
+		return client.setAsync("user:nickname:" + nickname.toLowerCase(), -1);
 	}).then(function () {
 		return removeKeyAndSubKeys("user:" + userid);
 	}).then(function () {

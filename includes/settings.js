@@ -30,7 +30,7 @@ var settingsAPI = {
 	setUserSettings: function (uid, settings, cb) {
 		return step.unpromisify(settingsAPI.getUserSettings(uid).then(function (oldSettings) {
 			if (!settings.server) {
-				settings.server = oldSettings.server;
+				settings.server = oldSettings.server || {};
 			}
 
 			return settings;
