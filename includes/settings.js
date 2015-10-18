@@ -21,10 +21,13 @@ var settingsAPI = {
 	getUserSettings: function (uid, cb) {
 		return step.unpromisify(client.getAsync("user:" + uid + ":settings").then(function (result) {
 			if (!result) {
-				return {};
+				return { server: {} };
 			}
 
-			return JSON.parse(result);
+			var parsedResult = JSON.parse(result);
+			parsedResult.server = parsedResult.server || {};
+
+			return parsedResult;
 		}), cb);
 	},
 	setUserSettings: function (uid, settings, cb) {
