@@ -32,10 +32,10 @@ waterlineLoader.then(function (ontology) {
 
 var translations = {
 	"en": {
-		title: "New message from {user}"
+		title: "Message from {user}"
 	},
 	"de": {
-		title: "Neue Nachricht von {user}"
+		title: "Nachricht von {user}"
 	}
 };
 
