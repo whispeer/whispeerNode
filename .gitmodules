@@ -1,6 +1,6 @@
 [submodule "node_modules/whispeerHelper"]
 	path = node_modules/whispeerHelper
-	url = ssh://git@ovt.me:4351/whispeerHelper
+	url = git@github.com:whispeer/whispeerHelper
 [submodule "node_modules/whispeerValidations"]
 	path = node_modules/whispeerValidations
-	url = ssh://git@ovt.me:4351/whispeerValidations
+	url = git@github.com:whispeer/whispeerValidations
