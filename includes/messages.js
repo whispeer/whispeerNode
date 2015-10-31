@@ -246,7 +246,16 @@ Message.create = function (request, data, cb) {
 			this.ne();
 		}
 	}), h.sF(function () {
-		//TODO: check that uuid is not yet existing!
+		if (h.isUUID(data.meta.messageUUID)) {
+			client.get("message:uuid:" + data.meta.messageUUID, this);
+		} else {
+			this.ne(true);
+		}
+	}), h.sF(function (uuidMessage) {
+		if (uuidMessage) {
+			this.last.ne(true);
+			return;
+		}
 
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
@@ -269,8 +278,8 @@ Message.create = function (request, data, cb) {
 		multi.hmset("message:" + messageid + ":meta", data.meta, this.parallel());
 		multi.hmset("message:" + messageid + ":content", data.content, this.parallel());
 
-		if (data.meta.messageUUID) {
-			multi.set("message:uuid" + data.meta.messageUUID, messageid);
+		if (h.isUUID(data.meta.messageUUID)) {
+			multi.set("message:uuid:" + data.meta.messageUUID, messageid);
 		}
 
 		multi.exec(this);
