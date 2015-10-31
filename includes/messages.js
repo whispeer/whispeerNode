@@ -235,6 +235,7 @@ Message.create = function (request, data, cb) {
 		}
 	}), h.sF(function (newestCounter) {
 		if (newestCounter && parseInt(meta._sortCounter, 10) < newestCounter) {
+			console.warn("invalid counter");
 			this.last.ne(false);
 			return;
 		}

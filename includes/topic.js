@@ -368,7 +368,7 @@ var Topic = function (id) {
 				interactionID: id
 			});
 
-			this.ne();
+			this.ne(true);
 		}), cb);
 	};
 

@@ -134,9 +134,9 @@ var t = {
 	send: function sendMessageF(data, fn, request) {
 		step(function () {
 			Message.create(request, data.message, this);
-		}, h.sF(function () {
+		}, h.sF(function (result) {
 			this.ne({
-				success: true
+				success: result
 			});
 		}), fn);
 		//message
