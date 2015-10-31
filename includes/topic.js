@@ -29,6 +29,7 @@ var MAXTIME = 60 * 60 * 1000;
 
 var errorService = require("./errorService");
 var pushAPI = require("./pushAPI");
+var Bluebird = require("bluebird");
 
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
@@ -202,6 +203,80 @@ var Topic = function (id) {
 
 			this.ne(res);
 		}), cb);
+	};
+
+	this.getMissingMessages = function (inBetween, newestIndex, oldestIndex) {
+		return client.zrevrangeAsync(mDomain, newestIndex + 1, oldestIndex - 1).map(h.parseDecimal).then(function (ids) {
+			oldestIndex;
+			newestIndex;
+			debugger;
+			return h.arraySubtract(ids, inBetween);
+		});
+	};
+
+	this.getMessagesBefore = function (newestIndex) {
+		return client.zrevrangeAsync(mDomain, 0, newestIndex - 1);
+	};
+
+	this.getNewestMessages = function (count) {
+		return client.zrevrangeAsync(mDomain, 0, count - 1);
+	};
+
+	this.refetch = function (request, data, cb) {
+		var oldest = data.oldest,
+			newest = data.newest,
+			inBetween = data.inBetween,
+			maximum = data.maximum,
+			messageCountOnFlush = data.messageCountOnFlush;
+
+		var hasAccessErrorAsync = Bluebird.promisify(hasAccessError);
+		var clearMessages = false;
+
+		var resultPromise = hasAccessErrorAsync(request).bind(this).then(function () {
+			return Bluebird.all([
+				client.zrevrankAsync(mDomain, oldest),
+				client.zrevrankAsync(mDomain, newest),
+			]);
+		}).spread(function (oldestIndex, newestIndex) {
+			var missingNewCount = newestIndex;
+			var missingMessageCount = oldestIndex - newestIndex - inBetween.length - 1;
+
+			if (missingMessageCount + missingNewCount > maximum) {
+				clearMessages = true;
+				return this.getNewestMessages(messageCountOnFlush);
+			}
+
+			if (missingNewCount === 0 && missingMessageCount === 0) {
+				return [];
+			}
+
+			var requests = [];
+
+			if (missingNewCount > 0) {
+				requests.push(this.getMessagesBefore(newestIndex));
+			}
+
+			if (missingMessageCount > 0) {
+				requests.push(this.getMissingMessages(inBetween, newestIndex, oldestIndex));
+			}
+
+			return Bluebird.all(requests);
+		}).then(function (data) {
+			return h.array.flatten(data);
+		}).map(function (missingMessageID) {
+			var Message = require("./messages");
+			return new Message(missingMessageID, theTopic);
+		}).map(function (missingMessage) {
+			var getFullData = Bluebird.promisify(missingMessage.getFullData, missingMessage);
+			return getFullData(request);
+		}).then(function (data) {
+			return {
+				clearMessages: clearMessages,
+				messages: data
+			};
+		});
+
+		return step.unpromisify(resultPromise, cb);
 	};
 
 	/** mark certain messages read */
