@@ -73,6 +73,13 @@ var t = {
 			});
 		}), fn);
 	},
+	refetch: function (data, fn, request) {
+		step(function () {
+			Topic.get(data.topicid, this);
+		}, h.sF(function (topic) {
+			topic.refetch(request, data, this);
+		}), fn);
+	},
 	getUserTopic: function (data, fn, request) {
 		step(function () {
 			Topic.getUserTopicID(request, data.userid, this);
