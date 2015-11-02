@@ -136,7 +136,8 @@ var t = {
 			Message.create(request, data.message, this);
 		}, h.sF(function (result) {
 			this.ne({
-				success: result
+				success: result.success,
+				server: result.server
 			});
 		}), fn);
 		//message

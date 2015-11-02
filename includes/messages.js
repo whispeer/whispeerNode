@@ -207,6 +207,7 @@ function processImages(request, images, keys, cb) {
 Message.create = function (request, data, cb) {
 	var theTopic, theMessageID, theMessage;
 	var meta = data.meta;
+	var server = {};
 
 	step(function () {
 		var err = validator.validate("message", data);
@@ -261,7 +262,7 @@ Message.create = function (request, data, cb) {
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 		client.incr("message:messages", this);
 	}), h.sF(function (messageid) {
-		var server = {
+		server = {
 			sender: request.session.getUserID(),
 			sendTime: new Date().getTime(),
 			messageid: messageid
@@ -286,6 +287,8 @@ Message.create = function (request, data, cb) {
 	}), h.sF(function () {
 		theMessage = new Message(theMessageID);
 		theTopic.addMessage(request, theMessage, this);
+	}), h.sF(function (success) {
+		this.ne({ success: success, server: server });
 	}), cb);
 };
 
