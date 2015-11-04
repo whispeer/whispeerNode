@@ -73,6 +73,13 @@ var t = {
 			});
 		}), fn);
 	},
+	refetch: function (data, fn, request) {
+		step(function () {
+			Topic.get(data.topicid, this);
+		}, h.sF(function (topic) {
+			topic.refetch(request, data, this);
+		}), fn);
+	},
 	getUserTopic: function (data, fn, request) {
 		step(function () {
 			Topic.getUserTopicID(request, data.userid, this);
@@ -127,9 +134,10 @@ var t = {
 	send: function sendMessageF(data, fn, request) {
 		step(function () {
 			Message.create(request, data.message, this);
-		}, h.sF(function () {
+		}, h.sF(function (result) {
 			this.ne({
-				success: true
+				success: result.success,
+				server: result.server
 			});
 		}), fn);
 		//message

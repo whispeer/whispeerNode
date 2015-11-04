@@ -207,6 +207,7 @@ function processImages(request, images, keys, cb) {
 Message.create = function (request, data, cb) {
 	var theTopic, theMessageID, theMessage;
 	var meta = data.meta;
+	var server = {};
 
 	step(function () {
 		var err = validator.validate("message", data);
@@ -235,6 +236,7 @@ Message.create = function (request, data, cb) {
 		}
 	}), h.sF(function (newestCounter) {
 		if (newestCounter && parseInt(meta._sortCounter, 10) < newestCounter) {
+			console.warn("invalid counter");
 			this.last.ne(false);
 			return;
 		}
@@ -245,23 +247,48 @@ Message.create = function (request, data, cb) {
 			this.ne();
 		}
 	}), h.sF(function () {
+		if (h.isUUID(data.meta.messageUUID)) {
+			client.get("message:uuid:" + data.meta.messageUUID, this);
+		} else {
+			this.ne(true);
+		}
+	}), h.sF(function (uuidMessage) {
+		if (uuidMessage) {
+			this.last.ne(true);
+			return;
+		}
+
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 		client.incr("message:messages", this);
 	}), h.sF(function (messageid) {
+		server = {
+			sender: request.session.getUserID(),
+			sendTime: new Date().getTime(),
+			messageid: messageid
+		};
+
 		if (data.meta.images) {
 			data.meta.images = JSON.stringify(data.meta.images);
 		}
 
-		data.meta.sender = request.session.getUserID();
-		data.meta.sendTime = new Date().getTime();
-		data.meta.messageid = messageid;
+		data.meta = h.extend(data.meta, server, 1);
+
 		theMessageID = messageid;
-		client.hmset("message:" + messageid + ":meta", data.meta, this.parallel());
-		client.hmset("message:" + messageid + ":content", data.content, this.parallel());
+		var multi = client.multi();
+		multi.hmset("message:" + messageid + ":meta", data.meta, this.parallel());
+		multi.hmset("message:" + messageid + ":content", data.content, this.parallel());
+
+		if (h.isUUID(data.meta.messageUUID)) {
+			multi.set("message:uuid:" + data.meta.messageUUID, messageid);
+		}
+
+		multi.exec(this);
 	}), h.sF(function () {
 		theMessage = new Message(theMessageID);
 		theTopic.addMessage(request, theMessage, this);
+	}), h.sF(function (success) {
+		this.ne({ success: success, server: server });
 	}), cb);
 };
 
