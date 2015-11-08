@@ -250,7 +250,7 @@ Message.create = function (request, data, cb) {
 		if (h.isUUID(data.meta.messageUUID)) {
 			client.get("message:uuid:" + data.meta.messageUUID, this);
 		} else {
-			this.ne(true);
+			this.ne(false);
 		}
 	}), h.sF(function (uuidMessage) {
 		if (uuidMessage) {
