@@ -9,20 +9,20 @@ var ObjectHasher = function (data, version) {
 };
 
 ObjectHasher.prototype.sjclHash = function (data) {
-	if (this._version > 2) {
-		return data;
-	}
-
 	return "hash::" + chelper.bits2hex(sjcl.hash.sha256.hash(data));
 };
 
 ObjectHasher.prototype._hashProperty = function (val) {
-	return (this._version > 1 ? val : this.sjclHash("data::" + val.toString()));
+	return (this._version >= 2 ? val.toString() : this.sjclHash("data::" + val.toString()));
 };
 
 ObjectHasher.prototype._doHashNewObject = function (val) {
 	var hasher = new ObjectHasher(val, this._version);
-	return hasher.hash();
+	if (this._version >= 3) {
+		return hasher.stringify();
+	}
+
+	return "hash::" + hasher.hash();
 };
 
 ObjectHasher.prototype._doHash = function (val, attr) {
@@ -96,6 +96,5 @@ ObjectHasher.prototype.hash = function () {
 ObjectHasher.prototype.hashBits = function () {
 	return sjcl.hash.sha256.hash(this.stringify());
 };
-
 
 module.exports = ObjectHasher;
