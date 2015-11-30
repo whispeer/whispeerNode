@@ -37,6 +37,7 @@ function verifyTrustManager(request) {
 
 function getUserID(key, val) {
 	switch(val._type) {
+		case "settings":
 		case "profile":
 			return key.match(/\:(\d+)\:/)[1];
 		case "message":
@@ -60,12 +61,22 @@ function verifyKey(key) {
 		switch(type) {
 			case "hash":
 				return client.hgetallAsync(key);
+			case "string":
+				return client.getAsync(key);
 			default:
 				throw new Error("unknown type: " + type);
 		}
 	}).then(function (val) {
+		if (typeof val === "string") {
+			val = JSON.parse(val);
+		}
+
 		if (val.meta) {
-			return JSON.parse(val.meta);
+			val = val.meta;
+		}
+
+		if (typeof val === "string") {
+			val = JSON.parse(val);
 		}
 
 		return val;
@@ -86,6 +97,8 @@ function verifyKey(key) {
 		console.log("error for key: " + key);
 		console.warn(e);
 		console.warn(e.stack);
+
+		return false;
 	});
 }
 
@@ -99,7 +112,9 @@ setupP().then(function () {
 	return keys;
 }).map(function (key) {
 	return verifyKey(key);
-}).then(function () {
-	console.log("All signatures valid!");
+}).then(function (results) {
+	console.log(results);
+
+	console.log("done checking signatures");
 	process.exit();
 });
