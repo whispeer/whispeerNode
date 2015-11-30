@@ -40,6 +40,8 @@ function getUserID(key, val) {
 		case "settings":
 		case "profile":
 			return key.match(/\:(\d+)\:/)[1];
+		case "topic":
+			return h.parseDecimal(val.creator);
 		case "message":
 			return h.parseDecimal(val.sender);
 		default:
@@ -49,6 +51,8 @@ function getUserID(key, val) {
 
 function getNotVerified(key, val) {
 	switch(val._type) {
+		case "topic":
+			return ["newest", "topicid", "unread", "newestTime"];
 		case "message":
 			return ["sendTime", "sender", "topicid", "messageid"];
 		default:
@@ -90,6 +94,10 @@ function verifyKey(key) {
 
 		if (val.images) {
 			val.images = JSON.parse(val.images);
+		}
+
+		if (val.receiver) {
+			val.receiver = val.receiver.split(",").map(h.parseDecimal).sort();
 		}
 
 		return verifySecuredMeta(requestMock(userID), val, val._type);
