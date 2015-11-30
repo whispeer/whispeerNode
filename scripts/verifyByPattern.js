@@ -113,7 +113,7 @@ setupP().then(function () {
 }).map(function (key) {
 	return verifyKey(key);
 }).then(function (results) {
-	console.log(results);
+	console.log(results.reduce(function (prev, cur) { return prev && cur; }, true));
 
 	console.log("done checking signatures");
 	process.exit();
