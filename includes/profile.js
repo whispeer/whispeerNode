@@ -139,7 +139,7 @@ Profile.validate = function validateF(data) {
 	var content = data.content, meta = data.meta;
 	var err = validator.validate("profileEncrypted", content, 1);
 
-	return !err && meta._signature && meta._hashObject && meta._contentHash && meta._key && meta._version;
+	return !err && meta._signature && meta._contentHash && meta._key && meta._version;
 };
 
 function generateProfileID(request, cb) {

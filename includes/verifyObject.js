@@ -67,92 +67,25 @@ var SignKey = function (keyData) {
 	};
 };
 
-var ObjectHasher = function (data) {
-	this._data = data;
-};
-
-ObjectHasher.prototype.sjclHash = function (data) {
-	return "hash::" + sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(data));
-};
-
-ObjectHasher.prototype._hashProperty = function (val) {
-	return this.sjclHash("data::" + val.toString());
-};
-
-ObjectHasher.prototype._doHashNewObject = function (val) {
-	var hasher = new ObjectHasher(val);
-	return hasher.hash();
-};
-
-ObjectHasher.prototype._doHash = function (val, attr) {
-	var allowedTypes = ["number", "string", "boolean"];
-
-	if (attr === "hash") {
-		throw new Error("object can not have hash attributes");
-	}
-
-	var type = typeof val, result;
-	if (type === "object") {
-		result = this._doHashNewObject(val, attr);
-	} else if (allowedTypes.indexOf(type) > -1) {
-		result = this._hashProperty(val);
-	} else {
-		throw new Error("can not hash objects with " + type);
-	}
-
-	return result;
-};
-
-ObjectHasher.prototype._hashArray = function () {
-	var i, result = [];
-	for (i = 0; i < this._data.length; i += 1) {
-		result.push(this._doHash(this._data[i]), i);
-	}
-
-	return this.sjclHash(JSON.stringify(result));
-};
-
-ObjectHasher.prototype._jsonifyUnique = function (obj) {
-	var sortation = Object.keys(obj).sort();
-	return JSON.stringify(obj, sortation);
-};
-
-ObjectHasher.prototype._hashObject = function () {
-	var attr, hashObj = {};
-	for (attr in this._data) {
-		if (this._data.hasOwnProperty(attr)) {
-			hashObj[attr] = this._doHash(this._data[attr], attr);
-		}
-	}
-
-	return this.sjclHash(this._jsonifyUnique(hashObj));
-};
-
-ObjectHasher.prototype._hashData = function () {
-	if (this._data instanceof Array) {
-		return this._hashArray();
-	} else {
-		return this._hashObject();
-	}
-};
-
-ObjectHasher.prototype.hash = function() {
-	if (typeof this._data !== "object") {
-		throw new Error("this is not an object!");
-	}
-
-	return this._hashData();
-};
-
-ObjectHasher.prototype.hashBits = function () {
-	var result = this.hash();
-	return sjcl.codec.hex.toBits(result.substr(6));
-};
+var ObjectHasher = require("./crypto/ObjectHasher");
 
 function verifyObject(signature, object, keyData, callback) {
 	step(function signO1() {
 		var key = new SignKey(keyData);
-		var hash = new ObjectHasher(object, 0).hashBits();
+
+		if (object._v2 === "false") {
+			object._v2 = false;
+		}
+
+		var hashVersion = 1;
+
+		if (object._hashVersion) {
+			hashVersion = object._hashVersion;
+		} else if (object._v2) {
+			hashVersion = 2;
+		}
+
+		var hash = new ObjectHasher(object, hashVersion).hashBits();
 
 		key.verify(sjcl.codec.hex.toBits(signature), hash, this);
 	}, function (e, correct) {
