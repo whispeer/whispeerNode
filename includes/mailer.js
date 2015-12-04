@@ -250,6 +250,7 @@ var mailer = {
 		}), cb);
 	},
 	sendUserMail: function (user, templateName, variables, cb, overwriteActive, overwriteVerified) {
+		console.log("Sending mail to user: " + user.getID());
 		var receiver;
 		step(function () {
 			this.parallel.unflatten();
@@ -270,6 +271,7 @@ var mailer = {
 			if (activated) {
 				mailer.sendMail(receiver, templateName, variables, this);
 			} else {
+				console.log("Mail not activated for user: " + user.getID());
 				this.last.ne(false);
 			}
 		}), cb);
