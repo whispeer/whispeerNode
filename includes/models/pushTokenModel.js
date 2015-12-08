@@ -39,7 +39,9 @@ var PushToken = Waterline.Collection.extend({
 					title: title,
 					message: "-",
 					content: data,
-					topicid: referenceID
+					topicid: referenceID,
+					vibrationPattern: [0, 500, 100, 500],
+					ledColor: [0, 0, 255, 0]
 				});
 			} else if (this.deviceType === "ios") {
 				return pushService.pushIOS(this.token, { topicid: referenceID }, title, badge);
