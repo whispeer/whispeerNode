@@ -110,6 +110,8 @@ var Circle = function (userid, id) {
 			var multi = client.multi();
 			meta.users = JSON.stringify(meta.users);
 
+			multi.del(domain + ":content");
+			multi.del(domain + ":meta");
 			multi.hmset(domain + ":content", content);
 			multi.hmset(domain + ":meta", meta);
 
