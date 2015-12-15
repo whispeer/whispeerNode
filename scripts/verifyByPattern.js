@@ -22,23 +22,11 @@ function requestMock(userID) {
 	};
 }
 
-function verifyTrustManager(request) {
-	return getTrustManager(request).then(function (trustManager) {
-		if (!trustManager) {
-			console.log("no trustmanager set for user: " + request.session.getUserID());
-			return;
-		}
-
-		return verifySecuredMeta(request, trustManager, "trustManager");
-	}).catch(function () {
-		console.log("Broken trustManager: " + request.session.getUserID());
-	});
-}
-
 function getUserID(key, val) {
 	switch(val._type) {
 		case "settings":
 		case "profile":
+		case "circle":
 			return key.match(/\:(\d+)\:/)[1];
 		case "topic":
 			return h.parseDecimal(val.creator);
