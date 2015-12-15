@@ -74,6 +74,7 @@ function verifyKey(key) {
 		return val;
 	}).then(function (val) {
 		var userID = getUserID(key, val);
+		console.log(userID);
 		var notVerified = getNotVerified(key, val);
 
 		notVerified.forEach(function (attr) {
