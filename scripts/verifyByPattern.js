@@ -84,6 +84,10 @@ function verifyKey(key) {
 			val.images = JSON.parse(val.images);
 		}
 
+		if (val.users) {
+			val.users = JSON.parse(val.users);
+		}
+
 		if (val.receiver) {
 			val.receiver = val.receiver.split(",").map(h.parseDecimal).sort();
 		}
