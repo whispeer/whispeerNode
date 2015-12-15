@@ -74,7 +74,6 @@ function verifyKey(key) {
 		return val;
 	}).then(function (val) {
 		var userID = getUserID(key, val);
-		console.log(userID);
 		var notVerified = getNotVerified(key, val);
 
 		notVerified.forEach(function (attr) {
@@ -92,8 +91,8 @@ function verifyKey(key) {
 		return verifySecuredMeta(requestMock(userID), val, val._type);
 	}).catch(function (e) {
 		console.log("error for key: " + key);
-		console.warn(e);
-		console.warn(e.stack);
+		//console.warn(e);
+		//console.warn(e.stack);
 
 		return false;
 	});
