@@ -15,6 +15,7 @@ waterlineLoader.then(function (ontology) {
 	var pushToken = ontology.collections.pushtoken;
 
 	pushService.listenFeedback(function (devices) {
+		console.log(devices);
 		var tokens = devices.map(function (deviceInfo) {
 			deviceInfo.token.toString("hex");
 		});
