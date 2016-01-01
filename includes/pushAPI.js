@@ -15,18 +15,21 @@ waterlineLoader.then(function (ontology) {
 	var pushToken = ontology.collections.pushtoken;
 
 	pushService.listenFeedback(function (devices) {
-		console.log(devices);
-		var tokens = devices.map(function (deviceInfo) {
-			deviceInfo.token.toString("hex");
-		});
+		Bluebird.resolve(devices).then(function (devices) {
+			console.log(devices);
 
-		if (tokens.length === 0) {
-			return;
-		}
+			if (devices.length === 0) {
+				return;
+			}
 
-		console.info("removing ios devices from database: " + JSON.stringify(tokens));
+			var tokens = devices.map(function (deviceInfo) {
+				return deviceInfo.token.toString("hex");
+			});
 
-		pushToken.destroy({ token: tokens }).catch(errorService.handleError);
+			console.info("removing ios devices from database: " + JSON.stringify(tokens));
+
+			return pushToken.destroy({ token: tokens });			
+		}).catch(errorService.handleError);
 	});
 
 });
