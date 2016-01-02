@@ -11,6 +11,8 @@ var KeyApi = require("./crypto/KeyApi");
 
 var mailer = require("./mailer");
 
+var waterlineLoader = require("./models/waterlineLoader");
+
 //maximum difference: 5 minutes.
 var MAXTIME = 60 * 60 * 1000;
 
@@ -67,6 +69,58 @@ var Topic = function (id) {
 		}), cb);
 	}
 
+	this.getLatestTopicUpdate = function () {
+		return waterlineLoader.then(function (ontology) {
+			return ontology.collections.topicupdate.findOne({
+				where: {
+					topicID: id
+				},
+				limit: 1,
+				sort: "_sortCounter ASC"
+			});
+		});
+	};
+
+	this.update = function (request, updateData) {
+		//lock this topic
+
+		function ensure() {
+			throw new Error("not implemented");
+		}
+
+		return Bluebird.all([
+			client.hgetallAsync(domain + ":meta"),
+			client.hgetAsync(domain + ":server", "newest"),
+			this.getLatestTopicUpdate(),
+			waterlineLoader
+		]).spread(function (metaData, latestMessageID, previousTopicUpdate, ontology) {
+			var updateMeta = updateData.meta;
+
+			ensure(metaData.creator === updateMeta.creator);
+			ensure(metaData.ownHash === updateMeta.topicHash);
+			ensure(metaData.id === updateMeta.parent);
+
+			ensure(latestMessageID === updateData.meta.previousMessage);
+
+			ensure(previousTopicUpdate._sortCounter < updateMeta._sortCounter);
+
+			updateMeta.content = updateData.content;
+
+			return ontology.collections.topicupdate.create(updateMeta);
+		});
+
+		//ensure that user is creator
+		//ensure parent correct (hash & id)
+
+		//ensure previousMessage is lastMessage
+
+		//get previous topic update
+		//ensure sortCounter >
+
+		//create topicUpdate object
+		//topicUpdate.create(data);
+	};
+
 	/** has the current user access? */
 	this.hasAccess = function hasAccessF(request, cb) {
 		var uid;
@@ -118,7 +172,7 @@ var Topic = function (id) {
 		}), cb);
 	};
 
-	/** get topic full data */
+	/** get topic full data. also returns the newest topic update object. */
 	this.getFullData = function (request, cb) {
 		var server, meta;
 		step(function () {
@@ -207,9 +261,6 @@ var Topic = function (id) {
 
 	this.getMissingMessages = function (inBetween, newestIndex, oldestIndex) {
 		return client.zrevrangeAsync(mDomain, newestIndex + 1, oldestIndex - 1).map(h.parseDecimal).then(function (ids) {
-			oldestIndex;
-			newestIndex;
-			debugger;
 			return h.arraySubtract(ids, inBetween);
 		});
 	};

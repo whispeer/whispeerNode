@@ -55,6 +55,28 @@ var t = {
 			});
 		}), fn);
 	},
+	updateTopic: function (data, fn, request) {
+		return Topic.get(data.topicid).then(function (theTopic) {
+			return theTopic.update(data.updatedContent);
+		}).then(function (topicUpdate) {
+			return {
+				topicUpdate: topicUpdate
+			};
+		});
+		/*
+		meta:
+			previousMessage: id of the previous message
+			_sortCounter: sort counter
+			_key: new key or old key (but always set)
+			receiver: new array of receiver ids
+			creator: creator id
+			parent: topicHash for the topic
+			regenerateKey: Used if a user has removed himself
+			#Future: moderators: array of moderator ids
+		content:
+			title: title
+		*/
+	},
 	getTopics: function getTopicsF(data, fn, request) {
 		step(function () {
 			Topic.own(request, data.afterTopic, 10, this);

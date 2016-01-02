@@ -21,7 +21,7 @@ var waterlineConfig = {
   }
 };
 
-var models = ["pushToken"];
+var models = ["pushToken", "topicUpdate"];
 
 var waterline = new Waterline();
 
