@@ -84,8 +84,10 @@ var Topic = function (id) {
 	this.update = function (request, updateData) {
 		//lock this topic
 
-		function ensure() {
-			throw new Error("not implemented");
+		function ensure(ErrorClass, condition, description) {
+			if (!condition) {
+				throw new ErrorClass(description || "Condition not met");
+			}
 		}
 
 		return Bluebird.all([
@@ -96,13 +98,14 @@ var Topic = function (id) {
 		]).spread(function (metaData, latestMessageID, previousTopicUpdate, ontology) {
 			var updateMeta = updateData.meta;
 
-			ensure(metaData.creator === updateMeta.creator);
-			ensure(metaData.ownHash === updateMeta.topicHash);
-			ensure(metaData.id === updateMeta.parent);
+			ensure(AccessViolation, request.session.getUserID() === metaData.creator, "Trying to update another users topic");
+			ensure(InvalidTopicUpdateData, metaData.creator === updateMeta.creator, "Invalid creator");
+			ensure(InvalidTopicUpdateData, metaData.ownHash === updateMeta.topicHash, "Invalid hash");
+			ensure(InvalidTopicUpdateData, metaData.id === updateMeta.parent, "Invalid parent");
 
-			ensure(latestMessageID === updateData.meta.previousMessage);
+			ensure(InvalidTopicUpdateData, latestMessageID === updateData.meta.previousMessage, "Invalid last message");
 
-			ensure(previousTopicUpdate._sortCounter < updateMeta._sortCounter);
+			ensure(InvalidTopicUpdateData, previousTopicUpdate._sortCounter < updateMeta._sortCounter, "Invalid sort counter");
 
 			updateMeta.content = updateData.content;
 

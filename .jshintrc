@@ -22,6 +22,7 @@
 		"InvalidKey": true,
 		"InvalidHexError": true,
 		"InvalidTopicData": true,
+		"InvalidTopicUpdateData": true,
 		"InvalidMessageData": true,
 		"TopicNotExisting": true,
 		"MessageNotExisting": true,

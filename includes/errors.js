@@ -76,6 +76,7 @@ global.InvalidHexError = addError("invalid hex", true);
 /** message part */
 
 global.InvalidTopicData = addError("invalid Message Topic", true);
+global.InvalidTopicUpdateData = addError("invalid Topic Update", true);
 global.InvalidMessageData = addError("invalid Message Data", true);
 global.TopicNotExisting = addError("topic not existing", true);
 global.MessageNotExisting = addError("message not existing", true);
