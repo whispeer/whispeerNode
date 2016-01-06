@@ -51,7 +51,7 @@ function createKeys(request, keys, cb) {
 }
 
 function callExplicitHandler(handler, data, cb, request) {
-	var explicitHandlerRequest = new RequestData(request, data, "callExplicitHandler");
+	var explicitHandlerRequest = new RequestData(request, data, request.channel);
 
 	step(function () {
 		if (handler.noLoginNeeded) {
