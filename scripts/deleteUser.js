@@ -196,6 +196,8 @@ function updateNewest(topicID) {
 }
 
 function removeUserMessagesFromTopic(topicID, userid) {
+	console.log("removing messages from topic: " + topicID);
+
 	return client.zrangeAsync("topic:" + topicID + ":user:" + userid + ":messages", 0, -1).each(function (messageID) {
 		return deleteMessage(messageID, topicID, userid);
 	}).then(function () {
