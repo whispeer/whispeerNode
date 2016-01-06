@@ -201,6 +201,7 @@ function removeUserMessagesFromTopic(topicID, userid) {
 	return client.zrangeAsync("topic:" + topicID + ":user:" + userid + ":messages", 0, -1).each(function (messageID) {
 		return deleteMessage(messageID, topicID, userid);
 	}).then(function () {
+		console.log("updating newest message for topic: " + topicID);
 		return updateNewest(topicID);
 	});
 }
