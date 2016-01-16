@@ -23,7 +23,7 @@ waterlineLoader.then(function (ontology) {
 			}
 
 			var tokens = devices.map(function (deviceInfo) {
-				return deviceInfo.token.toString("hex");
+				return deviceInfo.device.token.toString("hex");
 			});
 
 			console.info("removing ios devices from database: " + JSON.stringify(tokens));
