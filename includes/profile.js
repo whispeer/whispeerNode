@@ -23,7 +23,8 @@ var Profile = function (userid, profileid) {
 		}, h.sF(function (content, meta) {
 			result = {
 				content: JSON.parse(content),
-				meta: meta
+				meta: meta,
+				profileid: profileid
 			};
 
 			request.addKey(result.meta._key, this);
