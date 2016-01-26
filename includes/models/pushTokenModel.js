@@ -40,7 +40,7 @@ var PushToken = Waterline.Collection.extend({
 					message: "-",
 					content: data,
 					topicid: referenceID,
-					vibrationPattern: [0, 500, 100, 500],
+					vibrationPattern: [0, 400, 500, 400],
 					ledColor: [0, 0, 255, 0]
 				});
 			} else if (this.deviceType === "ios") {

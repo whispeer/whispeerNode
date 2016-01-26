@@ -27,12 +27,14 @@ function getUserID(key, val) {
 		case "settings":
 		case "profile":
 		case "circle":
+		case "signatureCache":
 			return key.match(/\:(\d+)\:/)[1];
 		case "topic":
 			return h.parseDecimal(val.creator);
 		case "message":
 			return h.parseDecimal(val.sender);
 		default:
+			console.log("unknown meta type: " + val._type);
 			throw new Error("unknown meta type: " + val._type);
 	}
 }
