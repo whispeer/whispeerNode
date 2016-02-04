@@ -14,9 +14,9 @@ var mailer = require("../includes/mailer");
 var errorService = require("../includes/errorService");
 
 function makeSearchUserData(request, cb, ids, known) {
-	var remaining;
+	var remaining, LIMIT = 10;
 	step(function () {
-		remaining = Math.max(ids.length - 20, 0);
+		remaining = Math.max(ids.length - LIMIT, 0);
 
 		known = known || [];
 
@@ -25,7 +25,7 @@ function makeSearchUserData(request, cb, ids, known) {
 		});
 
 		var i;
-		for (i = 0; i < Math.min(ids.length, 20); i += 1) {
+		for (i = 0; i < Math.min(ids.length, LIMIT); i += 1) {
 			if (known.indexOf(parseInt(ids[i], 10)) === -1) {
 				User.getUser(ids[i], this.parallel(), true);
 			} else {
