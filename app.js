@@ -11,6 +11,16 @@
 
 "use strict";
 
+var dependencyCheck = require("check-dependencies").sync({});
+
+if (!dependencyCheck.depsWereOk) {
+	console.error("Dependencies not satisfied!");
+
+	console.error(dependencyCheck.error);
+
+	return;
+}
+
 var fs = require("fs");
 var configManager = require("./includes/configManager");
 var config = configManager.get();
