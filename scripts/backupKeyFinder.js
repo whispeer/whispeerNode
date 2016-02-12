@@ -20,16 +20,24 @@ function requestMock(userID) {
 	};
 }
 
+function decryptorKeys() {
+	return client.keysAsync("key:*:decryptor:map").map(function (key) {
+		key = key.split(":");
+		key = key[1] + ":" + key[2];
+	});
+}
+
+function userBackupKeys(userid) {
+	client.keysAsync("user:" + userid + ":backupKeys");
+}
+
 var keyHash = process.argv[2];
 
 setupP().then(function () {
 	console.log("Looking for backup key with parent key: " + keyHash);
 	return client.smembersAsync("user:list");
 }).map(function (userid) {
-	return client.keysAsync("key:*:decryptor:map").filter(function (keyID) {
-		keyID = keyID.split(":");
-		keyID = keyID[1] + ":" + keyID[2];
-
+	return userBackupKeys(userid).filter(function (keyID) {
 		console.log(keyID);
 		return client.hgetallAsync("key:" + keyID + ":decryptor:map").then(function (decryptors) {
 			var keyIDs = Object.keys(decryptors).map(function (keyID) {
