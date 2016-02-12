@@ -23,7 +23,7 @@ function requestMock(userID) {
 function decryptorKeys() {
 	return client.keysAsync("key:" + process.argv[3] + "*:decryptor:map").map(function (key) {
 		key = key.split(":");
-		key = key[1] + ":" + key[2];
+		return key[1] + ":" + key[2];
 	});
 }
 
