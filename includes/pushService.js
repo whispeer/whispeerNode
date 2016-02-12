@@ -40,6 +40,7 @@ var pushService = {
 		return sendPushToGCM(notification, [token], 4);
 	},
 	pushIOS: function (token, payload, title, badge, expiry) {
+		console.log("pushing ios: " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
