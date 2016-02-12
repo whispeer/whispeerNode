@@ -41,7 +41,7 @@ setupP().then(function () {
 
 		return matchingKeys;
 	});
-}).map(function (keys) {
+}).then(function (keys) {
 	console.log(keys);
 }).then(function (results) {
 	console.log(results.reduce(function (prev, cur) { return prev && cur; }, true));
