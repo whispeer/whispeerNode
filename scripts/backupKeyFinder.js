@@ -38,9 +38,11 @@ setupP().then(function () {
 		if (matchingKeys.length > 0) {
 			console.log(matchingKeys);
 		}
+
+		return matchingKeys;
 	});
-}).map(function () {
-	return "";
+}).map(function (keys) {
+	console.log(keys);
 }).then(function (results) {
 	console.log(results.reduce(function (prev, cur) { return prev && cur; }, true));
 
