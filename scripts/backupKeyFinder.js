@@ -28,7 +28,7 @@ setupP().then(function () {
 }).map(function (userid) {
 	return client.smembersAsync("user:" + userid + ":backupKeys").filter(function (keyID) {
 		console.log(keyID);
-		return client.hgetAllAsync("key:" + keyID + ":decryptor:map", keyHash).then(function (decryptors) {
+		return client.hgetallAsync("key:" + keyID + ":decryptor:map", keyHash).then(function (decryptors) {
 			console.log(decryptors);
 			return decryptors.hasOwnProperty(keyHash);
 		});
