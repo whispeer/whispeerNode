@@ -29,12 +29,12 @@ setupP().then(function () {
 	return client.smembersAsync("user:" + userid + ":backupKeys").filter(function (keyID) {
 		console.log(keyID);
 		return client.hgetallAsync("key:" + keyID + ":decryptor:map").then(function (decryptors) {
-			console.log(decryptors);
 			var keyIDs = Object.keys(decryptors).map(function (keyID) {
 				return keyID.split(":")[1];
 			});
 
 			console.log(keyIDs);
+			console.log(keyIDs.indexOf(keyHash));
 
 			return keyIDs.indexOf(keyHash) > -1;
 		});
