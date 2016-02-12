@@ -26,7 +26,10 @@ setupP().then(function () {
 	console.log("Looking for backup key with parent key: " + keyHash);
 	return client.smembersAsync("user:list");
 }).map(function (userid) {
-	return client.smembersAsync("user:" + userid + ":backupKeys").filter(function (keyID) {
+	return client.keysAsync("key:*:decryptor:map").filter(function (keyID) {
+		keyID = keyID.split(":");
+		keyID = keyID[1] + ":" + keyID[2];
+
 		console.log(keyID);
 		return client.hgetallAsync("key:" + keyID + ":decryptor:map").then(function (decryptors) {
 			var keyIDs = Object.keys(decryptors).map(function (keyID) {
@@ -41,7 +44,7 @@ setupP().then(function () {
 	});
 }).map(function (matchingKeys) {
 	if (matchingKeys.length > 0) {
-		console.log(matchingKeys);
+		console.log("Found key: " + matchingKeys);
 	}
 
 	return matchingKeys;
