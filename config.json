@@ -1,33 +1,31 @@
 {
-
-  "development": {
-	  "pushServerUrl": "http://localhost:7777",
-	  "host": "http://localhost:8080",
-	  "ws": "127.0.0.1",
-	  "wsPort": 3000,
-	  "serverUrl": "http://localhost:3000",
-	  "db": {
-	    "number": 1
-	  },
-	  "production": false,
-	  "mail": {
-	  	"directory": "./mails"
-	  },
-	  "mailType": "PICKUP"
-  },
-
-  "test": {
-	  "host": "http://localhost",
-	  "ws": "127.0.0.1",
-	  "wsPort": 3000,
-	  "serverUrl": "http://localhost:3000",
-	  "db": {
-	    "number": 2
-	  },
-	  "production": false,
-	  "mail": {
-	  	"directory": "./mails"
-	  },
-	  "mailType": "PICKUP"
-  }
+	"development": {
+		"pushServerUrl": "http://localhost:7777",
+		"host": "http://localhost:8080",
+		"ws": "127.0.0.1",
+		"wsPort": 3000,
+		"serverUrl": "http://localhost:3000",
+		"db": {
+			"number": 1
+		},
+		"production": false,
+		"mail": {
+			"directory": "./mails"
+		},
+		"mailType": "PICKUP"
+	},
+	"test": {
+		"host": "http://localhost",
+		"ws": "127.0.0.1",
+		"wsPort": 3000,
+		"serverUrl": "http://localhost:3000",
+		"db": {
+			"number": 2
+		},
+		"production": false,
+		"mail": {
+			"directory": "./mails"
+		},
+		"mailType": "PICKUP"
+	}
 }
