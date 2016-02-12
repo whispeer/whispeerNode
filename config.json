@@ -1,6 +1,5 @@
 {
 	"development": {
-		"pushServerUrl": "http://localhost:7777",
 		"host": "http://localhost:8080",
 		"ws": "127.0.0.1",
 		"wsPort": 3000,
@@ -27,5 +26,32 @@
 			"directory": "./mails"
 		},
 		"mailType": "PICKUP"
+	},
+	"production": {
+		"host": "https://whispeer.de",
+		"ws": "https://data.whispeer.de",
+		"wsPort": 443,
+		"serverUrl": "https://data.whispeer.de",
+		"db": {
+			"number": 0,
+			"url": "10.0.0.5"
+		},
+		"push": {
+			"apn": {
+				"production": true
+			}
+		},
+		"production": true,
+		"debug": false,
+		"https": {
+			"keyPath":"/var/www/ssnKeys/whispeer.de.key",
+			"certPath":"/var/www/ssnKeys/whispeer.de.crt",
+			"caPath":"/var/www/ssnKeys/thawte.crt"
+		},
+		"mailType": "sendmail",
+		"mail": {
+			   "path": "/usr/sbin/sendmail"
+		},
+		"mailFrom": "whispeer <support@whispeer.de>"
 	}
 }
