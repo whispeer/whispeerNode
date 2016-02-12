@@ -24,7 +24,7 @@ var keyHash = process.argv[2];
 
 setupP().then(function () {
 	console.log("Looking for backup key with parent key: " + keyHash);
-	return client.keysAsync("*:backupKeys");
+	return client.smembers("user:list");
 }).map(function (userid) {
 	return client.smembersAsync("user:" + userid + ":backupKeys").filter(function (keyID) {
 		console.log(keyID);
@@ -33,7 +33,7 @@ setupP().then(function () {
 			return decryptors.hasOwnProperty(keyHash);
 		});
 	}).then(function (matchingKeys) {
-		console.log(matchingKeys);
+		//console.log(matchingKeys);
 	});
 }).map(function () {
 	return "";
