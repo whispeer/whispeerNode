@@ -30,9 +30,13 @@ setupP().then(function () {
 		console.log(keyID);
 		return client.hgetallAsync("key:" + keyID + ":decryptor:map").then(function (decryptors) {
 			console.log(decryptors);
-			return Object.keys(decryptors).map(function (keyID) {
+			var keyIDs = Object.keys(decryptors).map(function (keyID) {
 				return keyID.split(":")[1];
-			}).indexOf(keyHash) > -1;
+			});
+
+			console.log(keyIDs);
+
+			return keyIDs.indexOf(keyHash) > -1;
 		});
 	});
 }).map(function (matchingKeys) {
@@ -41,7 +45,7 @@ setupP().then(function () {
 	}
 
 	return matchingKeys;
-}).then(function (results) {
+}).then(function () {
 	console.log("done finding key");
 	process.exit();
 });
