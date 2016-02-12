@@ -24,7 +24,7 @@ var keyHash = process.argv[2];
 
 setupP().then(function () {
 	console.log("Looking for backup key with parent key: " + keyHash);
-	return client.smembers("user:list");
+	return client.smembersAsync("user:list");
 }).map(function (userid) {
 	return client.smembersAsync("user:" + userid + ":backupKeys").filter(function (keyID) {
 		console.log(keyID);
