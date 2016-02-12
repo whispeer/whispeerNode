@@ -42,8 +42,6 @@ setupP().then(function () {
 
 	return matchingKeys;
 }).then(function (results) {
-	console.log(results.reduce(function (prev, cur) { return prev && cur; }, true));
-
-	console.log("done checking signatures");
+	console.log("done finding key");
 	process.exit();
 });
