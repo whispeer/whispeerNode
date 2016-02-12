@@ -34,15 +34,13 @@ setupP().then(function () {
 				return keyID.split(":")[1];
 			}).indexOf(keyHash) > -1;
 		});
-	}).then(function (matchingKeys) {
-		if (matchingKeys.length > 0) {
-			console.log(matchingKeys);
-		}
-
-		return matchingKeys;
 	});
-}).then(function (keys) {
-	console.log(keys);
+}).map(function (matchingKeys) {
+	if (matchingKeys.length > 0) {
+		console.log(matchingKeys);
+	}
+
+	return matchingKeys;
 }).then(function (results) {
 	console.log(results.reduce(function (prev, cur) { return prev && cur; }, true));
 
