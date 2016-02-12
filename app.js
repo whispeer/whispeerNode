@@ -11,16 +11,6 @@
 
 "use strict";
 
-var dependencyCheck = require("check-dependencies").sync({});
-
-if (!dependencyCheck.depsWereOk) {
-	console.error("Dependencies not satisfied!");
-
-	console.error(dependencyCheck.error);
-
-	return;
-}
-
 var fs = require("fs");
 var configManager = require("./includes/configManager");
 var config = configManager.get();
@@ -60,8 +50,18 @@ var client = require("./includes/redisClient");
 var onSocketConnection = require("./onSocketConnection");
 
 step(function () {
+	require("check-dependencies")({}, this.ne);
+}, h.sF(function (dependencyCheck) {
+	if (!dependencyCheck.depsWereOk) {
+		console.error("Dependencies not satisfied!");
+
+		console.error(dependencyCheck.error);
+
+		return;
+	}
+
 	setup(this);
-}, h.sF(function () {
+}), h.sF(function () {
 	client.smembers("user:online", this);
 }), h.sF(function (onlineUsers) {
 	console.log("User Sockets Removed from " + onlineUsers.length + " users");
