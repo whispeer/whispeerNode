@@ -30,10 +30,14 @@ setupP().then(function () {
 		console.log(keyID);
 		return client.hgetallAsync("key:" + keyID + ":decryptor:map").then(function (decryptors) {
 			console.log(decryptors);
-			return decryptors.hasOwnProperty(keyHash);
+			return Object.keys(decryptors).map(function (keyID) {
+				return keyID.split(":")[1];
+			}).indexOf(keyHash) > -1;
 		});
 	}).then(function (matchingKeys) {
-		//console.log(matchingKeys);
+		if (matchingKeys.length > 0) {
+			console.log(matchingKeys);
+		}
 	});
 }).map(function () {
 	return "";
