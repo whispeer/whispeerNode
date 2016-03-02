@@ -82,9 +82,7 @@ var Post = function (postid) {
 		}), h.sF(function (sender) {
 			Notification.add([sender], "post", "comment", postid);
 
-			client.zadd("user:" + sender.getID() + ":postsByComment", new Date().getTime(), postid);
-
-			this.ne();
+			client.zadd("user:" + sender.getID() + ":postsByComment", new Date().getTime(), postid, this);
 		}), cb);
 	};
 
