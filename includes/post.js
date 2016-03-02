@@ -82,6 +82,8 @@ var Post = function (postid) {
 		}), h.sF(function (sender) {
 			Notification.add([sender], "post", "comment", postid);
 
+			client.zadd("user:" + sender.getID() + ":postsByComment", new Date().getTime(), postid);
+
 			this.ne();
 		}), cb);
 	};
@@ -200,7 +202,7 @@ var Post = function (postid) {
 			//m.del(domain);
 
 			m.zrem("user:" + sender + ":posts", postid);
-			m.zrem("user:" + sender + ":newPosts", postid);
+			m.zrem("user:" + sender + ":postsByComment", postid);
 			m.zrem("user:" + sender + ":wall", postid);
 
 			if (walluser) {
@@ -369,7 +371,7 @@ function makePost(request, id) {
 	return post;
 }
 
-Post.getTimeline = function (request, filter, afterID, count, cb) {
+Post.getTimeline = function (request, filter, afterID, count, sortByCommentTime, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
 	//zinterstore
@@ -381,7 +383,11 @@ Post.getTimeline = function (request, filter, afterID, count, cb) {
 		getUserIDsForFilter(request, filter, this);
 	}, h.sF(function (userids) {
 		var postKeys = userids.map(function (userid) {
-			return "user:" + userid + ":posts";
+			if (!sortByCommentTime) {
+				return "user:" + userid + ":posts";
+			} else {
+				return "user:" + userid + ":postsByComment";
+			}
 		});
 
 		unionKey = "post:union:" + request.session.getUserID() + ":" + userids.sort().join(",");
@@ -532,6 +538,7 @@ Post.create = function (request, data, cb) {
 		postID = id;
 		var multi = client.multi();
 		multi.zadd("user:" + request.session.getUserID() + ":posts", data.meta.time, id);
+		multi.zadd("user:" + request.session.getUserID() + ":postsByComment", data.meta.time, id);
 
 		if (data.meta.walluser) {
 			multi.zadd("user:" + data.meta.walluser + ":wall", data.meta.time, id);

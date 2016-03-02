@@ -59,7 +59,7 @@ var p = {
 		var remainingPosts;
 
 		step(function () {
-			Post.getTimeline(request, data.filter, data.afterID, data.count, this);
+			Post.getTimeline(request, data.filter, data.afterID, data.count, data.sortByCommentTime, this);
 		}, h.sF(function (posts, remaining) {
 			remainingPosts = remaining;
 
