@@ -17,8 +17,6 @@ var RedisObserver = require("./asset/redisObserver");
 
 var Notification = require("./notification");
 
-var newPostsExpireTime = 10 * 60;
-
 /*
 	signature is of meta without signature.
 
@@ -218,11 +216,6 @@ var Post = function (postid) {
 	RedisObserver.call(this, "post", postid);
 };
 
-function removeOldNewPosts(multi, userid) {
-	var minTime = new Date().getTime() - newPostsExpireTime * 1000;
-	multi.zremrangebyscore("user:" + userid + ":newPosts", "-inf", minTime);
-}
-
 function getUserIDsFromUserFilter(filter, cb) {
 	step(function () {
 		if (filter.length > 0) {
@@ -414,50 +407,6 @@ Post.getTimeline = function (request, filter, afterID, count, cb) {
 	}), cb);
 };
 
-Post.getNewestPosts = function (request, filter, beforeID, count, lastRequestTime, cb) {
-	var unionKey, userids;
-
-	step(function () {
-		if (new Date().getTime() - h.parseDecimal(lastRequestTime) > newPostsExpireTime * 1000) {
-			throw new TimeSpanExceeded();
-		} else {
-			getUserIDsForFilter(request, filter, this);
-		}
-	}, h.sF(function (_userids) {
-		userids = _userids;
-		var multi = client.multi();
-
-		userids.forEach(function (userid) {
-			removeOldNewPosts(multi, userid);
-		});
-
-		multi.exec(this);
-	}), h.sF(function () {
-		var postKeys = userids.map(function (userid) {
-			return "user:" + userid + ":newPosts";
-		});
-
-		unionKey = "post:union:" + request.session.getUserID() + ":newPosts:" + userids.sort().join(",");
-		postKeys.unshift(postKeys.length);
-		postKeys.unshift(unionKey);
-		postKeys.push(this);
-
-		client.zunionstore.apply(client, postKeys);
-	}), h.sF(function (resultLength) {
-		if (resultLength === 0) {
-			this.last.ne([]);
-		} else {
-			var paginator = new SortedSetPaginator(unionKey, count, true);
-			client.expire(unionKey, 120);
-
-			paginator.getRangeAfterID(beforeID, this, accessablePostFilter(request));
-		}		
-	}), h.sF(function (ids, remaining) {
-		var result = ids.reverse().map(h.newElement(Post));
-		this.ne(result, remaining);
-	}), cb);
-};
-
 Post.getUserWall = function (request, userid, afterID, count, cb) {
 	step(function () {
 		var paginator = new SortedSetPaginator("user:" + userid + ":wall", count);
@@ -592,10 +541,7 @@ Post.create = function (request, data, cb) {
 		multi.set("post:" + id, id);
 		multi.hmset("post:" + id + ":content", data.content);
 
-		removeOldNewPosts(multi, request.session.getUserID());
 		multi.zadd("user:" + request.session.getUserID() + ":wall", data.meta.time, id);
-		multi.zadd("user:" + request.session.getUserID() + ":newPosts", data.meta.time, id);
-		multi.expire("user:" + request.session.getUserID() + ":newPosts", newPostsExpireTime);
 
 		multi.exec(this);
 	}), h.sF(function () {
