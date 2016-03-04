@@ -17,8 +17,6 @@ var RedisObserver = require("./asset/redisObserver");
 
 var Notification = require("./notification");
 
-var newPostsExpireTime = 10 * 60;
-
 /*
 	signature is of meta without signature.
 
@@ -84,7 +82,7 @@ var Post = function (postid) {
 		}), h.sF(function (sender) {
 			Notification.add([sender], "post", "comment", postid);
 
-			this.ne();
+			client.zadd("user:" + sender.getID() + ":postsByComment", new Date().getTime(), postid, this);
 		}), cb);
 	};
 
@@ -202,7 +200,7 @@ var Post = function (postid) {
 			//m.del(domain);
 
 			m.zrem("user:" + sender + ":posts", postid);
-			m.zrem("user:" + sender + ":newPosts", postid);
+			m.zrem("user:" + sender + ":postsByComment", postid);
 			m.zrem("user:" + sender + ":wall", postid);
 
 			if (walluser) {
@@ -217,11 +215,6 @@ var Post = function (postid) {
 
 	RedisObserver.call(this, "post", postid);
 };
-
-function removeOldNewPosts(multi, userid) {
-	var minTime = new Date().getTime() - newPostsExpireTime * 1000;
-	multi.zremrangebyscore("user:" + userid + ":newPosts", "-inf", minTime);
-}
 
 function getUserIDsFromUserFilter(filter, cb) {
 	step(function () {
@@ -376,7 +369,7 @@ function makePost(request, id) {
 	return post;
 }
 
-Post.getTimeline = function (request, filter, afterID, count, cb) {
+Post.getTimeline = function (request, filter, afterID, count, sortByCommentTime, cb) {
 	//get all users who we want to get posts for
 	//generate redis key names
 	//zinterstore
@@ -388,7 +381,11 @@ Post.getTimeline = function (request, filter, afterID, count, cb) {
 		getUserIDsForFilter(request, filter, this);
 	}, h.sF(function (userids) {
 		var postKeys = userids.map(function (userid) {
-			return "user:" + userid + ":posts";
+			if (!sortByCommentTime) {
+				return "user:" + userid + ":posts";
+			} else {
+				return "user:" + userid + ":postsByComment";
+			}
 		});
 
 		unionKey = "post:union:" + request.session.getUserID() + ":" + userids.sort().join(",");
@@ -410,50 +407,6 @@ Post.getTimeline = function (request, filter, afterID, count, cb) {
 		var result = ids.map(function (id) {
 			return makePost(request, id);
 		});
-		this.ne(result, remaining);
-	}), cb);
-};
-
-Post.getNewestPosts = function (request, filter, beforeID, count, lastRequestTime, cb) {
-	var unionKey, userids;
-
-	step(function () {
-		if (new Date().getTime() - h.parseDecimal(lastRequestTime) > newPostsExpireTime * 1000) {
-			throw new TimeSpanExceeded();
-		} else {
-			getUserIDsForFilter(request, filter, this);
-		}
-	}, h.sF(function (_userids) {
-		userids = _userids;
-		var multi = client.multi();
-
-		userids.forEach(function (userid) {
-			removeOldNewPosts(multi, userid);
-		});
-
-		multi.exec(this);
-	}), h.sF(function () {
-		var postKeys = userids.map(function (userid) {
-			return "user:" + userid + ":newPosts";
-		});
-
-		unionKey = "post:union:" + request.session.getUserID() + ":newPosts:" + userids.sort().join(",");
-		postKeys.unshift(postKeys.length);
-		postKeys.unshift(unionKey);
-		postKeys.push(this);
-
-		client.zunionstore.apply(client, postKeys);
-	}), h.sF(function (resultLength) {
-		if (resultLength === 0) {
-			this.last.ne([]);
-		} else {
-			var paginator = new SortedSetPaginator(unionKey, count, true);
-			client.expire(unionKey, 120);
-
-			paginator.getRangeAfterID(beforeID, this, accessablePostFilter(request));
-		}		
-	}), h.sF(function (ids, remaining) {
-		var result = ids.reverse().map(h.newElement(Post));
 		this.ne(result, remaining);
 	}), cb);
 };
@@ -583,6 +536,7 @@ Post.create = function (request, data, cb) {
 		postID = id;
 		var multi = client.multi();
 		multi.zadd("user:" + request.session.getUserID() + ":posts", data.meta.time, id);
+		multi.zadd("user:" + request.session.getUserID() + ":postsByComment", data.meta.time, id);
 
 		if (data.meta.walluser) {
 			multi.zadd("user:" + data.meta.walluser + ":wall", data.meta.time, id);
@@ -592,10 +546,7 @@ Post.create = function (request, data, cb) {
 		multi.set("post:" + id, id);
 		multi.hmset("post:" + id + ":content", data.content);
 
-		removeOldNewPosts(multi, request.session.getUserID());
 		multi.zadd("user:" + request.session.getUserID() + ":wall", data.meta.time, id);
-		multi.zadd("user:" + request.session.getUserID() + ":newPosts", data.meta.time, id);
-		multi.expire("user:" + request.session.getUserID() + ":newPosts", newPostsExpireTime);
 
 		multi.exec(this);
 	}), h.sF(function () {

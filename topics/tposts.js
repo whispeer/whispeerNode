@@ -55,38 +55,11 @@ var p = {
 			});
 		}), fn);
 	},
-	getNewestTimeline: function (data, fn, request) {
-		var remainingPosts = false;
-		step(function () {
-			Post.getNewestPosts(request, data.filter, data.beforeID, data.count, data.lastRequestTime, this);
-		}, h.sF(function (posts, remaining) {
-			remainingPosts = remaining;
-
-			if (posts.length === 0) {
-				this.ne([]);
-			}
-
-			posts.forEach(function (e) {
-				e.getPostData(request, this.parallel(), data.addKey);
-			}, this);
-		}), h.hE(function (err, data) {
-			if (err) {
-				this.ne({
-					timeSpanExceeded: true
-				});
-			} else {
-				this.ne({
-					posts: data,
-					remaining: remainingPosts
-				});
-			}
-		}, [TimeSpanExceeded]), fn);
-	},
 	getTimeline: function (data, fn, request) {
 		var remainingPosts;
 
 		step(function () {
-			Post.getTimeline(request, data.filter, data.afterID, data.count, this);
+			Post.getTimeline(request, data.filter, data.afterID, data.count, data.sortByCommentTime, this);
 		}, h.sF(function (posts, remaining) {
 			remainingPosts = remaining;
 
