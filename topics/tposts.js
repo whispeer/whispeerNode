@@ -74,6 +74,7 @@ var p = {
 		}), h.sF(function (data) {
 			this.ne({
 				posts: data,
+				displayDonateHint: false,
 				remaining: remainingPosts
 			});
 		}), fn);
