@@ -252,9 +252,20 @@ var User = function (id) {
 	function updateSearch(request) {
 		step(function () {
 			this.parallel.unflatten();
-			theUser.getName(request, this);
-		}, h.sF(function (name) {
-			search.user.index(name, id);
+			theUser.getNickname(request, this.parallel());
+			theUser.getPublicProfile(request, this.parallel());
+		}, h.sF(function (nickname, publicProfile) {
+			var firstname = "", lastname = "";
+			if (publicProfile && publicProfile.content && publicProfile.content.basic) {
+				firstname = publicProfile.content.basic.firstname || "";
+				lastname = publicProfile.content.basic.lastname || "";
+			}
+
+			search.user.index(id, {
+				nickname: nickname,
+				firstname: firstname,
+				lastname: lastname
+			});
 			//TO-DO: search.friendsSearch(request).updateOwn(friends, name);
 		}), function (e) {
 			if (e) {
@@ -894,12 +905,14 @@ var User = function (id) {
 User.search = function (text, cb) {
 	step(function () {
 		this.parallel.unflatten();
-		if (text.length > 2) {
-			search.user.type("and").query(text, this.parallel());
-		}
-		this.parallel()(null, []);
+
+		search.user.search(text, this.parallel());
 		User.getUser(text, this.parallel(), true);
-	}, h.sF(function (ids, user) {
+	}, h.sF(function (results, user) {
+		var ids = results.hits.hits.map(function (hit) {
+			return hit._id;
+		});
+
 		ids = ids.map(h.parseDecimal);
 
 		var position;

@@ -1,6 +1,11 @@
 "use strict";
-var rs = require("redis-search");
 var client = require("./redisClient");
+
+var elasticsearch = require("elasticsearch");
+var client = new elasticsearch.Client({
+  host: "localhost:9200",
+  log: "trace"
+});
 
 function makeSearch(key) {
 	return rs.createSearch({
@@ -11,10 +16,39 @@ function makeSearch(key) {
 	});
 }
 
-var userSearch = makeSearch("user");
-
 var search = {
-	user: userSearch,
+	user: {
+		index: function (userID, userData) {
+			return client.index({
+				"index": "whispeer",
+				"type": "user",
+				"id": userID,
+				"body": userData
+			});
+		},
+		remove: function (userID) {
+			return client.delete({
+				"index": "whispeer",
+				"type": "user",
+				"id": userID
+			});
+		},
+		search: function (text, cb) {
+			return client.search({
+				index: "whispeer",
+				type: "user",
+				body: {
+					query: {
+						"multi_match": {
+							"fields":  ["firstname", "lastname", "nickname"],
+							"query":     text,
+							"fuzziness": "AUTO"
+						}
+					}
+				}
+			}, cb);
+		}
+	},
 	friendsSearch: function (userid) {
 		function searchKey(uid) {
 			return "friends:" + uid + ":search";
