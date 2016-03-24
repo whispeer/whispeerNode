@@ -22,6 +22,8 @@ var errorService = require("./errorService");
 
 var verifySecuredMeta = require("./verifyObject");
 
+var Bluebird = require("bluebird");
+
 /** get a random sid of given length 
 * @param length length of sid
 * @param callback callback
@@ -126,39 +128,38 @@ var Session = function Session() {
 	* anyhow it will be turned to false shortly after.
 	*/
 	function checkLogin(cb) {
-		step(function () {
-			if (logedin === true) {
-				if (CHECKTIME < time() - lastChecked) {
-					client.get("session:" + sid, this);
-				} else {
-					this.last.ne(true);
-				}
-			} else {
-				console.log("Not logged in");
-				this.last.ne(false);
+		var p = Bluebird.try(function () {
+			if (!logedin) {
+				return false;
 			}
-		}, h.sF(function (id) {
-			lastChecked = time();
-			if (parseInt(id, 10) !== parseInt(userid, 10)) {
-				console.log("Logout: " + id + " - " + userid);
-				this.ne(false);
+
+			if (CHECKTIME < time() - lastChecked) {
+				return client.getAsync("session:" + sid).then(function (id) {
+					lastChecked = time();
+					if (h.parseDecimal(id) !== h.parseDecimal(userid)) {
+						console.log("Logout: " + id + " - " + userid);
+						return false;
+					} else {
+						client.expire("session:" + sid, SESSIONTIME);
+						return true;
+					}
+				});
 			} else {
-				client.expire("session:" + sid, SESSIONTIME);
-				this.ne(true);
-			}
-		}), cb);
+				return true;
+			}			
+		});
+
+		return step.unpromisify(p, cb);
 	}
 
 	function checkLoginError(cb) {
-		step(function () {
-			session.logedin(this);
-		}, h.sF(function (logedin) {
+		var p = session.logedin().then(function (logedin) {
 			if (!logedin) {
 				throw new NotLogedin();
-			} else {
-				this.ne();
 			}
-		}), cb);
+		});
+
+		return step.unpromisify(p, cb);
 	}
 
 	this.logedin = checkLogin;

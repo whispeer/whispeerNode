@@ -108,21 +108,19 @@ KeyApi.get = function getKF(realid, callback) {
 		throw new Error("invalid realid " + realid);
 	}
 
-	step(function () {
-		client.hget("key:" + realid, "type", this);
-	}, h.sF(function (type) {
+	var p = client.hgetAsync("key:" + realid, "type").then(function (type) {
 		switch (type) {
 		case "sym":
-			this.last.ne(new SymKey(realid));
-			break;
+			return new SymKey(realid);
 		case "crypt":
 		case "sign":
-			this.last.ne(new EccKey(realid));
-			break;
+			return new EccKey(realid);
 		default:
 			throw new KeyNotFound("key not found for realid: " + realid);
-		}
-	}), callback);
+		}		
+	});
+
+	return step.unpromisify(p, callback);
 };
 
 KeyApi.createWithDecryptors = function (request, keyData, cb) {
