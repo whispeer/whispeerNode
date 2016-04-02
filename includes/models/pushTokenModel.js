@@ -33,16 +33,30 @@ var PushToken = Waterline.Collection.extend({
 			unique: true
 		},
 
+		pushKey: {
+			type: "string",
+			required: false,
+			unique: false
+		},
+
 		push: function (data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
-				return pushService.pushAndroid(this.token, {
+				var androidData = {
 					title: title,
 					message: "-",
-					content: data,
 					topicid: referenceID,
 					vibrationPattern: [0, 400, 500, 400],
 					ledColor: [0, 0, 255, 0]
-				});
+				};
+
+				if (this.pushKey) {
+					var sjcl = require("./crypto/sjcl");
+					androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+				} else {
+					androidData.content = data;
+				}
+
+				return pushService.pushAndroid(this.token, androidData);
 			} else if (this.deviceType === "ios") {
 				return pushService.pushIOS(this.token, { topicid: referenceID }, title, badge);
 			} else {
