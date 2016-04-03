@@ -122,11 +122,22 @@ var blobStorage = {
 			this.ne(blobid);
 		}), cb);
 	},
-	addBlobPart: function (request, blobid, blobPart, previousSize, cb) {
+	addBlobPart: function (request, blobid, blobPart, previousSize, lastPart, cb) {
 		step(function () {
-			fs.appendFile(blobIDtoFile(blobid), blobPart, this);
-		}, h.sF(function () {
+			//check previousSize is correct!
+			//check we own this blob!
 			this.ne();
+		}, h.sF(function () {
+			fs.appendFile(blobIDtoFile(blobid), blobPart, this);
+		}), h.sF(function () {
+			if (lastPart) {
+				useBlobID(blobid, this.parallel());
+				client.sadd("blobs:usedids", blobid, this.parallel());
+			} else {
+				this.ne();
+			}
+		}), h.sF(function () {
+			this.ne(false);
 		}), cb);
 	},
 	addBlobFromStream: function (stream, blobid, cb) {
