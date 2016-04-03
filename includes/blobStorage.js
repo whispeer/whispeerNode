@@ -124,8 +124,28 @@ var blobStorage = {
 	},
 	addBlobPart: function (request, blobid, blobPart, previousSize, lastPart, cb) {
 		step(function () {
-			//check previousSize is correct!
-			//check we own this blob!
+			fs.stat(blobIDtoFile(blobid), this);
+		}, function (err, stats) {
+			if (err) {
+				if (previousSize > 0) {
+					this.last.ne(true);
+				} else {
+					this.ne();
+				}
+
+				return;
+			}
+
+			if (previousSize === 0) {
+				fs.unlink(blobIDtoFile(blobid), this);
+				return;
+			}
+
+			if (stats.size !== previousSize) {
+				this.last.ne(true);
+				return;
+			}
+
 			this.ne();
 		}, h.sF(function () {
 			fs.appendFile(blobIDtoFile(blobid), blobPart, this);
