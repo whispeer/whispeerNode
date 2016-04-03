@@ -19,7 +19,7 @@ var pushBlobAPI = {
 var streamAPI = {
 	uploadBlobPart: function (data, fn, request) {
 		step(function () {
-			if (data.size !== data.blobPart.byteLength) {
+			if (data.size !== (data.blobPart.byteLength || data.blobPart.length)) {
 				this.last.ne({ reset: true });
 				return;
 			}
