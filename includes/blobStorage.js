@@ -122,6 +122,13 @@ var blobStorage = {
 			this.ne(blobid);
 		}), cb);
 	},
+	addBlobPart: function (request, blobid, blobPart, previousSize, cb) {
+		step(function () {
+			fs.appendFile(blobIDtoFile(blobid), blobPart, this);
+		}, h.sF(function () {
+			this.ne();
+		}), cb);
+	},
 	addBlobFromStream: function (stream, blobid, cb) {
 		step(function () {
 			useBlobID(blobid, this);

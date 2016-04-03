@@ -17,6 +17,26 @@ var pushBlobAPI = {
 };
 
 var streamAPI = {
+	uploadBlobPart: function (data, fn, request) {
+		console.log("blob part!");
+		console.log(data.blobid);
+		console.log(data.blobPart.byteLength);
+		console.log(data.doneBytes);
+		console.log(data.size);
+		console.log(data.last);
+
+		step(function () {
+			if (data.size !== data.blobPart.byteLength) {
+				this.last.ne({ reset: true });
+				return;
+			}
+
+			blobStorage.addBlobPart(request, data.blobid, data.blobPart, data.doneBytes, this);
+		}, h.sF(function () {
+			console.log("added succesfully");
+			this.ne();
+		}), fn);
+	},
 	preReserveID: function (data, fn) {
 		step(function () {
 			blobStorage.preReserveBlobID(this);
