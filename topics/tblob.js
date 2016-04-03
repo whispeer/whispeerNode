@@ -26,7 +26,6 @@ var streamAPI = {
 
 			blobStorage.addBlobPart(request, data.blobid, data.blobPart, data.doneBytes, data.lastPart, this);
 		}, h.sF(function (reset) {
-			console.log("added part succesfully for blob: " + data.blobid);
 			this.ne({ reset: reset });
 		}), fn);
 	},
