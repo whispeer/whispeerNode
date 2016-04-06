@@ -129,8 +129,9 @@ var Post = function (postid) {
 
 			client.hgetall(domain + ":meta", this.parallel());
 			client.hgetall(domain + ":content", this.parallel());
+			client.get(domain + ":private", this.parallel());
 			thePost.getComments(request, this.parallel());
-		}, h.sF(function (meta, content, comments) {
+		}, h.sF(function (meta, content, privateData, comments) {
 			meta.sender = h.parseDecimal(meta.sender);
 			meta.time = h.parseDecimal(meta.time);
 			meta.walluser = h.parseDecimal(meta.walluser || 0);
@@ -145,6 +146,10 @@ var Post = function (postid) {
 				content: content,
 				comments: comments
 			};
+
+			if (meta.sender === request.session.getUserID()) {
+				result.private = JSON.parse(privateData);
+			}
 
 			request.addKey(meta._key, this);
 		}), h.sF(function () {
@@ -542,6 +547,7 @@ Post.create = function (request, data, cb) {
 			multi.zadd("user:" + data.meta.walluser + ":wall", data.meta.time, id);
 		}
 
+		multi.set("post:" + id + ":private", JSON.stringify(data.privateData));
 		multi.hmset("post:" + id + ":meta", data.meta);
 		multi.set("post:" + id, id);
 		multi.hmset("post:" + id + ":content", data.content);
