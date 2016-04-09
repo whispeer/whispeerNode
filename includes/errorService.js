@@ -33,7 +33,8 @@ var errorService = {
 					requestString += "\n\n";
 					requestString += "User: " + request.session.getUserID() + "\n";
 					requestString += "Channel: " + request.channel + "\n";
-					requestString += "Raw Request: " + JSON.stringify(request.rawRequest);
+					requestString += "Raw Request: " + JSON.stringify(request.rawRequest) + "\n";
+					requestString += "Headers: " + JSON.stringify(request.socket.handshake.headers);
 				}
 
 				var mailer = require("./mailer");
