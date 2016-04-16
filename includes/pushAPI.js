@@ -60,10 +60,12 @@ var pushAPI = {
 
 			return pushToken.findOne({ token: token }).then(function (record) {
 				if (!record) {
+					console.log("CREATE: " + JSON.stringify(givenData));
 					return pushToken.create(givenData);
 				}
 
 				if (record.userID !== givenData.userID || record.pushKey !== givenData.pushKey) {
+					console.log("UPDATE: " + JSON.stringify(givenData));
 					return pushToken.update({ token: token }, givenData);
 				}
 			});
