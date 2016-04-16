@@ -51,6 +51,7 @@ var PushToken = Waterline.Collection.extend({
 
 				if (this.pushKey) {
 					var sjcl = require("../crypto/sjcl");
+					console.log("Using key: " + this.pushKey);
 					androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
 				} else {
 					androidData.content = data;
