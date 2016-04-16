@@ -25,7 +25,7 @@ waterlineLoader.then(function (ontology) {
 
 			console.info("removing ios devices from database: " + JSON.stringify(tokens));
 
-			return pushToken.destroy({ token: tokens });			
+			return pushToken.destroy({ token: tokens });
 		}).catch(errorService.handleError);
 	});
 
@@ -66,7 +66,9 @@ var pushAPI = {
 
 				if (record.userID !== givenData.userID || record.pushKey !== givenData.pushKey) {
 					console.log("UPDATE: " + JSON.stringify(givenData));
-					return pushToken.update({ token: token }, givenData);
+					return pushToken.destroy({ token: token }).then(function () {
+						return pushToken.create(givenData);
+					});
 				}
 			});
 		}).nodeify(cb);
