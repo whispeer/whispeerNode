@@ -45,11 +45,24 @@ var MAXTIME = 60 * 60 * 1000;
 var Post = function (postid) {
 	var domain = "post:" + postid, thePost = this, result;
 
+	this.deleteComment = function (request, commentID, cb) {
+		client.hgetAsync(domain + ":comments:" + commentID + ":meta", "sender").then(function (senderID) {
+			if (h.parseDecimal(senderID) !== request.session.getUserID()) {
+				throw new AccessViolation("User tried to delete comment of another user");
+			}
+
+			return client.zremAsync(domain + ":comments:list", commentID);
+		}).nodeify(cb);
+	};
+
 	this.addComment = function (request, content, meta, cb) {
 		var commentID = 0;
 		step(function () {
+			if (request.session.getUserID() !== h.parseDecimal(meta.sender)) {
+				throw new AccessViolation("Invalid sender!");
+			}
+
 			//TODO: check data
-			//TODO: check comment ordering!
 			client.zrevrange(domain + ":comments:list", 0, 0, this);
 		}, h.sF(function (newest) {
 			this.parallel.unflatten();

@@ -43,6 +43,17 @@ var p = {
 					created: true
 				});
 			}), fn);
+		},
+		delete: function (data, fn, request) {
+			step(function () {
+				Post.get(request, h.parseDecimal(data.post), this);
+			}, h.sF(function (thePost) {
+				thePost.deleteComment(request, h.parseDecimal(data.comment), this);
+			}), h.sF(function () {
+				this.ne({
+					deleted: true
+				});
+			}), fn);
 		}
 	},
 	remove: function (data, fn, request) {
