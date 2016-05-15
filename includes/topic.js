@@ -292,6 +292,8 @@ var Topic = function (id) {
 			unread = isUnread;
 			if (!isUnread) {
 				client.zrem("topic:user:" + request.session.getUserID() + ":unreadTopics", id, this.parallel());
+
+				request.socketData.notifyOwnClients("topicRead", id);
 			}
 
 			this.parallel()();

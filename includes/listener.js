@@ -54,6 +54,21 @@ var listener = {
 			}
 		});
 	},
+	topicRead: function (socketData) {
+		var Topic = require("./topic.js");
+
+		step(function () {
+			var request = new RequestData(socketData, {});
+
+			Topic.unreadIDs(request, this);
+		}, h.sF(function (ids) {
+			socketData.socket.emit("unreadTopics", { unread: ids });
+		}), function (e) {
+			if (e) {
+				console.error(e);
+			}
+		});
+	},
 	message: function messageLF(socketData, messageid) {
 		var Message = require("./messages.js");
 		var m, mData, theTopic;
