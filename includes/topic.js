@@ -449,6 +449,12 @@ var Topic = function (id) {
 	};
 };
 
+Topic.unreadIDs = function (request, cb) {
+	step(function () {
+		client.zrevrange("topic:user:" + request.session.getUserID() + ":unreadTopics", 0, -1, this);
+	}, cb);
+};
+
 Topic.unreadCount = function (request, cb) {
 	step(function () {
 		client.zcard("topic:user:" + request.session.getUserID() + ":unreadTopics", this);

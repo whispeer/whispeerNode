@@ -124,6 +124,13 @@ var t = {
 			});
 		}), fn);
 	},
+	getUnreadTopicIDs: function (data, fn, request) {
+		step(function () {
+			Topic.unreadIDs(request, this);
+		}, h.sF(function (unread) {
+			this.ne({unread: unread});
+		}), fn);
+	},
 	getUnreadCount: function getUnreadCountF(data, fn, request) {
 		step(function () {
 			Topic.unreadCount(request, this);
