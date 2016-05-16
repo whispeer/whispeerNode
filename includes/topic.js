@@ -292,6 +292,8 @@ var Topic = function (id) {
 			unread = isUnread;
 			if (!isUnread) {
 				client.zrem("topic:user:" + request.session.getUserID() + ":unreadTopics", id, this.parallel());
+
+				request.socketData.notifyOwnClients("topicRead", id);
 			}
 
 			this.parallel()();
@@ -447,6 +449,12 @@ var Topic = function (id) {
 			this.ne(server, meta, additionalKey);
 		}), cb);
 	};
+};
+
+Topic.unreadIDs = function (request, cb) {
+	step(function () {
+		client.zrevrange("topic:user:" + request.session.getUserID() + ":unreadTopics", 0, -1, this);
+	}, cb);
 };
 
 Topic.unreadCount = function (request, cb) {
