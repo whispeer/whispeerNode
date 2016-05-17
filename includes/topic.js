@@ -11,6 +11,8 @@ var KeyApi = require("./crypto/KeyApi");
 
 var mailer = require("./mailer");
 
+var config = require("./configManager").get();
+
 //maximum difference: 5 minutes.
 var MAXTIME = 60 * 60 * 1000;
 
@@ -602,5 +604,14 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 		this.ne(new Topic(theTopicID));
 	}), cb);
 };
+
+var base = "db:" + (config.db.number || 0) + ":observer:user:";
+client.psub(base + "*:topicRead", function (channel) {
+	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
+	
+	client.zrevrangeAsync("topic:user:" + userID + ":unreadTopics", 0, -1).then(function (unreadMessagesCount) {
+		return pushAPI.sendNotification([userID], {}, unreadMessagesCount, "");	
+	});
+});
 
 module.exports = Topic;

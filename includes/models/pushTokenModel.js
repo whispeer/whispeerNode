@@ -42,12 +42,15 @@ var PushToken = Waterline.Collection.extend({
 		push: function (data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
 				var androidData = {
-					title: title,
-					message: "-",
 					topicid: referenceID,
 					vibrationPattern: [0, 400, 500, 400],
 					ledColor: [0, 0, 255, 0]
 				};
+
+				if (title) {
+					androidData.title = title;
+					androidData.message = "-";
+				}
 
 				if (this.pushKey) {
 					var sjcl = require("../crypto/sjcl");

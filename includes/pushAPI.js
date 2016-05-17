@@ -100,6 +100,12 @@ var pushAPI = {
 
 			return pushToken.find({ where: { userID: users }});
 		}).map(function (user) {
+			var referenceID = 0;
+
+			if (data && data.message && data.message.meta && data.message.meta.topicid) {
+				referenceID = data.message.meta.topicid;
+			}
+
 			console.log("got a user");
 			return user.push(data, title, unreadMessageCount, data.message.meta.topicid);
 		});
