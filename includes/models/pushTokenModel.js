@@ -52,12 +52,14 @@ var PushToken = Waterline.Collection.extend({
 					androidData.message = "-";
 				}
 
-				if (this.pushKey) {
-					var sjcl = require("../crypto/sjcl");
-					console.log("Using key: " + this.pushKey);
-					androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
-				} else {
-					androidData.content = data;
+				if (data) {
+					if (this.pushKey) {
+						var sjcl = require("../crypto/sjcl");
+						console.log("Using key: " + this.pushKey);
+						androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+					} else {
+						androidData.content = data;
+					}
 				}
 
 				return pushService.pushAndroid(this.token, androidData);

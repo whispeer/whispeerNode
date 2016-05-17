@@ -610,7 +610,7 @@ client.psub(base + "*:topicRead", function (channel) {
 	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
 	
 	client.zrevrangeAsync("topic:user:" + userID + ":unreadTopics", 0, -1).then(function (unreadMessagesCount) {
-		return pushAPI.sendNotification([userID], {}, unreadMessagesCount, "");	
+		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount, "");	
 	});
 });
 
