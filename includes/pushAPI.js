@@ -107,7 +107,7 @@ var pushAPI = {
 			}
 
 			console.log("got a user");
-			return user.push(data, title, unreadMessageCount, data.message.meta.topicid);
+			return user.push(data, title, unreadMessageCount, referenceID);
 		});
 	}
 };
