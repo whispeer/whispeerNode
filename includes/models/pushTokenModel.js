@@ -41,7 +41,7 @@ var PushToken = Waterline.Collection.extend({
 
 		push: function (data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
-				if (!title && !referenceID) {
+				if (!data && !title && !referenceID) {
 					return;
 				}
 
