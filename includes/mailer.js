@@ -143,16 +143,22 @@ var mailer = {
 	sendInteractionMails: function (users, type, subType, interactionObj, options) {
 		var sendUserMail = Bluebird.promisify(mailer.sendUserMail, mailer);
 
+		console.log("sending interaction mail to users: " + users.map(function (user) {
+			return user.getID();
+		}));
+
 		return Bluebird.resolve(users).filter(function (user) {
+			if (options && options.sendMailWhileOnline) {
+				return true;
+			}
+
 			var isOnline = Bluebird.promisify(user.isOnline, user);
 
 			return Bluebird.all([
 				client.sismemberAsync("mail:notifiedUsers", user.getID()),
 				isOnline()
 			]).spread(function (alreadyNotified, isOnline) {
-				if (options && options.sendMailWhileOnline) {
-					return true;
-				}
+				console.log("User " + user.getID() + " mail status: " + alreadyNotified + " - " + isOnline);
 
 				return !isOnline && !alreadyNotified;
 			});
@@ -244,6 +250,7 @@ var mailer = {
 		}), cb);
 	},
 	sendUserMail: function (user, templateName, variables, cb, overwriteActive, overwriteVerified) {
+		console.log("Sending mail to user: " + user.getID());
 		var receiver;
 		step(function () {
 			this.parallel.unflatten();
@@ -264,6 +271,7 @@ var mailer = {
 			if (activated) {
 				mailer.sendMail(receiver, templateName, variables, this);
 			} else {
+				console.log("Mail not activated for user: " + user.getID());
 				this.last.ne(false);
 			}
 		}), cb);
