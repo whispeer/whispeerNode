@@ -609,8 +609,8 @@ var base = "db:" + (config.db.number || 0) + ":observer:user:";
 client.psub(base + "*:topicRead", function (channel) {
 	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
 	
-	client.zrevrangeAsync("topic:user:" + userID + ":unreadTopics", 0, -1).then(function (unreadMessagesCount) {
-		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount, "");	
+	client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessagesCount) {
+		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount || 0, "");
 	});
 });
 
