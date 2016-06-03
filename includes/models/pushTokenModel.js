@@ -41,20 +41,29 @@ var PushToken = Waterline.Collection.extend({
 
 		push: function (data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
+				if (!data && !title && !referenceID) {
+					return;
+				}
+
 				var androidData = {
-					title: title,
-					message: "-",
 					topicid: referenceID,
 					vibrationPattern: [0, 400, 500, 400],
 					ledColor: [0, 0, 255, 0]
 				};
 
-				if (this.pushKey) {
-					var sjcl = require("../crypto/sjcl");
-					console.log("Using key: " + this.pushKey);
-					androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
-				} else {
-					androidData.content = data;
+				if (title) {
+					androidData.title = title;
+					androidData.message = "-";
+				}
+
+				if (data) {
+					if (this.pushKey) {
+						var sjcl = require("../crypto/sjcl");
+						console.log("Using key: " + this.pushKey);
+						androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+					} else {
+						androidData.content = data;
+					}
 				}
 
 				return pushService.pushAndroid(this.token, androidData);
