@@ -33,7 +33,7 @@ var requireConfirmation = Bluebird.promisify(function(message, action) {
 requireConfirmation("Really delete all IOS Push Tokens?").then(function () {
 	return setupP();
 }).then(function () {
-	return require("./models/waterlineLoader");
+	return require("../includes/models/waterlineLoader");
 }).then(function (ontology) {
 	var pushToken = ontology.collections.pushtoken;
 
