@@ -37,10 +37,19 @@ requireConfirmation("Really delete all IOS Push Tokens?").then(function () {
 }).then(function (ontology) {
 	var pushToken = ontology.collections.pushtoken;
 
-	return pushToken.find({ where: { deviceType: "ios" }});
-}).then(function (dbEntries) {
-	console.log(dbEntries);
-	//pushToken.destroy({ token: token })
+	return pushToken.find({ where: { deviceType: "ios" }}).then(function (dbEntries) {
+		if (dbEntries.length === 0) {
+			return;
+		}
+
+		var tokens = dbEntries.map(function (deviceInfo) {
+			return deviceInfo.tokens;
+		});
+
+		console.info("removing ios devices from database: " + JSON.stringify(tokens));
+
+		return pushToken.destroy({ token: tokens });
+	});
 }).then(function () {
 	process.exit();
 });
