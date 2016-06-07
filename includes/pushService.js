@@ -25,7 +25,7 @@ if (!config.push) {
 var sender = new gcm.Sender(config.push.gcmAPIKey);
 var apnConnection = new apn.Connection(config.push.apn);
 
-apn.on("transmissionError", function (errCode, notification, device) {
+apnConnection.on("transmissionError", function (errCode, notification, device) {
 	var message = "APN Transmission Error:";
 
 	message += "\nNotification caused error: " + errCode + " for device " + JSON.stringify(device) + "-" + JSON.stringify(notification);
@@ -36,11 +36,11 @@ apn.on("transmissionError", function (errCode, notification, device) {
 	errorService.handleError(new Error(message));
 });
 
-apn.on("timeout", function () {
+apnConnection.on("timeout", function () {
     errorService.handleError(new Error("APN Connection Timeout"));
 });
 
-apn.on("disconnected", function() {
+apnConnection.on("disconnected", function() {
     errorService.handleError(new Error("APN Disconnected"));
 });
 
