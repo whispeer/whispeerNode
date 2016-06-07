@@ -43,7 +43,7 @@ requireConfirmation("Really delete all IOS Push Tokens?").then(function () {
 		}
 
 		var tokens = dbEntries.map(function (deviceInfo) {
-			return deviceInfo.tokens;
+			return deviceInfo.token;
 		});
 
 		console.info("removing ios devices from database: " + JSON.stringify(tokens));
