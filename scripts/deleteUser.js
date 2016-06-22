@@ -177,7 +177,10 @@ function getReceivers(topicID) {
 
 function removeTopic(topicID) {
 	return getReceivers(topicID).each(function (receiverID) {
-		return client.zremAsync("topic:user:" + receiverID + ":topics", topicID);
+		return Bluebird.all([
+			client.zremAsync("topic:user:" + receiverID + ":topics", topicID),
+			client.zremAsync("topic:user:" + receiverID + ":unreadTopics", topicID)
+		]);
 	}).then(function () {
 		return removeKeyAndSubKeys("topic:" + topicID);
 	}).then(function () {
