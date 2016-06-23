@@ -36,15 +36,6 @@ apnConnection.on("transmissionError", function (errCode, notification, device) {
 	errorService.handleError(new Error(message));
 });
 
-apnConnection.on("timeout", function () {
-    errorService.handleError(new Error("APN Connection Timeout"));
-});
-
-apnConnection.on("disconnected", function() {
-    errorService.handleError(new Error("APN Disconnected"));
-});
-
-
 var pushService = {
 	listenFeedback: function (cb) {
 		var feedback = new apn.Feedback(config.push.apn);
