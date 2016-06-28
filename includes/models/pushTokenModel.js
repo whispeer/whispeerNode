@@ -69,9 +69,9 @@ var PushToken = Waterline.Collection.extend({
 				return pushService.pushAndroid(this.token, androidData);
 			} else if (this.deviceType === "ios") {
 				return pushService.pushIOS(this.token, { topicid: referenceID }, title, badge);
-			} else {
-				return Bluebird.reject("push: invalid type");
 			}
+
+			return Bluebird.reject("push: invalid type");
 		}
 	}
 });
