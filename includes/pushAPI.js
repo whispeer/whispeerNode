@@ -107,7 +107,10 @@ var pushAPI = {
 			}
 
 			console.log("got a user");
-			return user.push(data, title, unreadMessageCount, referenceID);
+			return user.push(data, title, unreadMessageCount, referenceID).catch(function (err) {
+				console.log("Push Error!");
+				console.log(err);
+			});
 		});
 	}
 };
