@@ -32,6 +32,27 @@ var MAXTIME = 60 * 60 * 1000;
 var errorService = require("./errorService");
 var pushAPI = require("./pushAPI");
 var Bluebird = require("bluebird");
+var Redlock = require("redlock");
+
+var redlock = new Redlock(
+    // you should have one client for each redis node
+    // in your cluster
+    [client],
+    {
+        // the expected clock drift; for more details
+        // see http://redis.io/topics/distlock
+        driftFactor: 0.01, // time in ms
+
+        // the max number of times Redlock will attempt
+        // to lock a resource before erroring
+        retryCount:  3,
+
+        // the time in ms between attempts
+        retryDelay:  200 // time in ms
+    }
+);
+
+var lockTTL = 1000;
 
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
@@ -69,6 +90,31 @@ var Topic = function (id) {
 		}), cb);
 	}
 
+	this.getLatestTopicUpdate = function (request, cb) {
+		return theTopic.hasAccessAsync(request).then(function () {
+			return client.zrangeAsync(domain + ":topicUpdate:list", -1, -1);
+		}).then(function (topicUpdateID) {
+			if (!topicUpdateID) {
+				return;
+			}
+
+			return client.getAsync(domain + ":topicUpdate:" + topicUpdateID).then(JSON.parse.bind(JSON));
+		}).nodeify(cb);
+	};
+
+	this.createTopicUpdate = function (request, topicUpdate, cb) {
+		//TODO: check data correctness!
+		return Bluebird.using(redlock.disposer(domain + ":topicUpdate:lock", lockTTL, errorService.handleError), function() {
+			return theTopic.hasAccessAsync(request).then(function () {
+				return client.incrAsync(domain + ":topicUpdate:counter");
+			}).then(function (topicUpdateID) {
+				return client.setAsync(domain + ":topicUpdate:" + topicUpdateID, JSON.stringify(topicUpdate)).then(function () {
+					return client.zaddAsync(domain + ":topicUpdate:list", new Date().getTime(), topicUpdateID);
+				});
+			});
+		}).nodeify(cb);
+	};
+
 	/** has the current user access? */
 	this.hasAccess = function hasAccessF(request, cb) {
 		var uid;
@@ -84,6 +130,8 @@ var Topic = function (id) {
 			this.ne(member === 1);
 		}), cb);
 	};
+
+	this.hasAccessAsync = Bluebird.promisify(this.hasAccess, this);
 
 	/** get receiver ids */
 	this.getReceiverIDs = function getReceiverIDsF(request, cb) {
@@ -151,6 +199,10 @@ var Topic = function (id) {
 		}), h.sF(function (newest) {
 			server.newest = newest;
 			server.meta = meta;
+
+			theTopic.getLatestTopicUpdate(request, this);
+		}), h.sF(function (latestTopicUpdate) {
+			server.latestTopicUpdate = latestTopicUpdate;
 
 			this.ne(server);
 		}), cb);

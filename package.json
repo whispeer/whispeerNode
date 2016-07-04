@@ -16,6 +16,7 @@
     "nodemailer": "0.6.x",
     "redis": "0.x.x",
     "redis-search": "0.0.1",
+    "redlock": "^2.0.0",
     "request": "^2.60.0",
     "sails-redis": "^0.10.5",
     "secure_random": "0.1.x",

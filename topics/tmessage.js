@@ -138,6 +138,20 @@ var t = {
 			this.ne({unread: unread});
 		}), fn);
 	},
+	getLatestTopicUpdate: function (data, fn, request) {
+		step(function () {
+			Topic.get(data.topicID, this);
+		}, h.sF(function (topic) {
+			topic.getLatestTopicUpdate(request, this);
+		}), fn);
+	},
+	createTopicUpdate: function (data, fn, request) {
+		step(function () {
+			Topic.get(data.topicID, this);
+		}, h.sF(function (topic) {
+			topic.createTopicUpdate(request, data.topicUpdate, this);
+		}), fn);
+	},
 	send: function sendMessageF(data, fn, request) {
 		step(function () {
 			Message.create(request, data.message, this);
