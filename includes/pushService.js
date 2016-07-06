@@ -3,6 +3,8 @@
 var gcm = require("node-gcm");
 var apn = require("apn");
 
+var h = require("whispeerHelper");
+
 var configManager = require("./configManager");
 var config = configManager.get();
 
@@ -24,6 +26,10 @@ if (!config.push) {
 
 var sender = new gcm.Sender(config.push.gcmAPIKey);
 var apnConnection = new apn.Connection(config.push.apn);
+
+var apnConfigSandbox = JSON.parse(JSON.stringify(config.push.apn));
+apnConfigSandbox.production = false;
+var apnConnectionSandbox = new apn.Connection();
 
 apnConnection.on("transmissionError", function (errCode, notification, device) {
 	var message = "APN Transmission Error:";
@@ -52,7 +58,7 @@ var pushService = {
 
 		return sendPushToGCM(notification, [token], 4);
 	},
-	pushIOS: function (token, payload, title, badge, expiry) {
+	pushIOS: function (token, payload, title, badge, expiry, sandbox) {
 		console.log("pushing ios: " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
@@ -62,7 +68,11 @@ var pushService = {
 		notification.alert = title;
 		notification.badge = badge;
 
-		apnConnection.pushNotification(notification, myDevice);
+		if (sandbox) {
+			apnConnectionSandbox.pushNotification(notification, myDevice);
+		} else {
+			apnConnection.pushNotification(notification, myDevice);
+		}
 
 		return Bluebird.resolve();
 	}
