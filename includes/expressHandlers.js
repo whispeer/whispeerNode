@@ -11,6 +11,13 @@ module.exports = function (express) {
 
 	express.use(bodyParser.urlencoded({ extended: true }));
 
+	express.post("/reportError",  function (req, res, next) {
+		mailer.mailAdmin("JS Error Report!", JSON.stringify(req.body)).then(function () {
+			res.send("Error Report Transfered");
+			next();
+		});
+	});
+
 	express.post("/b2b", function (req, res, next) {
 		step(function () {
 			mailer.mailAdmin("B2B Request!", JSON.stringify(req.body), this);

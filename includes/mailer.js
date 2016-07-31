@@ -297,14 +297,9 @@ var mailer = {
 			text: text.toString()
 		};
 
-		mail.sendMail(mailOptions, function (e) {
-			if (e) {
-				console.log(e);
-			}
-			if (cb) {
-				cb(e);
-			}
-		});
+		var sendMailAsync = Bluebird.promisify(mail.sendMail, mail);
+
+		return sendMailAsync(mailOptions).nodeify(cb);
 	}
 };
 
