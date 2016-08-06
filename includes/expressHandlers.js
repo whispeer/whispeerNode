@@ -9,7 +9,16 @@ module.exports = function (express) {
 
 	var path = require("path");
 
-	express.use(bodyParser.urlencoded({ extended: true }));
+	function allowCrossDomain(req, res, next) {
+		res.header("Access-Control-Allow-Origin", "*");
+		res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+		res.header("Access-Control-Allow-Headers", "Content-Type");
+
+		next();
+	}
+
+	express.use(bodyParser.json());
+	express.use(allowCrossDomain);
 
 	express.post("/reportError",  function (req, res, next) {
 		mailer.mailAdmin("JS Error Report!", JSON.stringify(req.body)).then(function () {
