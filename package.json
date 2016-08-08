@@ -6,7 +6,7 @@
     "apn": "^1.7.4",
     "base64stream": "0.1.1",
     "bluebird": "^2.9.27",
-    "body-parser": "^1.13.1",
+    "body-parser": "^1.15.2",
     "check-dependencies": "^0.11.0",
     "cheerio": "^0.18.0",
     "escape-html": "^1.0.3",
