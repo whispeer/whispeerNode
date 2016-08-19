@@ -21,7 +21,14 @@ module.exports = function (express) {
 	express.use(allowCrossDomain);
 
 	express.post("/reportError",  function (req, res, next) {
-		mailer.mailAdmin("JS Error Report!", JSON.stringify(req.body)).then(function () {
+		if (!req.body || !req.body.error) {
+			next();
+		}
+
+		mailer.mailAdmin("JS Error Report! " + req.body.error.substr(0, 50), 
+			JSON.stringify(req.body) + "\n\n" +
+			JSON.stringify(req.headers)
+		).then(function () {
 			res.send("Error Report Transfered");
 			next();
 		});
