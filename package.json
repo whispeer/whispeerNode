@@ -2,34 +2,34 @@
   "name": "whispeer",
   "version": "0.0.1",
   "dependencies": {
-    "amanda": "0.4.x",
+    "amanda": "0.5.x",
     "apn": "^1.7.4",
     "base64stream": "0.1.1",
     "bluebird": "^2.9.27",
     "body-parser": "^1.15.2",
-    "check-dependencies": "^0.11.0",
-    "cheerio": "^0.18.0",
+    "check-dependencies": "^1.0.1",
+    "cheerio": "^0.22.0",
     "escape-html": "^1.0.3",
     "express": "^4.8.0",
-    "helmet": "0.1.x",
-    "node-gcm": "^0.12.0",
-    "nodemailer": "0.6.x",
-    "redis": "0.x.x",
+    "helmet": "2.1.x",
+    "node-gcm": "^0.14.4",
+    "nodemailer": "0.7.x",
+    "redis": "2.x.x",
     "redis-search": "0.0.1",
     "redlock": "^2.0.0",
     "request": "^2.60.0",
     "sails-redis": "^0.10.5",
     "secure_random": "0.1.x",
-    "semver": "^4.2.0",
+    "semver": "^5.3.0",
     "socket.io": "^1.4.1",
-    "socket.io-stream": "0.6.x",
+    "socket.io-stream": "0.9.x",
     "step": "git+ssh://git@github.com:whispeer/whispeerStep.git#master",
-    "waterline": "^0.10.26",
-    "xtend": "2.0.x"
+    "waterline": "^0.12.2",
+    "xtend": "4.0.x"
   },
   "devDependencies": {
     "selenium-webdriver": "2.x",
-    "grunt": "~0.4.5",
-    "grunt-contrib-jshint": "~0.10.0"
+    "grunt": "~1.0.1",
+    "grunt-contrib-jshint": "~1.0.0"
   }
 }
