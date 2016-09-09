@@ -766,6 +766,10 @@ var User = function (id) {
 	};
 
 	this.changePassword = function (request, password, signedOwnKeys, mainDecryptor, cb) {
+		if (!password || !signedOwnKeys || !mainDecryptor) {
+			throw new Error("no signedownkeys");
+		}
+
 		var mainKey;
 		step(function () {
 			request.session.ownUserError(theUser, this);
