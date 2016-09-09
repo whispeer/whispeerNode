@@ -601,17 +601,6 @@ var User = function (id) {
 		}), cb);
 	};
 
-	this.searchFriends = function (request, text, cb) {
-		step(function () {
-			//TO-DO make other users friends also searchable. but this should be configurable by the user.
-			request.session.ownUserError(theUser, this);
-		}, h.sF(function () {
-			return search.searchFriends(id, text);
-		}), h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
-	};
-
 	this.getMutualFriends = function (request, cb) {
 		var friends = require("./friends");
 		if (theUser.isOwnUser(request)) {
@@ -896,6 +885,23 @@ var User = function (id) {
 			theUser.addOwnKeys(request, this.parallel());
 			
 			//receive password change request hopefully
+		}), cb);
+	};
+
+	this.searchFriends = function (request, text, cb) {
+		step(function () {
+			//TO-DO make other users friends also searchable. but this should be configurable by the user.
+			request.session.ownUserError(theUser, this);
+		}, h.sF(function () {
+			search.user.searchFriends(id, text, this);
+		}), h.sF(function (results) {
+			var ids = results.hits.hits.map(function (hit) {
+				return hit._id;
+			});
+
+			ids = ids.map(h.parseDecimal);
+
+			this.ne(ids);
 		}), cb);
 	};
 

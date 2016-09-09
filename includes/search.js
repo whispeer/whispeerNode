@@ -7,15 +7,6 @@ var client = new elasticsearch.Client({
   log: "trace"
 });
 
-function makeSearch(key) {
-	return rs.createSearch({
-		service: "",
-		key: key,
-		client: client,
-		cache_time: 1
-	});
-}
-
 function generateSearch(field, text) {
 	var result = [{
 		"q": {
@@ -88,7 +79,7 @@ var search = {
 						}
 					}
 				}
-			}).nodeify(cb);
+			}, cb);
 		},
 		searchFriends: function (userID, text, cb) {
 			return client.search({
@@ -103,14 +94,15 @@ var search = {
 								generateSearch("nickname", text)
 							),
 							"filter": {
-								"term": {
+								"match": {
 									"friends": parseInt(userID, 10)
 								}
-							}
+							},
+							"minimum_should_match" : 1
 						}
 					}
 				}
-			}).nodeify(cb);
+			}, cb);
 		}
 	}
 };
