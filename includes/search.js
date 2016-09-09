@@ -16,6 +16,46 @@ function makeSearch(key) {
 	});
 }
 
+function generateSearch(field, text) {
+	var result = [{
+		"q": {
+			"query": text,
+			"boost": 5
+		},
+		"sub": "simple"
+	}, {
+		"q": {
+			"query": text,
+			"boost": 2,
+			"fuzziness": 1
+		},
+		"sub": "simple"
+	}, {
+		"q": {
+			"query": text,
+			"boost": 3
+		},
+		"sub": "metaphone"
+	}, {
+		"q": {
+			"query": text,
+			"boost": 1
+		},
+		"sub": "porter"
+	}, {
+		"q": {
+			"query": text
+		},
+		"sub": "ngram"
+	}];
+
+	return result.map(function (val) {
+		var r = {};
+		r[field + (val.sub ? "." + val.sub : "")] = val.q;
+		return { match: r };
+	});
+}
+
 var search = {
 	user: {
 		index: function (userID, userData) {
@@ -39,42 +79,39 @@ var search = {
 				type: "user",
 				body: {
 					query: {
-						"multi_match": {
-							"fields":  ["firstname", "lastname", "nickname"],
-							"query":     text,
-							"fuzziness": "AUTO"
+						"bool": {
+							"should": generateSearch("firstname", text).concat(
+								generateSearch("lastname", text)
+							).concat(
+								generateSearch("nickname", text)
+							)
 						}
 					}
 				}
-			}, cb);
+			}).nodeify(cb);
+		},
+		searchFriends: function (userID, text, cb) {
+			return client.search({
+				index: "whispeer",
+				type: "user",
+				body: {
+					query: {
+						"bool": {
+							"should": generateSearch("firstname", text).concat(
+								generateSearch("lastname", text)
+							).concat(
+								generateSearch("nickname", text)
+							),
+							"filter": {
+								"term": {
+									"friends": parseInt(userID, 10)
+								}
+							}
+						}
+					}
+				}
+			}).nodeify(cb);
 		}
-	},
-	friendsSearch: function (userid) {
-		function searchKey(uid) {
-			return "friends:" + uid + ":search";
-		}
-
-		var mySearch = makeSearch(searchKey(userid));
-
-		this.addUser = function (id, name) {
-			mySearch.index(name, id);
-		};
-
-		this.remove = function (id, cb) {
-			mySearch.remove(id, cb);
-		};
-
-		this.updateOwn = function (friends, name) {
-			var i;
-			for (i = 0; i < friends.length; i += 1) {
-				makeSearch(searchKey(friends[i]))
-					.index(name, userid);
-			}
-		};
-
-		this.findFriend = function (query, cb) {
-			mySearch.type("and").query(query, cb);
-		};
 	}
 };
 

@@ -42,16 +42,14 @@ function getFriends(request, uid, cb) {
 }
 
 function addFriendName(request, user) {
-		step(function () {
-			user.getName(request, this);
-		}, h.sF(function (name) {
-			var searchF = new search.friendsSearch(request.session.getUserID());
-			searchF.addUser(user.getID(), name);
-		}), function (e) {
-			if (e) {
-				console.error(e);
-			}
-		});
+	step(function () {
+		user.updateSearch();
+		request.session.getOwnUser(this);
+	}, h.sF(function (me) {
+		me.updateSearch();
+	}), function (e) {
+		console.error(e);
+	});
 }
 
 function getUserOnlineFriends(uid, cb) {

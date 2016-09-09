@@ -249,30 +249,27 @@ var User = function (id) {
 	var userDomain;
 	var theUser = this;
 
-	function updateSearch(request) {
+	this.updateSearch = function (request) {
+		var Friends = require("./friends");
+
 		step(function () {
 			this.parallel.unflatten();
-			theUser.getNickname(request, this.parallel());
-			theUser.getPublicProfile(request, this.parallel());
-		}, h.sF(function (nickname, publicProfile) {
-			var firstname = "", lastname = "";
-			if (publicProfile && publicProfile.content && publicProfile.content.basic) {
-				firstname = publicProfile.content.basic.firstname || "";
-				lastname = publicProfile.content.basic.lastname || "";
-			}
 
+			theUser.getNames(request, this.parallel());
+			Friends.get(request, this.parallel());
+		}, h.sF(function (names, friends) {
 			search.user.index(id, {
-				nickname: nickname,
-				firstname: firstname,
-				lastname: lastname
+				firstname: names.firstName || "",
+				lastname: names.lastName || "",
+				nickname: names.nickname,
+				friends: friends.map(h.parseDecimal)
 			});
-			//TO-DO: search.friendsSearch(request).updateOwn(friends, name);
 		}), function (e) {
 			if (e) {
 				console.error(e);
 			}
 		});
-	}
+	};
 
 	if (id) {
 		id = h.parseDecimal(id);
@@ -281,9 +278,9 @@ var User = function (id) {
 
 	var databaseUser = new SaveAbleEntity(validKeys, this, userDomain);
 
-	databaseUser.on("afterSavedHook", updateSearch);
+	databaseUser.on("afterSavedHook", theUser.updateSearch);
 	databaseUser.on("setAttribute", function (request) {
-		updateSearch(request);
+		theUser.updateSearch(request);
 	});
 
 	function getAttribute(request, attr, cb, fullHash) {
@@ -609,8 +606,7 @@ var User = function (id) {
 			//TO-DO make other users friends also searchable. but this should be configurable by the user.
 			request.session.ownUserError(theUser, this);
 		}, h.sF(function () {
-			var fSearch = new search.friendsSearch(id);
-			fSearch.findFriend(text, this);
+			return search.searchFriends(id, text);
 		}), h.sF(function (ids) {
 			this.ne(ids);
 		}), cb);
