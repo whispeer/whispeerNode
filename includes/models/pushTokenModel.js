@@ -33,21 +33,51 @@ var PushToken = Waterline.Collection.extend({
 			unique: true
 		},
 
+		pushKey: {
+			type: "string",
+			required: false,
+			unique: false
+		},
+
+		sandbox: {
+			type: "boolean",
+			required: false,
+			unique: false
+		},
+
 		push: function (data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
-				return pushService.pushAndroid(this.token, {
-					title: title,
-					message: "-",
-					content: data,
+				if (!data && !title && !referenceID) {
+					return;
+				}
+
+				var androidData = {
 					topicid: referenceID,
 					vibrationPattern: [0, 400, 500, 400],
 					ledColor: [0, 0, 255, 0]
-				});
+				};
+
+				if (title) {
+					androidData.title = title;
+					androidData.message = "-";
+				}
+
+				if (data) {
+					if (this.pushKey) {
+						var sjcl = require("../crypto/sjcl");
+						console.log("Using key: " + this.pushKey);
+						androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+					} else {
+						androidData.content = data;
+					}
+				}
+
+				return pushService.pushAndroid(this.token, androidData);
 			} else if (this.deviceType === "ios") {
-				return pushService.pushIOS(this.token, { topicid: referenceID }, title, badge);
-			} else {
-				return Bluebird.reject("push: invalid type");
+				return pushService.pushIOS(this.token, { topicid: referenceID }, title, badge, 0, this.sandbox);
 			}
+
+			return Bluebird.reject("push: invalid type");
 		}
 	}
 });

@@ -6,8 +6,10 @@ var User = require("./user");
 
 var RequestData = require("./requestData");
 
+var errorService = require("./errorService");
+
 var listener = {
-	"friends:online": function fo(socketData, data) {
+	"friends:online": function (socketData, data) {
 		socketData.socket.emit("friendOnlineChange", {
 			keys: [],
 			uid: data.sender,
@@ -15,7 +17,7 @@ var listener = {
 		});
 	},
 	signatureCache: function () {},
-	friendRequest: function fr(socketData, uid) {
+	friendRequest: function (socketData, uid) {
 		var request = new RequestData(socketData, {});
 		step(function () {
 			//we definitly need to add this users friendKey here!
@@ -31,11 +33,11 @@ var listener = {
 					user: data
 				});
 			} else {
-				console.error(e);
+				errorService.handleError(e, request);
 			}
 		});
 	},
-	friendAccept: function fa(socketData, uid) {
+	friendAccept: function (socketData, uid) {
 		var request = new RequestData(socketData, {});
 
 		step(function () {
@@ -50,7 +52,21 @@ var listener = {
 					user: data
 				});
 			} else {
-				console.error(e);
+				errorService.handleError(e, request);
+			}
+		});
+	},
+	topicRead: function (socketData) {
+		var Topic = require("./topic.js");
+		var request = new RequestData(socketData, {});
+
+		step(function () {
+			Topic.unreadIDs(request, this);
+		}, h.sF(function (ids) {
+			socketData.socket.emit("unreadTopics", { unread: ids });
+		}), function (e) {
+			if (e) {
+				errorService.handleError(e, request);
 			}
 		});
 	},
@@ -90,7 +106,7 @@ var listener = {
 				data.keys = request.getAllKeys();
 				socketData.socket.emit("message", data);
 			} else {
-				console.error(e);
+				errorService.handleError(e, request);
 			}
 		});
 	}

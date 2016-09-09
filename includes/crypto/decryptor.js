@@ -4,11 +4,13 @@ var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 
+var Bluebird = require("bluebird");
+
 var Decryptor = function (keyRealID, count) {
 	var domain = "key:" + keyRealID + ":decryptor:" + count;
 
-	function getAttribute(attr, cb) {
-		client.hget(domain, attr, cb);
+	function getAttribute(attr) {
+		return client.hgetAsync(domain, attr);
 	}
 
 	/** getter for counter attribute */
@@ -17,78 +19,80 @@ var Decryptor = function (keyRealID, count) {
 	};
 
 	this.getDecryptorID = function getRealIDF(cb) {
-		getAttribute("decryptorid", cb);
+		var p = getAttribute("decryptorid");
+		return step.unpromisify(p, cb);
 	};
 
 	this.getDecryptorKey = function getDecryptorKeyF(cb) {
-		step(function () {
-			getAttribute("decryptorid", this);
-		}, h.sF(function (decryptorid) {
+		var p = getAttribute("decryptorid").then(function (decryptorid) {
 			if (decryptorid) {
+				//todo: make promise possible!
 				var KeyApi = require("./KeyApi");
-				KeyApi.get(decryptorid, this);
-			} else {
-				this.last.ne();
+				return KeyApi.get(decryptorid);
 			}
-		}), cb);
+		});
+
+		return step.unpromisify(p, cb);
 	};
 
 	/** get the type of this decryptor */
 	this.getType = function getTypeF(cb) {
-		getAttribute("type", cb);
+		var p = getAttribute("type");
+		return step.unpromisify(p, cb);
 	};
 
 	/** get the json data for this decryptor */
 	this.getJSON = function getJSONF(cb) {
-		client.hgetall(domain, cb);
+		var p = client.hgetallAsync(domain);
+		return step.unpromisify(p, cb);
 	};
 
 	/** remove this decryptors data */
 	this.removeData = function delF(m, cb) {
-		step(function () {
-			client.hget("key:" + keyRealID + ":decryptor:" + count, "decryptorid", this);
-		}, h.sF(function (decryptorid) {
+		var p = client.hgetAsync("key:" + keyRealID + ":decryptor:" + count, "decryptorid").then(function (decryptorid) {
 			m.srem("key:" + keyRealID + ":decryptor:decryptorSet", count);
 			m.del(domain);
 
 			if (decryptorid) {
 				m.hdel("key:" + keyRealID + ":decryptor:map", decryptorid);
 			}
+		});
 
-			this.ne();
-		}), cb);
+		return step.unpromisify(p, cb);
 	};
 };
 
 Decryptor.getAllWithAccess = function getAllWAF(request, keyRealID, cb) {
-	step(function () {
-		request.session.logedinError(this);
-	}, h.sF(function () {
+	var p = request.session.logedinError().then(function () {
 		if (!h.isRealID(keyRealID)) {
 			throw new InvalidRealID();
 		}
 
-		client.smembers("key:" + keyRealID + ":accessVia:" + request.session.getUserID(), this);
-	}), h.sF(function (decryptorSet) {
-		this.ne(decryptorSet.map(function (decryptorID) {
+		return client.smembersAsync("key:" + keyRealID + ":accessVia:" + request.session.getUserID());
+	}).then(function (decryptorSet) {
+		return decryptorSet.map(function (decryptorID) {
 			return new Decryptor(keyRealID, decryptorID);
-		}));
-	}), cb);
+		});
+	});
+
+	return step.unpromisify(p, cb);
 };
 
 /** get all decryptors for a certain key id */
 Decryptor.getAll = function getAllF(keyRealID, cb) {
-	step(function () {
+	var p = Bluebird.try(function () {
 		if (!h.isRealID(keyRealID)) {
 			throw new InvalidRealID();
 		}
 
-		client.smembers("key:" + keyRealID + ":decryptor:decryptorSet", this);
-	}, h.sF(function (decryptorSet) {
-		this.ne(decryptorSet.map(function (count) {
+		return client.smembersAsync("key:" + keyRealID + ":decryptor:decryptorSet");
+	}).then(function (decryptorSet) {
+		return decryptorSet.map(function (count) {
 			return new Decryptor(keyRealID, count);
-		}));
-	}), cb);
+		});
+	});
+
+	return step.unpromisify(p, cb);
 };
 
 Decryptor.validateFormat = function validateFormat(data) {

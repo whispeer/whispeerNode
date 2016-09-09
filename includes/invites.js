@@ -14,6 +14,9 @@ var Notification = require("./notification");
 
 var INVITELENGTH = 10;
 
+
+var escapeHtml = require("escape-html");
+
 var invites = {
 	generateCode: function (request, reference, active, cb) {
 		var inviteCode;
@@ -88,7 +91,7 @@ var invites = {
 	byMail: function (request, mails, name, language, cb) {
 		var resultPromise = Bluebird.try(function () {
 			if (name) {
-				name = name.replace(/[^\w\s]/);
+				name = escapeHtml(name);
 			} else {
 				name = false;
 			}

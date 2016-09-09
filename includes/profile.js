@@ -196,7 +196,7 @@ Profile.deleteAllExcept = function (request, except, cb) {
 			return profile.getID() !== except;
 		});
 
-		if (toDelete.length !== profiles.length - 1) {
+		if (profiles.length > 0 && toDelete.length !== profiles.length - 1) {
 			throw new Error("except is not one of our profiles.");
 		}
 

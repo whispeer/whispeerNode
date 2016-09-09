@@ -124,11 +124,32 @@ var t = {
 			});
 		}), fn);
 	},
+	getUnreadTopicIDs: function (data, fn, request) {
+		step(function () {
+			Topic.unreadIDs(request, this);
+		}, h.sF(function (unread) {
+			this.ne({unread: unread});
+		}), fn);
+	},
 	getUnreadCount: function getUnreadCountF(data, fn, request) {
 		step(function () {
 			Topic.unreadCount(request, this);
 		}, h.sF(function (unread) {
 			this.ne({unread: unread});
+		}), fn);
+	},
+	getLatestTopicUpdate: function (data, fn, request) {
+		step(function () {
+			Topic.get(data.topicID, this);
+		}, h.sF(function (topic) {
+			topic.getLatestTopicUpdate(request, this);
+		}), fn);
+	},
+	createTopicUpdate: function (data, fn, request) {
+		step(function () {
+			Topic.get(data.topicID, this);
+		}, h.sF(function (topic) {
+			topic.createTopicUpdate(request, data.topicUpdate, this);
 		}), fn);
 	},
 	send: function sendMessageF(data, fn, request) {

@@ -45,11 +45,24 @@ var MAXTIME = 60 * 60 * 1000;
 var Post = function (postid) {
 	var domain = "post:" + postid, thePost = this, result;
 
+	this.deleteComment = function (request, commentID, cb) {
+		client.hgetAsync(domain + ":comments:" + commentID + ":meta", "sender").then(function (senderID) {
+			if (h.parseDecimal(senderID) !== request.session.getUserID()) {
+				throw new AccessViolation("User tried to delete comment of another user");
+			}
+
+			return client.zremAsync(domain + ":comments:list", commentID);
+		}).nodeify(cb);
+	};
+
 	this.addComment = function (request, content, meta, cb) {
 		var commentID = 0;
 		step(function () {
+			if (request.session.getUserID() !== h.parseDecimal(meta.sender)) {
+				throw new AccessViolation("Invalid sender!");
+			}
+
 			//TODO: check data
-			//TODO: check comment ordering!
 			client.zrevrange(domain + ":comments:list", 0, 0, this);
 		}, h.sF(function (newest) {
 			this.parallel.unflatten();
@@ -129,8 +142,9 @@ var Post = function (postid) {
 
 			client.hgetall(domain + ":meta", this.parallel());
 			client.hgetall(domain + ":content", this.parallel());
+			client.get(domain + ":private", this.parallel());
 			thePost.getComments(request, this.parallel());
-		}, h.sF(function (meta, content, comments) {
+		}, h.sF(function (meta, content, privateData, comments) {
 			meta.sender = h.parseDecimal(meta.sender);
 			meta.time = h.parseDecimal(meta.time);
 			meta.walluser = h.parseDecimal(meta.walluser || 0);
@@ -145,6 +159,10 @@ var Post = function (postid) {
 				content: content,
 				comments: comments
 			};
+
+			if (meta.sender === request.session.getUserID()) {
+				result.private = JSON.parse(privateData);
+			}
 
 			request.addKey(meta._key, this);
 		}), h.sF(function () {
@@ -542,6 +560,7 @@ Post.create = function (request, data, cb) {
 			multi.zadd("user:" + data.meta.walluser + ":wall", data.meta.time, id);
 		}
 
+		multi.set("post:" + id + ":private", JSON.stringify(data.privateData));
 		multi.hmset("post:" + id + ":meta", data.meta);
 		multi.set("post:" + id, id);
 		multi.hmset("post:" + id + ":content", data.content);

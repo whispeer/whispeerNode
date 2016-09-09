@@ -1,8 +1,5 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
-
 var Bluebird = require("bluebird");
 
 var client = require("./redisClient");
@@ -28,7 +25,7 @@ waterlineLoader.then(function (ontology) {
 
 			console.info("removing ios devices from database: " + JSON.stringify(tokens));
 
-			return pushToken.destroy({ token: tokens });			
+			return pushToken.destroy({ token: tokens });
 		}).catch(errorService.handleError);
 	});
 
@@ -44,24 +41,37 @@ var translations = {
 };
 
 var pushAPI = {
-	subscribe: function (request, type, token, cb) {
-		step(function () {
+	subscribe: function (request, type, token, pushKey, cb) {
+		return Bluebird.try(function () {
 			if (type !== "android" && type !== "ios") {
 				throw new Error("invalid type");
 			}
-
-			waterlineLoader.then(this.ne, this);
-		}, h.sF(function (ontology) {
+		}).then(function () {
+			return waterlineLoader;
+		}).then(function (ontology) {
 			var pushToken = ontology.collections.pushtoken;
 
 			var givenData = {
 				userID: request.session.getUserID(),
 				deviceType: type,
+				pushKey: pushKey,
 				token: token
 			};
 
-			pushToken.findOrCreate({ token: token }, givenData).then(this.ne, this);
-		}), cb);
+			return pushToken.findOne({ token: token }).then(function (record) {
+				if (!record) {
+					console.log("CREATE: " + JSON.stringify(givenData));
+					return pushToken.create(givenData);
+				}
+
+				if (record.userID !== givenData.userID || record.pushKey !== givenData.pushKey) {
+					console.log("UPDATE: " + JSON.stringify(givenData));
+					return pushToken.destroy({ token: token }).then(function () {
+						return pushToken.create(givenData);
+					});
+				}
+			});
+		}).nodeify(cb);
 	}, notifyUsers: function (users, data) {
 		return Bluebird.resolve(users).map(function (user) {
 			return pushAPI.notifyUser(user, data);
@@ -90,8 +100,14 @@ var pushAPI = {
 
 			return pushToken.find({ where: { userID: users }});
 		}).map(function (user) {
+			var referenceID = 0;
+
+			if (data && data.message && data.message.meta && data.message.meta.topicid) {
+				referenceID = data.message.meta.topicid;
+			}
+
 			console.log("got a user");
-			return user.push(data, title, unreadMessageCount, data.message.meta.topicid);
+			return user.push(data, title, unreadMessageCount, referenceID);
 		});
 	}
 };

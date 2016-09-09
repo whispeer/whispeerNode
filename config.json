@@ -38,7 +38,7 @@
 		},
 		"push": {
 			"apn": {
-				"production": true
+				"production": false
 			}
 		},
 		"production": true,

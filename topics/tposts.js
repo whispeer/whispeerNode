@@ -19,6 +19,18 @@ var Post = require("../includes/post");
 	}
 */
 
+var fs = require("fs");
+
+
+var donateHintUsers = [];
+
+try {
+	donateHintUsers = JSON.parse(fs.readFileSync("./config/donateHintUsers.json"));
+	console.log("Displaying donate hint to: " + donateHintUsers);
+} catch (e) {
+	console.log("No donate hint users configured");
+}
+
 var p = {
 	comment: {
 		create: function (data, fn, request) {
@@ -29,6 +41,17 @@ var p = {
 			}), h.sF(function () {
 				this.ne({
 					created: true
+				});
+			}), fn);
+		},
+		delete: function (data, fn, request) {
+			step(function () {
+				Post.get(request, h.parseDecimal(data.post), this);
+			}, h.sF(function (thePost) {
+				thePost.deleteComment(request, h.parseDecimal(data.comment), this);
+			}), h.sF(function () {
+				this.ne({
+					deleted: true
 				});
 			}), fn);
 		}
@@ -74,6 +97,7 @@ var p = {
 		}), h.sF(function (data) {
 			this.ne({
 				posts: data,
+				displayDonateHint: donateHintUsers.indexOf(request.session.getUserID()) !== -1,
 				remaining: remainingPosts
 			});
 		}), fn);

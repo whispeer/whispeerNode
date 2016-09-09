@@ -76,7 +76,7 @@ var whispeerAPI = {
 					this.last.ne();
 				}
 
-				pushAPI.subscribe(request, data.type, data.token, this);
+				pushAPI.subscribe(request, data.type, data.token, data.key, this);
 			}, h.sF(function () {
 				this.ne({
 					success: true
