@@ -6,11 +6,8 @@ var step = require("step");
 var h = require("whispeerHelper");
 
 var Topic = require("../includes/topic.js");
-
 var User = require("../includes/user");
-
 var mailer = require("../includes/mailer");
-
 var errorService = require("../includes/errorService");
 
 function makeSearchUserData(request, cb, ids, known) {
@@ -35,17 +32,20 @@ function makeSearchUserData(request, cb, ids, known) {
 
 		this.parallel()();
 	}, h.sF(function (theUsers) {
-		if (theUsers) {
-			var i;
-			for (i = 0; i < theUsers.length; i += 1) {
-				if (theUsers[i] instanceof UserNotExisting) {
-					this.parallel()({userNotExisting: true});
-				} else if (typeof theUsers[i] === "object") {
-					theUsers[i].getUData(request, this.parallel());
+		theUsers = theUsers || [];
+
+		theUsers = theUsers.filter(function (user) {
+			return !(user instanceof UserNotExisting);
+		});
+
+		if (theUsers.length > 0) {
+			theUsers.forEach(function (user) {
+				if (typeof user === "object") {
+					user.getUData(request, this.parallel());
 				} else {
-					this.parallel()(null, theUsers[i]);
+					this.parallel()(null, user);
 				}
-			}
+			}, this);
 		} else {
 			this.ne([]);
 		}

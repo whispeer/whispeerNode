@@ -6,7 +6,6 @@ var h = require("whispeerHelper");
 var client = require("./redisClient");
 var KeyApi = require("./crypto/KeyApi");
 var User = require("./user");
-var search = require("./search");
 var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
@@ -42,16 +41,14 @@ function getFriends(request, uid, cb) {
 }
 
 function addFriendName(request, user) {
-		step(function () {
-			user.getName(request, this);
-		}, h.sF(function (name) {
-			var searchF = new search.friendsSearch(request.session.getUserID());
-			searchF.addUser(user.getID(), name);
-		}), function (e) {
-			if (e) {
-				console.error(e);
-			}
-		});
+	step(function () {
+		user.updateSearch(request);
+		request.session.getOwnUser(this);
+	}, h.sF(function (me) {
+		me.updateSearch(request);
+	}), function (e) {
+		console.error(e);
+	});
 }
 
 function getUserOnlineFriends(uid, cb) {

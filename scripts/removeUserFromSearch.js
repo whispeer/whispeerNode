@@ -38,17 +38,7 @@ function removeUserFromSearch(userid) {
 	var search = require("../includes/search");
 	var remove = Bluebird.promisify(search.user.remove, search.user);
 
-	return remove(userid).then(function () {
-		console.log("removed user from search");
-		return client.keysAsync("search:friends:*:search:id:" + userid);
-	}).map(function (key) {
-		var otherID = key.split(":")[2];
-		console.log("removed from friends search: " + otherID);
-		var friendsSearch = new search.friendsSearch(otherID);
-
-		var removeFriendsSearch = Bluebird.promisify(friendsSearch.remove, friendsSearch);
-		return removeFriendsSearch(userid);
-	});
+	return remove(userid);
 }
 
 var deleteUserID = parseInt(process.argv[2], 10);
