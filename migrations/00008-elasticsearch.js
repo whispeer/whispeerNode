@@ -203,7 +203,7 @@ function addCommentSortedPosts(cb) {
 			"id": user.id,
 			"body": user.names
 		});
-	}).nodeify(cb);
+	}, { concurrency: 5 }).nodeify(cb);
 }
 
 module.exports = addCommentSortedPosts;
