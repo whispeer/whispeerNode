@@ -1,11 +1,6 @@
 "use strict";
-var client = require("./redisClient");
 
-var elasticsearch = require("elasticsearch");
-var client = new elasticsearch.Client({
-  host: "localhost:9200",
-  log: "trace"
-});
+var elasticConnection = require("./elasticConnection");
 
 function generateSearch(field, text) {
 	var result = [{
@@ -50,7 +45,7 @@ function generateSearch(field, text) {
 var search = {
 	user: {
 		index: function (userID, userData) {
-			return client.index({
+			return elasticConnection.index({
 				"index": "whispeer",
 				"type": "user",
 				"id": userID,
@@ -58,14 +53,14 @@ var search = {
 			});
 		},
 		remove: function (userID) {
-			return client.delete({
+			return elasticConnection.delete({
 				"index": "whispeer",
 				"type": "user",
 				"id": userID
 			});
 		},
 		search: function (text, cb) {
-			return client.search({
+			return elasticConnection.search({
 				index: "whispeer",
 				type: "user",
 				body: {
@@ -82,7 +77,7 @@ var search = {
 			}, cb);
 		},
 		searchFriends: function (userID, text, cb) {
-			return client.search({
+			return elasticConnection.search({
 				index: "whispeer",
 				type: "user",
 				body: {

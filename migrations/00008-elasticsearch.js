@@ -60,7 +60,11 @@ function getUserNamesAndFriends(user) {
 function addCommentSortedPosts(cb) {
 	"use strict";
 	return Bluebird.resolve().then(function () {
-		return elasticClient.indices.delete({index: "whispeer"});
+		return elasticClient.indices.exists({index: "whispeer" });
+	}).then(function (exists) {
+		if (exists) {
+			return elasticClient.indices.delete({index: "whispeer"});
+		}
 	}).then(function () {
 		return elasticClient.indices.create({ index: "whispeer" });
 	}).then(function () {
@@ -193,15 +197,12 @@ function addCommentSortedPosts(cb) {
 	}).map(function (user) {
 		return getUserNamesAndFriends(user);
 	}).map(function (user) {
-		console.log(user);
 		return elasticClient.index({
 			"index": "whispeer",
 			"type": "user",
 			"id": user.id,
 			"body": user.names
 		});
-	}).then(function () {
-		return new Bluebird(function () {});
 	}).nodeify(cb);
 }
 
