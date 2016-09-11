@@ -249,19 +249,27 @@ var User = function (id) {
 	var userDomain;
 	var theUser = this;
 
-	function updateSearch(request) {
+	this.updateSearch = function (request) {
+		var Friends = require("./friends");
+
 		step(function () {
 			this.parallel.unflatten();
-			theUser.getName(request, this);
-		}, h.sF(function (name) {
-			search.user.index(name, id);
-			//TO-DO: search.friendsSearch(request).updateOwn(friends, name);
+
+			theUser.getNames(request, this.parallel());
+			Friends.get(request, this.parallel());
+		}, h.sF(function (names, friends) {
+			search.user.index(id, {
+				firstname: names.firstName || "",
+				lastname: names.lastName || "",
+				nickname: names.nickname,
+				friends: friends.map(h.parseDecimal)
+			});
 		}), function (e) {
 			if (e) {
 				console.error(e);
 			}
 		});
-	}
+	};
 
 	if (id) {
 		id = h.parseDecimal(id);
@@ -270,9 +278,9 @@ var User = function (id) {
 
 	var databaseUser = new SaveAbleEntity(validKeys, this, userDomain);
 
-	databaseUser.on("afterSavedHook", updateSearch);
+	databaseUser.on("afterSavedHook", theUser.updateSearch);
 	databaseUser.on("setAttribute", function (request) {
-		updateSearch(request);
+		theUser.updateSearch(request);
 	});
 
 	function getAttribute(request, attr, cb, fullHash) {
@@ -593,18 +601,6 @@ var User = function (id) {
 		}), cb);
 	};
 
-	this.searchFriends = function (request, text, cb) {
-		step(function () {
-			//TO-DO make other users friends also searchable. but this should be configurable by the user.
-			request.session.ownUserError(theUser, this);
-		}, h.sF(function () {
-			var fSearch = new search.friendsSearch(id);
-			fSearch.findFriend(text, this);
-		}), h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
-	};
-
 	this.getMutualFriends = function (request, cb) {
 		var friends = require("./friends");
 		if (theUser.isOwnUser(request)) {
@@ -892,18 +888,37 @@ var User = function (id) {
 		}), cb);
 	};
 
+	this.searchFriends = function (request, text, cb) {
+		step(function () {
+			//TO-DO make other users friends also searchable. but this should be configurable by the user.
+			request.session.ownUserError(theUser, this);
+		}, h.sF(function () {
+			search.user.searchFriends(id, text, this);
+		}), h.sF(function (results) {
+			var ids = results.hits.hits.map(function (hit) {
+				return hit._id;
+			});
+
+			ids = ids.map(h.parseDecimal);
+
+			this.ne(ids);
+		}), cb);
+	};
+
 	RedisObserver.call(this, "user", id);
 };
 
 User.search = function (text, cb) {
 	step(function () {
 		this.parallel.unflatten();
-		if (text.length > 2) {
-			search.user.type("and").query(text, this.parallel());
-		}
-		this.parallel()(null, []);
+
+		search.user.search(text, this.parallel());
 		User.getUser(text, this.parallel(), true);
-	}, h.sF(function (ids, user) {
+	}, h.sF(function (results, user) {
+		var ids = results.hits.hits.map(function (hit) {
+			return hit._id;
+		});
+
 		ids = ids.map(h.parseDecimal);
 
 		var position;
