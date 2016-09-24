@@ -74,7 +74,9 @@ function removeUserWall(userid) {
 function removeUserFromSearch(userid) {
 	var search = require("../includes/search");
 
-	return search.user.remove(userid);
+	return search.user.remove(userid).catch(function (e) {
+		console.warn(e);
+	});
 }
 
 function removeComment(id) {
