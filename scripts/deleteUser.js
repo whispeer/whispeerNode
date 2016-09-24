@@ -73,9 +73,8 @@ function removeUserWall(userid) {
 
 function removeUserFromSearch(userid) {
 	var search = require("../includes/search");
-	var remove = Bluebird.promisify(search.user.remove, search.user);
 
-	return remove(userid);
+	return search.user.remove(userid);
 }
 
 function removeComment(id) {
