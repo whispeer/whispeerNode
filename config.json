@@ -30,7 +30,7 @@
 	"production": {
 		"host": "https://whispeer.de",
 		"ws": "https://data.whispeer.de",
-		"wsPort": 443,
+		"wsPort": 3000,
 		"serverUrl": "https://data.whispeer.de",
 		"db": {
 			"number": 0,
@@ -43,11 +43,6 @@
 		},
 		"production": true,
 		"debug": false,
-		"https": {
-			"keyPath":"/var/www/ssnKeys/whispeer.de.key",
-			"certPath":"/var/www/ssnKeys/whispeer.de.crt",
-			"caPath":"/var/www/ssnKeys/thawte.crt"
-		},
 		"mailType": "sendmail",
 		"mail": {
 			   "path": "/usr/sbin/sendmail"
