@@ -67,6 +67,7 @@ var pushService = {
 		notification.expiry = expiry || 0;
 		notification.alert = title;
 		notification.badge = badge;
+		notification.sound = "default";
 
 		if (sandbox) {
 			apnConnectionSandbox.pushNotification(notification, myDevice);
