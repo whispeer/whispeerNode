@@ -81,6 +81,7 @@ var Topic = function (id) {
 			return Bluebird.all([
 				topicUpdateModel.findAll({
 					where: {
+						topicID: id,
 						createdAt: {
 							$lte: endDate,
 							$gte: startDate
@@ -92,6 +93,7 @@ var Topic = function (id) {
 				}),
 				topicUpdateModel.findOne({
 					where: {
+						topicID: id,
 						createdAt: {
 							$lt: startDate
 						}
@@ -103,7 +105,10 @@ var Topic = function (id) {
 			]);
 		}).spread(function (topicUpdates, previousTopicUpdate) {
 			const topicUpdatesFormatted = topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
-			topicUpdatesFormatted.unshift(previousTopicUpdate);
+
+			if (previousTopicUpdate) {
+				topicUpdatesFormatted.unshift(previousTopicUpdate.getAPIFormatted());
+			}
 
 			return topicUpdatesFormatted;
 			//grab topic updates in between newest and latest message and
