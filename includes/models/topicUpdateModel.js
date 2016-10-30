@@ -111,7 +111,13 @@ const topicUpdate = sequelize.define("topicUpdate", {
 }, {
 	instanceMethods: {
 		getMeta: getObject(metaKeys),
-		getContent: getObject(contentKeys)
+		getContent: getObject(contentKeys),
+		getAPIFormatted: function () {
+			return {
+				content: this.getContent(),
+				meta: this.getMeta()
+			};
+		}
 	},
 	setterMethods: {
 		meta: setObject(metaKeys, "invalid meta keys"),

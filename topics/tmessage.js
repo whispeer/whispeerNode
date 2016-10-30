@@ -53,13 +53,19 @@ const latestTime = (messages) => {
 	return h.array.last(messages).meta.sendTime;
 };
 
-const getTopicUpdates = (request, topic, messages) => {
+const getTopicUpdates = (request, topic, messages, lastMessage) => {
 	return Bluebird.try(() => {
-		if (messages.length < 1) {
+		if (messages.length === 0) {
 			return [];
 		}
 
-		return topic.getTopicUpdatesForMessages(request, earliestTime(messages), latestTime(messages));
+		messages.sort((m1, m2) => {
+			return m1.meta.sendTime - m2.meta.sendTime;
+		});
+
+		console.log(lastMessage);
+
+		return topic.getTopicUpdatesBetween(request, earliestTime(messages), latestTime(messages));
 	});
 };
 
@@ -140,7 +146,7 @@ var t = {
 
 			this.parallel()();
 		}), h.sF(function (messages) {
-			return getTopicUpdates(request, topic, messages).then(function (topicUpdates) {
+			return getTopicUpdates(request, topic, messages, data.afterMessage).then(function (topicUpdates) {
 				return {
 					topicUpdates: topicUpdates,
 					remaining: remainingCount,

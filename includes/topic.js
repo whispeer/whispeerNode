@@ -71,19 +71,41 @@ var Topic = function (id) {
 		}), cb);
 	}
 
-	this.getTopicUpdatesForMessages = function (request, min, max) {
-		console.log(min, max);
+	this.getTopicUpdatesBetween = function (request, min, max) {
+		const startDate = new Date(h.parseDecimal(min));
+		const endDate = new Date(h.parseDecimal(max));
+
+		console.log(startDate, endDate);
 
 		return theTopic.hasAccessAsync(request).then(function () {
 			return Bluebird.all([
-				client.zrangebyscoreAsync(domain + ":topicUpdate:list", min, max),
-				client.zrangebyscoreAsync(domain + ":topicUpdate:list", "-inf", min, "LIMIT", 0, 1)
+				topicUpdateModel.findAll({
+					where: {
+						createdAt: {
+							$lte: endDate,
+							$gte: startDate
+						}
+					},
+					order: [
+						["createdAt", "DESC"]
+					]
+				}),
+				topicUpdateModel.findOne({
+					where: {
+						createdAt: {
+							$lt: startDate
+						}
+					},
+					order: [
+						["createdAt", "DESC"]
+					]
+				})
 			]);
 		}).spread(function (topicUpdates, previousTopicUpdate) {
-			console.log(topicUpdates);
-			console.log(previousTopicUpdate);
+			const topicUpdatesFormatted = topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
+			topicUpdatesFormatted.unshift(previousTopicUpdate);
 
-			return [];
+			return topicUpdatesFormatted;
 			//grab topic updates in between newest and latest message and
 			// the one before the latest message
 			// (as it is the one that is active for the latest message)
@@ -105,10 +127,7 @@ var Topic = function (id) {
 				return;
 			}
 
-			return {
-				meta: topicUpdate.getMeta(),
-				content: topicUpdate.getContent()
-			};
+			return topicUpdate.getAPIFormatted();
 		}).nodeify(cb);
 	};
 
