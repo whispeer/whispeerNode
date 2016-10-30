@@ -36,57 +36,76 @@ const setObject = (objectKeys, errorMessage) => {
 	};
 };
 
-const topicUpdate = sequelize.define("topicUpdateMeta", {
+const topicUpdate = sequelize.define("topicUpdate", {
 	id: {
 		type: Sequelize.UUID,
+		allowNull: false,
 		defaultValue: Sequelize.UUIDV4,
 		primaryKey: true
 	},
-	topicId: {
-		type: Sequelize.INTEGER
+	topicID: {
+		type: Sequelize.INTEGER,
+		allowNull: false
 	},
 	ct: {
 		type: Sequelize.TEXT,
+		allowNull: false,
+		unique: true,
 		validate: { is: hex }
 	},
 	iv: {
 		type: Sequelize.STRING,
+		allowNull: false,
+		unique: true,
 		validate: { is: hex }
 	},
 	userID: {
-		type: Sequelize.INTEGER
+		type: Sequelize.INTEGER,
+		allowNull: false
 	},
 	time: {
-		type: Sequelize.BIGINT
+		type: Sequelize.BIGINT,
+		allowNull: false
 	},
 	_parent: {
 		type: Sequelize.STRING,
+		allowNull: false,
 		validate: { is: hash }
 	},
 	_key: {
 		type: Sequelize.STRING,
+		allowNull: false,
 		validate: { is: key }
 	},
 	_version: {
-		type: Sequelize.INTEGER
+		type: Sequelize.INTEGER,
+		allowNull: false
 	},
 	_type: {
 		type: Sequelize.STRING,
+		allowNull: false,
 		validate: { is: "topicUpdate" }
 	},
 	_hashVersion: {
-		type: Sequelize.INTEGER
+		type: Sequelize.INTEGER,
+		allowNull: false
 	},
 	_contentHash: {
 		type: Sequelize.STRING,
+		allowNull: false,
+		unique: true,
 		validate: { is: hash }
 	},
 	_ownHash: {
 		type: Sequelize.STRING,
+		allowNull: false,
+		unique: true,
 		validate: { is: hash }
 	},
 	_signature: {
 		type: Sequelize.STRING,
+		allowNull: false,
+		unique: true,
 		validate: { is: hex }
 	}
 }, {

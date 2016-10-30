@@ -7,6 +7,8 @@ var h = require("whispeerHelper");
 var Topic = require("../includes/topic");
 var Message = require("../includes/messages");
 
+var Bluebird = require("bluebird");
+
 /*
 
 	topic: {
@@ -42,6 +44,24 @@ var Message = require("../includes/messages");
 	}
 
 */
+
+const earliestTime = (messages) => {
+	return h.array.first(messages).meta.sendTime;
+};
+
+const latestTime = (messages) => {
+	return h.array.last(messages).meta.sendTime;
+};
+
+const getTopicUpdates = (request, topic, messages) => {
+	return Bluebird.try(() => {
+		if (messages.length < 1) {
+			return [];
+		}
+
+		return topic.getTopicUpdatesForMessages(request, earliestTime(messages), latestTime(messages));
+	});
+};
 
 var t = {
 	getTopic: function getTopicF(data, fn, request) {
@@ -101,10 +121,12 @@ var t = {
 		}), fn);
 	},
 	getTopicMessages: function getMessagesF(data, fn, request) {
-		var remainingCount;
+		var remainingCount, topic;
+
 		step(function () {
 			Topic.get(data.topicid, this);
-		}, h.sF(function (topic) {
+		}, h.sF(function (_topic) {
+			topic = _topic;
 			var count = Math.min(data.maximum || 20, 20);
 
 			topic.getMessages(request, data.afterMessage, count, this);
@@ -117,10 +139,13 @@ var t = {
 			}
 
 			this.parallel()();
-		}), h.sF(function (data) {
-			this.ne({
-				remaining: remainingCount,
-				messages: data
+		}), h.sF(function (messages) {
+			return getTopicUpdates(request, topic, messages).then(function (topicUpdates) {
+				return {
+					topicUpdates: topicUpdates,
+					remaining: remainingCount,
+					messages: messages
+				};
 			});
 		}), fn);
 	},
