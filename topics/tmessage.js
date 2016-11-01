@@ -45,27 +45,20 @@ var Bluebird = require("bluebird");
 
 */
 
-const earliestTime = (messages) => {
-	return h.array.first(messages).meta.sendTime;
-};
-
-const latestTime = (messages) => {
-	return h.array.last(messages).meta.sendTime;
-};
-
 const getTopicUpdates = (request, topic, messages, lastMessage) => {
-	return Bluebird.try(() => {
-		if (messages.length === 0) {
-			return [];
-		}
+	if (messages.length === 0) {
+		return Bluebird.resolve([]);
+	}
 
+	return Bluebird.try(() => {
 		messages.sort((m1, m2) => {
 			return m1.meta.sendTime - m2.meta.sendTime;
 		});
 
-		console.log(lastMessage);
-
-		return topic.getTopicUpdatesBetween(request, earliestTime(messages), latestTime(messages));
+		return topic.getTopicUpdatesBetween(request,
+			h.array.first(messages).meta.messageid,
+			lastMessage
+		);
 	});
 };
 

@@ -71,68 +71,69 @@ var Topic = function (id) {
 		}), cb);
 	}
 
-	this.getTopicUpdatesBetween = function (request, min, max) {
-		const startDate = new Date(h.parseDecimal(min));
-		const endDate = new Date(h.parseDecimal(max));
-
-		console.log(startDate, endDate);
-
+	this.getTopicUpdatesBetween = function (request, firstMessageID, lastMessageID) {
 		return theTopic.hasAccessAsync(request).then(function () {
 			return Bluebird.all([
-				topicUpdateModel.findAll({
-					where: {
-						topicID: id,
-						createdAt: {
-							$lte: endDate,
-							$gte: startDate
-						}
-					},
-					order: [
-						["createdAt", "DESC"]
-					]
-				}),
-				topicUpdateModel.findOne({
-					where: {
-						topicID: id,
-						createdAt: {
-							$lt: startDate
-						}
-					},
-					order: [
-						["createdAt", "DESC"]
-					]
-				})
+				client.zscoreAsync(mDomain, firstMessageID),
+				client.zscoreAsync(mDomain, lastMessageID),
 			]);
-		}).spread(function (topicUpdates, previousTopicUpdate) {
-			const topicUpdatesFormatted = topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
+		}).spread((min, max) => {
+			const startDate = new Date(h.parseDecimal(min));
+			const endDate = new Date(h.parseDecimal(max));
 
-			if (previousTopicUpdate) {
-				topicUpdatesFormatted.unshift(previousTopicUpdate.getAPIFormatted());
-			}
-
-			return topicUpdatesFormatted;
-			//grab topic updates in between newest and latest message and
-			// the one before the latest message
-			// (as it is the one that is active for the latest message)
+			return topicUpdateModel.findAll({
+				where: {
+					topicID: id,
+					createdAt: {
+						$gte: startDate,
+						$lte: endDate
+					}
+				},
+				order: [
+					["createdAt", "DESC"]
+				]
+			});
+		}).then(function (topicUpdates) {
+			return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
 		});
 	};
 
-	this.getLatestTopicUpdate = function (request, cb) {
+	this.getLatestTopicUpdates = function (request, newestMessageID, cb) {
 		return theTopic.hasAccessAsync(request).then(function () {
+			return client.zscoreAsync(mDomain, newestMessageID);
+		}).then((newestTime) => {
+			return topicUpdateModel.findAll({
+				where: {
+					topicID: id,
+					createdAt: {
+						$gte: newestTime
+					}
+				},
+				order: [
+					["createdAt", "DESC"]
+				]
+			});
+		}).then(function (topicUpdates) {
+			if (topicUpdates.length !== 0) {
+				return topicUpdates;
+			}
+
 			return topicUpdateModel.findOne({
 				where: {
 					topicID: id
 				},
 				order: [
 					["createdAt", "DESC"]
-				]
-			});
-		}).then(function (topicUpdate) {
-			if (!topicUpdate) {
-				return;
-			}
+				]		
+			}).then((topicUpdate) => {
+				if (!topicUpdate) {
+					return [];
+				}
 
-			return topicUpdate.getAPIFormatted();
+				return [topicUpdate];
+			});
+		}).then((topicUpdates) => {
+			return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
 		}).nodeify(cb);
 	};
 
@@ -230,9 +231,10 @@ var Topic = function (id) {
 			server.newest = newest;
 			server.meta = meta;
 
-			theTopic.getLatestTopicUpdate(request, this);
-		}), h.sF(function (latestTopicUpdate) {
-			server.latestTopicUpdate = latestTopicUpdate;
+			theTopic.getLatestTopicUpdates(request, newest.meta.messageid, this);
+		}), h.sF(function (latestTopicUpdates) {
+			server.latestTopicUpdate = h.array.last(latestTopicUpdates);
+			server.latestTopicUpdates = latestTopicUpdates;
 
 			this.ne(server);
 		}), cb);
