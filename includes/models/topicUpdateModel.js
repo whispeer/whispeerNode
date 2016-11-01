@@ -36,7 +36,7 @@ const setObject = (objectKeys, errorMessage) => {
 	};
 };
 
-const topicUpdate = sequelize.define("topicUpdate", {
+const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 	id: {
 		type: Sequelize.UUID,
 		allowNull: false,
@@ -126,4 +126,4 @@ const topicUpdate = sequelize.define("topicUpdate", {
 
 });
 
-module.exports = topicUpdate;
+module.exports = topicTitleUpdate;
