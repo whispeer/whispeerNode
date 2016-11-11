@@ -13,6 +13,27 @@
 		},
 		"mailType": "PICKUP"
 	},
+	"staging": {
+		"host": "https://whispeerstaging.de",
+		"ws": "https://data.whispeerstaging.de",
+		"wsPort": 3000,
+		"serverUrl": "https://data.whispeerstaging.de",
+		"db": {
+			"number": 0,
+		},
+		"push": {
+			"apn": {
+				"production": false
+			}
+		},
+		"production": true,
+		"debug": false,
+		"mailType": "sendmail",
+		"mail": {
+			   "path": "/usr/sbin/sendmail"
+		},
+		"mailFrom": "whispeer staging <support@whispeerstaging.de>"
+	},
 	"test": {
 		"host": "http://localhost",
 		"ws": "127.0.0.1",
