@@ -19,7 +19,7 @@
 		"wsPort": 3000,
 		"serverUrl": "https://data.whispeerstaging.de",
 		"db": {
-			"number": 0,
+			"number": 0
 		},
 		"push": {
 			"apn": {
