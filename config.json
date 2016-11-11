@@ -21,11 +21,6 @@
 		"db": {
 			"number": 0
 		},
-		"push": {
-			"apn": {
-				"production": false
-			}
-		},
 		"production": true,
 		"debug": false,
 		"mailType": "sendmail",
