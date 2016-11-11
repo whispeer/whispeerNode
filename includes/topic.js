@@ -98,7 +98,26 @@ var Topic = function (id) {
 		});
 	};
 
-	this.getLatestTopicUpdates = function (request, newestMessageID, cb) {
+	this.getLatestTopicUpdate = function (request) {
+		return theTopic.hasAccessAsync(request).then(() => {
+			topicUpdateModel.findOne({
+				where: {
+					topicID: id
+				},
+				order: [
+					["createdAt", "DESC"]
+				]		
+			});
+		}).then((topicUpdate) => {
+			if (!topicUpdate) {
+				return;
+			}
+
+			return topicUpdate.getAPIFormatted();
+		});
+	};
+
+	this.getTopicUpdatesAfterNewestMessage = function (request, newestMessageID, cb) {
 		return theTopic.hasAccessAsync(request).then(function () {
 			return client.zscoreAsync(mDomain, newestMessageID);
 		}).then((newestTime) => {
@@ -106,34 +125,25 @@ var Topic = function (id) {
 				where: {
 					topicID: id,
 					createdAt: {
-						$gte: newestTime
+						$gte: new Date(h.parseDecimal(newestTime))
 					}
 				},
 				order: [
 					["createdAt", "DESC"]
 				]
 			});
-		}).then(function (topicUpdates) {
+		}).then((topicUpdates) => {
 			if (topicUpdates.length !== 0) {
-				return topicUpdates;
+				return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
 			}
 
-			return topicUpdateModel.findOne({
-				where: {
-					topicID: id
-				},
-				order: [
-					["createdAt", "DESC"]
-				]		
-			}).then((topicUpdate) => {
+			return this.getLatestTopicUpdate().then((topicUpdate) => {
 				if (!topicUpdate) {
 					return [];
 				}
 
 				return [topicUpdate];
 			});
-		}).then((topicUpdates) => {
-			return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
 		}).nodeify(cb);
 	};
 
@@ -231,7 +241,7 @@ var Topic = function (id) {
 			server.newest = newest;
 			server.meta = meta;
 
-			theTopic.getLatestTopicUpdates(request, newest.meta.messageid, this);
+			theTopic.getTopicUpdatesAfterNewestMessage(request, newest.meta.messageid, this);
 		}), h.sF(function (latestTopicUpdates) {
 			server.latestTopicUpdate = h.array.last(latestTopicUpdates);
 			server.latestTopicUpdates = latestTopicUpdates;

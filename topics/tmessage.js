@@ -166,7 +166,7 @@ var t = {
 		step(function () {
 			Topic.get(data.topicID, this);
 		}, h.sF(function (topic) {
-			topic.getLatestTopicUpdate(request, this);
+			return topic.getLatestTopicUpdate(request);
 		}), fn);
 	},
 	createTopicUpdate: function (data, fn, request) {
