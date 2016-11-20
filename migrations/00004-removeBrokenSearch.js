@@ -20,6 +20,10 @@ function updateUserNicknames(cb) {
 		userids.forEach(function (userid) {
 			client.get("user:id:" + userid, this.parallel());
 		}, this);
+
+		if (userids.length === 0) {
+			this.ne([]);
+		}
 	}), h.sF(function (useridsChecked) {
 		userids.filter(function (uid, i) {
 			return !useridsChecked[i];
