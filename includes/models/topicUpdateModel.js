@@ -114,6 +114,7 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 		getContent: getObject(contentKeys),
 		getAPIFormatted: function () {
 			return {
+				id: this.id,
 				content: this.getContent(),
 				meta: this.getMeta()
 			};

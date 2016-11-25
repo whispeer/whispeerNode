@@ -100,7 +100,7 @@ var Topic = function (id) {
 
 	this.getLatestTopicUpdate = function (request) {
 		return theTopic.hasAccessAsync(request).then(() => {
-			topicUpdateModel.findOne({
+			return topicUpdateModel.findOne({
 				where: {
 					topicID: id
 				},
@@ -137,7 +137,7 @@ var Topic = function (id) {
 				return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
 			}
 
-			return this.getLatestTopicUpdate().then((topicUpdate) => {
+			return this.getLatestTopicUpdate(request).then((topicUpdate) => {
 				if (!topicUpdate) {
 					return [];
 				}
@@ -401,7 +401,6 @@ var Topic = function (id) {
 
 	/** add a message to this topic */
 	this.addMessage = function addMessageF(request, message, cb) {
-		console.log("addmessage");
 		var theReceiver, theSender, messageID;
 		step(function () {
 			hasAccessError(request, this);

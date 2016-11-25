@@ -46,7 +46,7 @@ var Bluebird = require("bluebird");
 */
 
 const getTopicUpdates = (request, topic, messages, lastMessage) => {
-	if (messages.length === 0) {
+	if (!messages || messages.length === 0) {
 		return Bluebird.resolve([]);
 	}
 
@@ -166,7 +166,11 @@ var t = {
 		step(function () {
 			Topic.get(data.topicID, this);
 		}, h.sF(function (topic) {
-			return topic.getLatestTopicUpdate(request);
+			return topic.getLatestTopicUpdate(request).then(function (topicUpdate) {
+				return {
+					topicUpdate: topicUpdate
+				};
+			});
 		}), fn);
 	},
 	createTopicUpdate: function (data, fn, request) {
@@ -174,6 +178,10 @@ var t = {
 			Topic.get(data.topicID, this);
 		}, h.sF(function (topic) {
 			topic.createTopicUpdate(request, data.topicUpdate, this);
+		}), h.sF(function (id) {
+			this.ne({
+				id: id
+			});
 		}), fn);
 	},
 	send: function sendMessageF(data, fn, request) {
