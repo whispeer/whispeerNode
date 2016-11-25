@@ -237,7 +237,7 @@ Message.create = function (request, data, cb) {
 	}), h.sF(function (newestCounter) {
 		if (newestCounter && parseInt(meta._sortCounter, 10) < newestCounter) {
 			console.warn("invalid counter");
-			this.last.ne(false);
+			this.last.ne({ success: false });
 			return;
 		}
 
@@ -254,7 +254,7 @@ Message.create = function (request, data, cb) {
 		}
 	}), h.sF(function (uuidMessage) {
 		if (uuidMessage) {
-			this.last.ne(true);
+			this.last.ne({ success: true });
 			return;
 		}
 
