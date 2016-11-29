@@ -33,6 +33,7 @@
 		"BlobNotFound": true,
 		"CircleNotExisting": true
 	},
+	"esversion": 6,
 	"undef": true,
 	"node": true,
 	"bitwise": true,

@@ -7,6 +7,8 @@ var h = require("whispeerHelper");
 var Topic = require("../includes/topic");
 var Message = require("../includes/messages");
 
+var Bluebird = require("bluebird");
+
 /*
 
 	topic: {
@@ -42,6 +44,23 @@ var Message = require("../includes/messages");
 	}
 
 */
+
+const getTopicUpdates = (request, topic, messages, lastMessage) => {
+	if (!messages || messages.length === 0) {
+		return Bluebird.resolve([]);
+	}
+
+	return Bluebird.try(() => {
+		messages.sort((m1, m2) => {
+			return m1.meta.sendTime - m2.meta.sendTime;
+		});
+
+		return topic.getTopicUpdatesBetween(request,
+			h.array.first(messages).meta.messageid,
+			lastMessage
+		);
+	});
+};
 
 var t = {
 	getTopic: function getTopicF(data, fn, request) {
@@ -101,10 +120,12 @@ var t = {
 		}), fn);
 	},
 	getTopicMessages: function getMessagesF(data, fn, request) {
-		var remainingCount;
+		var remainingCount, topic;
+
 		step(function () {
 			Topic.get(data.topicid, this);
-		}, h.sF(function (topic) {
+		}, h.sF(function (_topic) {
+			topic = _topic;
 			var count = Math.min(data.maximum || 20, 20);
 
 			topic.getMessages(request, data.afterMessage, count, this);
@@ -117,10 +138,13 @@ var t = {
 			}
 
 			this.parallel()();
-		}), h.sF(function (data) {
-			this.ne({
-				remaining: remainingCount,
-				messages: data
+		}), h.sF(function (messages) {
+			return getTopicUpdates(request, topic, messages, data.afterMessage).then(function (topicUpdates) {
+				return {
+					topicUpdates: topicUpdates,
+					remaining: remainingCount,
+					messages: messages
+				};
 			});
 		}), fn);
 	},
@@ -142,7 +166,11 @@ var t = {
 		step(function () {
 			Topic.get(data.topicID, this);
 		}, h.sF(function (topic) {
-			topic.getLatestTopicUpdate(request, this);
+			return topic.getLatestTopicUpdate(request).then(function (topicUpdate) {
+				return {
+					topicUpdate: topicUpdate
+				};
+			});
 		}), fn);
 	},
 	createTopicUpdate: function (data, fn, request) {
@@ -150,6 +178,10 @@ var t = {
 			Topic.get(data.topicID, this);
 		}, h.sF(function (topic) {
 			topic.createTopicUpdate(request, data.topicUpdate, this);
+		}), h.sF(function (id) {
+			this.ne({
+				id: id
+			});
 		}), fn);
 	},
 	send: function sendMessageF(data, fn, request) {

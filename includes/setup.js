@@ -1,14 +1,16 @@
 "use strict";
 
-var configManager = require("./configManager");
-var config = configManager.get();
+const configManager = require("./configManager");
+const config = configManager.get();
 
-var step = require("step");
-var client = require("./redisClient");
+const Bluebird = require("bluebird");
+const client = require("./redisClient");
+
+const sequelize = require("./dbConnector/sequelizeClient");
 
 module.exports = function (cb) {
-	step(function () {
-		console.log("Database selected: " + (config.db.number || 0));
-		client.select(config.db.number || 0, this);
-	}, cb);
+	return Bluebird.all([
+		sequelize.sync(),
+		client.selectAsync(config.db.number || 0)
+	]).nodeify(cb);
 };

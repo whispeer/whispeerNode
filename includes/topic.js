@@ -32,27 +32,8 @@ var MAXTIME = 60 * 60 * 1000;
 var errorService = require("./errorService");
 var pushAPI = require("./pushAPI");
 var Bluebird = require("bluebird");
-var Redlock = require("redlock");
 
-var redlock = new Redlock(
-    // you should have one client for each redis node
-    // in your cluster
-    [client],
-    {
-        // the expected clock drift; for more details
-        // see http://redis.io/topics/distlock
-        driftFactor: 0.01, // time in ms
-
-        // the max number of times Redlock will attempt
-        // to lock a resource before erroring
-        retryCount:  3,
-
-        // the time in ms between attempts
-        retryDelay:  200 // time in ms
-    }
-);
-
-var lockTTL = 1000;
+const topicUpdateModel = require("./models/topicUpdateModel");
 
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
@@ -90,28 +71,88 @@ var Topic = function (id) {
 		}), cb);
 	}
 
-	this.getLatestTopicUpdate = function (request, cb) {
+	this.getTopicUpdatesBetween = function (request, firstMessageID, lastMessageID) {
 		return theTopic.hasAccessAsync(request).then(function () {
-			return client.zrangeAsync(domain + ":topicUpdate:list", -1, -1);
-		}).then(function (topicUpdateID) {
-			if (!topicUpdateID) {
+			return Bluebird.all([
+				client.zscoreAsync(mDomain, firstMessageID),
+				client.zscoreAsync(mDomain, lastMessageID),
+			]);
+		}).spread((min, max) => {
+			const startDate = new Date(h.parseDecimal(min));
+			const endDate = new Date(h.parseDecimal(max));
+
+			return topicUpdateModel.findAll({
+				where: {
+					topicID: id,
+					createdAt: {
+						$gte: startDate,
+						$lte: endDate
+					}
+				},
+				order: [
+					["createdAt", "DESC"]
+				]
+			});
+		}).then(function (topicUpdates) {
+			return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
+		});
+	};
+
+	this.getLatestTopicUpdate = function (request) {
+		return theTopic.hasAccessAsync(request).then(() => {
+			return topicUpdateModel.findOne({
+				where: {
+					topicID: id
+				},
+				order: [
+					["createdAt", "DESC"]
+				]		
+			});
+		}).then((topicUpdate) => {
+			if (!topicUpdate) {
 				return;
 			}
 
-			return client.getAsync(domain + ":topicUpdate:" + topicUpdateID).then(JSON.parse.bind(JSON));
+			return topicUpdate.getAPIFormatted();
+		});
+	};
+
+	this.getTopicUpdatesAfterNewestMessage = function (request, newestMessageID, cb) {
+		return theTopic.hasAccessAsync(request).then(function () {
+			return client.zscoreAsync(mDomain, newestMessageID);
+		}).then((newestTime) => {
+			return topicUpdateModel.findAll({
+				where: {
+					topicID: id,
+					createdAt: {
+						$gte: new Date(h.parseDecimal(newestTime))
+					}
+				},
+				order: [
+					["createdAt", "DESC"]
+				]
+			});
+		}).then((topicUpdates) => {
+			if (topicUpdates.length !== 0) {
+				return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted());
+			}
+
+			return this.getLatestTopicUpdate(request).then((topicUpdate) => {
+				if (!topicUpdate) {
+					return [];
+				}
+
+				return [topicUpdate];
+			});
 		}).nodeify(cb);
 	};
 
 	this.createTopicUpdate = function (request, topicUpdate, cb) {
-		//TODO: check data correctness!
-		return Bluebird.using(redlock.disposer(domain + ":topicUpdate:lock", lockTTL, errorService.handleError), function() {
-			return theTopic.hasAccessAsync(request).then(function () {
-				return client.incrAsync(domain + ":topicUpdate:counter");
-			}).then(function (topicUpdateID) {
-				return client.setAsync(domain + ":topicUpdate:" + topicUpdateID, JSON.stringify(topicUpdate)).then(function () {
-					return client.zaddAsync(domain + ":topicUpdate:list", new Date().getTime(), topicUpdateID);
-				});
-			});
+		return theTopic.hasAccessAsync(request).then(function () {
+			topicUpdate.topicID = id;
+			return topicUpdateModel.create(topicUpdate);
+		}).then((topicUpdate) => {
+			return topicUpdate.id;
 		}).nodeify(cb);
 	};
 
@@ -200,9 +241,10 @@ var Topic = function (id) {
 			server.newest = newest;
 			server.meta = meta;
 
-			theTopic.getLatestTopicUpdate(request, this);
-		}), h.sF(function (latestTopicUpdate) {
-			server.latestTopicUpdate = latestTopicUpdate;
+			theTopic.getTopicUpdatesAfterNewestMessage(request, newest.meta.messageid, this);
+		}), h.sF(function (latestTopicUpdates) {
+			server.latestTopicUpdate = h.array.last(latestTopicUpdates);
+			server.latestTopicUpdates = latestTopicUpdates;
 
 			this.ne(server);
 		}), cb);
@@ -261,9 +303,6 @@ var Topic = function (id) {
 
 	this.getMissingMessages = function (inBetween, newestIndex, oldestIndex) {
 		return client.zrevrangeAsync(mDomain, newestIndex + 1, oldestIndex - 1).map(h.parseDecimal).then(function (ids) {
-			oldestIndex;
-			newestIndex;
-			debugger;
 			return h.arraySubtract(ids, inBetween);
 		});
 	};
@@ -362,7 +401,6 @@ var Topic = function (id) {
 
 	/** add a message to this topic */
 	this.addMessage = function addMessageF(request, message, cb) {
-		console.log("addmessage");
 		var theReceiver, theSender, messageID;
 		step(function () {
 			hasAccessError(request, this);

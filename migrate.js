@@ -12,12 +12,11 @@ var path = require("path");
 
 var migrationState, availableMigrations, highestMigrationState;
 
-var configManager = require("./includes/configManager");
-var config = configManager.get();
-
 var migrationToRun = process.argv[2];
 
 var runMigrations;
+
+const setup = require("./includes/setup");
 
 function fileNameToID(name) {
 	return h.parseDecimal(name.split("-")[0]);
@@ -100,8 +99,7 @@ function getNewestMigrationCount(cb) {
 
 if (migrationToRun) {
 	step(function () {
-		console.log("Database selected: " + config.db.number || 0);
-		client.select(config.db.number || 0, this);
+		setup(this);
 	}, h.sF(function () {
 		loadMigrations(this);
 	}), h.sF(function () {
@@ -116,8 +114,7 @@ if (migrationToRun) {
 	});
 } else {
 	step(function () {
-		console.log("Database selected: " + config.db.number || 0);
-		client.select(config.db.number || 0, this);
+		setup(this);
 	}, h.sF(function () {
 		client.get("server:migrationState", this);
 	}), h.sF(function (_migrationState) {
