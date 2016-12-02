@@ -241,7 +241,11 @@ var Topic = function (id) {
 			server.newest = newest;
 			server.meta = meta;
 
-			theTopic.getTopicUpdatesAfterNewestMessage(request, newest.meta.messageid, this);
+			if (newest) {
+				theTopic.getTopicUpdatesAfterNewestMessage(request, newest.meta.messageid, this);
+			} else {
+				this.ne([]);
+			}
 		}), h.sF(function (latestTopicUpdates) {
 			server.latestTopicUpdate = h.array.last(latestTopicUpdates);
 			server.latestTopicUpdates = latestTopicUpdates;
