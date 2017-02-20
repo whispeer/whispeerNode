@@ -23,9 +23,10 @@ module.exports = function (express) {
 	express.post("/reportError",  function (req, res, next) {
 		if (!req.body || !req.body.error) {
 			next();
+			return;
 		}
 
-		mailer.mailAdmin("JS Error Report! " + req.body.error.substr(0, 50), 
+		mailer.mailAdmin("JS Error Report! " + req.body.error.substr(0, 50),
 			JSON.stringify(req.body) + "\n\n" +
 			JSON.stringify(req.headers)
 		).then(function () {
