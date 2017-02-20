@@ -5,6 +5,9 @@ var h = require("whispeerHelper");
 
 var Post = require("../includes/post");
 
+var MAXPOSTSLENGTH = 200 * 1000;
+
+
 /*
 	post: {
 		meta: {
@@ -35,6 +38,10 @@ var p = {
 	comment: {
 		create: function (data, fn, request) {
 			step(function () {
+				if (data.comment.content.ct.length > MAXPOSTSLENGTH) {
+					throw new Error("message to long");
+				}
+
 				Post.get(request, h.parseDecimal(data.postID), this);
 			}, h.sF(function (thePost) {
 				thePost.addComment(request, data.comment.content, data.comment.meta, this);
@@ -122,7 +129,11 @@ var p = {
 		}), fn);
 	},
 	createPost: function (data, fn, request) {
-		step(function () {
+		step(function () {			
+			if (data.postData.content.ct.length  > MAXPOSTSLENGTH) {
+				throw new Error("message to long");
+			}
+
 			Post.create(request, data.postData, this);
 		}, h.sF(function (thePost) {
 			thePost.getPostData(request, this);
