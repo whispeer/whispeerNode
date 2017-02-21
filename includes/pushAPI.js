@@ -70,6 +70,8 @@ var pushAPI = {
 						return pushToken.create(givenData);
 					});
 				}
+			}).catch(() => {
+				console.warn("Could not create push token :(");
 			});
 		}).nodeify(cb);
 	}, notifyUsers: function (users, data) {
