@@ -15,6 +15,10 @@ const getPushToken = (id) => {
 
 	return client.getAsync(id).then((pushToken) => {
 		return JSON.parse(pushToken);
+	}).then((pushToken) => {
+		delete pushToken.id;
+		
+		return pushToken;
 	});
 };
 
