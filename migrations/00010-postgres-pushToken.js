@@ -1,5 +1,5 @@
 var Bluebird = require("bluebird");
-var	client = require("../includes/redisClient");
+var client = require("../includes/redisClient");
 
 const sequelize = require("../includes/dbConnector/sequelizeClient");
 const pushTokenModel = require("../includes/models/pushTokenModel");
