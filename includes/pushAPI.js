@@ -7,7 +7,7 @@ var errorService = require("./errorService");
 
 var pushService = require("./pushService");
 
-const pushToken = require("./models/pushTokenModelSequelize");
+const pushToken = require("./models/pushTokenModel");
 
 pushService.listenFeedback(function (devices) {
 	Bluebird.resolve(devices).then(function (devices) {

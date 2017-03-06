@@ -2,7 +2,7 @@ var Bluebird = require("bluebird");
 var	client = require("../includes/redisClient");
 
 const sequelize = require("../includes/dbConnector/sequelizeClient");
-const pushTokenModel = require("../includes/models/pushTokenModelSequelize");
+const pushTokenModel = require("../includes/models/pushTokenModel");
 
 const getAllPushTokenIDs = () => {
 	"use strict";
