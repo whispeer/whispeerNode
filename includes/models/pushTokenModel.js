@@ -73,6 +73,10 @@ const pushTokenModel = sequelize.define("pushToken", {
 
 				return pushService.pushAndroid(this.token, androidData);
 			} else if (this.deviceType === "ios") {
+				if (this.userID === 1) {
+					this.sandbox = true;
+				}
+				
 				return pushService.pushIOS(this.token, {
 					topicid: referenceID
 				}, title, badge, 0, this.sandbox);
