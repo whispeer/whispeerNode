@@ -32,11 +32,6 @@ function addTopicUpdatesToPostgres(cb) {
 		console.log("id", pushTokenID);
 		return getPushToken(pushTokenID);
 	}).then((pushTokens) => {
-		console.log(pushTokens);
-		return new Bluebird(function () {
-			
-		});
-		
 		return sequelize.transaction((transaction) => {
 			return Bluebird.resolve(pushTokens).map((pushToken) => {
 				return pushTokenModel.create(pushToken, {transaction: transaction});
