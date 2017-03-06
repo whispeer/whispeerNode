@@ -22,6 +22,8 @@ const getPushToken = (id) => {
 	});
 };
 
+const tokens = {};
+
 function addTopicUpdatesToPostgres(cb) {
 	"use strict";
 	return Bluebird.resolve().then(function () {
@@ -31,6 +33,15 @@ function addTopicUpdatesToPostgres(cb) {
 	}).map(function (pushTokenID) {
 		console.log("id", pushTokenID);
 		return getPushToken(pushTokenID);
+	}).filter((pushToken) => {
+		if (tokens[pushToken.token]) {
+			console.error(pushToken, tokens[pushToken.token]);
+			throw new Error("duplicate");
+		}
+		
+		tokens[pushToken.token] = pushToken;
+		
+		return true;
 	}).then((pushTokens) => {
 		return sequelize.transaction((transaction) => {
 			return Bluebird.resolve(pushTokens).map((pushToken) => {
