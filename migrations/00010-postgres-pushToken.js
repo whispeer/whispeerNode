@@ -16,7 +16,7 @@ const getPushToken = (id) => {
 	return client.getAsync(id).then((pushToken) => {
 		return JSON.parse(pushToken);
 	}).then((pushToken) => {
-		// delete pushToken.id;
+		delete pushToken.id;
 		
 		return pushToken;
 	});
@@ -36,7 +36,8 @@ function addTopicUpdatesToPostgres(cb) {
 	}).filter((pushToken) => {
 		if (tokens[pushToken.token]) {
 			console.error(pushToken, tokens[pushToken.token]);
-			throw new Error("duplicate");
+			
+			return false;
 		}
 		
 		tokens[pushToken.token] = pushToken;
