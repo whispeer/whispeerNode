@@ -13,36 +13,38 @@ const pushTokenModel = sequelize.define("pushToken", {
 		defaultValue: Sequelize.UUIDV4,
 		primaryKey: true
 	},
- 
+
 	userID: {
- 		type: Sequelize.INTEGER,
- 		allowNull: false
- 	},
- 
+		type: Sequelize.INTEGER,
+		allowNull: false
+	},
+
 	deviceType: {
- 		type: Sequelize.STRING,
- 		allowNull: false,
- 		validate: { isIn: ["android", "ios"] }
- 	},
- 
+		type: Sequelize.STRING,
+		allowNull: false,
+		validate: {
+			is: /^(android|ios)$/
+		}
+	},
+
 	token: {
-  		type: Sequelize.STRING,
-  		allowNull: false,
+		type: Sequelize.STRING,
+		allowNull: false,
 		unique: true
-  	},
+	},
 
 	pushKey: {
-  		type: Sequelize.STRING,
+		type: Sequelize.STRING,
 		unique: false
-  	},
- 
- 	sandbox: {
+	},
+
+	sandbox: {
 		type: Sequelize.BOOLEAN
 	}
- 
-} , {
+
+}, {
 	instanceMethods: {
-		push: function (data, title, badge, referenceID) {
+		push: function(data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
 				if (!data && !title && !referenceID) {
 					return;
@@ -71,7 +73,9 @@ const pushTokenModel = sequelize.define("pushToken", {
 
 				return pushService.pushAndroid(this.token, androidData);
 			} else if (this.deviceType === "ios") {
-				return pushService.pushIOS(this.token, { topicid: referenceID }, title, badge, 0, this.sandbox);
+				return pushService.pushIOS(this.token, {
+					topicid: referenceID
+				}, title, badge, 0, this.sandbox);
 			}
 
 			return Bluebird.reject("push: invalid type");
