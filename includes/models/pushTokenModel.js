@@ -1,51 +1,50 @@
 "use strict";
 
-var Waterline = require("waterline");
+const sequelize = require("../dbConnector/sequelizeClient");
+const Sequelize = require("sequelize");
 var Bluebird = require("bluebird");
 
 var pushService = require("../pushService");
 
-var PushToken = Waterline.Collection.extend({
- 
-	// Define a custom table name 
-	tableName: "pushToken",
- 
-	// Set schema true/false for adapters that support schemaless 
-	schema: true,
-	connection: "redis",
- 
-	// Define attributes for this collection 
-	attributes: {
-		userID: {
-			type: "integer",
-			required: true,
-			index: true
-		},
+const pushTokenModel = sequelize.define("pushToken", {
+	id: {
+		type: Sequelize.UUID,
+		allowNull: false,
+		defaultValue: Sequelize.UUIDV4,
+		primaryKey: true
+	},
 
-		deviceType: {
-			type: "string",
-			required: true
-		},
+	userID: {
+		type: Sequelize.INTEGER,
+		allowNull: false
+	},
 
-		token: {
-			type: "string",
-			required: true,
-			unique: true
-		},
+	deviceType: {
+		type: Sequelize.STRING,
+		allowNull: false,
+		validate: {
+			is: /^(android|ios)$/
+		}
+	},
 
-		pushKey: {
-			type: "string",
-			required: false,
-			unique: false
-		},
+	token: {
+		type: Sequelize.STRING,
+		allowNull: false,
+		unique: true
+	},
 
-		sandbox: {
-			type: "boolean",
-			required: false,
-			unique: false
-		},
+	pushKey: {
+		type: Sequelize.STRING,
+		unique: false
+	},
 
-		push: function (data, title, badge, referenceID) {
+	sandbox: {
+		type: Sequelize.BOOLEAN
+	}
+
+}, {
+	instanceMethods: {
+		push: function(data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
 				if (!data && !title && !referenceID) {
 					return;
@@ -74,7 +73,9 @@ var PushToken = Waterline.Collection.extend({
 
 				return pushService.pushAndroid(this.token, androidData);
 			} else if (this.deviceType === "ios") {
-				return pushService.pushIOS(this.token, { topicid: referenceID }, title, badge, 0, this.sandbox);
+				return pushService.pushIOS(this.token, {
+					topicid: referenceID
+				}, title, badge, 0, this.sandbox);
 			}
 
 			return Bluebird.reject("push: invalid type");
@@ -82,4 +83,4 @@ var PushToken = Waterline.Collection.extend({
 	}
 });
 
-module.exports = PushToken;
+module.exports = pushTokenModel;

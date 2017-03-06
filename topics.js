@@ -74,6 +74,7 @@ var whispeerAPI = {
 				if (data.type !== "android" && data.type !== "ios") {
 					fn.error.protocol("invalid type");
 					this.last.ne();
+					return;
 				}
 
 				pushAPI.subscribe(request, data.type, data.token, data.key, this);
