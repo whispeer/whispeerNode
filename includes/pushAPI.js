@@ -4,31 +4,27 @@ var Bluebird = require("bluebird");
 
 var client = require("./redisClient");
 var errorService = require("./errorService");
-var waterlineLoader = require("./models/waterlineLoader");
 
 var pushService = require("./pushService");
 
-waterlineLoader.then(function (ontology) {
-	var pushToken = ontology.collections.pushtoken;
+const pushToken = require("./models/pushTokenModelSequelize");
 
-	pushService.listenFeedback(function (devices) {
-		Bluebird.resolve(devices).then(function (devices) {
-			console.log(devices);
+pushService.listenFeedback(function (devices) {
+	Bluebird.resolve(devices).then(function (devices) {
+		console.log(devices);
 
-			if (devices.length === 0) {
-				return;
-			}
+		if (devices.length === 0) {
+			return;
+		}
 
-			var tokens = devices.map(function (deviceInfo) {
-				return deviceInfo.device.token.toString("hex");
-			});
+		var tokens = devices.map(function (deviceInfo) {
+			return deviceInfo.device.token.toString("hex");
+		});
 
-			console.info("removing ios devices from database: " + JSON.stringify(tokens));
+		console.info("removing ios devices from database: " + JSON.stringify(tokens));
 
-			return pushToken.destroy({ token: tokens });
-		}).catch(errorService.handleError);
-	});
-
+		return pushToken.destroy({ where: { token: tokens }});
+	}).catch(errorService.handleError);
 });
 
 var translations = {
@@ -47,10 +43,6 @@ var pushAPI = {
 				throw new Error("invalid type");
 			}
 		}).then(function () {
-			return waterlineLoader;
-		}).then(function (ontology) {
-			var pushToken = ontology.collections.pushtoken;
-
 			var givenData = {
 				userID: request.session.getUserID(),
 				deviceType: type,
@@ -58,7 +50,7 @@ var pushAPI = {
 				token: token
 			};
 
-			return pushToken.findOne({ token: token }).then(function (record) {
+			return pushToken.findOne({ where: { token: token }}).then(function (record) {
 				if (!record) {
 					console.log("CREATE: " + JSON.stringify(givenData));
 					return pushToken.create(givenData);
@@ -66,12 +58,10 @@ var pushAPI = {
 
 				if (record.userID !== givenData.userID || record.pushKey !== givenData.pushKey) {
 					console.log("UPDATE: " + JSON.stringify(givenData));
-					return pushToken.destroy({ token: token }).then(function () {
+					return pushToken.destroy({ where: { token: token }}).then(function () {
 						return pushToken.create(givenData);
 					});
 				}
-			}).catch(() => {
-				console.warn("Could not create push token :(");
 			});
 		}).nodeify(cb);
 	}, notifyUsers: function (users, data) {
@@ -97,11 +87,7 @@ var pushAPI = {
 		});
 	}, sendNotification: function (users, data, unreadMessageCount, title) {
 		console.log("pushing to users: " + JSON.stringify(users));
-		return waterlineLoader.then(function (ontology) {
-			var pushToken = ontology.collections.pushtoken;
-
-			return pushToken.find({ where: { userID: users }});
-		}).map(function (user) {
+		return pushToken.findAll({ where: { userID: users }}).map(function (user) {
 			var referenceID = 0;
 
 			if (data && data.message && data.message.meta && data.message.meta.topicid) {

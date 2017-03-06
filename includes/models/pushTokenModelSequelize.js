@@ -1,50 +1,47 @@
 "use strict";
 
-var Waterline = require("waterline");
+const sequelize = require("../dbConnector/sequelizeClient");
+const Sequelize = require("sequelize");
 var Bluebird = require("bluebird");
 
 var pushService = require("../pushService");
 
-var PushToken = Waterline.Collection.extend({
+const pushTokenModel = sequelize.define("pushToken", {
+	id: {
+		type: Sequelize.UUID,
+		allowNull: false,
+		defaultValue: Sequelize.UUIDV4,
+		primaryKey: true
+	},
  
-	// Define a custom table name 
-	tableName: "pushToken",
+	userID: {
+ 		type: Sequelize.INTEGER,
+ 		allowNull: false
+ 	},
  
-	// Set schema true/false for adapters that support schemaless 
-	schema: true,
-	connection: "redis",
+	deviceType: {
+ 		type: Sequelize.STRING,
+ 		allowNull: false,
+ 		validate: { isIn: ["android", "ios"] }
+ 	},
  
-	// Define attributes for this collection 
-	attributes: {
-		userID: {
-			type: "integer",
-			required: true,
-			index: true
-		},
+	token: {
+  		type: Sequelize.STRING,
+  		allowNull: false,
+		unique: true
+  	},
 
-		deviceType: {
-			type: "string",
-			required: true
-		},
-
-		token: {
-			type: "string",
-			required: true,
-			unique: true
-		},
-
-		pushKey: {
-			type: "string",
-			required: false,
-			unique: false
-		},
-
-		sandbox: {
-			type: "boolean",
-			required: false,
-			unique: false
-		},
-
+	pushKey: {
+  		type: Sequelize.STRING,
+		unique: false
+  	},
+ 
+ 	sandbox: {
+		type: Sequelize.BOOLEAN
+	}
+ 
+} , {
+	instanceMethods: {
 		push: function (data, title, badge, referenceID) {
 			if (this.deviceType === "android") {
 				if (!data && !title && !referenceID) {
@@ -82,4 +79,4 @@ var PushToken = Waterline.Collection.extend({
 	}
 });
 
-module.exports = PushToken;
+module.exports = pushTokenModel;
