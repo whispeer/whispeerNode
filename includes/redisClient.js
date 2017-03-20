@@ -31,7 +31,7 @@ client.sub = function subF(channel, callback) {
 
     return function () {
 		client.unsubscribe();
-		client.end();
+		client.quit();
     };
 };
 
@@ -52,7 +52,7 @@ client.psub = function subF(channel, callback) {
 
     return function () {
         client.punsubscribe();
-        client.end();
+        client.quit();
     };
 };
 
