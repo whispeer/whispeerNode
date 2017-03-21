@@ -9,6 +9,8 @@ var Message = require("../includes/messages");
 
 var Bluebird = require("bluebird");
 
+var MAXMESSAGELENGTH = 200 * 1000;
+
 /*
 
 	topic: {
@@ -185,7 +187,11 @@ var t = {
 		}), fn);
 	},
 	send: function sendMessageF(data, fn, request) {
-		step(function () {
+		step(function () {			
+			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
+				throw new Error("message to long");
+			}
+			
 			Message.create(request, data.message, this);
 		}, h.sF(function (result) {
 			this.ne({
@@ -195,9 +201,13 @@ var t = {
 		}), fn);
 		//message
 	},
-	sendNewTopic: function sendNewTopicF(data, fn, request) {
+	sendNewTopic: function sendNewTopicF(data, fn, request) {		
 		var topic;
 		step(function () {
+			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
+				throw new Error("message to long");
+			}
+
 			Topic.create(request, data.topic, data.receiverKeys, this);
 		}, h.sF(function (theTopic) {
 			topic = theTopic;
