@@ -67,10 +67,10 @@ const pushTokenModel = sequelize.define("pushToken", {
 					androidData.title = title;
 					androidData.message = "-";
 				}
-				
-				androidData["content-available"] = "1";
 
 				if (data) {
+					androidData["content-available"] = "1";
+
 					if (this.pushKey) {
 						var sjcl = require("../crypto/sjcl");
 						console.log("Encrypting push using key: " + this.pushKey);
