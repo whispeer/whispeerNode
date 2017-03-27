@@ -707,7 +707,7 @@ client.psub(base + "*:topicRead", function (channel) {
 	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
 	
 	client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessagesCount) {
-		console.warn("send badge count of", unreadMessagesCount);
+		console.warn("push send badge count of", unreadMessagesCount);
 		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount || 0);
 	});
 });
