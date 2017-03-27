@@ -44,17 +44,20 @@ const pushTokenModel = sequelize.define("pushToken", {
 
 }, {
 	instanceMethods: {
-		push: function(data, title, badge, referenceID) {
+		push: function(data, title, badge, reference) {
 			if (this.deviceType === "android") {
-				if (!data && !title && !referenceID) {
+				if (!data && !title && !reference) {
 					return;
 				}
 
 				var androidData = {
-					topicid: referenceID,
 					vibrationPattern: [0, 400, 500, 400],
 					ledColor: [0, 0, 255, 0]
 				};
+
+				if (reference.type === "message") {
+					androidData.topicid = reference.id;
+				}
 
 				if (title) {
 					androidData.title = title;
@@ -72,14 +75,22 @@ const pushTokenModel = sequelize.define("pushToken", {
 				}
 
 				return pushService.pushAndroid(this.token, androidData);
-			} else if (this.deviceType === "ios") {
+			}
+
+			if (this.deviceType === "ios") {
 				if (this.userID === 1) {
 					this.sandbox = true;
 				}
 				
-				return pushService.pushIOS(this.token, {
-					topicid: referenceID
-				}, title, badge, 0, this.sandbox);
+				var payload = {
+					reference: reference
+				};
+				
+				if (reference.type === "message") {
+					payload.topicid = reference.id;
+				}
+				
+				return pushService.pushIOS(this.token, payload, title, badge, 0, this.sandbox);
 			}
 
 			return Bluebird.reject("push: invalid type");

@@ -44,6 +44,9 @@ function pushMessage(request, theReceiver, senderName, message) {
 		}), {
 			message: messageData,
 			user: senderName
+		}, {
+			type: "message",
+			id: messageData.meta.topicid
 		});
 	}), errorService.handleError);
 }
@@ -704,7 +707,8 @@ client.psub(base + "*:topicRead", function (channel) {
 	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
 	
 	client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessagesCount) {
-		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount || 0, "");
+		console.warn("send badge count of", unreadMessagesCount);
+		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount || 0);
 	});
 });
 
