@@ -67,6 +67,8 @@ const pushTokenModel = sequelize.define("pushToken", {
 					androidData.title = title;
 					androidData.message = "-";
 				}
+				
+				androidData["content-available"] = "1";
 
 				if (data) {
 					if (this.pushKey) {
