@@ -55,8 +55,9 @@ const pushTokenModel = sequelize.define("pushToken", {
 					ledColor: [0, 0, 255, 0]
 				};
 
-				if (reference.type === "message") {
+				if (reference && reference.type === "message") {
 					androidData.topicid = reference.id;
+					androidData.reference = reference;
 				}
 
 				if (title) {
@@ -82,12 +83,16 @@ const pushTokenModel = sequelize.define("pushToken", {
 					this.sandbox = true;
 				}
 				
-				var payload = {
-					reference: reference
-				};
+				var payload = {};
 				
-				if (reference.type === "message") {
-					payload.topicid = reference.id;
+				if (reference) {
+					payload = {
+						reference: reference
+					};
+					
+					if (reference.type === "message") {
+						payload.topicid = reference.id;
+					}
 				}
 				
 				return pushService.pushIOS(this.token, payload, title, badge, 0, this.sandbox);
