@@ -10,13 +10,14 @@ var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
 var verifySecuredMeta = require("./verifyObject");
+var pushAPI = require("./pushAPI");
 
-/*
-	Friends: {
-
-	}
-
-*/
+function pushFriendRequest(senderId, receiverId) {
+	pushAPI.notifyUser(receiverId, {}, {
+		type: "contactRequest",
+		id: senderId
+	});
+}
 
 var Notification = require("./notification");
 
@@ -443,6 +444,7 @@ var friends = {
 					sendMailWhileOnline: true
 				});
 
+				pushFriendRequest(request.session.getUserID(), friendShip.user);
 				friendShip.user.notify("friendRequest", request.session.getUserID());
 			} else {
 				Notification.add([friendShip.user], "friend", "accept", request.session.getUserID(), {
