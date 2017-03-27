@@ -55,9 +55,12 @@ const pushTokenModel = sequelize.define("pushToken", {
 					ledColor: [0, 0, 255, 0]
 				};
 
+				if (reference) {
+					androidData.reference = reference;
+				}
+
 				if (reference && reference.type === "message") {
 					androidData.topicid = reference.id;
-					androidData.reference = reference;
 				}
 
 				if (title) {
