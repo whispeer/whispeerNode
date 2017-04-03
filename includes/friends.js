@@ -10,13 +10,26 @@ var Decryptor = require("./crypto/decryptor");
 var SymKey = require("./crypto/symKey");
 
 var verifySecuredMeta = require("./verifyObject");
+var pushAPI = require("./pushAPI");
 
-/*
-	Friends: {
+function pushFriendRequest(request, senderId, receiverId) {
+	step(function () {
+		var User = require("./user");
 
-	}
-
-*/
+		User.getUser(senderId, this);
+	}, h.sF(function (sender) {
+		sender.getNames(request, this);
+	}), h.sF(function (senderNames) {
+		var senderName = senderNames.firstName || senderNames.lastName || senderNames.nickname;
+		
+		pushAPI.notifyUser(receiverId, {
+			user: senderName
+		}, {
+			type: "contactRequest",
+			id: senderId
+		});
+	}));
+}
 
 var Notification = require("./notification");
 
@@ -443,6 +456,7 @@ var friends = {
 					sendMailWhileOnline: true
 				});
 
+				pushFriendRequest(request, request.session.getUserID(), friendShip.user);
 				friendShip.user.notify("friendRequest", request.session.getUserID());
 			} else {
 				Notification.add([friendShip.user], "friend", "accept", request.session.getUserID(), {

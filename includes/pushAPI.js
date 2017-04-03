@@ -29,12 +29,32 @@ pushService.listenFeedback(function (devices) {
 
 var translations = {
 	"en": {
-		title: "Message from {user}"
+		default: "New content on whispeer",
+		message: "New Message from {user}",
+		contactRequest: "New contact request from {user}"
 	},
 	"de": {
-		title: "Nachricht von {user}"
+		default: "Neuigkeiten bei whispeer",
+		message: "Neue Nachricht von {user}",
+		contactRequest: "Neue Kontaktanfrage von {user}"
 	}
 };
+
+function getTranslations(userLanguage) {
+	if (!translations[userLanguage]) {
+		return translations.en;
+	}
+	
+	return translations[userLanguage];
+}
+
+function getTitle(reference, userLanguage, userName) {
+	if (reference && reference.type) {
+		return getTranslations(userLanguage)[reference.type].replace("{user}", userName);
+	}
+
+	return getTranslations(userLanguage)["default"];
+}
 
 var pushAPI = {
 	subscribe: function (request, type, token, pushKey, cb) {
@@ -64,38 +84,28 @@ var pushAPI = {
 				}
 			});
 		}).nodeify(cb);
-	}, notifyUsers: function (users, data) {
+	}, notifyUsers: function (users, data, reference) {
 		return Bluebird.resolve(users).map(function (user) {
-			return pushAPI.notifyUser(user, data);
+			return pushAPI.notifyUser(user, data, reference);
 		});
-	}, notifyUser: function (user, data) {
+	}, notifyUser: function (user, data, reference) {
 		return Bluebird.all([
 			client.zcardAsync("topic:user:" + user.getID() + ":unreadTopics"),
 			user.getLanguage()
 		]).spread(function (unreadMessageCount, userLanguage) {
-			if (!translations[userLanguage]) {
-				console.warn("Language not found for push: " + userLanguage);
-				userLanguage = "en";
-			}
-
 			return pushAPI.sendNotification(
 				[user.getID()],
 				data,
 				unreadMessageCount,
-				translations[userLanguage].title.replace("{user}", data.user)
+				getTitle(reference, userLanguage, data.user),
+				reference
 			);
 		});
-	}, sendNotification: function (users, data, unreadMessageCount, title) {
+	}, sendNotification: function (users, data, badgeCount, title, reference) {
 		console.log("pushing to users: " + JSON.stringify(users));
-		return pushToken.findAll({ where: { userID: users }}).map(function (user) {
-			var referenceID = 0;
-
-			if (data && data.message && data.message.meta && data.message.meta.topicid) {
-				referenceID = data.message.meta.topicid;
-			}
-
-			console.log("got a user");
-			return user.push(data, title, unreadMessageCount, referenceID);
+		return pushToken.findAll({ where: { userID: users }}).map(function (userPushToken) {
+			console.log("got a userPushToken. Sending Push!", title, badgeCount);
+			return userPushToken.push(data, title, badgeCount, reference);
 		});
 	}
 };

@@ -48,8 +48,7 @@ var pushService = {
 		feedback.on("feedback", cb);
 	},
 	pushAndroid: function (token, data) {
-		console.log("pushing android: " + token);
-		console.log(data);
+		console.log("pushing android: " + token, data);
 		var notification = new gcm.Message({
 			data: data
 		});
