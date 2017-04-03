@@ -40,12 +40,20 @@ var translations = {
 	}
 };
 
+function getTranslations(userLanguage) {
+	if (!translations[userLanguage]) {
+		return translations.en;
+	}
+	
+	return translations[userLanguage];
+}
+
 function getTitle(reference, userLanguage, userName) {
 	if (reference && reference.type) {
-		return translations[userLanguage][reference.type].replace("{user}", userName);
+		return getTranslations(userLanguage)[reference.type].replace("{user}", userName);
 	}
 
-	return translations[userLanguage]["default"];
+	return getTranslations(userLanguage)["default"];
 }
 
 var pushAPI = {
