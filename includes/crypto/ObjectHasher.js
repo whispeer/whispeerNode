@@ -1,7 +1,7 @@
 "use strict";
 
 var sjcl = require("./sjcl");
-var chelper = require("./minimalHelper");
+var chelper = require("./cHelper");
 
 var ObjectHasher = function (data, version) {
 	this._data = data;
