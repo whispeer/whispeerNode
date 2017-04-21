@@ -44,16 +44,20 @@ function getTranslations(userLanguage) {
 	if (!translations[userLanguage]) {
 		return translations.en;
 	}
-	
+
 	return translations[userLanguage];
 }
 
-function getTitle(reference, userLanguage, userName) {
-	if (reference && reference.type) {
-		return getTranslations(userLanguage)[reference.type].replace("{user}", userName);
+function getTitle(referenceType, userLanguage, userName) {
+	if (referenceType) {
+		return getTranslations(userLanguage)[referenceType].replace("{user}", userName);
 	}
 
 	return getTranslations(userLanguage)["default"];
+}
+
+var getPushTokens = function (users) {
+	return pushToken.findAll({ where: { userID: users }});
 }
 
 var pushAPI = {
@@ -84,28 +88,29 @@ var pushAPI = {
 				}
 			});
 		}).nodeify(cb);
-	}, notifyUsers: function (users, data, reference) {
-		return Bluebird.resolve(users).map(function (user) {
-			return pushAPI.notifyUser(user, data, reference);
+	},
+	getTitle: function (user, referenceType, username) {
+		return user.getLanguage().then(function (userLanguage) {
+			return getTitle(referenceType, userLanguage, username);
 		});
-	}, notifyUser: function (user, data, reference) {
-		return Bluebird.all([
-			client.zcardAsync("topic:user:" + user.getID() + ":unreadTopics"),
-			user.getLanguage()
-		]).spread(function (unreadMessageCount, userLanguage) {
-			return pushAPI.sendNotification(
-				[user.getID()],
-				data,
-				unreadMessageCount,
-				getTitle(reference, userLanguage, data.user),
-				reference
-			);
+	},
+	updateBadge: function (userID) {
+		return getPushTokens([userID]).map(function (token) {
+			if (token.deviceType === "ios") {
+				client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessageCount) {
+					token.pushIOSBadge(unreadMessageCount);
+				});
+			}
 		});
-	}, sendNotification: function (users, data, badgeCount, title, reference) {
-		console.log("pushing to users: " + JSON.stringify(users));
-		return pushToken.findAll({ where: { userID: users }}).map(function (userPushToken) {
-			console.log("got a userPushToken. Sending Push!", title, badgeCount);
-			return userPushToken.push(data, title, badgeCount, reference);
+	},
+	dataUser: function (user, data) {
+		return getPushTokens([user.getID()]).map(function (token) {
+			return token.pushData(data);
+		});
+	},
+	notifyUser: function (user, title, reference) {
+		return getPushTokens([user.getID()]).map(function (token) {
+			return token.pushNotification(title, reference);
 		});
 	}
 };

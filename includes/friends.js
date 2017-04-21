@@ -12,7 +12,7 @@ var SymKey = require("./crypto/symKey");
 var verifySecuredMeta = require("./verifyObject");
 var pushAPI = require("./pushAPI");
 
-function pushFriendRequest(request, senderId, receiverId) {
+function pushFriendRequest(request, senderId, receiver) {
 	step(function () {
 		var User = require("./user");
 
@@ -21,11 +21,11 @@ function pushFriendRequest(request, senderId, receiverId) {
 		sender.getNames(request, this);
 	}), h.sF(function (senderNames) {
 		var senderName = senderNames.firstName || senderNames.lastName || senderNames.nickname;
-		
-		pushAPI.notifyUser(receiverId, {
-			user: senderName
-		}, {
-			type: "contactRequest",
+
+		var referenceType = "contactRequest";
+
+		pushAPI.notifyUser(receiver, pushAPI.getTitle(receiver, referenceType, senderName), {
+			type: referenceType,
 			id: senderId
 		});
 	}));

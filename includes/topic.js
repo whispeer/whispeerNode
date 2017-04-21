@@ -39,14 +39,21 @@ function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
 		message.getFullData(request, this, true);
 	}, h.sF(function (messageData) {
-		pushAPI.notifyUsers(theReceiver.filter(function (user) {
+		var receivers = theReceiver.filter(function (user) {
 			return user.getID() !== request.session.getUserID();
-		}), {
-			message: messageData,
-			user: senderName
-		}, {
-			type: "message",
-			id: messageData.meta.topicid
+		});
+
+		return Bluebird.resolve(receivers).map(function (user) {
+			var referenceType = "message";
+
+			return Bluebird.all([
+				pushAPI.notifyUser(user, pushAPI.getTitle(user, referenceType, senderName), {
+					type: referenceType,
+					id: messageData.meta.topicid
+				}),
+				pushAPI.updateBadge(user.getID()),
+				pushAPI.dataUser(user, { message: messageData })
+			]);
 		});
 	}), errorService.handleError);
 }
@@ -109,7 +116,7 @@ var Topic = function (id) {
 				},
 				order: [
 					["createdAt", "DESC"]
-				]		
+				]
 			});
 		}).then((topicUpdate) => {
 			if (!topicUpdate) {
@@ -705,11 +712,8 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 var base = "db:" + (config.db.number || 0) + ":observer:user:";
 client.psub(base + "*:topicRead", function (channel) {
 	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
-	
-	client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessagesCount) {
-		console.warn("push send badge count of", unreadMessagesCount);
-		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount || 0);
-	});
+
+	pushAPI.updateBadge(userID);
 });
 
 module.exports = Topic;

@@ -44,12 +44,12 @@ const pushTokenModel = sequelize.define("pushToken", {
 
 }, {
 	instanceMethods: {
-		push: function(data, title, badge, reference) {
-			if (this.deviceType === "android") {
-				if (!data && !title && !reference) {
-					return;
-				}
+		pushNotification: function (title, reference) {
+			if (!title) {
+				return Bluebird.reject("No title");
+			}
 
+			if (this.deviceType === "android") {
 				var androidData = {
 					vibrationPattern: [0, 400, 500, 400],
 					ledColor: [0, 0, 255, 0]
@@ -63,22 +63,8 @@ const pushTokenModel = sequelize.define("pushToken", {
 					androidData.topicid = reference.id;
 				}
 
-				if (title) {
-					androidData.title = title;
-					androidData.message = "-";
-				}
-
-				if (data) {
-					androidData["content-available"] = "1";
-
-					if (this.pushKey) {
-						var sjcl = require("../crypto/sjcl");
-						console.log("Encrypting push using key: " + this.pushKey);
-						androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
-					} else {
-						androidData.content = data;
-					}
-				}
+				androidData.title = title;
+				androidData.message = "-";
 
 				return pushService.pushAndroid(this.token, androidData);
 			}
@@ -87,20 +73,55 @@ const pushTokenModel = sequelize.define("pushToken", {
 				if (this.userID === 1) {
 					this.sandbox = true;
 				}
-				
+
 				var payload = {};
-				
+
 				if (reference) {
 					payload = {
 						reference: reference
 					};
-					
+
 					if (reference.type === "message") {
 						payload.topicid = reference.id;
 					}
 				}
-				
-				return pushService.pushIOS(this.token, payload, title, badge, 0, this.sandbox);
+
+				return pushService.pushIOS(this.token, payload, title, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		},
+		pushIOSBadge: function (badge) {
+			if (this.deviceType === "ios") {
+				return pushService.pushIOSBadge(this.token, badge, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		},
+		pushData: function(data) {
+			if (this.deviceType === "android") {
+				if (!data) {
+					return Bluebird.reject("No data");
+				}
+
+				var androidData = {
+					"content-available": "1"
+				};
+
+				if (!this.pushKey) {
+					console.warn("No push key for token: " + this.token);
+					return Bluebird.resolve();
+				}
+
+				var sjcl = require("../crypto/sjcl");
+				console.log("Encrypting push using key: " + this.pushKey);
+				androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+
+				return pushService.pushAndroid(this.token, androidData);
+			}
+
+			if (this.deviceType === "ios") {
+				return Bluebird.resolve();
 			}
 
 			return Bluebird.reject("push: invalid type");

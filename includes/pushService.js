@@ -3,8 +3,6 @@
 var gcm = require("node-gcm");
 var apn = require("apn");
 
-var h = require("whispeerHelper");
-
 var configManager = require("./configManager");
 var config = configManager.get();
 
@@ -57,15 +55,30 @@ var pushService = {
 
 		return sendPushToGCM(notification, [token], 4);
 	},
-	pushIOS: function (token, payload, title, badge, expiry, sandbox) {
+	pushIOSBadge: function (token, badge, sandbox) {
+		console.log("pushing ios: " + token);
+		var myDevice = new apn.Device(token);
+		var notification = new apn.Notification();
+
+		notification.expiry = 0;
+		notification.badge = badge;
+
+		if (sandbox) {
+			apnConnectionSandbox.pushNotification(notification, myDevice);
+		} else {
+			apnConnection.pushNotification(notification, myDevice);
+		}
+
+		return Bluebird.resolve();
+	},
+	pushIOS: function (token, payload, title, sandbox) {
 		console.log("pushing ios: " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
 		notification.payload = payload;
-		notification.expiry = expiry || 0;
+		notification.expiry = 0;
 		notification.alert = title;
-		notification.badge = badge;
 		notification.sound = "default";
 
 		if (sandbox) {
