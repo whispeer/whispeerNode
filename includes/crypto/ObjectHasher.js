@@ -1,11 +1,11 @@
 "use strict";
 
-var chelper = require("./cHelper");
-var sjcl = require("./sjcl");
+var sjcl = require("libs/sjcl");
+var chelper = require("crypto/minimalHelper");
 
 var ObjectHasher = function (data, version) {
 	this._data = data;
-	this._version = version;
+	this._version = parseInt(version, 10);
 };
 
 ObjectHasher.prototype.sjclHash = function (data) {
@@ -18,11 +18,11 @@ ObjectHasher.prototype._hashProperty = function (val) {
 
 ObjectHasher.prototype._doHashNewObject = function (val) {
 	var hasher = new ObjectHasher(val, this._version);
-	if (this._version >= 3) {
+	if (this._version === 3) {
 		return hasher.stringify();
 	}
 
-	return "hash::" + hasher.hash();
+	return this.sjclHash(hasher.stringify());
 };
 
 ObjectHasher.prototype._doHash = function (val, attr) {
@@ -58,7 +58,7 @@ ObjectHasher.prototype._jsonifyUnique = function (obj) {
 	return JSON.stringify(obj, sortation);
 };
 
-ObjectHasher.prototype._hashSubObjects = function () {
+ObjectHasher.prototype._stringifyObject = function () {
 	var attr, hashObj = {};
 	for (attr in this._data) {
 		if (this._data.hasOwnProperty(attr)) {
@@ -67,10 +67,6 @@ ObjectHasher.prototype._hashSubObjects = function () {
 	}
 
 	return this._jsonifyUnique(hashObj);
-};
-
-ObjectHasher.prototype._stringifyObject = function () {
-	return this._hashSubObjects();
 };
 
 ObjectHasher.prototype._stringifyObjectOrArray = function () {
@@ -86,6 +82,10 @@ ObjectHasher.prototype.stringify = function() {
 		throw new Error("this is not an object!");
 	}
 
+	if (this._version === 4) {
+		return JSON.stringify(ObjectHasher.handleVal(this._data));
+	}
+
 	return this._stringifyObjectOrArray();
 };
 
@@ -95,6 +95,51 @@ ObjectHasher.prototype.hash = function () {
 
 ObjectHasher.prototype.hashBits = function () {
 	return sjcl.hash.sha256.hash(this.stringify());
+};
+
+ObjectHasher.getType = function (val) {
+	if (typeof val === "object") {
+		if (val instanceof Array) {
+			return "arr";
+		} else {
+			return "obj";
+		}
+	}
+
+	return "val";
+};
+
+ObjectHasher.transformVal = function (val) {
+	if (typeof val === "object") {
+		if (val instanceof Array) {
+			return val.map(ObjectHasher.handleVal);
+		} else {
+			return ObjectHasher.mapToArray(val);
+		}
+	}
+
+	return val.toString();
+};
+
+ObjectHasher.handleVal = function (val, key) {
+	if (key) {
+		return [
+			ObjectHasher.getType(val),
+			key,
+			ObjectHasher.transformVal(val)
+		];
+	}
+
+	return [
+		ObjectHasher.getType(val),
+		ObjectHasher.transformVal(val)
+	];
+};
+
+ObjectHasher.mapToArray = function (obj) {
+	return Object.keys(obj).sort().map(function (key) {
+		return ObjectHasher.handleVal(obj[key], key);
+	});
 };
 
 module.exports = ObjectHasher;
