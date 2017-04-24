@@ -94,15 +94,13 @@ var pushAPI = {
 			return getTitle(referenceType, userLanguage, username);
 		});
 	},
-	updateBadgeForUser: function (userID) {
-		return client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessageCount) {
-			return getPushTokens([userID]).filter((token) => {
-				return token.deviceType === "ios"
-			}).map(function (token) {
-				return token.pushIOSBadge(unreadMessageCount);
-			});
-		})
-	},
+	updateBadgeForUser: (userID =>
+		client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(unreadMessageCount =>
+			getPushTokens([userID])
+				.filter(token => token.deviceType === "ios")
+				.map(token => token.pushIOSBadge(unreadMessageCount))
+		)
+	),
 	pushDataToUser: function (user, data) {
 		return getPushTokens([user.getID()]).map(function (token) {
 			return token.pushData(data);
