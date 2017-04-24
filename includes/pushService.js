@@ -70,6 +70,7 @@ var pushService = {
 		notification.alert = title;
 		notification.badge = badge;
 		notification.sound = "default";
+		notification["content-available"] = 1;
 
 		console.log(notification);
 
