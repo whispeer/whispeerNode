@@ -94,14 +94,14 @@ var pushAPI = {
 			return getTitle(referenceType, userLanguage, username);
 		});
 	},
-	updateBadge: function (userID) {
-		return getPushTokens([userID]).map(function (token) {
-			if (token.deviceType === "ios") {
-				client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessageCount) {
-					token.pushIOSBadge(unreadMessageCount);
-				});
-			}
-		});
+	updateBadgeForUser: function (userID) {
+		return client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessageCount) {
+			return getPushTokens([userID]).filter((token) => {
+				return token.deviceType === "ios"
+			}).map(function (token) {
+				token.pushIOSBadge(unreadMessageCount);
+			});
+		})
 	},
 	pushDataToUser: function (user, data) {
 		return getPushTokens([user.getID()]).map(function (token) {

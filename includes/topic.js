@@ -52,7 +52,7 @@ function pushMessage(request, theReceiver, senderName, message) {
 						type: referenceType,
 						id: messageData.meta.topicid
 					}),
-					pushAPI.updateBadge(user.getID()),
+					pushAPI.updateBadgeForUser(user.getID()),
 					pushAPI.pushDataToUser(user, { message: messageData })
 				]);
 			})
@@ -723,7 +723,7 @@ var base = "db:" + (config.db.number || 0) + ":observer:user:";
 client.psub(base + "*:topicRead", function (channel) {
 	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
 
-	pushAPI.updateBadge(userID);
+	pushAPI.updateBadgeForUser(userID);
 });
 
 module.exports = Topic;
