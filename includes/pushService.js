@@ -68,6 +68,10 @@ var pushService = {
 		notification.badge = badge;
 		notification.sound = "default";
 
+		notification["content-available"] = 1;
+		notification.test = 5;
+		console.log(notification.payload);
+
 		if (sandbox) {
 			apnConnectionSandbox.pushNotification(notification, myDevice);
 		} else {

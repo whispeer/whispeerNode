@@ -109,7 +109,7 @@ var Topic = function (id) {
 				},
 				order: [
 					["createdAt", "DESC"]
-				]		
+				]
 			});
 		}).then((topicUpdate) => {
 			if (!topicUpdate) {
@@ -705,7 +705,7 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 var base = "db:" + (config.db.number || 0) + ":observer:user:";
 client.psub(base + "*:topicRead", function (channel) {
 	var userID = h.parseDecimal(channel.substr(base.length).replace(":topicRead", ""));
-	
+
 	client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(function (unreadMessagesCount) {
 		console.warn("push send badge count of", unreadMessagesCount);
 		return pushAPI.sendNotification([userID], undefined, unreadMessagesCount || 0);
