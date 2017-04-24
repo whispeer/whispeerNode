@@ -6,6 +6,8 @@ var Bluebird = require("bluebird");
 
 var pushService = require("../pushService");
 
+var sandBoxUsers = [1, 43, 2496]
+
 const pushTokenModel = sequelize.define("pushToken", {
 	id: {
 		type: Sequelize.UUID,
@@ -70,7 +72,7 @@ const pushTokenModel = sequelize.define("pushToken", {
 			}
 
 			if (this.deviceType === "ios") {
-				if (this.userID === 1) {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
 					this.sandbox = true;
 				}
 
