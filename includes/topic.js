@@ -333,13 +333,20 @@ var Topic = function (id) {
 
 	this.refetch = function (request, data, cb) {
 		var oldest = data.oldest,
-			newest = data.newest || data.oldest,
+			newest = data.newest,
 			inBetween = data.inBetween,
 			maximum = data.maximum,
 			messageCountOnFlush = data.messageCountOnFlush;
 
 		var hasAccessErrorAsync = Bluebird.promisify(hasAccessError);
 		var clearMessages = false;
+
+		if (!oldest && !newest) {
+			return Bluebird.resolve({
+				clearMessages: false,
+				messages: []
+			})
+		}
 
 		var resultPromise = hasAccessErrorAsync(request).bind(this).then(function () {
 			console.log("undefined?", mDomain, oldest, newest);

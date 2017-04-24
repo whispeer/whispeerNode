@@ -60,6 +60,8 @@ var pushService = {
 		return sendPushToGCM(notification, [token], 4);
 	},
 	pushIOSBadge: function (token, badge, sandbox) {
+		return Bluebird.resolve();
+
 		console.log("pushing ios (badge): " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
@@ -95,6 +97,8 @@ var pushService = {
 		return Bluebird.resolve();
 	},
 	pushIOS: function (token, payload, title, sandbox) {
+		return Bluebird.resolve();
+
 		console.log("pushing ios (notification): " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
