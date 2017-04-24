@@ -24,10 +24,12 @@ function pushFriendRequest(request, senderId, receiver) {
 
 		var referenceType = "contactRequest";
 
-		pushAPI.notifyUser(receiver, pushAPI.getTitle(receiver, referenceType, senderName), {
-			type: referenceType,
-			id: senderId
-		});
+		pushAPI.getTitle(receiver, referenceType, senderName).then(function (title) {
+			return pushAPI.notifyUser(receiver, title, {
+				type: referenceType,
+				id: senderId
+			});
+		})
 	}));
 }
 
