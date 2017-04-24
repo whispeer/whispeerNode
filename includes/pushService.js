@@ -44,6 +44,14 @@ const getExpiry = (time) => {
 	return Math.floor(new Date().getTime() / 1000) + time
 }
 
+const pushIOSProductionOrSandbox = (notification, device, sandbox) => {
+	if (sandbox) {
+		return apnConnectionSandbox.pushNotification(notification, device);
+	}
+
+	apnConnection.pushNotification(notification, device);
+}
+
 var pushService = {
 	listenFeedback: function (cb) {
 		var feedback = new apn.Feedback(config.push.apn);
@@ -63,11 +71,7 @@ var pushService = {
 		notification.expiry = getExpiry(60);
 		notification.badge = badge;
 
-		if (sandbox) {
-			apnConnectionSandbox.pushNotification(notification, myDevice);
-		} else {
-			apnConnection.pushNotification(notification, myDevice);
-		}
+		pushIOSProductionOrSandbox(notification, myDevice, sandbox)
 
 		return Bluebird.resolve();
 	},
@@ -81,11 +85,7 @@ var pushService = {
 		notification.expiry = getExpiry(60*60);
 		notification.priority = 5;
 
-		if (sandbox) {
-			apnConnectionSandbox.pushNotification(notification, myDevice);
-		} else {
-			apnConnection.pushNotification(notification, myDevice);
-		}
+		pushIOSProductionOrSandbox(notification, myDevice, sandbox)
 
 		return Bluebird.resolve();
 	},
@@ -98,11 +98,7 @@ var pushService = {
 		notification.alert = title;
 		notification.sound = "default";
 
-		if (sandbox) {
-			apnConnectionSandbox.pushNotification(notification, myDevice);
-		} else {
-			apnConnection.pushNotification(notification, myDevice);
-		}
+		pushIOSProductionOrSandbox(notification, myDevice, sandbox)
 
 		return Bluebird.resolve();
 	}
