@@ -62,15 +62,16 @@ var pushService = {
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
+		payload["content-available"] = 1;
+		payload.test = 5;
+
 		notification.payload = payload;
 		notification.expiry = expiry || 0;
 		notification.alert = title;
 		notification.badge = badge;
 		notification.sound = "default";
 
-		notification["content-available"] = 1;
-		notification.test = 5;
-		console.log(notification.payload);
+		console.log(notification);
 
 		if (sandbox) {
 			apnConnectionSandbox.pushNotification(notification, myDevice);
