@@ -101,16 +101,15 @@ const pushTokenModel = sequelize.define("pushToken", {
 			}
 
 			var sjcl = require("../crypto/sjcl");
-			console.log("Encrypting push using key: " + this.pushKey);
 			const encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
 
 			var payload = {
-				"content-available": "1"
+				encryptedContent: encryptedContent
 			};
 
-			payload.encryptedContent = encryptedContent
-
 			if (this.deviceType === "android") {
+				payload["content-available"] = "1"
+
 				return pushService.pushAndroid(this.token, payload);
 			}
 
