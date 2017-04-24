@@ -99,7 +99,7 @@ var pushAPI = {
 			return getPushTokens([userID]).filter((token) => {
 				return token.deviceType === "ios"
 			}).map(function (token) {
-				token.pushIOSBadge(unreadMessageCount);
+				return token.pushIOSBadge(unreadMessageCount);
 			});
 		})
 	},
