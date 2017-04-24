@@ -53,7 +53,7 @@ function pushMessage(request, theReceiver, senderName, message) {
 						id: messageData.meta.topicid
 					}),
 					pushAPI.updateBadge(user.getID()),
-					pushAPI.dataUser(user, { message: messageData })
+					pushAPI.pushDataToUser(user, { message: messageData })
 				]);
 			})
 		});

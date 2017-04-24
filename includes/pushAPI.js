@@ -103,7 +103,7 @@ var pushAPI = {
 			}
 		});
 	},
-	dataUser: function (user, data) {
+	pushDataToUser: function (user, data) {
 		return getPushTokens([user.getID()]).map(function (token) {
 			return token.pushData(data);
 		});
