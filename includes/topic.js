@@ -44,9 +44,9 @@ function pushMessage(request, theReceiver, senderName, message) {
 		});
 
 		return Bluebird.resolve(receivers).map(function (user) {
-			return pushAPI.getTitle(user, referenceType, senderName).then(function (title) {
-				var referenceType = "message";
+			var referenceType = "message";
 
+			return pushAPI.getTitle(user, referenceType, senderName).then(function (title) {
 				return Bluebird.all([
 					pushAPI.notifyUser(user, title, {
 						type: referenceType,

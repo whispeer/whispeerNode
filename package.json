@@ -33,6 +33,7 @@
   "devDependencies": {
     "selenium-webdriver": "2.x",
     "grunt": "~1.0.1",
-    "grunt-contrib-jshint": "~1.0.0"
+    "grunt-contrib-jshint": "~1.0.0",
+    "eslint": "^3.15.0"
   }
 }
