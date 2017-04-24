@@ -101,13 +101,13 @@ var pushAPI = {
 				.map(token => token.pushIOSBadge(unreadMessageCount))
 		)
 	),
-	pushDataToUser: function (user, data) {
-		return getPushTokens([user.getID()]).map(function (token) {
+	pushDataToUser: function (userId, data) {
+		return getPushTokens([userId]).map(function (token) {
 			return token.pushData(data);
 		});
 	},
-	notifyUser: function (user, title, reference) {
-		return getPushTokens([user.getID()]).map(function (token) {
+	notifyUser: function (userId, title, reference) {
+		return getPushTokens([userId]).map(function (token) {
 			return token.pushNotification(title, reference);
 		});
 	}

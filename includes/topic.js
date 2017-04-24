@@ -48,12 +48,12 @@ function pushMessage(request, theReceiver, senderName, message) {
 
 			return pushAPI.getTitle(user, referenceType, senderName).then(function (title) {
 				return Bluebird.all([
-					pushAPI.notifyUser(user, title, {
+					pushAPI.notifyUser(user.getID(), title, {
 						type: referenceType,
 						id: messageData.meta.topicid
 					}),
 					pushAPI.updateBadgeForUser(user.getID()),
-					pushAPI.pushDataToUser(user, { message: messageData })
+					pushAPI.pushDataToUser(user.getID(), { message: messageData })
 				]);
 			})
 		});

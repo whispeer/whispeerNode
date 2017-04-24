@@ -25,7 +25,7 @@ function pushFriendRequest(request, senderId, receiver) {
 		var referenceType = "contactRequest";
 
 		pushAPI.getTitle(receiver, referenceType, senderName).then(function (title) {
-			return pushAPI.notifyUser(receiver, title, {
+			return pushAPI.notifyUser(receiver.getID(), title, {
 				type: referenceType,
 				id: senderId
 			});
