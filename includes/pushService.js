@@ -50,17 +50,13 @@ var pushService = {
 		feedback.on("feedback", cb);
 	},
 	pushAndroid: function (token, data) {
-		console.log("pushing android: " + token, data);
-		var notification = new gcm.Message({
-			data: data
-		});
+		var notification = new gcm.Message({ data });
 
 		var sendPushToGCM = Bluebird.promisify(sender.send, sender);
 
 		return sendPushToGCM(notification, [token], 4);
 	},
 	pushIOSBadge: function (token, badge, sandbox) {
-		console.log("pushing ios (badge): " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
@@ -76,7 +72,6 @@ var pushService = {
 		return Bluebird.resolve();
 	},
 	pushIOSData: function (token, payload, sandbox) {
-		console.log("pushing ios (data): " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
@@ -85,8 +80,6 @@ var pushService = {
 		notification.payload = payload;
 		notification.expiry = getExpiry(60*60);
 		notification.priority = 5;
-
-		console.log("pushing ios (data): ", notification.compile())
 
 		if (sandbox) {
 			apnConnectionSandbox.pushNotification(notification, myDevice);
@@ -97,7 +90,6 @@ var pushService = {
 		return Bluebird.resolve();
 	},
 	pushIOS: function (token, payload, title, sandbox) {
-		console.log("pushing ios (notification): " + token);
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
