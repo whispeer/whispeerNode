@@ -6,6 +6,8 @@ var Bluebird = require("bluebird");
 
 var pushService = require("../pushService");
 
+var sandboxUsers = [1, 43];
+
 const pushTokenModel = sequelize.define("pushToken", {
 	id: {
 		type: Sequelize.UUID,
@@ -84,22 +86,22 @@ const pushTokenModel = sequelize.define("pushToken", {
 			}
 
 			if (this.deviceType === "ios") {
-				if (this.userID === 1) {
+				if (sandboxUsers.indexOf(this.userID) > -1) {
 					this.sandbox = true;
 				}
-				
+
 				var payload = {};
-				
+
 				if (reference) {
 					payload = {
 						reference: reference
 					};
-					
+
 					if (reference.type === "message") {
 						payload.topicid = reference.id;
 					}
 				}
-				
+
 				return pushService.pushIOS(this.token, payload, title, badge, 0, this.sandbox);
 			}
 
