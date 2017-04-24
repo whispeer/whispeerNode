@@ -44,16 +44,18 @@ function pushMessage(request, theReceiver, senderName, message) {
 		});
 
 		return Bluebird.resolve(receivers).map(function (user) {
-			var referenceType = "message";
+			return pushAPI.getTitle(user, referenceType, senderName).then(function (title) {
+				var referenceType = "message";
 
-			return Bluebird.all([
-				pushAPI.notifyUser(user, pushAPI.getTitle(user, referenceType, senderName), {
-					type: referenceType,
-					id: messageData.meta.topicid
-				}),
-				pushAPI.updateBadge(user.getID()),
-				pushAPI.dataUser(user, { message: messageData })
-			]);
+				return Bluebird.all([
+					pushAPI.notifyUser(user, title, {
+						type: referenceType,
+						id: messageData.meta.topicid
+					}),
+					pushAPI.updateBadge(user.getID()),
+					pushAPI.dataUser(user, { message: messageData })
+				]);
+			})
 		});
 	}), errorService.handleError);
 }
