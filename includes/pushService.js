@@ -40,6 +40,10 @@ apnConnection.on("transmissionError", function (errCode, notification, device) {
 	errorService.handleError(new Error(message));
 });
 
+const getExpiry = (time) => {
+	return Math.floor(new Date().getTime() / 1000) + time
+}
+
 var pushService = {
 	listenFeedback: function (cb) {
 		var feedback = new apn.Feedback(config.push.apn);
@@ -60,7 +64,7 @@ var pushService = {
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
-		notification.expiry = 0;
+		notification.expiry = getExpiry(60);
 		notification.badge = badge;
 
 		if (sandbox) {
@@ -79,7 +83,8 @@ var pushService = {
 		notification["content-available"] = 1
 
 		notification.payload = payload;
-		notification.expiry = 0;
+		notification.expiry = getExpiry(60*60);
+		notification.priority = 5;
 
 		if (sandbox) {
 			apnConnectionSandbox.pushNotification(notification, myDevice);
@@ -95,7 +100,7 @@ var pushService = {
 		var notification = new apn.Notification();
 
 		notification.payload = payload;
-		notification.expiry = 0;
+		notification.expiry = getExpiry(24*60*60);
 		notification.alert = title;
 		notification.sound = "default";
 
