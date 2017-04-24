@@ -82,7 +82,7 @@ var pushService = {
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
-		notification["content-available"] = 1
+		notification.contentAvailable = 1
 
 		notification.payload = payload;
 		notification.expiry = getExpiry(60*60);
