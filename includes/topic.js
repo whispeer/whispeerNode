@@ -342,6 +342,7 @@ var Topic = function (id) {
 		var clearMessages = false;
 
 		var resultPromise = hasAccessErrorAsync(request).bind(this).then(function () {
+			console.log(mDomain, oldest, newest);
 			return Bluebird.all([
 				client.zrevrankAsync(mDomain, oldest),
 				client.zrevrankAsync(mDomain, newest),
@@ -516,6 +517,7 @@ var Topic = function (id) {
 		}, h.sF(function () {
 			this.parallel.unflatten();
 
+			console.log(mDomain, afterMessage);
 			client.zrevrank(mDomain, afterMessage, this.parallel());
 			client.zcard(mDomain, this.parallel());
 		}), h.sF(function (index, card) {
@@ -586,6 +588,7 @@ Topic.unread = function (request, cb) {
 
 Topic.own = function (request, afterTopic, count, cb) {
 	step(function () {
+		console.log(afterTopic);
 		client.zrevrank("topic:user:" + request.session.getUserID() + ":topics", afterTopic, this);
 	}, h.sF(function (index) {
 		if (index === null) {
