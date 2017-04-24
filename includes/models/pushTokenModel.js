@@ -100,23 +100,21 @@ const pushTokenModel = sequelize.define("pushToken", {
 				return Bluebird.resolve();
 			}
 
+			var sjcl = require("../crypto/sjcl");
+			console.log("Encrypting push using key: " + this.pushKey);
+			const encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+
+			var payload = {
+				"content-available": "1"
+			};
+
+			payload.encryptedContent = encryptedContent
+
 			if (this.deviceType === "android") {
-				var androidData = {
-					"content-available": "1"
-				};
-
-				var sjcl = require("../crypto/sjcl");
-				console.log("Encrypting push using key: " + this.pushKey);
-				androidData.encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
-
-				return pushService.pushAndroid(this.token, androidData);
+				return pushService.pushAndroid(this.token, payload);
 			}
 
 			if (this.deviceType === "ios") {
-				const payload = {
-					test: 5
-				}
-
 				if (sandBoxUsers.indexOf(this.userID) > -1) {
 					this.sandbox = true;
 				}
