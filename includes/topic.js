@@ -333,7 +333,7 @@ var Topic = function (id) {
 
 	this.refetch = function (request, data, cb) {
 		var oldest = data.oldest,
-			newest = data.newest,
+			newest = data.newest || data.oldest,
 			inBetween = data.inBetween,
 			maximum = data.maximum,
 			messageCountOnFlush = data.messageCountOnFlush;
