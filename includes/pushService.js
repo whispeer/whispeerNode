@@ -88,6 +88,8 @@ var pushService = {
 		notification.expiry = getExpiry(60*60);
 		notification.priority = 5;
 
+		console.log("pushing ios (data): ", notification)
+
 		if (sandbox) {
 			apnConnectionSandbox.pushNotification(notification, myDevice);
 		} else {

@@ -341,7 +341,7 @@ var Topic = function (id) {
 		var hasAccessErrorAsync = Bluebird.promisify(hasAccessError);
 		var clearMessages = false;
 
-		if (!oldest && !newest) {
+		if (!oldest || !newest) {
 			return Bluebird.resolve({
 				clearMessages: false,
 				messages: []
