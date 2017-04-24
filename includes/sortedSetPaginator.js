@@ -98,7 +98,6 @@ SortedSetPaginator.prototype.getRangeAfterID = function (id, cb, filter) {
 		if (that._noReverse) {
 			client.zrank(that._key, id, this);
 		} else {
-			console.log(that._key, id);
 			client.zrevrank(that._key, id, this);
 		}
 	}, h.sF(function (index) {
