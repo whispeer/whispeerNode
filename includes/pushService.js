@@ -3,8 +3,6 @@
 var gcm = require("node-gcm");
 var apn = require("apn");
 
-var h = require("whispeerHelper");
-
 var configManager = require("./configManager");
 var config = configManager.get();
 
@@ -42,37 +40,65 @@ apnConnection.on("transmissionError", function (errCode, notification, device) {
 	errorService.handleError(new Error(message));
 });
 
+const getExpiry = (time) => {
+	return Math.floor(new Date().getTime() / 1000) + time
+}
+
+const pushIOSProductionOrSandbox = (notification, device, sandbox) => {
+	if (sandbox) {
+		return apnConnectionSandbox.pushNotification(notification, device);
+	}
+
+	apnConnection.pushNotification(notification, device);
+}
+
 var pushService = {
 	listenFeedback: function (cb) {
 		var feedback = new apn.Feedback(config.push.apn);
 		feedback.on("feedback", cb);
 	},
 	pushAndroid: function (token, data) {
-		console.log("pushing android: " + token, data);
-		var notification = new gcm.Message({
-			data: data
-		});
+		var notification = new gcm.Message({ data });
 
 		var sendPushToGCM = Bluebird.promisify(sender.send, sender);
 
 		return sendPushToGCM(notification, [token], 4);
 	},
-	pushIOS: function (token, payload, title, badge, expiry, sandbox) {
-		console.log("pushing ios: " + token);
+	pushIOSBadge: function (token, badge, sandbox) {
+		var myDevice = new apn.Device(token);
+		var notification = new apn.Notification();
+
+		notification.expiry = getExpiry(60);
+		notification.badge = badge;
+
+		pushIOSProductionOrSandbox(notification, myDevice, sandbox)
+
+		return Bluebird.resolve();
+	},
+	pushIOSData: function (token, payload, sandbox) {
+		var myDevice = new apn.Device(token);
+		var notification = new apn.Notification();
+
+		notification.contentAvailable = 1
+
+		notification.payload = payload;
+		notification.expiry = getExpiry(60*60);
+		notification.priority = 5;
+
+		pushIOSProductionOrSandbox(notification, myDevice, sandbox)
+
+		return Bluebird.resolve();
+	},
+	pushIOS: function (token, payload, title, sandbox) {
 		var myDevice = new apn.Device(token);
 		var notification = new apn.Notification();
 
 		notification.payload = payload;
-		notification.expiry = expiry || 0;
+		notification.expiry = getExpiry(24*60*60);
 		notification.alert = title;
-		notification.badge = badge;
 		notification.sound = "default";
 
-		if (sandbox) {
-			apnConnectionSandbox.pushNotification(notification, myDevice);
-		} else {
-			apnConnection.pushNotification(notification, myDevice);
-		}
+		pushIOSProductionOrSandbox(notification, myDevice, sandbox)
 
 		return Bluebird.resolve();
 	}
