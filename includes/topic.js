@@ -342,6 +342,7 @@ var Topic = function (id) {
 		var clearMessages = false;
 
 		if (!oldest || !newest) {
+			console.warn(`Refetch messages undefined oldest (${oldest}) or newest (${newest}). Topic: ${this.getID()}`);
 			return Bluebird.resolve({
 				clearMessages: false,
 				messages: []
@@ -349,7 +350,6 @@ var Topic = function (id) {
 		}
 
 		var resultPromise = hasAccessErrorAsync(request).bind(this).then(function () {
-			console.log("undefined?", mDomain, oldest, newest);
 			return Bluebird.all([
 				client.zrevrankAsync(mDomain, oldest),
 				client.zrevrankAsync(mDomain, newest),
