@@ -65,6 +65,24 @@ function createBlobID(cb) {
 	}), cb);
 }
 
+var getBlobData = function (request, blobid, cb) {
+	step(function () {
+		request.session.logedinError(this);
+	}, h.sF(function () {
+		checkBlobExists(blobid, this);
+	}), h.sF(function () {
+		client.sismember("blobs:usedids", blobid, this);
+	}), h.sF(function (exists) {
+		if (exists) {
+			this.parallel.unflatten();
+			fs.readFile(blobIDtoFile(blobid), this.parallel());
+			client.hgetall("blobs:" + blobid, this.parallel());
+		} else {
+			throw new Error("Blob not found");
+		}
+	}), cb);
+}
+
 var blobStorage = {
 	reserveBlobID: function (request, meta, cb) {
 		var blobid;
@@ -171,23 +189,37 @@ var blobStorage = {
 			client.sadd("blobs:usedids", blobid, this);
 		}), cb);
 	},
+	getBlobPart: function (request, blobid, start, size, cb) {
+		var result;
+		step(function () {
+			getBlobData(request, blobid, this);
+		}, h.sF(function (data, meta) {
+			const last = start + size >= data.length
+
+			result = {
+				part: new Buffer(data).slice(start, start + size),
+				last
+			}
+
+			if (last) {
+				result.meta = meta
+
+				if (meta && typeof meta === "object" && meta._key) {
+					request.addKey(meta._key, this)
+					return
+				}
+			}
+
+			this.ne();
+		}), h.sF(function () {
+			return result
+		}), cb)
+	},
 	getBlob: function (request, blobid, cb) {
 		var result;
 		step(function () {
-			request.session.logedinError(this);
-		}, h.sF(function () {
-			checkBlobExists(blobid, this);
-		}), h.sF(function () {
-			client.sismember("blobs:usedids", blobid, this);
-		}), h.sF(function (exists) {
-			if (exists) {
-				this.parallel.unflatten();
-				fs.readFile(blobIDtoFile(blobid), this.parallel());
-				client.hgetall("blobs:" + blobid, this.parallel());
-			} else {
-				throw new Error("Blob not found");
-			}
-		}), h.sF(function (data, meta) {
+			getBlobData(request, blobid, this);
+		}, h.sF(function (data, meta) {
 			result = {
 				blob: new Buffer(data).toString("base64"),
 				meta: meta
@@ -195,9 +227,10 @@ var blobStorage = {
 
 			if (meta && typeof meta === "object" && meta._key) {
 				request.addKey(meta._key, this);
-			} else {
-				this.ne();
+				return
 			}
+
+			this.ne();
 		}), h.sF(function () {
 			this.ne(result);
 		}), cb);
