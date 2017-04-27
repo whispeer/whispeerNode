@@ -85,6 +85,10 @@ const pushTokenModel = sequelize.define("pushToken", {
 		},
 		pushIOSBadge: function (badge) {
 			if (this.deviceType === "ios") {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
+					this.sandbox = true;
+				}
+
 				return pushService.pushIOSBadge(this.token, badge, this.sandbox);
 			}
 
