@@ -31,7 +31,6 @@ const checkDuplicatesInLists = (userID) => {
 		client.smembersAsync(`${base}:requested`),
 		client.smembersAsync(`${base}`),
 	]).map((arr) => arr.map((val) => parseInt(val, 10))).then(([ ignored, requests, requested, friends ]) => {
-		// console.log([ ignored, requests, requested, friends ])
 		return Bluebird.all([
 			findAndRemoveDuplicates(`${base}:ignored`, ignored, requests.concat(requested, friends)),
 			findAndRemoveDuplicates(`${base}:requests`, requests, requested.concat(friends)),
@@ -41,12 +40,14 @@ const checkDuplicatesInLists = (userID) => {
 }
 
 const fixRequestedToFriendship = (userID) => {
+	const base = `friends:${userID}`
 
-}
-
-const checkUserFriendsState = (userID) => {
-	return checkDuplicatesInLists(userID).then(() => {
-		return fixRequestedToFriendship(userID)
+	return client.smembersAsync(`${base}:requested`).map((requestedUserID) => {
+		return client.smembersAsync(`friends:${requestedUserID}:requested`).then((requested) => {
+			if (requested.indexOf(userID) > -1) {
+				console.log(`Found requested bug for users: ${userID} - ${requestedUserID}`)
+			}
+		})
 	})
 }
 
@@ -57,7 +58,9 @@ const getAllUserIDs = () => {
 return setupP().then(() => {
 	return getAllUserIDs()
 }).map((userID) => {
-	return checkUserFriendsState(userID)
+	return checkDuplicatesInLists(userID).thenReturn(userID)
+}).then((userID) => {
+	return fixRequestedToFriendship(userID).thenReturn(userID)
 }).then(() => {
 	process.exit()
 })
