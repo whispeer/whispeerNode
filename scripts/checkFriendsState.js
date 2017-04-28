@@ -48,6 +48,10 @@ const fixRequestedToFriendship = (userID) => {
 
 	return client.smembersAsync(`${base}:requested`).map(parseDecimal).map((requestedUserID) => {
 		return client.smembersAsync(`friends:${requestedUserID}:requested`).map(parseDecimal).then((requested) => {
+			if (userID === 3337 && requestedUserID === 3336) {
+				console.log(requested)
+			}
+
 			if (requested.indexOf(userID) > -1) {
 				console.log(`Found requested bug for users: ${userID} - ${requestedUserID}`)
 			}
@@ -61,7 +65,7 @@ const getAllUserIDs = () => {
 
 return setupP().then(() => {
 	return getAllUserIDs()
-}).map((userID) => {
+}).map(parseDecimal).map((userID) => {
 	return checkDuplicatesInLists(userID).thenReturn(userID)
 }).then((userID) => {
 	return fixRequestedToFriendship(userID).thenReturn(userID)
