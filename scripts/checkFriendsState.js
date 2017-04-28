@@ -21,6 +21,8 @@ const findAndRemoveDuplicates = (key, arr1, arr2) => {
 const checkDuplicatesInLists = (userID) => {
 	const base = `friends:${userID}`
 
+	console.log(`Checking duplicates for ${userID}`)
+
 	return Bluebird.all([
 		client.smembersAsync(`${base}.ignored`),
 		client.smembersAsync(`${base}.requests`),
