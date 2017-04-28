@@ -29,6 +29,11 @@ var streamAPI = {
 			this.ne({ reset: reset });
 		}), fn);
 	},
+	getBlobPart: function (data, fn, request) {
+		step(function () {
+			blobStorage.getBlobPart(request, data.blobid, data.start, data.size, this);
+		}, fn);
+	},
 	preReserveID: function (data, fn) {
 		step(function () {
 			blobStorage.preReserveBlobID(this);
