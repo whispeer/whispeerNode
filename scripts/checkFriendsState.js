@@ -16,12 +16,12 @@ const findAndRemoveDuplicates = (key, arr1, arr2) => {
 	if (duplicates.length > 0) {
 		console.log(`Duplicates for ${key}`, duplicates)
 	}
+
+	return Bluebird.resolve()
 }
 
 const checkDuplicatesInLists = (userID) => {
 	const base = `friends:${userID}`
-
-	console.log(`Checking duplicates for ${userID}`)
 
 	return Bluebird.all([
 		client.smembersAsync(`${base}.ignored`),
@@ -29,9 +29,11 @@ const checkDuplicatesInLists = (userID) => {
 		client.smembersAsync(`${base}.requested`),
 		client.smembersAsync(`${base}`),
 	]).then(([ ignored, requests, requested, friends ]) => {
-		findAndRemoveDuplicates(`${base}.ignored`, ignored, requests.concat(requested, friends))
-		findAndRemoveDuplicates(`${base}.requests`, requests, requested.concat(friends))
-		findAndRemoveDuplicates(`${base}.requested`, requested, friends)
+		return Bluebird.all([
+			findAndRemoveDuplicates(`${base}.ignored`, ignored, requests.concat(requested, friends)),
+			findAndRemoveDuplicates(`${base}.requests`, requests, requested.concat(friends)),
+			findAndRemoveDuplicates(`${base}.requested`, requested, friends),
+		])
 	})
 }
 
@@ -53,4 +55,6 @@ return setupP().then(() => {
 	return getAllUserIDs()
 }).map((userID) => {
 	return checkUserFriendsState(userID)
+}).then(() => {
+	process.exit()
 })
