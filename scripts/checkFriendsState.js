@@ -50,6 +50,14 @@ const fixRequestedToFriendship = (userID) => {
 		return client.smembersAsync(`friends:${requestedUserID}:requested`).map(parseDecimal).then((requested) => {
 			if (requested.indexOf(userID) > -1) {
 				console.log(`Found requested bug for users: ${userID} - ${requestedUserID}`)
+
+				return Bluebird.all([
+					client.saddAsync(`friends:${userID}`, requestedUserID),
+					client.saddAsync(`friends:${requestedUserID}`, userID),
+				]).then(() => Bluebird.all([
+					client.sremAsync(`friends:${userID}:requested`, requestedUserID),
+					client.sremAsync(`friends:${requestedUserID}:requested`, userID),
+				]))
 			}
 		})
 	})
