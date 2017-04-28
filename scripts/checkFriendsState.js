@@ -44,7 +44,7 @@ const checkUserFriendsState = (userID) => {
 }
 
 const getAllUserIDs = () => {
-	return client.smembersAsync()
+	return client.smembersAsync("user:list")
 }
 
 return setupP().then(() => {
