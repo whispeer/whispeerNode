@@ -28,7 +28,8 @@ const checkDuplicatesInLists = (userID) => {
 		client.smembersAsync(`${base}.requests`),
 		client.smembersAsync(`${base}.requested`),
 		client.smembersAsync(`${base}`),
-	]).then(([ ignored, requests, requested, friends ]) => {
+	]).map((arr) => arr.map((val) => parseInt(val, 10))).then(([ ignored, requests, requested, friends ]) => {
+		// console.log([ ignored, requests, requested, friends ])
 		return Bluebird.all([
 			findAndRemoveDuplicates(`${base}.ignored`, ignored, requests.concat(requested, friends)),
 			findAndRemoveDuplicates(`${base}.requests`, requests, requested.concat(friends)),
