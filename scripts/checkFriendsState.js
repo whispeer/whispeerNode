@@ -14,7 +14,9 @@ const findAndRemoveDuplicates = (key, arr1, arr2) => {
 	const duplicates = arr1.filter((element) => arr2.indexOf(element) > -1)
 
 	if (duplicates.length > 0) {
-		console.log(`Duplicates for ${key}`, duplicates)
+		return client.sremAsync(key, duplicates).then((count) => {
+			console.log(`Removed duplicates for key ${key} [${count}]:`, duplicates)
+		})
 	}
 
 	return Bluebird.resolve()
