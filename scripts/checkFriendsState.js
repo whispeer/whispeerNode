@@ -67,7 +67,7 @@ return setupP().then(() => {
 	return getAllUserIDs()
 }).map(parseDecimal).map((userID) => {
 	return checkDuplicatesInLists(userID).thenReturn(userID)
-}).then((userID) => {
+}).map((userID) => {
 	return fixRequestedToFriendship(userID).thenReturn(userID)
 }).then(() => {
 	process.exit()
