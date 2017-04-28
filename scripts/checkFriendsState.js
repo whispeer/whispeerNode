@@ -5,6 +5,10 @@
 var setup = require("../includes/setup");
 var client = require("../includes/redisClient");
 
+var h = require("whispeerHelper");
+
+const parseDecimal = h.parseDecimal
+
 var Bluebird = require("bluebird");
 Bluebird.longStackTraces();
 
@@ -30,7 +34,7 @@ const checkDuplicatesInLists = (userID) => {
 		client.smembersAsync(`${base}:requests`),
 		client.smembersAsync(`${base}:requested`),
 		client.smembersAsync(`${base}`),
-	]).map((arr) => arr.map((val) => parseInt(val, 10))).then(([ ignored, requests, requested, friends ]) => {
+	]).map((arr) => arr.map(parseDecimal)).then(([ ignored, requests, requested, friends ]) => {
 		return Bluebird.all([
 			findAndRemoveDuplicates(`${base}:ignored`, ignored, requests.concat(requested, friends)),
 			findAndRemoveDuplicates(`${base}:requests`, requests, requested.concat(friends)),
@@ -42,8 +46,8 @@ const checkDuplicatesInLists = (userID) => {
 const fixRequestedToFriendship = (userID) => {
 	const base = `friends:${userID}`
 
-	return client.smembersAsync(`${base}:requested`).map((requestedUserID) => {
-		return client.smembersAsync(`friends:${requestedUserID}:requested`).then((requested) => {
+	return client.smembersAsync(`${base}:requested`).map(parseDecimal).map((requestedUserID) => {
+		return client.smembersAsync(`friends:${requestedUserID}:requested`).map(parseDecimal).then((requested) => {
 			if (requested.indexOf(userID) > -1) {
 				console.log(`Found requested bug for users: ${userID} - ${requestedUserID}`)
 			}
