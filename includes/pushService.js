@@ -27,7 +27,7 @@ var apnConnection = new apn.Connection(config.push.apn);
 
 var apnConfigSandbox = JSON.parse(JSON.stringify(config.push.apn));
 apnConfigSandbox.production = false;
-var apnConnectionSandbox = new apn.Connection();
+var apnConnectionSandbox = new apn.Connection(apnConfigSandbox);
 
 apnConnection.on("transmissionError", function (errCode, notification, device) {
 	var message = "APN Transmission Error:";
