@@ -6,7 +6,6 @@ var h = require("whispeerHelper");
 var fs = require("fs");
 
 var client = require("./redisClient");
-var SymKey = require("./crypto/symKey");
 
 function isBlobID(blobid) {
 	return blobid.match(/^[A-z0-9]*$/);
@@ -65,6 +64,19 @@ function createBlobID(cb) {
 	}), cb);
 }
 
+var readFile = function (blobid, cb) {
+	step(function () {
+		fs.readFile(blobIDtoFile(blobid), this.parallel());
+	}, function (err, file) {
+		if (!err) {
+			return this.ne(file)
+		}
+
+		console.log(err)
+		throw new Error("Blob not found");
+	}, cb)
+}
+
 var getBlobData = function (request, blobid, cb) {
 	step(function () {
 		request.session.logedinError(this);
@@ -75,7 +87,7 @@ var getBlobData = function (request, blobid, cb) {
 	}), h.sF(function (exists) {
 		if (exists) {
 			this.parallel.unflatten();
-			fs.readFile(blobIDtoFile(blobid), this.parallel());
+			readFile(blobid, this.parallel())
 			client.hgetall("blobs:" + blobid, this.parallel());
 		} else {
 			throw new Error("Blob not found");
