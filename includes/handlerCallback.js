@@ -31,6 +31,12 @@ var HandlerCallback = function (fn, request) {
 				error: true
 			};
 
+			if (err.propagateOutside) {
+				resultErrors[request.channel] = {
+					id: err.id
+				}
+			}
+
 			errorService.handleError(err, request);
 		} else {
 			if (request.rawRequest.responseKey) {
