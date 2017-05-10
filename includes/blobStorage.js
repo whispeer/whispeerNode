@@ -73,7 +73,7 @@ var readFile = function (blobid, cb) {
 		}
 
 		console.log(err)
-		throw new Error("Blob not found");
+		throw new BlobNotFound();
 	}, cb)
 }
 
@@ -90,7 +90,7 @@ var getBlobData = function (request, blobid, cb) {
 			readFile(blobid, this.parallel())
 			client.hgetall("blobs:" + blobid, this.parallel());
 		} else {
-			throw new Error("Blob not found");
+			throw new BlobNotFound();
 		}
 	}), cb);
 }
