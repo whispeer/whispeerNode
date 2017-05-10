@@ -11,10 +11,11 @@ var AbstractError = function (msg, constr) {
 util.inherits(AbstractError, Error);
 AbstractError.prototype.name = "Abstract Error";
 
-function addError(desc, propagateOutside) {
+function addError(desc, id, propagateOutside) {
 	var err = function (msg, inner) {
 		err.super_.call(this, desc + "\r\n" + msg, this.constructor);
-		this.msg = msg;
+		this.msg = msg || "";
+		this.id = id;
 		this.inner = inner;
 	};
 	util.inherits(err, AbstractError);
@@ -37,21 +38,20 @@ global.isOwnError = function (err) {
 	return false;
 };
 
-global.StepError = addError("Step Error", false);
-global.NotLogedin = addError("Session invalid", true);
-global.InvalidLogin = addError("Login details wrong!", true);
-global.AccessViolation = addError("Access Violation", true);
-global.InvalidToken = addError("Token Invalid", true);
+global.StepError = addError("Step Error", 1, false);
+global.NotLogedin = addError("Session invalid", 10, true);
+global.InvalidLogin = addError("Login details wrong!", 11, true);
+global.AccessViolation = addError("Access Violation", 12, true);
+global.InvalidToken = addError("Token Invalid", 13, true);
 
 /** user part */
-global.UserNotExisting = addError("User Not Existing", true);
+global.UserNotExisting = addError("User Not Existing", 20, true);
+global.MailInUse = addError("Mail already in use", 21, true);
+global.NicknameInUse = addError("Nickname already in use", 22, true);
+global.InvalidPassword = addError("INvalid Password", 23, true);
+global.InvalidAttribute = addError("invalid attribute", 24, true);
 
-global.MailInUse = addError("Mail already in use", true);
-global.NicknameInUse = addError("Nickname already in use", true);
-global.InvalidPassword = addError("INvalid Password", true);
-global.InvalidAttribute = addError("invalid attribute", true);
-
-global.InvalidProfile = addError("Invalid Profile", true);
+global.InvalidProfile = addError("Invalid Profile", 25, true);
 
 /** end user part */
 
@@ -61,41 +61,38 @@ global.InvalidDecryptor = addError("Decryptor data invalid");
 global.RealIDInUse = addError("RealID already in use.");
 global.InvalidRealID = addError("RealID invalid.");
 
-global.NotASymKey = addError("Not a symmetric key", true);
-global.InvalidSymKey = addError("invalid symmetric key data", true);
-global.NotAEccKey = addError("Not a elliptic curve key", true);
-global.InvalidEccKey = addError("invalid elliptic curve key", true);
-
-global.InvalidKey = addError("invalid key", true);
-
-global.KeyNotFound = addError("key not found", true);
-
-global.InvalidHexError = addError("invalid hex", true);
+global.NotASymKey = addError("Not a symmetric key", 30, true);
+global.InvalidSymKey = addError("invalid symmetric key data", 31, true);
+global.NotAEccKey = addError("Not a elliptic curve key", 32, true);
+global.InvalidEccKey = addError("invalid elliptic curve key", 33, true);
+global.InvalidKey = addError("invalid key", 34, true);
+global.KeyNotFound = addError("key not found", 35, true);
+global.InvalidHexError = addError("invalid hex", 36, true);
 
 /** end crypto part */
 
 /** message part */
 
-global.InvalidTopicData = addError("invalid Message Topic", true);
-global.InvalidMessageData = addError("invalid Message Data", true);
-global.TopicNotExisting = addError("topic not existing", true);
-global.MessageNotExisting = addError("message not existing", true);
+global.InvalidTopicData = addError("invalid Message Topic", 40, true);
+global.InvalidMessageData = addError("invalid Message Data", 41, true);
+global.TopicNotExisting = addError("topic not existing", 42, true);
+global.MessageNotExisting = addError("message not existing", 43, true);
 
 /** end message part */
 
 /** post part */
 
-global.InvalidPost = addError("invalid post", true);
-global.InvalidFilter  = addError("invalid filter", true);
+global.InvalidPost = addError("invalid post", 50, true);
+global.InvalidFilter  = addError("invalid filter", 51, true);
 
 /** end post part */
 
-global.CircleNotExisting = addError("circle not existing", true);
-global.InvalidCircleData = addError("invalid circle data", true);
-global.TimeSpanExceeded  = addError("timespan has been exceeded", true);
+global.CircleNotExisting = addError("circle not existing", 60, true);
+global.InvalidCircleData = addError("invalid circle data", 61, true);
+global.TimeSpanExceeded  = addError("timespan has been exceeded", 62, true);
 
 
-global.InvalidBlobID = addError("invalid blob id", true);
-global.BlobNotFound = addError("blob not found", true);
+global.InvalidBlobID = addError("invalid blob id", 70, true);
+global.BlobNotFound = addError("blob not found", 71, true);
 
 module.exports = possibleErrors;
