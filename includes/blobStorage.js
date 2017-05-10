@@ -66,7 +66,7 @@ function createBlobID(cb) {
 
 var readFile = function (blobid, cb) {
 	step(function () {
-		fs.readFile(blobIDtoFile(blobid), this.parallel());
+		fs.readFile(blobIDtoFile(blobid), this);
 	}, function (err, file) {
 		if (!err) {
 			return this.ne(file)
