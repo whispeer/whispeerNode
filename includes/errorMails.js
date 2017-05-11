@@ -74,7 +74,9 @@ const sendMails = () => {
 
 const continouslySendMails = () => {
 	Bluebird.resolve(sendMails()).finally(() => {
-		return Bluebird.delay(SEND_DELAY)
+		return Bluebird.delay(SEND_DELAY).then(() => {
+			continouslySendMails()
+		})
 	})
 }
 
