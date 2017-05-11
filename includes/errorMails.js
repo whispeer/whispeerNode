@@ -42,9 +42,7 @@ const sendMails = () => {
 			const diff = now - new Date(first.createdAt).getTime()
 
 			const sendMail = timesAndCount.some((timeCount) => {
-				console.log(`${timeCount.count} <= ${val.length + 100} && ${timeCount.diff} <= ${diff}`)
-				console.log(`${timeCount.count <= val.length + 100} && ${timeCount.diff <= diff}`)
-				return timeCount.count <= val.length + 100 && timeCount.diff <= diff
+				return timeCount.count <= val.length && timeCount.diff <= diff
 			})
 
 			if (sendMail) {
