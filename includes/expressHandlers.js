@@ -1,5 +1,8 @@
+"use strict";
+
+const clientError = require("./models/clientErrorModel");
+
 module.exports = function (express) {
-	"use strict";
 	var bodyParser = require("body-parser");
 	var step = require("step");
 	var h = require("whispeerHelper");
@@ -26,13 +29,15 @@ module.exports = function (express) {
 			return;
 		}
 
-		mailer.mailAdmin("JS Error Report! " + req.body.error.substr(0, 50),
-			JSON.stringify(req.body) + "\n\n" +
-			JSON.stringify(req.headers)
-		).then(function () {
+		clientError.create({
+			errorText: req.body.error,
+			errorStack: req.body.stack,
+			headers: JSON.stringify(req.headers),
+			mailSent: false
+		}).then(() => {
 			res.send("Error Report Transfered");
 			next();
-		});
+		})
 	});
 
 	express.post("/b2b", function (req, res, next) {
