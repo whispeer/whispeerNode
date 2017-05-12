@@ -11,11 +11,16 @@
 
 "use strict";
 
-var fs = require("fs");
-var configManager = require("./includes/configManager");
-var config = configManager.get();
+const fs = require("fs");
+const configManager = require("./includes/configManager");
+const config = configManager.get();
 
-var setup = require("./includes/setup");
+const express = require("express")();
+const expressHandlers = require("./includes/expressHandlers");
+
+const setup = require("./includes/setup");
+
+const Bluebird = require("bluebird")
 
 var options = {};
 
@@ -30,30 +35,39 @@ if (config.https) {
 
 var server;
 
-var express = require("express")();
-var expressHandlers = require("./includes/expressHandlers");
-
 if (config.https) {
 	server = require("https").createServer(options, express);
 } else {
 	server = require("http").createServer(express);
 }
 
-var io = require("socket.io")(server);
+const io = require("socket.io")(server);
 
 require("./includes/errors");
 
 const setupErrorMails = require("./includes/errorMails")
 
-var step = require("step");
-var h = require("whispeerHelper");
-var client = require("./includes/redisClient");
+const client = require("./includes/redisClient");
 
 var onSocketConnection = require("./onSocketConnection");
 
-step(function () {
-	require("check-dependencies")({}, this.ne);
-}, h.sF(function (dependencyCheck) {
+const removeUserSockets = (users) => {
+	return Bluebird.resolve(users).map((user) => {
+		return client.delAsync("user:" + user + ":sockets");
+	})
+}
+
+const deleteOnlineUsers = (onlineUsers) => {
+	console.log("User Sockets Removed from " + onlineUsers.length + " users");
+
+	return Bluebird.all([
+		client.delAsync("user:online"),
+		removeUserSockets(onlineUsers)
+	])
+}
+
+
+return require("check-dependencies")({}).then((dependencyCheck) => {
 	if (!dependencyCheck.depsWereOk) {
 		console.error("Dependencies not satisfied!");
 
@@ -63,21 +77,14 @@ step(function () {
 		return;
 	}
 
-	setup(this);
-}), h.sF(function () {
-	client.smembers("user:online", this);
+	return setup();
+}).then(() => {
+	return client.smembersAsync("user:online");
 
 	setupErrorMails()
-}), h.sF(function (onlineUsers) {
-	console.log("User Sockets Removed from " + onlineUsers.length + " users");
-
-	var i;
-	for (i = 0; i < onlineUsers.length; i += 1) {
-		client.del("user:" + onlineUsers[i] + ":sockets", this.parallel());
-	}
-
-	client.del("user:online", this.parallel());
-}), h.sF(function () {
+}).then((onlineUsers) => {
+	return deleteOnlineUsers(onlineUsers)
+}).then(() => {
 	io.on("connection", onSocketConnection);
 	expressHandlers(express, client);
 
@@ -91,6 +98,6 @@ step(function () {
 		console.log("Dev Mode started!");
 		io.set("transports", ["websocket", "polling"]);
 	}
-}));
+});
 
 console.log("App started");
