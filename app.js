@@ -43,6 +43,8 @@ var io = require("socket.io")(server);
 
 require("./includes/errors");
 
+const setupErrorMails = require("./includes/errorMails")
+
 var step = require("step");
 var h = require("whispeerHelper");
 var client = require("./includes/redisClient");
@@ -57,12 +59,15 @@ step(function () {
 
 		console.error(dependencyCheck.error);
 
+		process.exit(5)
 		return;
 	}
 
 	setup(this);
 }), h.sF(function () {
 	client.smembers("user:online", this);
+
+	setupErrorMails()
 }), h.sF(function (onlineUsers) {
 	console.log("User Sockets Removed from " + onlineUsers.length + " users");
 
@@ -89,4 +94,3 @@ step(function () {
 }));
 
 console.log("App started");
-
