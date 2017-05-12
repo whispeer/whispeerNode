@@ -1,14 +1,4 @@
 #!/usr/bin/env node
-
-/*process.on("uncaughtException", function (err) {
-    console.error("An uncaughtException was found, the program will end.");
-    //hopefully do some logging.
-
-	console.error(err);
-
-    process.exit(1);
-});*/
-
 "use strict";
 
 const fs = require("fs");
