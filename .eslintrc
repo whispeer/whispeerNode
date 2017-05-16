@@ -29,6 +29,7 @@
     "InvalidMessageData": true,
     "TopicNotExisting": true,
     "MessageNotExisting": true,
+    "SuccessorError": true,
     "InvalidPost": true,
     "InvalidFilter": true,
     "InvalidCircleData": true,

@@ -65,6 +65,22 @@ const getTopicUpdates = (request, topic, messages, lastMessage) => {
 };
 
 var t = {
+	topic: {
+		createSuccessor: function (data, fn, request) {
+			step(function () {
+				Topic.get(data.topicID, this)
+			}, h.sF(function (topic) {
+				topic.setSuccessor(request, data.successor, data.receiverKeys, this)
+			}), fn)
+		},
+		successor: function (data, fn, request) {
+			step(function () {
+				Topic.get(data.topicID, this)
+			}, h.sF(function (topic) {
+				topic.getSuccessor(request, this)
+			}), fn);
+		}
+	},
 	getTopic: function getTopicF(data, fn, request) {
 		step(function () {
 			Topic.get(data.topicid, this);
@@ -187,11 +203,11 @@ var t = {
 		}), fn);
 	},
 	send: function sendMessageF(data, fn, request) {
-		step(function () {			
+		step(function () {
 			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
 				throw new Error("message to long");
 			}
-			
+
 			Message.create(request, data.message, this);
 		}, h.sF(function (result) {
 			this.ne({
@@ -201,7 +217,7 @@ var t = {
 		}), fn);
 		//message
 	},
-	sendNewTopic: function sendNewTopicF(data, fn, request) {		
+	sendNewTopic: function sendNewTopicF(data, fn, request) {
 		var topic;
 		step(function () {
 			if (data.message.content.ct.length > MAXMESSAGELENGTH) {

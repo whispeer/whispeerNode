@@ -77,6 +77,7 @@ global.InvalidTopicData = addError("invalid Message Topic", 40, true);
 global.InvalidMessageData = addError("invalid Message Data", 41, true);
 global.TopicNotExisting = addError("topic not existing", 42, true);
 global.MessageNotExisting = addError("message not existing", 43, true);
+global.SuccessorError = addError("successor error", 44, true)
 
 /** end message part */
 

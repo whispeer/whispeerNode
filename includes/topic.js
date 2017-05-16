@@ -221,6 +221,52 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	this.isAdmin = (request) => {
+		return client.hgetAsync(domain + ":meta", "creator").then((creator) => {
+			return request.session.isMyID(creator)
+		})
+	}
+
+	this.setSuccessor = function (request, successor, receiverKeys, cb) {
+		step(function () {
+			return Bluebird.all([
+				theTopic.isAdmin(request),
+				client.hgetAsync(domain + ":server", "successor"),
+				client.hgetAsync(domain + ":meta", "_ownHash")
+			])
+		}, h.sF(function ([isAdmin, hasSuccessor, checksum]) {
+			if (!isAdmin) {
+				throw new AccessViolation("topic: not an admin")
+			}
+
+			if (hasSuccessor) {
+				throw new SuccessorError("already has a successor")
+			}
+
+			if (checksum !== successor._parent) {
+				throw new Error("Invalid parent checksum")
+			}
+
+			Topic.create(request, successor, receiverKeys, this)
+		}), h.sF(function (successorTopic) {
+			return client.hsetAsync(domain + ":server", "successor", successorTopic.getID())
+		}), cb);
+	}
+
+	this.getSuccessor = function (request, cb) {
+		step(function () {
+			hasAccessError(request, this);
+		}, h.sF(function () {
+			return client.hgetAsync(domain + ":server", "successor")
+		}), h.sF(function (successorID) {
+			if (!successorID) {
+				return Bluebird.resolve(null)
+			}
+
+			Topic.get(successorID, this)
+		}), cb);
+	}
+
 	/** get topic full data */
 	this.getFullData = function (request, cb) {
 		var server, meta;
