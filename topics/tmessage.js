@@ -67,10 +67,25 @@ const getTopicUpdates = (request, topic, messages, lastMessage) => {
 var t = {
 	topic: {
 		createSuccessor: function (data, fn, request) {
+			let successorTopic
+
 			step(function () {
 				Topic.get(data.topicID, this)
 			}, h.sF(function (topic) {
 				topic.setSuccessor(request, data.successor, data.receiverKeys, this)
+			}), h.sF(function (_successorTopic) {
+				successorTopic = _successorTopic
+
+				const message = data.updateMessage
+				message.meta.topicid = successorTopic.getID()
+
+				Message.create(request, message, this);
+			}), h.sF(function () {
+				successorTopic.getFullData(request, this, false, false);
+			}), h.sF(function (successorTopic) {
+				return {
+					successorTopic
+				}
 			}), fn)
 		},
 		successor: function (data, fn, request) {

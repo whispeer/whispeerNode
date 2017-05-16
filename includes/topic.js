@@ -227,11 +227,15 @@ var Topic = function (id) {
 		})
 	}
 
+	this.getSuccessorID = function (cb) {
+		return client.hgetAsync(domain + ":server", "successor").nodeify(cb)
+	}
+
 	this.setSuccessor = function (request, successor, receiverKeys, cb) {
 		step(function () {
 			return Bluebird.all([
 				theTopic.isAdmin(request),
-				client.hgetAsync(domain + ":server", "successor"),
+				this.getSuccessorID(),
 				client.hgetAsync(domain + ":meta", "_ownHash")
 			])
 		}, h.sF(function ([isAdmin, hasSuccessor, checksum]) {
@@ -249,7 +253,7 @@ var Topic = function (id) {
 
 			Topic.create(request, successor, receiverKeys, this)
 		}), h.sF(function (successorTopic) {
-			return client.hsetAsync(domain + ":server", "successor", successorTopic.getID())
+			return client.hsetAsync(domain + ":server", "successor", successorTopic.getID()).thenReturn(successorTopic)
 		}), cb);
 	}
 

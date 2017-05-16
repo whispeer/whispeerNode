@@ -226,8 +226,15 @@ Message.create = function (request, data, cb) {
 	}, h.sF(function (topic) {
 		theTopic = topic;
 
-		theTopic.getNewest(request, this);
-	}), h.sF(function (newest) {
+		this.parallel.unflatten()
+
+		theTopic.getNewest(request, this.parallel());
+		theTopic.getSuccessorID(this.parallel())
+	}), h.sF(function (newest, successor) {
+		if (successor) {
+			throw new SuccessorError("Can't send message because topic has a successor")
+		}
+
 		if (newest === 0) {
 			this.ne(0);
 		} else {
