@@ -152,7 +152,7 @@ var t = {
 			});
 		}), fn);
 	},
-	getTopicMessages: function getMessagesF(data, fn, request) {
+	getTopicMessages: function (data, fn, request) {
 		var remainingCount, topic;
 
 		step(function () {
@@ -165,12 +165,14 @@ var t = {
 		}), h.sF(function (data) {
 			remainingCount = data.remaining;
 			var messages = data.messages;
-			var i;
-			for (i = 0; i < messages.length; i += 1) {
-				messages[i].getFullData(request, this.parallel(), true);
-			}
 
-			this.parallel()();
+			return Bluebird.resolve(messages).filter((message) => {
+				return message.hasAccess(request)
+			}).map((message) => {
+				return Bluebird.fromCallback(function(cb) {
+					return message.getFullData(request, cb, true)
+				})
+			})
 		}), h.sF(function (messages) {
 			return getTopicUpdates(request, topic, messages, data.afterMessage).then(function (topicUpdates) {
 				return {

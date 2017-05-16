@@ -215,11 +215,15 @@ function removeKey(key) {
 	key = key.replace(/key:/, "");
 
 	return getKey(key).then(function (theKey) {
-		var removeKey = Bluebird.promisify(theKey.remove, theKey);
+		var removeKey = Bluebird.promisify(theKey.remove, {
+		    context: theKey
+		});
 		var multi = client.multi();
 
 		return removeKey(multi).then(function () {
-			var exec = Bluebird.promisify(multi.exec, multi);
+			var exec = Bluebird.promisify(multi.exec, {
+			    context: multi
+			});
 			return exec();
 		});
 	}).catch(function (e) {

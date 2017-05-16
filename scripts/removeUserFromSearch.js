@@ -36,7 +36,9 @@ var requireConfirmation = Bluebird.promisify(function(message, action) {
 
 function removeUserFromSearch(userid) {
 	var search = require("../includes/search");
-	var remove = Bluebird.promisify(search.user.remove, search.user);
+	var remove = Bluebird.promisify(search.user.remove, {
+	    context: search.user
+	});
 
 	return remove(userid);
 }

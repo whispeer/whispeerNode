@@ -72,7 +72,9 @@ Notification.add = function (users, type, subType, referenceID, options) {
 			multi.sadd("notifications:user:" + userid + ":unread", notificationID);
 		});
 
-		var exec = Bluebird.promisify(multi.exec, multi);
+		var exec = Bluebird.promisify(multi.exec, {
+		    context: multi
+		});
 		var mailer = require("./mailer");
 
 		return Bluebird.all([

@@ -84,7 +84,7 @@ var Topic = function (id) {
 	}
 
 	this.getTopicUpdatesBetween = function (request, firstMessageID, lastMessageID) {
-		return theTopic.hasAccessAsync(request).then(function () {
+		return theTopic.hasAccess(request).then(function () {
 			return Bluebird.all([
 				client.zscoreAsync(mDomain, firstMessageID),
 				client.zscoreAsync(mDomain, lastMessageID),
@@ -111,7 +111,7 @@ var Topic = function (id) {
 	};
 
 	this.getLatestTopicUpdate = function (request) {
-		return theTopic.hasAccessAsync(request).then(() => {
+		return theTopic.hasAccess(request).then(() => {
 			return topicUpdateModel.findOne({
 				where: {
 					topicID: id
@@ -130,7 +130,7 @@ var Topic = function (id) {
 	};
 
 	this.getTopicUpdatesAfterNewestMessage = function (request, newestMessageID, cb) {
-		return theTopic.hasAccessAsync(request).then(function () {
+		return theTopic.hasAccess(request).then(function () {
 			return client.zscoreAsync(mDomain, newestMessageID);
 		}).then((newestTime) => {
 			return topicUpdateModel.findAll({
@@ -160,7 +160,7 @@ var Topic = function (id) {
 	};
 
 	this.createTopicUpdate = function (request, topicUpdate, cb) {
-		return theTopic.hasAccessAsync(request).then(function () {
+		return theTopic.hasAccess(request).then(function () {
 			topicUpdate.topicID = id;
 			return topicUpdateModel.create(topicUpdate);
 		}).then((topicUpdate) => {
@@ -169,22 +169,22 @@ var Topic = function (id) {
 	};
 
 	/** has the current user access? */
-	this.hasAccess = function hasAccessF(request, cb) {
-		var uid;
-		step(function hA1() {
-			uid = request.session.getUserID();
-			if (hasAccess.indexOf(uid) > -1) {
-				this.last.ne(true);
+	this.hasAccess = function (request, cb) {
+		const uid = request.session.getUserID()
+
+		if (hasAccess.indexOf(uid) > -1) {
+			return Bluebird.resolve(true).nodeify(cb);
+		}
+
+		return client.sismemberAsync(domain + ":receiver", uid).then((member) => {
+			if (member === 1) {
+				hasAccess.push(uid);
+				return true
 			}
 
-			client.sismember(domain + ":receiver", uid, this);
-		}, h.sF(function hA2(member) {
-			hasAccess.push(uid);
-			this.ne(member === 1);
-		}), cb);
+			return false
+		}).nodeify(cb)
 	};
-
-	this.hasAccessAsync = Bluebird.promisify(this.hasAccess, this);
 
 	/** get receiver ids */
 	this.getReceiverIDs = function(request, cb) {
@@ -441,7 +441,9 @@ var Topic = function (id) {
 			var Message = require("./messages");
 			return new Message(missingMessageID, theTopic);
 		}).map(function (missingMessage) {
-			var getFullData = Bluebird.promisify(missingMessage.getFullData, missingMessage);
+			var getFullData = Bluebird.promisify(missingMessage.getFullData, {
+			    context: missingMessage
+			});
 			return getFullData(request);
 		}).then(function (data) {
 			return {
@@ -670,15 +672,15 @@ Topic.own = function (request, afterTopic, count, noPredecessors, cb) {
 };
 
 Topic.get = function (topicid, cb) {
-	step(function () {
-		client.exists("topic:" + topicid + ":server", this);
-	}, h.sF(function (exists) {
+	return Bluebird.try(function () {
+		return client.existsAsync("topic:" + topicid + ":server");
+	}).then(function (exists) {
 		if (exists === 1) {
-			this.ne(new Topic(topicid));
-		} else {
-			throw new TopicNotExisting(topicid);
+			return new Topic(topicid);
 		}
-	}), cb);
+
+		throw new TopicNotExisting(topicid);
+	}).nodeify(cb)
 };
 
 Topic.getUserTopicID = function (request, userid, cb) {
