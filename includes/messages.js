@@ -34,7 +34,8 @@ var SymKey = require("./crypto/symKey");
 	}
 */
 
-var Message = function (id, topic) {
+var Message = function (id) {
+	var topic
 	var theMessage = this;
 	var domain = "message:" + id;
 
@@ -119,7 +120,7 @@ var Message = function (id, topic) {
 			return Bluebird.resolve(topic).nodeify(cb)
 		}
 
-		return theMessage.getTopicID(this).then((topicid) => {
+		return theMessage.getTopicID().then((topicid) => {
 			return Topic.get(topicid);
 		}).then(function (theTopic) {
 			topic = theTopic;

@@ -439,7 +439,7 @@ var Topic = function (id) {
 			return h.array.flatten(data);
 		}).map(function (missingMessageID) {
 			var Message = require("./messages");
-			return new Message(missingMessageID, theTopic);
+			return new Message(missingMessageID);
 		}).map(function (missingMessage) {
 			var getFullData = Bluebird.promisify(missingMessage.getFullData, {
 			    context: missingMessage
@@ -598,7 +598,7 @@ var Topic = function (id) {
 			var Message = require("./messages");
 			var result = [], i;
 			for (i = 0; i < messageids.length; i += 1) {
-				result.push(new Message(messageids[i], theTopic));
+				result.push(new Message(messageids[i]));
 			}
 
 			this.ne({
