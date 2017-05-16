@@ -109,7 +109,7 @@ var t = {
 	},
 	getTopics: function getTopicsF(data, fn, request) {
 		step(function () {
-			Topic.own(request, data.afterTopic, 10, this);
+			Topic.own(request, data.afterTopic, 10, data.noPredecessors, this);
 		}, h.sF(function (topics) {
 			var i;
 			for (i = 0; i < topics.length; i += 1) {

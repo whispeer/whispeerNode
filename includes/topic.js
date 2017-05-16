@@ -187,7 +187,7 @@ var Topic = function (id) {
 	this.hasAccessAsync = Bluebird.promisify(this.hasAccess, this);
 
 	/** get receiver ids */
-	this.getReceiverIDs = function getReceiverIDsF(request, cb) {
+	this.getReceiverIDs = function(request, cb) {
 		step(function () {
 			hasAccessError(request, this);
 		}, h.sF(function () {
@@ -235,7 +235,7 @@ var Topic = function (id) {
 		step(function () {
 			return Bluebird.all([
 				theTopic.isAdmin(request),
-				this.getSuccessorID(),
+				theTopic.getSuccessorID(),
 				client.hgetAsync(domain + ":meta", "_ownHash")
 			])
 		}, h.sF(function ([isAdmin, hasSuccessor, checksum]) {
@@ -253,7 +253,17 @@ var Topic = function (id) {
 
 			Topic.create(request, successor, receiverKeys, this)
 		}), h.sF(function (successorTopic) {
-			return client.hsetAsync(domain + ":server", "successor", successorTopic.getID()).thenReturn(successorTopic)
+			const succID = successorTopic.getID()
+			const myID = this.getID()
+
+			return client.smembersAsync("topic:" + succID + ":receiver").map((receiverID) => {
+				return client.zremAsync("topic:user:" + receiverID + ":topics", theTopic.getID())
+			}).then(() => {
+				return Bluebird.all([
+					client.hsetAsync(domain + ":server", "successor", succID),
+					client.zunionstoreAsync(`topic:${succID}:messages`, 1, `topic:${myID}:messages`)
+				])
+			}).thenReturn(successorTopic)
 		}), cb);
 	}
 
@@ -500,6 +510,7 @@ var Topic = function (id) {
 				}
 
 				multi.zadd("topic:user:" + rid + ":topics", time, id);
+				multi.zadd("topic:user:" + rid + ":topicsWithPredecessors", time, id);
 			});
 
 			multi.hmset(domain + ":server", {
@@ -639,22 +650,22 @@ Topic.unread = function (request, cb) {
 	}), cb);
 };
 
-Topic.own = function (request, afterTopic, count, cb) {
+Topic.own = function (request, afterTopic, count, noPredecessors, cb) {
+	const topicsListKey = "topic:user:" + request.session.getUserID() + (
+		noPredecessors ? ":topics" : ":topicsWithPredecessors")
+
 	step(function () {
-		client.zrevrank("topic:user:" + request.session.getUserID() + ":topics", afterTopic, this);
+		return client.zrevrankAsync(topicsListKey, afterTopic);
 	}, h.sF(function (index) {
 		if (index === null) {
 			index = -1;
 		}
 
-		client.zrevrange("topic:user:" + request.session.getUserID() + ":topics", index + 1, index + count, this);
+		return client.zrevrangeAsync(topicsListKey, index + 1, index + count);
 	}), h.sF(function (topicids) {
-		var result = [], i;
-		for (i = 0; i < topicids.length; i += 1) {
-			result.push(new Topic(topicids[i]));
-		}
+		const topics = topicids.map((topicid) => new Topic(topicid))
 
-		this.ne(result);
+		this.ne(topics);
 	}), cb);
 };
 
@@ -744,6 +755,7 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 
 		receiverIDs.forEach(function (uid) {
 			multi.zadd("topic:user:" + uid + ":topics", new Date().getTime(), topicid);
+			multi.zadd("topic:user:" + uid + ":topicsWithPredecessors", new Date().getTime(), topicid);
 			if (!request.session.isMyID(uid)) {
 				multi.hset("topic:" + topicid + ":receiverKeys", uid, receiverKeys[uid]);
 			}
