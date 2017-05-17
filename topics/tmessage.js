@@ -64,11 +64,27 @@ const getTopicUpdates = (request, topic, messages, lastMessage) => {
 	});
 };
 
-const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
-	let remainingCount = 0
+const getPredecessorMessages = (request, topic, count) => {
+	if (count <= 0) {
+		return Bluebird.resolve()
+	}
 
-	return topic.getMessages(request, afterMessage, count).then(({ remaining, messages }) => {
-		remainingCount = remaining;
+	return topic.getPredecessorsMessageCounts(request).then((counts) => {
+		console.log(counts)
+
+		return Bluebird.resolve({
+			remaining: 0,
+			predecessorMessages: [],
+			predecessorTopicUpdates: [],
+		})
+	})
+}
+
+const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
+	let remaining = 0
+
+	return topic.getMessages(request, afterMessage, count).then(({ _remaining, messages }) => {
+		remaining = _remaining;
 
 		return messages
 	}).filter((message) => {
@@ -78,11 +94,30 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
 			return message.getFullData(request, cb, true)
 		})
 	}).then((messages) => {
-		return getTopicUpdates(request, topic, messages, afterMessage).then(function (topicUpdates) {
+		const newCount = remaining > 0 ? 0 : count - messages.length
+
+		return Bluebird.all([
+			getTopicUpdates(request, topic, messages, afterMessage),
+			getPredecessorMessages(request, topic, newCount)
+		]).then(function ([topicUpdates, predecessor]) {
+			if (predecessor) {
+				const {
+					remaining,
+					predecessorMessages,
+					predecessorTopicUpdates,
+				} = predecessor
+
+				return {
+					topicUpdates: predecessorTopicUpdates.concat(topicUpdates),
+					remaining,
+					messages: predecessorMessages.concat(messages),
+				}
+			}
+
 			return {
-				topicUpdates: topicUpdates,
-				remaining: remainingCount,
-				messages: messages
+				topicUpdates,
+				remaining,
+				messages,
 			};
 		});
 	})
@@ -177,9 +212,9 @@ var t = {
 		}), fn);
 	},
 	getTopicMessages: function (data, fn, request) {
-		return Topic.get(data.topicid).then(function (topic) {
-			var count = Math.min(data.maximum || 20, 20);
+		var count = Math.min(data.maximum || 20, 20);
 
+		return Topic.get(data.topicid).then(function (topic) {
 			return getTopicMessagesAndUpdates(request, topic, count, data.afterMessage)
 		}).nodeify(fn)
 	},
