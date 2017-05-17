@@ -265,13 +265,16 @@ var Topic = function (id) {
 		}), cb);
 	}
 
-	this.getPredecessorsMessageCount = function (request) {
+	this.getPredecessorsMessageCounts = function (request) {
 		return hasAccessError(request).then(() => {
 			return client.smembersAsync(`topic:${this.getID()}:predecessors`)
 		}).map((predecessorID) => {
-			return new Topic(predecessorID).getMessagesCount()
-		}).then((messagesCounts) => {
-			return messagesCounts.reduce((prev, next) => prev + next, 0)
+			return new Topic(predecessorID).getMessagesCount().then((count) => {
+				return {
+					topicID: predecessorID,
+					remainingCount: count
+				}
+			})
 		})
 	}
 
