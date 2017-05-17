@@ -72,15 +72,11 @@ var Topic = function (id) {
 
 	/** throw an error if the current user can not access this topic */
 	function hasAccessError(request, cb) {
-		step(function hAE1() {
-			theTopic.hasAccess(request, this);
-		}, h.sF(function hAE2(access) {
+		return theTopic.hasAccess(request).then(function (access) {
 			if (access !== true) {
 				throw new AccessViolation("topic");
 			}
-
-			this.ne();
-		}), cb);
+		}).nodeify(cb);
 	}
 
 	this.getTopicUpdatesBetween = function (request, firstMessageID, lastMessageID) {
@@ -189,7 +185,7 @@ var Topic = function (id) {
 	/** get receiver ids */
 	this.getReceiverIDs = function(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.smembers(domain + ":receiver", this);
 		}), cb);
@@ -261,15 +257,27 @@ var Topic = function (id) {
 			}).then(() => {
 				return Bluebird.all([
 					client.hsetAsync(domain + ":server", "successor", succID),
-					client.zunionstoreAsync(`topic:${succID}:messages`, 1, `topic:${myID}:messages`)
+					client.sunionstoreAsync(`topic:${succID}:predecessors`, 1, `topic:${myID}:predecessors`)
 				])
+			}).then(() => {
+				return client.saddAsync(`topic:${myID}:predecessors`, succID)
 			}).thenReturn(successorTopic)
 		}), cb);
 	}
 
+	this.getPredecessorsMessageCount = function (request) {
+		return hasAccessError(request).then(() => {
+			return client.smembersAsync(`topic:${this.getID()}:predecessors`)
+		}).map((predecessorID) => {
+			return new Topic(predecessorID).getMessagesCount()
+		}).then((messagesCounts) => {
+			return messagesCounts.reduce((prev, next) => prev + next, 0)
+		})
+	}
+
 	this.getSuccessor = function (request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			return client.hgetAsync(domain + ":server", "successor")
 		}), h.sF(function (successorID) {
@@ -329,7 +337,7 @@ var Topic = function (id) {
 	/** how many messages in this topic? */
 	this.ownCount = function ownCountF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zcard(domain + ":user:" + request.session.getUserID() + ":messages", this);
 		}), cb);
@@ -338,7 +346,7 @@ var Topic = function (id) {
 	/** how many messages in this topic? */
 	this.messageCount = function messageCountF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zcard(mDomain, this);
 		}), cb);
@@ -365,7 +373,7 @@ var Topic = function (id) {
 	/** get unread messages ids */
 	this.getUnreadMessages = function getUnreadMessagesF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zrevrange(domain + ":user:" + request.session.getUserID() + ":unread", 0, -1, this);
 		}), h.sF(function (res) {
@@ -459,7 +467,7 @@ var Topic = function (id) {
 	this.markMessagesRead = function markRead(request, beforeTime, cb) {
 		var unread = false;
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zremrangebyscore(domain + ":user:" + request.session.getUserID() + ":unread", "-inf", beforeTime, this);
 		}), h.sF(function () {
@@ -486,7 +494,7 @@ var Topic = function (id) {
 	this.addMessage = function addMessageF(request, message, cb) {
 		var theReceiver, theSender, messageID;
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			//TO-DO check that all receiver have access to the messageKey
 			this.parallel.unflatten();
@@ -558,7 +566,7 @@ var Topic = function (id) {
 	*/
 	this.getNewest = function getNewestF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zrevrange(mDomain, 0, 0, this);
 		}), h.sF(function (messageids) {
@@ -571,16 +579,26 @@ var Topic = function (id) {
 		}), cb);
 	};
 
+	this.getMessagesCount = function (request) {
+		return this.hasAccess(request).then((hasAccess) => {
+			if (!hasAccess) {
+				return 0
+			}
+
+			return client.zcardAsync(mDomain);
+		})
+	}
+
 	/** get the messages after a certain message
 	* @param request request
 	* @param afterMessage message after which to start
 	* @param count number of messages to get
 	* @param cb cb
 	*/
-	this.getMessages = function getMessagesF(request, afterMessage, count, cb) {
+	this.getMessages = function (request, afterMessage, count, cb) {
 		var remaining = 0;
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			this.parallel.unflatten();
 
@@ -596,10 +614,10 @@ var Topic = function (id) {
 			client.zrevrange(mDomain, index + 1, index + count, this);
 		}), h.sF(function (messageids) {
 			var Message = require("./messages");
-			var result = [], i;
-			for (i = 0; i < messageids.length; i += 1) {
-				result.push(new Message(messageids[i]));
-			}
+
+			const result = messageids.map((messageid) => {
+				return new Message(messageid)
+			})
 
 			this.ne({
 				messages: result,
@@ -611,7 +629,7 @@ var Topic = function (id) {
 	/** get topic data */
 	this.getTData = function getTDataF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			this.parallel.unflatten();
 			client.hgetall(domain + ":server", this.parallel());
