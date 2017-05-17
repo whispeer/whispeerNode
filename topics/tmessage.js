@@ -64,6 +64,30 @@ const getTopicUpdates = (request, topic, messages, lastMessage) => {
 	});
 };
 
+const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
+	let remainingCount = 0
+
+	return topic.getMessages(request, afterMessage, count).then(({ remaining, messages }) => {
+		remainingCount = remaining;
+
+		return messages
+	}).filter((message) => {
+		return message.hasAccess(request)
+	}).map((message) => {
+		return Bluebird.fromCallback(function(cb) {
+			return message.getFullData(request, cb, true)
+		})
+	}).then((messages) => {
+		return getTopicUpdates(request, topic, messages, afterMessage).then(function (topicUpdates) {
+			return {
+				topicUpdates: topicUpdates,
+				remaining: remainingCount,
+				messages: messages
+			};
+		});
+	})
+}
+
 var t = {
 	topic: {
 		createSuccessor: function (data, fn, request) {
@@ -153,35 +177,11 @@ var t = {
 		}), fn);
 	},
 	getTopicMessages: function (data, fn, request) {
-		var remainingCount, topic;
-
-		step(function () {
-			Topic.get(data.topicid, this);
-		}, h.sF(function (_topic) {
-			topic = _topic;
+		return Topic.get(data.topicid).then(function (topic) {
 			var count = Math.min(data.maximum || 20, 20);
 
-			topic.getMessages(request, data.afterMessage, count, this);
-		}), h.sF(function (data) {
-			remainingCount = data.remaining;
-			var messages = data.messages;
-
-			return Bluebird.resolve(messages).filter((message) => {
-				return message.hasAccess(request)
-			}).map((message) => {
-				return Bluebird.fromCallback(function(cb) {
-					return message.getFullData(request, cb, true)
-				})
-			})
-		}), h.sF(function (messages) {
-			return getTopicUpdates(request, topic, messages, data.afterMessage).then(function (topicUpdates) {
-				return {
-					topicUpdates: topicUpdates,
-					remaining: remainingCount,
-					messages: messages
-				};
-			});
-		}), fn);
+			return getTopicMessagesAndUpdates(request, topic, count, data.afterMessage)
+		}).nodeify(fn)
 	},
 	getUnreadTopicIDs: function (data, fn, request) {
 		step(function () {

@@ -260,7 +260,7 @@ var Topic = function (id) {
 					client.sunionstoreAsync(`topic:${succID}:predecessors`, 1, `topic:${myID}:predecessors`)
 				])
 			}).then(() => {
-				return client.saddAsync(`topic:${myID}:predecessors`, succID)
+				return client.saddAsync(`topic:${succID}:predecessors`, myID)
 			}).thenReturn(successorTopic)
 		}), cb);
 	}
@@ -600,33 +600,31 @@ var Topic = function (id) {
 	*/
 	this.getMessages = function (request, afterMessage, count, cb) {
 		var remaining = 0;
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			this.parallel.unflatten();
-
-			client.zrevrank(mDomain, afterMessage, this.parallel());
-			client.zcard(mDomain, this.parallel());
-		}), h.sF(function (index, card) {
+		return hasAccessError(request).then(() => {
+			return Bluebird.all([
+				client.zrevrankAsync(mDomain, afterMessage),
+				client.zcardAsync(mDomain),
+			])
+		}).then(function ([index, card]) {
 			if (index === null) {
 				index = -1;
 			}
 
 			remaining = card - index - count;
 
-			client.zrevrange(mDomain, index + 1, index + count, this);
-		}), h.sF(function (messageids) {
+			return client.zrevrangeAsync(mDomain, index + 1, index + count);
+		}).then(function (messageids) {
 			var Message = require("./messages");
 
 			const result = messageids.map((messageid) => {
 				return new Message(messageid)
 			})
 
-			this.ne({
+			return {
 				messages: result,
 				remaining: remaining > 0 ? remaining : 0
-			});
-		}), cb);
+			}
+		}).nodeify(cb);
 	};
 
 	/** get topic data */
