@@ -306,14 +306,25 @@ function removeUserSessions(userid) {
 	});
 }
 
+const getAnalyticsDate = (key) => {
+	return new Date(key.split(":").reverse()[0])
+}
+
 const getUserLastOnlineDay = (userid) => {
 	console.time("getOnlineDay")
 	return client.keysAsync("analytics:online:day:*").filter((key) => {
 		return client.sismemberAsync(key, userid)
 	}).then((keys) => {
+		const sortedKeys = keys.sort((k1, k2) => {
+			const d1 = getAnalyticsDate(k1)
+			const d2 = getAnalyticsDate(k2)
+
+			return d2 - d1
+		})
+
 		console.timeEnd("getOnlineDay")
-		console.log("Online keys " + JSON.stringify(keys))
-		return keys.sort().reverse()[0]
+		console.log("Online keys " + JSON.stringify(sortedKeys, null, 2))
+		return sortedKeys[0]
 	})
 }
 
