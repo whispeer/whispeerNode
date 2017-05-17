@@ -35,6 +35,33 @@ var Bluebird = require("bluebird");
 
 const topicUpdateModel = require("./models/topicUpdateModel");
 
+const updateServer = (succID, myID) => {
+	return client.hgetallAsync(`topic:${myID}:server`).then((myServer) => {
+		console.log(myServer)
+		return Bluebird.all([
+			client.hsetAsync(`topic:${myID}:server`, "successor", succID),
+			client.hmsetAsync(`topic:${succID}:server`, {
+				newest: myServer.newest,
+				newestTime: myServer.newestTime
+			})
+		])
+	})
+}
+
+const removeTopicList = (succID, myID) => {
+	return client.smembersAsync("topic:" + succID + ":receiver").map((receiverID) => {
+		return client.zremAsync("topic:user:" + receiverID + ":topics", myID)
+	})
+}
+
+const copyPredecessors = (succID, myID) => {
+	return client.lrangeAsync(`topic:${myID}:predecessors`, 0, -1).then((predecessors) => {
+		predecessors.push(myID)
+
+		return client.lpushAsync(`topic:${succID}:predecessors`, myID, ...predecessors)
+	})
+}
+
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
 		message.getFullData(request, this, true);
@@ -87,7 +114,7 @@ var Topic = function (id) {
 			]);
 		}).spread((min, max) => {
 			const startDate = new Date(h.parseDecimal(min));
-			const endDate = new Date(h.parseDecimal(max));
+			const endDate = max ? new Date(h.parseDecimal(max)) : new Date()
 
 			return topicUpdateModel.findAll({
 				where: {
@@ -129,6 +156,10 @@ var Topic = function (id) {
 		return theTopic.hasAccess(request).then(function () {
 			return client.zscoreAsync(mDomain, newestMessageID);
 		}).then((newestTime) => {
+			if (!newestTime) {
+				return []
+			}
+
 			return topicUpdateModel.findAll({
 				where: {
 					topicID: id,
@@ -250,26 +281,21 @@ var Topic = function (id) {
 			Topic.create(request, successor, receiverKeys, this)
 		}), h.sF(function (successorTopic) {
 			const succID = successorTopic.getID()
-			const myID = this.getID()
+			const myID = theTopic.getID()
 
-			return client.smembersAsync("topic:" + succID + ":receiver").map((receiverID) => {
-				return client.zremAsync("topic:user:" + receiverID + ":topics", theTopic.getID())
-			}).then(() => {
-				return Bluebird.all([
-					client.hsetAsync(domain + ":server", "successor", succID),
-					client.sunionstoreAsync(`topic:${succID}:predecessors`, 1, `topic:${myID}:predecessors`)
-				])
-			}).then(() => {
-				return client.saddAsync(`topic:${succID}:predecessors`, myID)
-			}).thenReturn(successorTopic)
+			return Bluebird.all([
+				updateServer(succID, myID),
+				removeTopicList(succID, myID),
+				copyPredecessors(succID, myID),
+			]).thenReturn(successorTopic)
 		}), cb);
 	}
 
 	this.getPredecessorsMessageCounts = function (request) {
 		return hasAccessError(request).then(() => {
-			return client.smembersAsync(`topic:${this.getID()}:predecessors`)
+			return client.lrangeAsync(`topic:${this.getID()}:predecessors`, 0, -1)
 		}).map((predecessorID) => {
-			return new Topic(predecessorID).getMessagesCount().then((count) => {
+			return new Topic(predecessorID).getMessagesCount(request).then((count) => {
 				return {
 					topicID: predecessorID,
 					remainingCount: count
@@ -316,7 +342,14 @@ var Topic = function (id) {
 			if (h.parseDecimal(server.newest) !== 0) {
 				var Message = require("./messages");
 				var newest = new Message(server.newest);
-				newest.getFullData(request, this, true);
+
+				return newest.hasAccess(request).then((hasAccess) => {
+					if (!hasAccess) {
+						return
+					}
+
+					return Bluebird.fromCallback((cb) => newest.getFullData(request, cb, true))
+				})
 			} else {
 				this.ne();
 			}
@@ -568,18 +601,16 @@ var Topic = function (id) {
 	* @param cb cb
 	*/
 	this.getNewest = function getNewestF(request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			client.zrevrange(mDomain, 0, 0, this);
-		}), h.sF(function (messageids) {
+		return hasAccessError(request).then(() => {
+			return client.zrevrangeAsync(mDomain, 0, 0);
+		}).then(function (messageids) {
 			if (messageids.length === 1) {
 				var Message = require("./messages");
-				this.ne(new Message(messageids[0]));
-			} else {
-				this.ne(0);
+				return new Message(messageids[0]);
 			}
-		}), cb);
+
+			return 0;
+		}).nodeify(cb)
 	};
 
 	this.getMessagesCount = function (request) {

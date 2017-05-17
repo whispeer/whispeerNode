@@ -65,7 +65,8 @@
     "no-use-before-define": [
       2,
       {
-        "functions": false
+        "functions": false,
+        "variables": false
       }
     ],
     "max-statements": 0

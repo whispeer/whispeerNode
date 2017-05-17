@@ -64,18 +64,30 @@ const getTopicUpdates = (request, topic, messages, lastMessage) => {
 	});
 };
 
-const getPredecessorMessages = (request, topic, count) => {
-	if (count <= 0) {
-		return Bluebird.resolve()
-	}
+const getRemainingCount = (counts, remaining) => {
+	return counts.reduce((prev, next) => prev + next.remainingCount, remaining)
+}
 
+const getPredecessorMessages = (request, topic, remaining, count) => {
 	return topic.getPredecessorsMessageCounts(request).then((counts) => {
-		console.log(counts)
+		const nextTopic = counts.filter(({ remainingCount }) => remainingCount > 0)[0]
 
-		return Bluebird.resolve({
-			remaining: 0,
-			predecessorMessages: [],
-			predecessorTopicUpdates: [],
+		if (count <= 0 || !nextTopic) {
+			return Bluebird.resolve({
+				remaining: getRemainingCount(counts, remaining),
+				predecessorMessages: [],
+				predecessorTopicUpdates: [],
+			})
+		}
+
+		return Topic.get(nextTopic.topicID).then((topic) => {
+			return getTopicMessagesAndUpdates(request, topic, count, 0)
+		}).then(({ remaining, topicUpdates, messages }) => {
+			return {
+				remaining,
+				predecessorTopicUpdates: topicUpdates,
+				predecessorMessages: messages,
+			}
 		})
 	})
 }
@@ -83,7 +95,7 @@ const getPredecessorMessages = (request, topic, count) => {
 const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
 	let remaining = 0
 
-	return topic.getMessages(request, afterMessage, count).then(({ _remaining, messages }) => {
+	return topic.getMessages(request, afterMessage, count).then(({ remaining: _remaining, messages }) => {
 		remaining = _remaining;
 
 		return messages
@@ -98,48 +110,47 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
 
 		return Bluebird.all([
 			getTopicUpdates(request, topic, messages, afterMessage),
-			getPredecessorMessages(request, topic, newCount)
+			getPredecessorMessages(request, topic, remaining, newCount)
 		]).then(function ([topicUpdates, predecessor]) {
-			if (predecessor) {
-				const {
-					remaining,
-					predecessorMessages,
-					predecessorTopicUpdates,
-				} = predecessor
-
-				return {
-					topicUpdates: predecessorTopicUpdates.concat(topicUpdates),
-					remaining,
-					messages: predecessorMessages.concat(messages),
-				}
-			}
+			const {
+				remaining,
+				predecessorMessages,
+				predecessorTopicUpdates,
+			} = predecessor
 
 			return {
-				topicUpdates,
+				topicUpdates: predecessorTopicUpdates.concat(topicUpdates),
 				remaining,
-				messages,
-			};
+				messages: predecessorMessages.concat(messages),
+			}
 		});
 	})
+}
+
+const createHiddenMessage = (request, topic, message, name, cb) => {
+	message.meta.topicid = topic.getID()
+
+	Message.create(request, message, cb);
 }
 
 var t = {
 	topic: {
 		createSuccessor: function (data, fn, request) {
-			let successorTopic
+			let successorTopic, topic
 
 			step(function () {
 				Topic.get(data.topicID, this)
-			}, h.sF(function (topic) {
+			}, h.sF(function (_topic) {
+				topic = _topic
 				topic.setSuccessor(request, data.successor, data.receiverKeys, this)
 			}), h.sF(function (_successorTopic) {
 				successorTopic = _successorTopic
 
-				const message = data.updateMessage
-				message.meta.topicid = successorTopic.getID()
+				// createHiddenMessage(request, topic, data.oldChatMessage, "oldChat", this.parallel());
+				// createHiddenMessage(request, successorTopic, data.newChatMessage, "newChat", this.parallel());
 
-				Message.create(request, message, this);
-			}), h.sF(function () {
+				this.ne()
+			}), h.sF(() => {
 				successorTopic.getFullData(request, this, false, false);
 			}), h.sF(function (successorTopic) {
 				return {

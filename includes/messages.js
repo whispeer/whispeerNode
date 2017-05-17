@@ -214,12 +214,10 @@ Message.create = function (request, data, cb) {
 		}
 
 		if (data.meta.topicid) {
-			this.parallel.unflatten();
-
-			Topic.get(data.meta.topicid, this.parallel());
-		} else {
-			throw new InvalidMessageData();
+			return Topic.get(data.meta.topicid);
 		}
+
+		throw new InvalidMessageData();
 	}, h.sF(function (topic) {
 		theTopic = topic;
 
@@ -235,7 +233,6 @@ Message.create = function (request, data, cb) {
 		if (newest === 0) {
 			this.ne(0);
 		} else {
-			this.parallel.unflatten();
 			newest.getSortCounter(request, this);
 		}
 	}), h.sF(function (newestCounter) {
