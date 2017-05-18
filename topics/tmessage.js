@@ -69,26 +69,18 @@ const getRemainingCount = (counts, remaining) => {
 }
 
 const getPredecessorMessages = (request, topic, remaining, count) => {
-	return topic.getPredecessorsMessageCounts(request).then((counts) => {
-		const nextTopic = counts.filter(({ remainingCount }) => remainingCount > 0)[0]
-
-		if (count <= 0 || !nextTopic) {
-			return Bluebird.resolve({
-				remaining: getRemainingCount(counts, remaining),
-				predecessorMessages: [],
-				predecessorTopicUpdates: [],
+	return topic.getPredecessor(request).then((predecessorTopic) => {
+		if (count <= 0 || !predecessorTopic) {
+			return topic.getPredecessorsMessageCounts(request).then((counts) => {
+				return {
+					remaining: getRemainingCount(counts, remaining),
+					messages: [],
+					topicUpdates: [],
+				}
 			})
 		}
 
-		return Topic.get(nextTopic.topicID).then((topic) => {
-			return getTopicMessagesAndUpdates(request, topic, count, 0)
-		}).then(({ remaining, topicUpdates, messages }) => {
-			return {
-				remaining,
-				predecessorTopicUpdates: topicUpdates,
-				predecessorMessages: messages,
-			}
-		})
+		return getTopicMessagesAndUpdates(request, predecessorTopic, count, 0)
 	})
 }
 
@@ -114,8 +106,8 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
 		]).then(function ([topicUpdates, predecessor]) {
 			const {
 				remaining,
-				predecessorMessages,
-				predecessorTopicUpdates,
+				messages: predecessorMessages,
+				topicUpdates: predecessorTopicUpdates,
 			} = predecessor
 
 			return {

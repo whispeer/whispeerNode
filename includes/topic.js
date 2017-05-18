@@ -291,9 +291,29 @@ var Topic = function (id) {
 		}), cb);
 	}
 
+	this.getPredecessor = function (request) {
+		return hasAccessError(request).then(() => {
+			return client.hgetAsync(`${domain}:meta`, "predecessor")
+		}).then((predecessorID) => {
+			if (!predecessorID) {
+				return null
+			}
+
+			const topic = new Topic(predecessorID)
+
+			return topic.hasAccess(request).then((hasAccess) => {
+				if (!hasAccess) {
+					return null
+				}
+
+				return topic
+			})
+		})
+	}
+
 	this.getPredecessorsMessageCounts = function (request) {
 		return hasAccessError(request).then(() => {
-			return client.lrangeAsync(`topic:${this.getID()}:predecessors`, 0, -1)
+			return client.lrangeAsync(`${domain}:predecessors`, 0, -1)
 		}).map((predecessorID) => {
 			return new Topic(predecessorID).getMessagesCount(request).then((count) => {
 				return {
