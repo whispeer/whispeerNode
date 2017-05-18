@@ -13,7 +13,7 @@ var mailer = require("./mailer");
 
 var config = require("./configManager").get();
 
-//maximum difference: 5 minutes.
+//maximum difference: 60 minutes.
 var MAXTIME = 60 * 60 * 1000;
 
 /*
@@ -802,6 +802,7 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 
 		topicServer.newest = 0;
 		topicServer.topicid = topicid;
+		topicServer.createServerTime = new Date().getTime()
 
 		var multi = client.multi();
 

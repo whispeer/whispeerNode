@@ -64,10 +64,8 @@ var Message = function (id) {
 	};
 
 	/** message send time */
-	this.getTime = function getTimeF(request, cb) {
-		step(function () {
-			client.hget(domain + ":meta", "sendTime", this);
-		}, cb);
+	this.getTime = function (request, cb) {
+		return client.hgetAsync(domain + ":meta", "sendTime").nodeify(cb);
 	};
 
 	this.getSortCounter = function (request, cb) {
