@@ -68,7 +68,15 @@ const getRemainingCount = (counts, remaining) => {
 	return counts.reduce((prev, next) => prev + next.remainingCount, remaining)
 }
 
-const getPredecessorMessages = (request, topic, remaining, count) => {
+const getPredecessorMessages = (request, topic, remaining, count, includePredecessors) => {
+	if (!includePredecessors) {
+		return {
+			remaining,
+			messages: [],
+			topicUpdates: []
+		}
+	}
+
 	return topic.getPredecessor(request).then((predecessorTopic) => {
 		if (count <= 0 || !predecessorTopic) {
 			return topic.getPredecessorsMessageCounts(request).then((counts) => {
@@ -84,7 +92,7 @@ const getPredecessorMessages = (request, topic, remaining, count) => {
 	})
 }
 
-const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
+const getTopicMessagesAndUpdates = (request, topic, count, afterMessage, includePredecessors) => {
 	let remaining = 0
 
 	return topic.getMessages(request, afterMessage, count).then(({ remaining: _remaining, messages }) => {
@@ -102,7 +110,7 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
 
 		return Bluebird.all([
 			getTopicUpdates(request, topic, messages, afterMessage),
-			getPredecessorMessages(request, topic, remaining, newCount)
+			getPredecessorMessages(request, topic, remaining, newCount, includePredecessors)
 		]).then(function ([topicUpdates, predecessor]) {
 			const {
 				remaining,
@@ -218,7 +226,7 @@ var t = {
 		var count = Math.min(data.maximum || 20, 20);
 
 		return Topic.get(data.topicid).then(function (topic) {
-			return getTopicMessagesAndUpdates(request, topic, count, data.afterMessage)
+			return getTopicMessagesAndUpdates(request, topic, count, data.afterMessage, data.includePredecessors)
 		}).nodeify(fn)
 	},
 	getUnreadTopicIDs: function (data, fn, request) {
