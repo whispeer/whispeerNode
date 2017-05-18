@@ -91,7 +91,7 @@ var Topic = function (id) {
 	var theTopic = this;
 	var domain = "topic:" + id;
 	var mDomain = domain + ":messages";
-	this.getID = function getIDF() {
+	this.getID = function() {
 		return id;
 	};
 
@@ -104,6 +104,31 @@ var Topic = function (id) {
 				throw new AccessViolation("topic");
 			}
 		}).nodeify(cb);
+	}
+
+	this.removeSingleByID = function (receiverID1, receiverID2) {
+		const key = `topic:user:${receiverID1}:single:${receiverID2}`
+
+		return client.getAsync(key).then((topicID) => {
+			if (h.parseDecimal(topicID) === h.parseDecimal(this.getID())) {
+				return client.delAsync(key);
+			}
+		})
+	}
+
+	this.removeSingle = function () {
+		return client.smembersAsync(domain + ":receiver").then((receiverIDs) => {
+			if (receiverIDs.length === 2) {
+				return Bluebird.all([
+					this.removeSingleByID(receiverIDs[0], receiverIDs[1]),
+					this.removeSingleByID(receiverIDs[1], receiverIDs[0])
+				])
+			}
+
+			if (receiverIDs.length === 1) {
+				return this.removeSingleByID(receiverIDs[0], receiverIDs[0])
+			}
+		})
 	}
 
 	this.getTopicUpdatesBetween = function (request, firstMessageID, lastMessageID) {
@@ -215,17 +240,15 @@ var Topic = function (id) {
 
 	/** get receiver ids */
 	this.getReceiverIDs = function(request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			client.smembers(domain + ":receiver", this);
-		}), cb);
+		return hasAccessError(request).then(() => {
+			return client.smembersAsync(domain + ":receiver")
+		}).nodeify(cb)
 	};
 
 	/** get receiver objects */
 	this.getReceiver = function getReceiverF(request, cb) {
 		step(function () {
-			theTopic.getReceiverIDs(request, this);
+			return theTopic.getReceiverIDs(request);
 		}, h.sF(function(receivers) {
 			var User = require("./user");
 
@@ -279,7 +302,7 @@ var Topic = function (id) {
 			}
 
 			Topic.create(request, successor, receiverKeys, this)
-		}), h.sF(function (successorTopic) {
+		}), h.sF((successorTopic) => {
 			const succID = successorTopic.getID()
 			const myID = theTopic.getID()
 
@@ -287,6 +310,7 @@ var Topic = function (id) {
 				updateServer(succID, myID),
 				removeTopicList(succID, myID),
 				copyPredecessors(succID, myID),
+				this.removeSingle(myID),
 			]).thenReturn(successorTopic)
 		}), cb);
 	}
