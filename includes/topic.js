@@ -692,6 +692,10 @@ var Topic = function (id) {
 			meta.createTime = h.parseDecimal(meta.createTime);
 			meta.creator = h.parseDecimal(meta.creator);
 
+			if (meta.addedReceivers) {
+				meta.addedReceivers = JSON.parse(meta.addedReceivers)
+			}
+
 			this.ne(server, meta, additionalKey);
 		}), cb);
 	};
@@ -839,6 +843,10 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 			multi.set("topic:user:" + receiverIDs[1] + ":single:" + receiverIDs[0], topicid);
 		} else if (receiverIDs.length === 1) {
 			multi.set("topic:user:" + receiverIDs[0] + ":single:" + receiverIDs[0], topicid);
+		}
+
+		if (topicMeta.addedReceivers) {
+			topicMeta.addedReceivers = JSON.stringify(topicMeta.addedReceivers)
 		}
 
 		multi.hmset("topic:" + topicid + ":server", topicServer);

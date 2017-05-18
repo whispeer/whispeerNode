@@ -142,7 +142,7 @@ var t = {
 				// createHiddenMessage(request, successorTopic, data.newChatMessage, "newChat", this.parallel());
 
 				this.ne()
-			}), h.sF(() => {
+			}), h.sF(function () {
 				successorTopic.getFullData(request, this, false, false);
 			}), h.sF(function (successorTopic) {
 				return {
