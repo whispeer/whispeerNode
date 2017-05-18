@@ -88,7 +88,7 @@ const getPredecessorMessages = (request, topic, remaining, count, includePredece
 			})
 		}
 
-		return getTopicMessagesAndUpdates(request, predecessorTopic, count, 0)
+		return getTopicMessagesAndUpdates(request, predecessorTopic, count, 0, true)
 	})
 }
 

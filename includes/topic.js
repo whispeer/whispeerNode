@@ -658,7 +658,7 @@ var Topic = function (id) {
 			])
 		}).then(function ([index, card]) {
 			if (index === null) {
-				index = -1;
+				index = -1
 			}
 
 			remaining = card - index - count;
