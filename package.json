@@ -5,7 +5,7 @@
     "amanda": "0.5.x",
     "apn": "^1.7.4",
     "base64stream": "0.1.1",
-    "bluebird": "^2.9.27",
+    "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
     "check-dependencies": "^1.0.1",
     "cheerio": "^0.22.0",

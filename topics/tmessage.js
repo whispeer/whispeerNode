@@ -64,7 +64,108 @@ const getTopicUpdates = (request, topic, messages, lastMessage) => {
 	});
 };
 
+const getRemainingCount = (counts, remaining) => {
+	return counts.reduce((prev, next) => prev + next.remainingCount, remaining)
+}
+
+const getPredecessorMessages = (request, topic, remaining, count, includePredecessors) => {
+	if (!includePredecessors) {
+		return {
+			remaining,
+			messages: [],
+			topicUpdates: []
+		}
+	}
+
+	return topic.getPredecessor(request).then((predecessorTopic) => {
+		if (count <= 0 || !predecessorTopic) {
+			return topic.getPredecessorsMessageCounts(request).then((counts) => {
+				return {
+					remaining: getRemainingCount(counts, remaining),
+					messages: [],
+					topicUpdates: [],
+				}
+			})
+		}
+
+		return getTopicMessagesAndUpdates(request, predecessorTopic, count, 0, true)
+	})
+}
+
+const getTopicMessagesAndUpdates = (request, topic, count, afterMessage, includePredecessors) => {
+	let remaining = 0
+
+	return topic.getMessages(request, afterMessage, count).then(({ remaining: _remaining, messages }) => {
+		remaining = _remaining;
+
+		return messages
+	}).filter((message) => {
+		return message.hasAccess(request)
+	}).map((message) => {
+		return Bluebird.fromCallback(function(cb) {
+			return message.getFullData(request, cb, true)
+		})
+	}).then((messages) => {
+		const newCount = remaining > 0 ? 0 : count - messages.length
+
+		return Bluebird.all([
+			getTopicUpdates(request, topic, messages, afterMessage),
+			getPredecessorMessages(request, topic, remaining, newCount, includePredecessors)
+		]).then(function ([topicUpdates, predecessor]) {
+			const {
+				remaining,
+				messages: predecessorMessages,
+				topicUpdates: predecessorTopicUpdates,
+			} = predecessor
+
+			return {
+				topicUpdates: predecessorTopicUpdates.concat(topicUpdates),
+				remaining,
+				messages: predecessorMessages.concat(messages),
+			}
+		});
+	})
+}
+
+const createHiddenMessage = (request, topic, message, name, cb) => {
+	message.meta.topicid = topic.getID()
+
+	Message.create(request, message, cb);
+}
+
 var t = {
+	topic: {
+		createSuccessor: function (data, fn, request) {
+			let successorTopic, topic
+
+			step(function () {
+				Topic.get(data.topicID, this)
+			}, h.sF(function (_topic) {
+				topic = _topic
+				topic.setSuccessor(request, data.successor, data.receiverKeys, this)
+			}), h.sF(function (_successorTopic) {
+				successorTopic = _successorTopic
+
+				// createHiddenMessage(request, topic, data.oldChatMessage, "oldChat", this.parallel());
+				// createHiddenMessage(request, successorTopic, data.newChatMessage, "newChat", this.parallel());
+
+				this.ne()
+			}), h.sF(function () {
+				successorTopic.getFullData(request, this, false, false);
+			}), h.sF(function (successorTopic) {
+				return {
+					successorTopic
+				}
+			}), fn)
+		},
+		successor: function (data, fn, request) {
+			step(function () {
+				Topic.get(data.topicID, this)
+			}, h.sF(function (topic) {
+				topic.getSuccessor(request, this)
+			}), fn);
+		}
+	},
 	getTopic: function getTopicF(data, fn, request) {
 		step(function () {
 			Topic.get(data.topicid, this);
@@ -78,7 +179,7 @@ var t = {
 	},
 	getTopics: function getTopicsF(data, fn, request) {
 		step(function () {
-			Topic.own(request, data.afterTopic, 10, this);
+			Topic.own(request, data.afterTopic, 10, data.noPredecessors, this);
 		}, h.sF(function (topics) {
 			var i;
 			for (i = 0; i < topics.length; i += 1) {
@@ -121,34 +222,12 @@ var t = {
 			});
 		}), fn);
 	},
-	getTopicMessages: function getMessagesF(data, fn, request) {
-		var remainingCount, topic;
+	getTopicMessages: function (data, fn, request) {
+		var count = Math.min(data.maximum || 20, 20);
 
-		step(function () {
-			Topic.get(data.topicid, this);
-		}, h.sF(function (_topic) {
-			topic = _topic;
-			var count = Math.min(data.maximum || 20, 20);
-
-			topic.getMessages(request, data.afterMessage, count, this);
-		}), h.sF(function (data) {
-			remainingCount = data.remaining;
-			var messages = data.messages;
-			var i;
-			for (i = 0; i < messages.length; i += 1) {
-				messages[i].getFullData(request, this.parallel(), true);
-			}
-
-			this.parallel()();
-		}), h.sF(function (messages) {
-			return getTopicUpdates(request, topic, messages, data.afterMessage).then(function (topicUpdates) {
-				return {
-					topicUpdates: topicUpdates,
-					remaining: remainingCount,
-					messages: messages
-				};
-			});
-		}), fn);
+		return Topic.get(data.topicid).then(function (topic) {
+			return getTopicMessagesAndUpdates(request, topic, count, data.afterMessage, data.includePredecessors)
+		}).nodeify(fn)
 	},
 	getUnreadTopicIDs: function (data, fn, request) {
 		step(function () {
@@ -187,11 +266,11 @@ var t = {
 		}), fn);
 	},
 	send: function sendMessageF(data, fn, request) {
-		step(function () {			
+		step(function () {
 			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
 				throw new Error("message to long");
 			}
-			
+
 			Message.create(request, data.message, this);
 		}, h.sF(function (result) {
 			this.ne({
@@ -201,7 +280,7 @@ var t = {
 		}), fn);
 		//message
 	},
-	sendNewTopic: function sendNewTopicF(data, fn, request) {		
+	sendNewTopic: function sendNewTopicF(data, fn, request) {
 		var topic;
 		step(function () {
 			if (data.message.content.ct.length > MAXMESSAGELENGTH) {

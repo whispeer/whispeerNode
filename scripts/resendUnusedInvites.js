@@ -13,7 +13,9 @@ var Bluebird = require("bluebird");
 
 var setupP = Bluebird.promisify(setup);
 
-var byMail = Bluebird.promisify(invites.byMail, invites);
+var byMail = Bluebird.promisify(invites.byMail, {
+    context: invites
+});
 
 setupP().then(function () {
 	return client.smembersAsync("invites:v2:all");

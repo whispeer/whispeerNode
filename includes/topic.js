@@ -13,7 +13,7 @@ var mailer = require("./mailer");
 
 var config = require("./configManager").get();
 
-//maximum difference: 5 minutes.
+//maximum difference: 60 minutes.
 var MAXTIME = 60 * 60 * 1000;
 
 /*
@@ -34,6 +34,33 @@ var pushAPI = require("./pushAPI");
 var Bluebird = require("bluebird");
 
 const topicUpdateModel = require("./models/topicUpdateModel");
+
+const updateServer = (succID, myID) => {
+	return client.hgetallAsync(`topic:${myID}:server`).then((myServer) => {
+		console.log(myServer)
+		return Bluebird.all([
+			client.hsetAsync(`topic:${myID}:server`, "successor", succID),
+			client.hmsetAsync(`topic:${succID}:server`, {
+				newest: myServer.newest,
+				newestTime: myServer.newestTime
+			})
+		])
+	})
+}
+
+const removeTopicList = (succID, myID) => {
+	return client.smembersAsync("topic:" + succID + ":receiver").map((receiverID) => {
+		return client.zremAsync("topic:user:" + receiverID + ":topics", myID)
+	})
+}
+
+const copyPredecessors = (succID, myID) => {
+	return client.lrangeAsync(`topic:${myID}:predecessors`, 0, -1).then((predecessors) => {
+		predecessors.push(myID)
+
+		return client.lpushAsync(`topic:${succID}:predecessors`, myID, ...predecessors)
+	})
+}
 
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
@@ -64,7 +91,7 @@ var Topic = function (id) {
 	var theTopic = this;
 	var domain = "topic:" + id;
 	var mDomain = domain + ":messages";
-	this.getID = function getIDF() {
+	this.getID = function() {
 		return id;
 	};
 
@@ -72,26 +99,47 @@ var Topic = function (id) {
 
 	/** throw an error if the current user can not access this topic */
 	function hasAccessError(request, cb) {
-		step(function hAE1() {
-			theTopic.hasAccess(request, this);
-		}, h.sF(function hAE2(access) {
+		return theTopic.hasAccess(request).then(function (access) {
 			if (access !== true) {
 				throw new AccessViolation("topic");
 			}
+		}).nodeify(cb);
+	}
 
-			this.ne();
-		}), cb);
+	this.removeSingleByID = function (receiverID1, receiverID2) {
+		const key = `topic:user:${receiverID1}:single:${receiverID2}`
+
+		return client.getAsync(key).then((topicID) => {
+			if (h.parseDecimal(topicID) === h.parseDecimal(this.getID())) {
+				return client.delAsync(key);
+			}
+		})
+	}
+
+	this.removeSingle = function () {
+		return client.smembersAsync(domain + ":receiver").then((receiverIDs) => {
+			if (receiverIDs.length === 2) {
+				return Bluebird.all([
+					this.removeSingleByID(receiverIDs[0], receiverIDs[1]),
+					this.removeSingleByID(receiverIDs[1], receiverIDs[0])
+				])
+			}
+
+			if (receiverIDs.length === 1) {
+				return this.removeSingleByID(receiverIDs[0], receiverIDs[0])
+			}
+		})
 	}
 
 	this.getTopicUpdatesBetween = function (request, firstMessageID, lastMessageID) {
-		return theTopic.hasAccessAsync(request).then(function () {
+		return theTopic.hasAccess(request).then(function () {
 			return Bluebird.all([
 				client.zscoreAsync(mDomain, firstMessageID),
 				client.zscoreAsync(mDomain, lastMessageID),
 			]);
 		}).spread((min, max) => {
 			const startDate = new Date(h.parseDecimal(min));
-			const endDate = new Date(h.parseDecimal(max));
+			const endDate = max ? new Date(h.parseDecimal(max)) : new Date()
 
 			return topicUpdateModel.findAll({
 				where: {
@@ -111,7 +159,7 @@ var Topic = function (id) {
 	};
 
 	this.getLatestTopicUpdate = function (request) {
-		return theTopic.hasAccessAsync(request).then(() => {
+		return theTopic.hasAccess(request).then(() => {
 			return topicUpdateModel.findOne({
 				where: {
 					topicID: id
@@ -130,9 +178,13 @@ var Topic = function (id) {
 	};
 
 	this.getTopicUpdatesAfterNewestMessage = function (request, newestMessageID, cb) {
-		return theTopic.hasAccessAsync(request).then(function () {
+		return theTopic.hasAccess(request).then(function () {
 			return client.zscoreAsync(mDomain, newestMessageID);
 		}).then((newestTime) => {
+			if (!newestTime) {
+				return []
+			}
+
 			return topicUpdateModel.findAll({
 				where: {
 					topicID: id,
@@ -160,7 +212,7 @@ var Topic = function (id) {
 	};
 
 	this.createTopicUpdate = function (request, topicUpdate, cb) {
-		return theTopic.hasAccessAsync(request).then(function () {
+		return theTopic.hasAccess(request).then(function () {
 			topicUpdate.topicID = id;
 			return topicUpdateModel.create(topicUpdate);
 		}).then((topicUpdate) => {
@@ -169,36 +221,34 @@ var Topic = function (id) {
 	};
 
 	/** has the current user access? */
-	this.hasAccess = function hasAccessF(request, cb) {
-		var uid;
-		step(function hA1() {
-			uid = request.session.getUserID();
-			if (hasAccess.indexOf(uid) > -1) {
-				this.last.ne(true);
+	this.hasAccess = function (request, cb) {
+		const uid = request.session.getUserID()
+
+		if (hasAccess.indexOf(uid) > -1) {
+			return Bluebird.resolve(true).nodeify(cb);
+		}
+
+		return client.sismemberAsync(domain + ":receiver", uid).then((member) => {
+			if (member === 1) {
+				hasAccess.push(uid);
+				return true
 			}
 
-			client.sismember(domain + ":receiver", uid, this);
-		}, h.sF(function hA2(member) {
-			hasAccess.push(uid);
-			this.ne(member === 1);
-		}), cb);
+			return false
+		}).nodeify(cb)
 	};
 
-	this.hasAccessAsync = Bluebird.promisify(this.hasAccess, this);
-
 	/** get receiver ids */
-	this.getReceiverIDs = function getReceiverIDsF(request, cb) {
-		step(function () {
-			hasAccessError(request, this);
-		}, h.sF(function () {
-			client.smembers(domain + ":receiver", this);
-		}), cb);
+	this.getReceiverIDs = function(request, cb) {
+		return hasAccessError(request).then(() => {
+			return client.smembersAsync(domain + ":receiver")
+		}).nodeify(cb)
 	};
 
 	/** get receiver objects */
 	this.getReceiver = function getReceiverF(request, cb) {
 		step(function () {
-			theTopic.getReceiverIDs(request, this);
+			return theTopic.getReceiverIDs(request);
 		}, h.sF(function(receivers) {
 			var User = require("./user");
 
@@ -220,6 +270,97 @@ var Topic = function (id) {
 			}
 		}), cb);
 	};
+
+	this.isAdmin = (request) => {
+		return client.hgetAsync(domain + ":meta", "creator").then((creator) => {
+			return request.session.isMyID(creator)
+		})
+	}
+
+	this.getSuccessorID = function (cb) {
+		return client.hgetAsync(domain + ":server", "successor").nodeify(cb)
+	}
+
+	this.setSuccessor = function (request, successor, receiverKeys, cb) {
+		step(function () {
+			return Bluebird.all([
+				theTopic.isAdmin(request),
+				theTopic.getSuccessorID(),
+				client.hgetAsync(domain + ":meta", "_ownHash")
+			])
+		}, h.sF(function ([isAdmin, hasSuccessor, checksum]) {
+			if (!isAdmin) {
+				throw new AccessViolation("topic: not an admin")
+			}
+
+			if (hasSuccessor) {
+				throw new SuccessorError("already has a successor")
+			}
+
+			if (checksum !== successor._parent) {
+				throw new Error("Invalid parent checksum")
+			}
+
+			Topic.create(request, successor, receiverKeys, this)
+		}), h.sF((successorTopic) => {
+			const succID = successorTopic.getID()
+			const myID = theTopic.getID()
+
+			return Bluebird.all([
+				updateServer(succID, myID),
+				removeTopicList(succID, myID),
+				copyPredecessors(succID, myID),
+				this.removeSingle(myID),
+			]).thenReturn(successorTopic)
+		}), cb);
+	}
+
+	this.getPredecessor = function (request) {
+		return hasAccessError(request).then(() => {
+			return client.hgetAsync(`${domain}:meta`, "predecessor")
+		}).then((predecessorID) => {
+			if (!predecessorID) {
+				return null
+			}
+
+			const topic = new Topic(predecessorID)
+
+			return topic.hasAccess(request).then((hasAccess) => {
+				if (!hasAccess) {
+					return null
+				}
+
+				return topic
+			})
+		})
+	}
+
+	this.getPredecessorsMessageCounts = function (request) {
+		return hasAccessError(request).then(() => {
+			return client.lrangeAsync(`${domain}:predecessors`, 0, -1)
+		}).map((predecessorID) => {
+			return new Topic(predecessorID).getMessagesCount(request).then((count) => {
+				return {
+					topicID: predecessorID,
+					remainingCount: count
+				}
+			})
+		})
+	}
+
+	this.getSuccessor = function (request, cb) {
+		step(function () {
+			return hasAccessError(request);
+		}, h.sF(function () {
+			return client.hgetAsync(domain + ":server", "successor")
+		}), h.sF(function (successorID) {
+			if (!successorID) {
+				return Bluebird.resolve(null)
+			}
+
+			Topic.get(successorID, this)
+		}), cb);
+	}
 
 	/** get topic full data */
 	this.getFullData = function (request, cb) {
@@ -245,7 +386,14 @@ var Topic = function (id) {
 			if (h.parseDecimal(server.newest) !== 0) {
 				var Message = require("./messages");
 				var newest = new Message(server.newest);
-				newest.getFullData(request, this, true);
+
+				return newest.hasAccess(request).then((hasAccess) => {
+					if (!hasAccess) {
+						return
+					}
+
+					return Bluebird.fromCallback((cb) => newest.getFullData(request, cb, true))
+				})
 			} else {
 				this.ne();
 			}
@@ -269,7 +417,7 @@ var Topic = function (id) {
 	/** how many messages in this topic? */
 	this.ownCount = function ownCountF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zcard(domain + ":user:" + request.session.getUserID() + ":messages", this);
 		}), cb);
@@ -278,7 +426,7 @@ var Topic = function (id) {
 	/** how many messages in this topic? */
 	this.messageCount = function messageCountF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zcard(mDomain, this);
 		}), cb);
@@ -305,7 +453,7 @@ var Topic = function (id) {
 	/** get unread messages ids */
 	this.getUnreadMessages = function getUnreadMessagesF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zrevrange(domain + ":user:" + request.session.getUserID() + ":unread", 0, -1, this);
 		}), h.sF(function (res) {
@@ -382,9 +530,11 @@ var Topic = function (id) {
 			return h.array.flatten(data);
 		}).map(function (missingMessageID) {
 			var Message = require("./messages");
-			return new Message(missingMessageID, theTopic);
+			return new Message(missingMessageID);
 		}).map(function (missingMessage) {
-			var getFullData = Bluebird.promisify(missingMessage.getFullData, missingMessage);
+			var getFullData = Bluebird.promisify(missingMessage.getFullData, {
+			    context: missingMessage
+			});
 			return getFullData(request);
 		}).then(function (data) {
 			return {
@@ -400,7 +550,7 @@ var Topic = function (id) {
 	this.markMessagesRead = function markRead(request, beforeTime, cb) {
 		var unread = false;
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.zremrangebyscore(domain + ":user:" + request.session.getUserID() + ":unread", "-inf", beforeTime, this);
 		}), h.sF(function () {
@@ -427,7 +577,7 @@ var Topic = function (id) {
 	this.addMessage = function addMessageF(request, message, cb) {
 		var theReceiver, theSender, messageID;
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			//TO-DO check that all receiver have access to the messageKey
 			this.parallel.unflatten();
@@ -453,6 +603,7 @@ var Topic = function (id) {
 				}
 
 				multi.zadd("topic:user:" + rid + ":topics", time, id);
+				multi.zadd("topic:user:" + rid + ":topicsWithPredecessors", time, id);
 			});
 
 			multi.hmset(domain + ":server", {
@@ -497,19 +648,27 @@ var Topic = function (id) {
 	* @param cb cb
 	*/
 	this.getNewest = function getNewestF(request, cb) {
-		step(function () {
-			hasAccessError(request, this);
-		}, h.sF(function () {
-			client.zrevrange(mDomain, 0, 0, this);
-		}), h.sF(function (messageids) {
+		return hasAccessError(request).then(() => {
+			return client.zrevrangeAsync(mDomain, 0, 0);
+		}).then(function (messageids) {
 			if (messageids.length === 1) {
 				var Message = require("./messages");
-				this.ne(new Message(messageids[0]));
-			} else {
-				this.ne(0);
+				return new Message(messageids[0]);
 			}
-		}), cb);
+
+			return 0;
+		}).nodeify(cb)
 	};
+
+	this.getMessagesCount = function (request) {
+		return this.hasAccess(request).then((hasAccess) => {
+			if (!hasAccess) {
+				return 0
+			}
+
+			return client.zcardAsync(mDomain);
+		})
+	}
 
 	/** get the messages after a certain message
 	* @param request request
@@ -517,41 +676,39 @@ var Topic = function (id) {
 	* @param count number of messages to get
 	* @param cb cb
 	*/
-	this.getMessages = function getMessagesF(request, afterMessage, count, cb) {
+	this.getMessages = function (request, afterMessage, count, cb) {
 		var remaining = 0;
-		step(function () {
-			hasAccessError(request, this);
-		}, h.sF(function () {
-			this.parallel.unflatten();
-
-			client.zrevrank(mDomain, afterMessage, this.parallel());
-			client.zcard(mDomain, this.parallel());
-		}), h.sF(function (index, card) {
+		return hasAccessError(request).then(() => {
+			return Bluebird.all([
+				client.zrevrankAsync(mDomain, afterMessage),
+				client.zcardAsync(mDomain),
+			])
+		}).then(function ([index, card]) {
 			if (index === null) {
-				index = -1;
+				index = -1
 			}
 
 			remaining = card - index - count;
 
-			client.zrevrange(mDomain, index + 1, index + count, this);
-		}), h.sF(function (messageids) {
+			return client.zrevrangeAsync(mDomain, index + 1, index + count);
+		}).then(function (messageids) {
 			var Message = require("./messages");
-			var result = [], i;
-			for (i = 0; i < messageids.length; i += 1) {
-				result.push(new Message(messageids[i], theTopic));
-			}
 
-			this.ne({
+			const result = messageids.map((messageid) => {
+				return new Message(messageid)
+			})
+
+			return {
 				messages: result,
 				remaining: remaining > 0 ? remaining : 0
-			});
-		}), cb);
+			}
+		}).nodeify(cb);
 	};
 
 	/** get topic data */
 	this.getTData = function getTDataF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			this.parallel.unflatten();
 			client.hgetall(domain + ":server", this.parallel());
@@ -561,6 +718,10 @@ var Topic = function (id) {
 		}), h.sF(function (server, meta, additionalKey) {
 			meta.createTime = h.parseDecimal(meta.createTime);
 			meta.creator = h.parseDecimal(meta.creator);
+
+			if (meta.addedReceivers) {
+				meta.addedReceivers = JSON.parse(meta.addedReceivers)
+			}
 
 			this.ne(server, meta, additionalKey);
 		}), cb);
@@ -592,35 +753,35 @@ Topic.unread = function (request, cb) {
 	}), cb);
 };
 
-Topic.own = function (request, afterTopic, count, cb) {
+Topic.own = function (request, afterTopic, count, noPredecessors, cb) {
+	const topicsListKey = "topic:user:" + request.session.getUserID() + (
+		noPredecessors ? ":topics" : ":topicsWithPredecessors")
+
 	step(function () {
-		client.zrevrank("topic:user:" + request.session.getUserID() + ":topics", afterTopic, this);
+		return client.zrevrankAsync(topicsListKey, afterTopic);
 	}, h.sF(function (index) {
 		if (index === null) {
 			index = -1;
 		}
 
-		client.zrevrange("topic:user:" + request.session.getUserID() + ":topics", index + 1, index + count, this);
+		return client.zrevrangeAsync(topicsListKey, index + 1, index + count);
 	}), h.sF(function (topicids) {
-		var result = [], i;
-		for (i = 0; i < topicids.length; i += 1) {
-			result.push(new Topic(topicids[i]));
-		}
+		const topics = topicids.map((topicid) => new Topic(topicid))
 
-		this.ne(result);
+		this.ne(topics);
 	}), cb);
 };
 
 Topic.get = function (topicid, cb) {
-	step(function () {
-		client.exists("topic:" + topicid + ":server", this);
-	}, h.sF(function (exists) {
+	return Bluebird.try(function () {
+		return client.existsAsync("topic:" + topicid + ":server");
+	}).then(function (exists) {
 		if (exists === 1) {
-			this.ne(new Topic(topicid));
-		} else {
-			throw new TopicNotExisting(topicid);
+			return new Topic(topicid);
 		}
-	}), cb);
+
+		throw new TopicNotExisting(topicid);
+	}).nodeify(cb)
 };
 
 Topic.getUserTopicID = function (request, userid, cb) {
@@ -692,11 +853,13 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 
 		topicServer.newest = 0;
 		topicServer.topicid = topicid;
+		topicServer.createServerTime = new Date().getTime()
 
 		var multi = client.multi();
 
 		receiverIDs.forEach(function (uid) {
 			multi.zadd("topic:user:" + uid + ":topics", new Date().getTime(), topicid);
+			multi.zadd("topic:user:" + uid + ":topicsWithPredecessors", new Date().getTime(), topicid);
 			if (!request.session.isMyID(uid)) {
 				multi.hset("topic:" + topicid + ":receiverKeys", uid, receiverKeys[uid]);
 			}
@@ -707,6 +870,10 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 			multi.set("topic:user:" + receiverIDs[1] + ":single:" + receiverIDs[0], topicid);
 		} else if (receiverIDs.length === 1) {
 			multi.set("topic:user:" + receiverIDs[0] + ":single:" + receiverIDs[0], topicid);
+		}
+
+		if (topicMeta.addedReceivers) {
+			topicMeta.addedReceivers = JSON.stringify(topicMeta.addedReceivers)
 		}
 
 		multi.hmset("topic:" + topicid + ":server", topicServer);

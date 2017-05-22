@@ -37,9 +37,13 @@ function getUserNamesAndFriends(user) {
 
 	var mockR = requestMock(user.getID());
 
-	var getNamesPromise = Bluebird.promisify(user.getNames, user)(mockR);
+	var getNamesPromise = Bluebird.promisify(user.getNames, {
+	    context: user
+	})(mockR);
 
-	var getFriendsPromise = Bluebird.promisify(Friends.get, Friends)(mockR);
+	var getFriendsPromise = Bluebird.promisify(Friends.get, {
+	    context: Friends
+	})(mockR);
 
 	return Bluebird.all([
 		getNamesPromise,

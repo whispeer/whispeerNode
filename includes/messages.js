@@ -4,6 +4,8 @@ var Topic = require("./topic");
 var step = require("step");
 var h = require("whispeerHelper");
 
+var Bluebird = require("bluebird");
+
 var validator = require("whispeerValidations");
 var client = require("./redisClient");
 
@@ -32,7 +34,8 @@ var SymKey = require("./crypto/symKey");
 	}
 */
 
-var Message = function (id, topic) {
+var Message = function (id) {
+	var topic
 	var theMessage = this;
 	var domain = "message:" + id;
 
@@ -54,19 +57,15 @@ var Message = function (id, topic) {
 	}
 
 	/** does the current user have access */
-	this.hasAccess = function hasAccessF(request, cb) {
-		step(function () {
-			theMessage.getTopic(this);
-		}, h.sF(function (theTopic) {
-			theTopic.hasAccess(request, this);
-		}), cb);
+	this.hasAccess = function (request, cb) {
+		return theMessage.getTopic().then((theTopic) => {
+			return theTopic.hasAccess(request);
+		}).nodeify(cb)
 	};
 
 	/** message send time */
-	this.getTime = function getTimeF(request, cb) {
-		step(function () {
-			client.hget(domain + ":meta", "sendTime", this);
-		}, cb);
+	this.getTime = function (request, cb) {
+		return client.hgetAsync(domain + ":meta", "sendTime").nodeify(cb);
 	};
 
 	this.getSortCounter = function (request, cb) {
@@ -102,7 +101,7 @@ var Message = function (id, topic) {
 	/** who will receive this message */
 	this.getReceiver = function getReceiverF(request, cb) {
 		step(function () {
-			theMessage.getTopic(this);
+			return theMessage.getTopic();
 		}, h.sF(function (topic) {
 			topic.getReceiver(request, this);
 		}), cb);
@@ -110,25 +109,21 @@ var Message = function (id, topic) {
 
 	/** this message topic id */
 	this.getTopicID = function getTopicIDF(cb) {
-		step(function () {
-			client.hget(domain + ":meta", "topicid", this);
-		}, cb);
+		return client.hgetAsync(domain + ":meta", "topicid").nodeify(cb);
 	};
 
 	/** this message topic object */
 	this.getTopic = function getTopicF(cb) {
-		step(function () {
-			if (topic) {
-				this.last.ne(topic);
-			} else {
-				theMessage.getTopicID(this);
-			}
-		}, h.sF(function (topicid) {
-			Topic.get(topicid, this);
-		}), h.sF(function (theTopic) {
+		if (topic) {
+			return Bluebird.resolve(topic).nodeify(cb)
+		}
+
+		return theMessage.getTopicID().then((topicid) => {
+			return Topic.get(topicid);
+		}).then(function (theTopic) {
 			topic = theTopic;
-			this.ne(topic);
-		}), cb);
+			return topic
+		}).nodeify(cb)
 	};
 
 	/** is this message topic topicID?`*/
@@ -217,21 +212,25 @@ Message.create = function (request, data, cb) {
 		}
 
 		if (data.meta.topicid) {
-			this.parallel.unflatten();
-
-			Topic.get(data.meta.topicid, this.parallel());
-		} else {
-			throw new InvalidMessageData();
+			return Topic.get(data.meta.topicid);
 		}
+
+		throw new InvalidMessageData();
 	}, h.sF(function (topic) {
 		theTopic = topic;
 
-		theTopic.getNewest(request, this);
-	}), h.sF(function (newest) {
+		this.parallel.unflatten()
+
+		theTopic.getNewest(request, this.parallel());
+		theTopic.getSuccessorID(this.parallel())
+	}), h.sF(function (newest, successor) {
+		if (successor) {
+			throw new SuccessorError("Can't send message because topic has a successor")
+		}
+
 		if (newest === 0) {
 			this.ne(0);
 		} else {
-			this.parallel.unflatten();
 			newest.getSortCounter(request, this);
 		}
 	}), h.sF(function (newestCounter) {
