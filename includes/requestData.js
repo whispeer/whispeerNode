@@ -29,16 +29,20 @@ function RequestData(socketData, rawRequest, channel) {
 		this.keyData = [];
 	}
 
-	this.blockBusiness = (cb) => {
-		if (!this.isBusinessOrigin()) {
-			return Bluebird.resolve().nodeify(cb)
-		}
-
+	this.blockNonBusinessAccess = () => {
 		return this.session.isBusiness().then((isBusiness) => {
 			if (!isBusiness) {
 				throw new AccessViolation("Not a business account")
 			}
-		}).nodeify(cb)
+		})
+	}
+
+	this.checkOriginAccess = (cb) => {
+		if (!this.isBusinessOrigin()) {
+			return Bluebird.resolve().nodeify(cb)
+		}
+
+		return this.blockPrivateAccess().nodeify(cb)
 	}
 
 	this.isBusinessOrigin = () => {
