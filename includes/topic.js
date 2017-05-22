@@ -346,7 +346,7 @@ var Topic = function (id) {
 			return Bluebird.resolve({
 				clearMessages: false,
 				messages: []
-			})
+			}).nodeify(cb)
 		}
 
 		var resultPromise = hasAccessErrorAsync(request).bind(this).then(function () {
