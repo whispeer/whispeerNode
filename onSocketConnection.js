@@ -1,6 +1,7 @@
 "use strict";
-const step = require("step");
-const h = require("whispeerHelper");
+var step = require("step");
+var h = require("whispeerHelper");
+var Bluebird = require("bluebird")
 
 const HandlerCallback = require("./includes/handlerCallback");
 const listener = require("./includes/listener");
@@ -71,7 +72,8 @@ function callExplicitHandler(handler, data, cb, request) {
 		if (handler.noLoginNeeded) {
 			this.ne();
 		} else {
-			request.session.logedinError(this);
+			request.session.logedinError(this.parallel());
+			request.checkOriginAccess(this.parallel())
 		}
 	}, h.sF(function () {
 		if (Array.isArray(data.keys)) {
@@ -97,9 +99,12 @@ handle = function (handler, data, fn, request) {
 */
 function always(request, response, fn) {
 	step(function () {
-		request.session.logedin(this);
+		this.parallel.unflatten();
+		request.session.logedin(this.parallel());
+		request.session.isBusiness(this.parallel())
+
 		request.socketData.recentActivity();
-	}, function (e, logedin) {
+	}, function (e, logedin, isBusiness) {
 		if (e) {
 			console.error(e);
 			response.status = 0;
@@ -119,6 +124,7 @@ function always(request, response, fn) {
 			response.sid = request.session.getSID();
 			response.userid = request.session.getUserID();
 			response.serverTime = new Date().getTime();
+			response.isBusiness = isBusiness
 		}
 
 		this(response);
@@ -132,23 +138,21 @@ module.exports = function (socket) {
 	var socketData = new SocketData(socket, session);
 	registerSocketListener(socketData);
 
-	session.changeListener(function sessionChange(logedin) {
-		step(function () {
+	session.changeListener((logedin) => {
+		Bluebird.try(() => {
 			socketData.emit("disconnect");
 			socketData = new SocketData(socket, session);
 
 			if (logedin) {
 				registerSocketListener(socketData);
 			}
-		}, function (e) {
-			if (e) {
-				console.error(e);
-			}
+		}).catch((e) => {
+			console.error(e);
 		});
 	});
 
 	function handleF(handler, channel) {
-		return function handleF(data, fn) {
+		return function (data, fn) {
 			var time = new Date().getTime();
 			var request = new RequestData(socketData, data, channel);
 			step(function () {

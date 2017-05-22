@@ -491,7 +491,10 @@ var Topic = function (id) {
 
 		if (!oldest || !newest) {
 			console.warn(`Refetch messages undefined oldest (${oldest}) or newest (${newest}). Topic: ${this.getID()}`);
-			return
+			return Bluebird.resolve({
+				clearMessages: false,
+				messages: []
+			}).nodeify(cb)
 		}
 
 		var resultPromise = hasAccessErrorAsync(request).bind(this).then(function () {
@@ -535,7 +538,7 @@ var Topic = function (id) {
 			return getFullData(request);
 		}).then(function (data) {
 			return {
-				clearMessages: clearMessages,
+				clearMessages,
 				messages: data
 			};
 		});

@@ -68,7 +68,7 @@ function removeUserWall(userid) {
 		return client.delAsync("user:" + userid + ":wall");
 	}).then(function () {
 		console.log("Removed Users Wall");
-	});	
+	});
 }
 
 function removeUserFromSearch(userid) {
@@ -310,6 +310,39 @@ function removeUserSessions(userid) {
 	});
 }
 
+const getAnalyticsDate = (key) => {
+	return new Date(key.split(":").reverse()[0])
+}
+
+const getUserLastOnlineDay = (userid) => {
+	console.time("getOnlineDay")
+	return client.keysAsync("analytics:online:day:*").filter((key) => {
+		return client.sismemberAsync(key, userid)
+	}).then((keys) => {
+		const sortedKeys = keys.sort((k1, k2) => {
+			const d1 = getAnalyticsDate(k1)
+			const d2 = getAnalyticsDate(k2)
+
+			return d2 - d1
+		})
+
+		console.timeEnd("getOnlineDay")
+		console.log("Online keys " + JSON.stringify(sortedKeys, null, 2))
+		return sortedKeys[0]
+	})
+}
+
+const getUserNickname = (userid) => {
+	return client.hgetAsync(`user:${userid}`, "nickname")
+}
+
+const getUserInfo = (userid) => {
+	return Bluebird.all([
+		getUserLastOnlineDay(userid),
+		getUserNickname(userid)
+	])
+}
+
 var deleteUserID = parseInt(process.argv[2], 10);
 
 if (deleteUserID < 1 || !deleteUserID) {
@@ -317,8 +350,14 @@ if (deleteUserID < 1 || !deleteUserID) {
 	process.exit(-1);
 }
 
-requireConfirmation("Deleting user " + deleteUserID).then(function () {
+Bluebird.try(() => {
 	return setupP();
+}).then(() => {
+	return getUserInfo(deleteUserID)
+}).then(([lastOnline, nickname]) => {
+	console.log("User was last online", lastOnline)
+
+	return requireConfirmation(`Deleting user ${deleteUserID} (${nickname})` )
 }).then(function () {
 	return disableUserLogin(deleteUserID);
 }).then(function () {
