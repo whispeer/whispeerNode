@@ -51,8 +51,6 @@ function RequestData(socketData, rawRequest, channel) {
 		return false
 	}
 
-	this.socketData.socket.request.headers.origin
-
 	this.getShortIP = function () {
 		return socketData.getShortIP();
 	};
