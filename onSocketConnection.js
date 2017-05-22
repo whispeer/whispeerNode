@@ -51,7 +51,7 @@ function registerSocketListener(socketData) {
 	});
 }
 
-var reservedNames = ["sid", "version"], handle;
+var handle
 
 function createKeys(request, keys, cb) {
 	step(function () {
@@ -84,27 +84,9 @@ function callExplicitHandler(handler, data, cb, request) {
 	}), cb);
 }
 
-function callSubHandlers(handlerObject, data, cb, request) {
-	console.warn("call sub handlers")
-	var topics = [];
-
-	step(function () {
-		h.objectEach(data, function (topic, value) {
-			if (reservedNames.indexOf(topic) === -1) {
-				topics.push(topic);
-				handle(handlerObject[topic], value, this.parallel(), request);
-			}
-		}, this);
-	}, h.sF(function (results) {
-		this.ne(h.array.spreadByArray(results, topics));
-	}), cb);
-}
-
 handle = function (handler, data, fn, request) {
 	if (typeof handler === "function") {
 		callExplicitHandler(handler, data, fn, request);
-	} else if (typeof handler === "object" && typeof data === "object") {
-		callSubHandlers(handler, data, fn, request);
 	} else {
 		console.log("could not match handler and data");
 	}
