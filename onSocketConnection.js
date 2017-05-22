@@ -3,18 +3,32 @@ var step = require("step");
 var h = require("whispeerHelper");
 var Bluebird = require("bluebird")
 
-var HandlerCallback = require("./includes/handlerCallback");
-var listener = require("./includes/listener");
-var topics = require("./topics.js");
+const HandlerCallback = require("./includes/handlerCallback");
+const listener = require("./includes/listener");
+const topics = require("./topics.js");
 
-var SocketData = require("./includes/socketData");
-var RequestData = require("./includes/requestData");
-var Session = require("./includes/session");
+const SocketData = require("./includes/socketData");
+const RequestData = require("./includes/requestData");
+const Session = require("./includes/session");
 
-var APIVERSION = "0.0.1";
-var KeyApi = require("./includes/crypto/KeyApi");
+const APIVERSION = "0.0.1";
+const KeyApi = require("./includes/crypto/KeyApi");
 
 Error.stackTraceLimit = Infinity;
+
+const log = (val) => {
+	console.log(`${new Date()} ${val}`);
+}
+
+const getVersion = (data) => {
+	const { version, clientInfo } = data
+
+	if (clientInfo) {
+		return `${clientInfo.type}-${clientInfo.version}`
+	}
+
+	return version
+}
 
 function registerSocketListener(socketData) {
 	if (socketData.session.getUserID() === 0) {
@@ -73,6 +87,7 @@ function callExplicitHandler(handler, data, cb, request) {
 }
 
 function callSubHandlers(handlerObject, data, cb, request) {
+	console.warn("call sub handlers")
 	var topics = [];
 
 	step(function () {
@@ -105,6 +120,7 @@ function always(request, response, fn) {
 		this.parallel.unflatten();
 		request.session.logedin(this.parallel());
 		request.session.isBusiness(this.parallel())
+
 		request.socketData.recentActivity();
 	}, function (e, logedin, isBusiness) {
 		if (e) {
@@ -158,7 +174,7 @@ module.exports = function (socket) {
 			var time = new Date().getTime();
 			var request = new RequestData(socketData, data, channel);
 			step(function () {
-				console.log(new Date() + " (v" + data.version + ") Received data on channel " + channel);
+				log(` (${getVersion(data)}) Received data on channel ${channel}`);
 
 				if (session.getSID() !== data.sid) {
 					session.setSID(data.sid, this);
@@ -175,7 +191,7 @@ module.exports = function (socket) {
 				}
 
 				always(request, result, fn);
-				console.log(new Date() + " Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
+				log(" Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
 			});
 		};
 	}
