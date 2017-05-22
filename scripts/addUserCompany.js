@@ -14,13 +14,13 @@ var userID = parseInt(process.argv[2], 10);
 var companyID = process.argv[3]
 
 if (userID < 1 || !userID) {
-	console.log("Invalid user id. Usage: addUserCompany userID companyID");
-	process.exit(-1);
+	console.log("Invalid user id. Usage: addCompanyToUser userID companyID");
+	process.exit(1);
 }
 
 if (!companyID) {
-	console.log("Company id is required. Usage: addUserCompany userID companyID");
-	process.exit(-1);
+	console.log("Company id is required. Usage: addCompanyToUser userID companyID");
+	process.exit(2);
 }
 
 // requireConfirmation will ask the user to confirm by typing 'y'. When
@@ -36,7 +36,7 @@ var requireConfirmation = Bluebird.promisify(function(message, action) {
 				action();
 			} else {
 				console.log("Aborted!");
-				process.exit(-1);
+				process.exit(0);
 			}
 		});
 	} else {
@@ -44,7 +44,7 @@ var requireConfirmation = Bluebird.promisify(function(message, action) {
 	}
 });
 
-const getUserCompanies = (userID) => {
+const getCompaniesForUser = (userID) => {
 	return client.smembersAsync(`user:${userID}:companies`)
 }
 
@@ -52,12 +52,18 @@ const setCompanyID = (userID, companyID) => {
 	return client.saddAsync(`user:${userID}:companies`, companyID)
 }
 
-return setupP().then(() => {
-	return getUserCompanies(userID)
+const promise = setupP().then(() => {
+	return getCompaniesForUser(userID)
 }).then((oldCompanies) => {
 	if (oldCompanies.length > 0) {
 		return requireConfirmation(`Adding company id to user ${userID} and existing companies ${oldCompanies.join(",")} (adding: ${companyID})` )
 	}
 }).then(() => setCompanyID(userID, companyID)).then(() => {
 	process.exit()
+})
+
+promise.catch((e) => {
+	console.error(e)
+
+	process.exit(4)
 })
