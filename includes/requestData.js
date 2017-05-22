@@ -3,6 +3,8 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
+var Bluebird = require("bluebird")
+
 var KeyApi = require("./crypto/KeyApi");
 var errorService = require("./errorService");
 
@@ -26,6 +28,30 @@ function RequestData(socketData, rawRequest, channel) {
 		this.socketData = socketData;
 		this.keyData = [];
 	}
+
+	this.blockBusiness = (cb) => {
+		if (!this.isBusinessOrigin()) {
+			return Bluebird.resolve().nodeify(cb)
+		}
+
+		return this.session.isBusiness().then((isBusiness) => {
+			if (!isBusiness) {
+				throw new AccessViolation("Not a business account")
+			}
+		}).nodeify(cb)
+	}
+
+	this.isBusinessOrigin = () => {
+		const request = this.socketData.socket.request
+
+		if (request && request.headers && request.headers.origin) {
+			return request.headers.origin.match(/^https:\/\/business\.whispeer/)
+		}
+
+		return false
+	}
+
+	this.socketData.socket.request.headers.origin
 
 	this.getShortIP = function () {
 		return socketData.getShortIP();
@@ -76,7 +102,7 @@ function RequestData(socketData, rawRequest, channel) {
 
 				this.ne();
 			}, cb);
-		}		
+		}
 	};
 
 	this.addKeyData = function (keyData) {

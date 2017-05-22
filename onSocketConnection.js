@@ -1,6 +1,7 @@
 "use strict";
 var step = require("step");
 var h = require("whispeerHelper");
+var Bluebird = require("bluebird")
 
 var HandlerCallback = require("./includes/handlerCallback");
 var listener = require("./includes/listener");
@@ -57,7 +58,8 @@ function callExplicitHandler(handler, data, cb, request) {
 		if (handler.noLoginNeeded) {
 			this.ne();
 		} else {
-			request.session.logedinError(this);
+			request.session.logedinError(this.parallel());
+			request.blockBusiness(this.parallel())
 		}
 	}, h.sF(function () {
 		if (Array.isArray(data.keys)) {
@@ -102,8 +104,9 @@ function always(request, response, fn) {
 	step(function () {
 		this.parallel.unflatten();
 		request.session.logedin(this.parallel());
+		request.session.isBusiness(this.parallel())
 		request.socketData.recentActivity();
-	}, function (e, logedin) {
+	}, function (e, logedin, isBusiness) {
 		if (e) {
 			console.error(e);
 			response.status = 0;
@@ -123,6 +126,7 @@ function always(request, response, fn) {
 			response.sid = request.session.getSID();
 			response.userid = request.session.getUserID();
 			response.serverTime = new Date().getTime();
+			response.isBusiness = isBusiness
 		}
 
 		this(response);
@@ -136,23 +140,21 @@ module.exports = function (socket) {
 	var socketData = new SocketData(socket, session);
 	registerSocketListener(socketData);
 
-	session.changeListener(function sessionChange(logedin) {
-		step(function () {
+	session.changeListener((logedin) => {
+		Bluebird.try(() => {
 			socketData.emit("disconnect");
 			socketData = new SocketData(socket, session);
 
 			if (logedin) {
 				registerSocketListener(socketData);
 			}
-		}, function (e) {
-			if (e) {
-				console.error(e);
-			}
+		}).catch((e) => {
+			console.error(e);
 		});
 	});
 
 	function handleF(handler, channel) {
-		return function handleF(data, fn) {
+		return function (data, fn) {
 			var time = new Date().getTime();
 			var request = new RequestData(socketData, data, channel);
 			step(function () {
