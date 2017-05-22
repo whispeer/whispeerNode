@@ -1,14 +1,14 @@
 
 "use strict";
 
-var client = require("./redisClient");
+const client = require("./redisClient");
 
-var onlineStatusUpdater = require("./onlineStatus");
-var errorService = require("./errorService");
-var step = require("step");
-var h = require("whispeerHelper");
+const OnlineStatusUpdater = require("./onlineStatus");
+const errorService = require("./errorService");
+const step = require("step");
+const h = require("whispeerHelper");
 
-var socketS = require("socket.io-stream");
+const socketS = require("socket.io-stream");
 
 function SocketData(socket, session) {
 	this.session = session;
@@ -103,7 +103,7 @@ function SocketData(socket, session) {
 		});
 	};
 
-	var statusUpdater = new onlineStatusUpdater(this, session);
+	var statusUpdater = new OnlineStatusUpdater(this, session);
 
 	this.recentActivity = function (cb) {
 		statusUpdater.recentActivity(cb);

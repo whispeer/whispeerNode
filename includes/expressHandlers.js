@@ -1,16 +1,13 @@
 "use strict";
 
+const path = require("path");
+const bodyParser = require("body-parser");
+
 const clientError = require("./models/clientErrorModel");
 
 module.exports = function (express) {
-	var bodyParser = require("body-parser");
-	var step = require("step");
-	var h = require("whispeerHelper");
 	var mailer = require("./mailer");
-
 	var client = require("./redisClient");
-
-	var path = require("path");
 
 	function allowCrossDomain(req, res, next) {
 		res.header("Access-Control-Allow-Origin", "*");
@@ -41,12 +38,10 @@ module.exports = function (express) {
 	});
 
 	express.post("/b2b", function (req, res, next) {
-		step(function () {
-			mailer.mailAdmin("B2B Request!", JSON.stringify(req.body), this);
-		}, h.sF(function () {
+		return mailer.mailAdmin("B2B Request!", JSON.stringify(req.body)).then(() => {
 			res.send("Thank you! We will handle your request soon! <a href='https://whispeer.de/en/b2b'>Take me back</a>");
 			next();
-		}), function (e) {
+		}).catch((e) => {
 			console.error(e);
 			res.send("An error occured. Please send us a mail directly: <a href='mailto:nils@whispeer.de'>nils@whispeer.de</a>");
 			next();
