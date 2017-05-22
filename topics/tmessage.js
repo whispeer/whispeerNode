@@ -130,6 +130,10 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage, include
 const createHiddenMessage = (request, topic, message, name, cb) => {
 	message.meta.topicid = topic.getID()
 
+	if (!message.meta.hidden) {
+		throw new Error("message meta is not hidden")
+	}
+
 	Message.create(request, message, cb);
 }
 
@@ -146,10 +150,8 @@ var t = {
 			}), h.sF(function (_successorTopic) {
 				successorTopic = _successorTopic
 
-				// createHiddenMessage(request, topic, data.oldChatMessage, "oldChat", this.parallel());
-				// createHiddenMessage(request, successorTopic, data.newChatMessage, "newChat", this.parallel());
-
-				this.ne()
+				createHiddenMessage(request, topic, data.oldChatMessage, "oldChat", this.parallel());
+				createHiddenMessage(request, successorTopic, data.newChatMessage, "newChat", this.parallel());
 			}), h.sF(function () {
 				successorTopic.getFullData(request, this, false, false);
 			}), h.sF(function (successorTopic) {
@@ -197,7 +199,7 @@ var t = {
 	},
 	refetch: function (data, fn, request) {
 		step(function () {
-			Topic.get(data.topicid, this);
+			return Topic.get(data.topicid);
 		}, h.sF(function (topic) {
 			topic.refetch(request, data, this);
 		}), fn);

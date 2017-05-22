@@ -62,6 +62,16 @@ const copyPredecessors = (succID, myID) => {
 	})
 }
 
+const moveUnreadMessages = (request, from, to) => {
+	const toID = to.getID(), fromID = from.getID()
+
+	return from.getReceiverIDs(request).each((receiverID) => {
+		return client.zunionstoreAsync(`topic:${toID}:user:${receiverID}:unread`, 1, `topic:${fromID}:user:${receiverID}:unread`)
+	}).each((receiverID) => {
+		return client.del(`topic:${fromID}:user:${receiverID}:unread`)
+	})
+}
+
 function pushMessage(request, theReceiver, senderName, message) {
 	step(function () {
 		message.getFullData(request, this, true);
@@ -238,6 +248,18 @@ var Topic = function (id) {
 		}).nodeify(cb)
 	};
 
+	this.markUnreadForOthers = (request) => {
+		return this.getReceiverIDs(request).filter((userID) => !request.session.isMyID(userID)).map((userID) => {
+			return client.zaddAsync(`topic:user:${userID}:unreadTopics`, Date.now(), this.getID())
+		})
+	}
+
+	this.markReadForAll = (request) => {
+		return this.getReceiverIDs(request).map((userID) => {
+			return client.zremAsync(`topic:user:${userID}:unreadTopics`, this.getID())
+		})
+	}
+
 	/** get receiver ids */
 	this.getReceiverIDs = function(request, cb) {
 		return hasAccessError(request).then(() => {
@@ -310,7 +332,10 @@ var Topic = function (id) {
 				updateServer(succID, myID),
 				removeTopicList(succID, myID),
 				copyPredecessors(succID, myID),
-				this.removeSingle(myID),
+				this.markReadForAll(request),
+				successorTopic.markUnreadForOthers(request),
+				moveUnreadMessages(request, theTopic, successorTopic),
+				this.removeSingle(),
 			]).thenReturn(successorTopic)
 		}), cb);
 	}
@@ -547,12 +572,12 @@ var Topic = function (id) {
 	};
 
 	/** mark certain messages read */
-	this.markMessagesRead = function markRead(request, beforeTime, cb) {
+	this.markMessagesRead = function (request, beforeTime, cb) {
 		var unread = false;
 		step(function () {
 			return hasAccessError(request);
 		}, h.sF(function () {
-			client.zremrangebyscore(domain + ":user:" + request.session.getUserID() + ":unread", "-inf", beforeTime, this);
+			return client.zremrangebyscoreAsync(domain + ":user:" + request.session.getUserID() + ":unread", "-inf", beforeTime);
 		}), h.sF(function () {
 			theTopic.isUnread(request, this);
 		}), h.sF(function (isUnread) {
@@ -729,20 +754,20 @@ var Topic = function (id) {
 };
 
 Topic.unreadIDs = function (request, cb) {
-	step(function () {
-		client.zrevrange("topic:user:" + request.session.getUserID() + ":unreadTopics", 0, -1, this);
-	}, cb);
+	const userID = request.session.getUserID()
+
+	return client.zrevrangeAsync(`topic:user:${userID}:unreadTopics`, 0, -1).nodeify(cb)
 };
 
 Topic.unreadCount = function (request, cb) {
-	step(function () {
-		client.zcard("topic:user:" + request.session.getUserID() + ":unreadTopics", this);
-	}, cb);
+	const userID = request.session.getUserID()
+
+	return client.zcardAsync(`topic:user:${userID}:unreadTopics`).nodeify(cb)
 };
 
 Topic.unread = function (request, cb) {
 	step(function () {
-		client.zrevrange("topic:user:" + request.session.getUserID() + ":unreadTopics", 0, -1, this);
+		return client.zrevrangeAsync("topic:user:" + request.session.getUserID() + ":unreadTopics", 0, -1).nodeify(cb)
 	}, h.sF(function (unread) {
 		var result = [], i;
 		for (i = 0; i < unread.length; i += 1) {
