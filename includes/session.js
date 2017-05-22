@@ -24,7 +24,7 @@ var verifySecuredMeta = require("./verifyObject");
 
 var Bluebird = require("bluebird");
 
-/** get a random sid of given length 
+/** get a random sid of given length
 * @param length length of sid
 * @param callback callback
 * @callback (error, sid)
@@ -146,7 +146,7 @@ var Session = function Session() {
 				});
 			} else {
 				return true;
-			}			
+			}
 		});
 
 		return step.unpromisify(p, cb);
@@ -164,6 +164,12 @@ var Session = function Session() {
 
 	this.logedin = checkLogin;
 	this.logedinError = checkLoginError;
+
+	this.isBusiness = (cb) => {
+		return client.scardAsync(`user:${userid}:companies`).then((companies) => {
+			return companies > 0
+		}).nodeify(cb)
+	}
 
 	function callListener(logedin) {
 		process.nextTick(function () {
