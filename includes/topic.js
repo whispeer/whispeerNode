@@ -269,15 +269,14 @@ var Topic = function (id) {
 
 	/** get receiver objects */
 	this.getReceiver = function(request, cb) {
+		var User = require("./user");
+
 		step(function () {
 			return theTopic.getReceiverIDs(request);
 		}, h.sF(function(receivers) {
-			var User = require("./user");
-
-			var i;
-			for (i = 0; i < receivers.length; i += 1) {
-				User.getUser(receivers[i], this.parallel());
-			}
+			receivers.forEach((receiver) => {
+				User.getUser(receiver, this.parallel());
+			})
 		}), cb);
 	};
 
@@ -793,16 +792,18 @@ Topic.getUserTopicID = function (request, userid, cb) {
 Topic.create = function (request, topicMeta, receiverKeys, cb) {
 	var User = require("./user.js");
 
-	//TODO: check user can read their crypto key
-
-	function hasUserKeyAccess(uid, key, cb) {
+	function ensureUserKeyAccess(uid, key) {
 		return KeyApi.get(key).then(function (key) {
 			return key.hasUserAccess(uid);
-		}).nodeify(cb);
+		}).then((access) => {
+			if (!access) {
+				throw new Error("keys might not be accessible by all user");
+			}
+		})
 	}
 
 	var receiverIDs, receiverWO, theTopicID;
-	step(function () {
+	return Bluebird.try(function () {
 		var err = validator.validate("topicCreate", topicMeta);
 
 		if (err) {
@@ -820,25 +821,17 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 		receiverIDs = topicMeta.receiver;
 		receiverWO = receiverIDs.filter(h.not(request.session.isMyID));
 
-		User.checkUserIDs(receiverIDs, this.parallel());
-	}, h.sF(function () {
-		receiverWO.forEach(function (uid) {
-			hasUserKeyAccess(uid, topicMeta._key, this.parallel());
-			hasUserKeyAccess(uid, receiverKeys[uid], this.parallel());
-		}, this);
-
-		if (receiverWO.length === 0) {
-			this.ne([]);
-		}
-	}), h.sF(function (keysAccessible) {
-		keysAccessible.forEach(function (keyAccessible) {
-			if (!keyAccessible) {
-				throw new Error("keys might not be accessible by all user");
-			}
+		return User.checkUserIDs(receiverIDs);
+	}).then(function () {
+		return Bluebird.resolve(receiverWO).map(function (uid) {
+			return Bluebird.all([
+				ensureUserKeyAccess(uid, topicMeta._key),
+				ensureUserKeyAccess(uid, receiverKeys[uid]),
+			])
 		});
-
-		client.incr("topic:topics", this);
-	}), h.sF(function (topicid) {
+	}).then(function () {
+		return client.incrAsync("topic:topics");
+	}).then(function (topicid) {
 		theTopicID = topicid;
 
 		var topicServer = {};
@@ -872,10 +865,10 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 		multi.hmset("topic:" + topicid + ":meta", topicMeta);
 		multi.sadd("topic:" + topicid + ":receiver", receiverIDs);
 
-		multi.exec(this);
-	}), h.sF(function () {
-		this.ne(new Topic(theTopicID));
-	}), cb);
+		return Bluebird.fromCallback((cb) => multi.exec(cb))
+	}).then(function () {
+		return new Topic(theTopicID)
+	}).nodeify(cb);
 };
 
 var base = "db:" + (config.db.number || 0) + ":observer:user:";
