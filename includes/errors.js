@@ -43,6 +43,7 @@ global.NotLogedin = addError("Session invalid", 10, true);
 global.InvalidLogin = addError("Login details wrong!", 11, true);
 global.AccessViolation = addError("Access Violation", 12, true);
 global.InvalidToken = addError("Token Invalid", 13, true);
+global.NoBusinessLicense = addError("No business license", 14, true);
 
 /** user part */
 global.UserNotExisting = addError("User Not Existing", 20, true);

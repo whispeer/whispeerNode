@@ -32,7 +32,7 @@ function RequestData(socketData, rawRequest, channel) {
 	this.blockPrivateAccess = () => {
 		return this.session.isBusiness().then((isBusiness) => {
 			if (!isBusiness) {
-				throw new AccessViolation("Not a business account")
+				throw new NoBusinessLicense("Not a business account")
 			}
 		})
 	}
