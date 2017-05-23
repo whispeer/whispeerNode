@@ -52,22 +52,20 @@ EccKey.prototype.getPoint = function (cb) {
 	}).nodeify(cb);
 };
 
-EccKey.prototype.getKData = function (request, cb, wDecryptors) {
+EccKey.prototype.getKData = function (request, wDecryptors) {
 	var theKey = this;
 	var result;
 	return Bluebird.all([
 		theKey.getPoint(),
 		theKey.getCurve(),
-		Bluebird.fromCallback((cb) => {
-			theKey.getBasicData(request, cb, wDecryptors)
-		})
+		theKey.getBasicData(request, wDecryptors)
 	]).spread(function (point, curve, basic) {
 		result = basic;
 		result.point = point;
 		result.curve = curve;
 
 		return result;
-	}).nodeify(cb);
+	})
 };
 
 function validateFormat(data) {

@@ -42,38 +42,36 @@ Key.prototype.addFasterDecryptor = function addFasterDecryptorF(request, decrypt
 	}), cb);
 };
 
-Key.prototype.getBasicData = function (request, cb, wDecryptors) {
-	var theKey = this;
-	var result = {};
-	step(function () {
-		this.parallel.unflatten();
-		result.realid = theKey.getRealID();
+Key.prototype.getBasicData = function (request, wDecryptors) {
+	const result = {};
 
-		theKey.hasAccess(request, this.parallel());
-		theKey.getType(this.parallel());
-	}, h.sF(function getBD2(access, type) {
+	return Bluebird.try(() => {
+		result.realid = this.getRealID();
+
+		return Bluebird.all([
+			this.hasAccess(request),
+			this.getType(),
+		])
+	}).then(([access, type]) => {
 		result.type = type;
 
-		this.parallel.unflatten();
+		if (!access) {
+			return Bluebird.resolve(result)
+		}
 
-		if (access) {
-			theKey.accessCount(this.parallel());
+		return Bluebird.all([
+			this.accessCount(),
+			wDecryptors ? this.getDecryptorsJSON(request) : []
+		]).spread(function (accessCount, decryptors) {
+			result.accessCount = accessCount;
 
 			if (wDecryptors) {
-				theKey.getDecryptorsJSON(request, this.parallel());
+				result.decryptors = decryptors;
 			}
-		} else {
-			this.last.ne(result);
-		}
-	}), h.sF(function (accessCount, decryptors) {
-		result.accessCount = accessCount;
 
-		if (wDecryptors) {
-			result.decryptors = decryptors;
-		}
-
-		this.ne(result);
-	}), cb);
+			return result
+		})
+	})
 };
 
 /** getter for this._realid */
@@ -278,23 +276,16 @@ Key.prototype.remove = function (m, cb) {
 	}), cb);
 };
 
-Key.prototype.getDecryptorsJSON = function getDecryptorsJSONF(request, cb) {
-	var theKey = this;
-	step(function () {
-		return theKey.getDecryptors(request);
-	}, h.sF(function (decryptors) {
-		var i;
-		for (i = 0; i < decryptors.length; i += 1) {
-			decryptors[i].getJSON(this.parallel());
-		}
-
+Key.prototype.getDecryptorsJSON = function (request, cb) {
+	return this.getDecryptors(request).map((decryptor) => {
+			return decryptor.getJSON();
+	}).then((decryptors) => {
 		if (decryptors.length === 0) {
 			console.error("no decryptors for a key!");
-			this.last.ne();
 		}
-	}), h.sF(function (result) {
-		this.ne(result);
-	}), cb);
+
+		return decryptors
+	}).nodeify(cb);
 };
 
 /** add one decryptor
@@ -532,7 +523,7 @@ Key.prototype.hasUserAccess = function (userid) {
 * @param request users request
 * @param cb callback
 */
-Key.prototype.hasAccess = function hasAccessF(request, cb) {
+Key.prototype.hasAccess = function (request, cb) {
 	return this.hasUserAccess(request.session.getUserID()).nodeify(cb);
 };
 
@@ -542,8 +533,8 @@ Key.prototype.getAccess = function getAccessF(cb) {
 };
 
 /** count how many users have access to this key */
-Key.prototype.accessCount = function accessCountF(cb) {
-	client.scard(this._domain + ":access", cb);
+Key.prototype.accessCount = function () {
+	return client.scardAsync(this._domain + ":access");
 };
 
 module.exports = Key;

@@ -134,7 +134,7 @@ KeyApi.getWData = function (request, realid, callback, wDecryptors) {
 	step(function () {
 		return KeyApi.get(realid);
 	}, h.sF(function (key) {
-		key.getKData(request, this, wDecryptors);
+		return key.getKData(request, wDecryptors);
 	}), callback);
 };
 

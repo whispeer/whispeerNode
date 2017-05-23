@@ -89,9 +89,9 @@ function RequestData(socketData, rawRequest, channel) {
 			this.rootRequest.addKey(realid, cb, filter);
 		} else {
 			step(function () {
-				KeyApi.get(realid, this);
+				return KeyApi.get(realid);
 			}, h.sF(function (key) {
-				key.getKData(request, this, true);
+				return key.getKData(request, true);
 			}), h.sF(function (keyData) {
 				if (typeof filter === "function") {
 					keyData.decryptors = keyData.decryptors.filter(filter);

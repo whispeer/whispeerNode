@@ -397,7 +397,7 @@ var Topic = function (id) {
 				request.addKey(additionalKey, this.parallel());
 			}
 		}), h.sF(function () {
-			theTopic.getReceiverIDs(request, this);
+			return theTopic.getReceiverIDs(request);
 		}), h.sF(function (receiver) {
 			meta.receiver = receiver.map(h.parseDecimal);
 
@@ -424,7 +424,7 @@ var Topic = function (id) {
 			server.meta = meta;
 
 			if (newest) {
-				theTopic.getTopicUpdatesAfterNewestMessage(request, newest.meta.messageid, this);
+				return theTopic.getTopicUpdatesAfterNewestMessage(request, newest.meta.messageid);
 			} else {
 				this.ne([]);
 			}
@@ -709,16 +709,18 @@ var Topic = function (id) {
 	};
 
 	/** get topic data */
-	this.getTData = function getTDataF(request, cb) {
+	this.getTData = function (request, cb) {
 		step(function () {
 			return hasAccessError(request);
 		}, h.sF(function () {
-			this.parallel.unflatten();
-			client.hgetall(domain + ":server", this.parallel());
-			client.hgetall(domain + ":meta", this.parallel());
 
-			client.hget(domain + ":receiverKeys", request.session.getUserID(), this.parallel());
-		}), h.sF(function (server, meta, additionalKey) {
+			return Bluebird.all([
+				client.hgetallAsync(domain + ":server"),
+				client.hgetallAsync(domain + ":meta"),
+
+				client.hgetAsync(domain + ":receiverKeys", request.session.getUserID()),
+			])
+		}), h.sF(function ([server, meta, additionalKey]) {
 			meta.createTime = h.parseDecimal(meta.createTime);
 			meta.creator = h.parseDecimal(meta.creator);
 

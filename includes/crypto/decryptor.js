@@ -42,9 +42,8 @@ var Decryptor = function (keyRealID, count) {
 	};
 
 	/** get the json data for this decryptor */
-	this.getJSON = function getJSONF(cb) {
-		var p = client.hgetallAsync(domain);
-		return step.unpromisify(p, cb);
+	this.getJSON = function (cb) {
+		return client.hgetallAsync(domain).nodeify(cb)
 	};
 
 	/** remove this decryptors data */
