@@ -268,7 +268,7 @@ var Topic = function (id) {
 	};
 
 	/** get receiver objects */
-	this.getReceiver = function getReceiverF(request, cb) {
+	this.getReceiver = function(request, cb) {
 		step(function () {
 			return theTopic.getReceiverIDs(request);
 		}, h.sF(function(receivers) {
@@ -303,14 +303,12 @@ var Topic = function (id) {
 		return client.hgetAsync(domain + ":server", "successor").nodeify(cb)
 	}
 
-	this.setSuccessor = function (request, successor, receiverKeys, cb) {
-		step(function () {
-			return Bluebird.all([
-				theTopic.isAdmin(request),
-				theTopic.getSuccessorID(),
-				client.hgetAsync(domain + ":meta", "_ownHash")
-			])
-		}, h.sF(function ([isAdmin, hasSuccessor, checksum]) {
+	this.setSuccessor = function (request, successor, receiverKeys) {
+		return Bluebird.all([
+			theTopic.isAdmin(request),
+			theTopic.getSuccessorID(),
+			client.hgetAsync(domain + ":meta", "_ownHash")
+		]).then(function ([isAdmin, hasSuccessor, checksum]) {
 			if (!isAdmin) {
 				throw new AccessViolation("topic: not an admin")
 			}
@@ -323,8 +321,8 @@ var Topic = function (id) {
 				throw new Error("Invalid parent checksum")
 			}
 
-			Topic.create(request, successor, receiverKeys, this)
-		}), h.sF((successorTopic) => {
+			return Bluebird.fromCallback((cb) => Topic.create(request, successor, receiverKeys, cb))
+		}).then((successorTopic) => {
 			const succID = successorTopic.getID()
 			const myID = theTopic.getID()
 
@@ -336,8 +334,10 @@ var Topic = function (id) {
 				successorTopic.markUnreadForOthers(request),
 				moveUnreadMessages(request, theTopic, successorTopic),
 				this.removeSingle(),
-			]).thenReturn(successorTopic)
-		}), cb);
+			]).then(() => {
+				return successorTopic.notifyReceivers(request, "topic", successorTopic.getID())
+			}).thenReturn(successorTopic)
+		})
 	}
 
 	this.getPredecessor = function (request) {
@@ -373,18 +373,16 @@ var Topic = function (id) {
 		})
 	}
 
-	this.getSuccessor = function (request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
+	this.getSuccessor = function (request) {
+		return hasAccessError(request).then(function () {
 			return client.hgetAsync(domain + ":server", "successor")
-		}), h.sF(function (successorID) {
+		}).then(function (successorID) {
 			if (!successorID) {
 				return Bluebird.resolve(null)
 			}
 
-			Topic.get(successorID, this)
-		}), cb);
+			return Topic.get(successorID)
+		})
 	}
 
 	/** get topic full data */
@@ -404,7 +402,7 @@ var Topic = function (id) {
 		}), h.sF(function (receiver) {
 			meta.receiver = receiver.map(h.parseDecimal);
 
-			theTopic.getUnreadMessages(request, this);
+			return theTopic.getUnreadMessages(request);
 		}), h.sF(function (unreadMessages) {
 			server.unread = unreadMessages;
 
@@ -440,54 +438,42 @@ var Topic = function (id) {
 	};
 
 	/** how many messages in this topic? */
-	this.ownCount = function ownCountF(request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			client.zcard(domain + ":user:" + request.session.getUserID() + ":messages", this);
-		}), cb);
+	this.ownCount = function(request, cb) {
+		return hasAccessError(request).then(() => {
+			return client.zcardAsync(domain + ":user:" + request.session.getUserID() + ":messages");
+		}).nodeify(cb)
 	};
 
 	/** how many messages in this topic? */
-	this.messageCount = function messageCountF(request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			client.zcard(mDomain, this);
-		}), cb);
+	this.messageCount = function(request, cb) {
+		return hasAccessError(request).then(() => {
+			return client.zcardAsync(mDomain);
+		}).nodeify(cb)
 	};
 
 	/** is this topic empty? */
-	this.isEmpty = function isEmptyF(request, cb) {
-		step(function () {
-			theTopic.messageCount(this);
-		}, h.sF(function (messageCount) {
-			this.ne(messageCount === 0);
-		}), cb);
+	this.isEmpty = function(request, cb) {
+		return theTopic.messageCount().then(function (messageCount) {
+			return messageCount === 0;
+		}).nodeify(cb);
 	};
 
 	/** is this topic unread? */
-	this.isUnread = function isUnreadF(request, cb) {
-		step(function () {
-			client.zcard(domain + ":user:" + request.session.getUserID() + ":unread", this);
-		}, h.sF(function (count) {
-			this.ne(count !== 0);
-		}), cb);
+	this.isUnread = function(request, cb) {
+		return client.zcardAsync(domain + ":user:" + request.session.getUserID() + ":unread").then((count) => {
+			return count !== 0
+		}).nodeify(cb)
 	};
 
 	/** get unread messages ids */
-	this.getUnreadMessages = function getUnreadMessagesF(request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			client.zrevrange(domain + ":user:" + request.session.getUserID() + ":unread", 0, -1, this);
-		}), h.sF(function (res) {
-			res.map(function (ele) {
-				return parseInt(ele, 10);
+	this.getUnreadMessages = function(request, cb) {
+		return hasAccessError(request).then(function () {
+			return client.zrevrangeAsync(domain + ":user:" + request.session.getUserID() + ":unread", 0, -1);
+		}).then(function (res) {
+			return res.map(function (ele) {
+				return h.parseDecimal(ele);
 			});
-
-			this.ne(res);
-		}), cb);
+		}).nodeify(cb);
 	};
 
 	this.getMissingMessages = function (inBetween, newestIndex, oldestIndex) {
@@ -522,7 +508,7 @@ var Topic = function (id) {
 			}).nodeify(cb)
 		}
 
-		var resultPromise = hasAccessErrorAsync(request).bind(this).then(function () {
+		return hasAccessErrorAsync(request).bind(this).then(function () {
 			return Bluebird.all([
 				client.zrevrankAsync(mDomain, oldest),
 				client.zrevrankAsync(mDomain, newest),
@@ -566,37 +552,39 @@ var Topic = function (id) {
 				clearMessages,
 				messages: data
 			};
-		});
-
-		return step.unpromisify(resultPromise, cb);
+		}).nodeify(cb)
 	};
 
 	/** mark certain messages read */
 	this.markMessagesRead = function (request, beforeTime, cb) {
 		var unread = false;
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
+		return hasAccessError(request).then(() => {
 			return client.zremrangebyscoreAsync(domain + ":user:" + request.session.getUserID() + ":unread", "-inf", beforeTime);
-		}), h.sF(function () {
-			theTopic.isUnread(request, this);
-		}), h.sF(function (isUnread) {
+		}).then(() => {
+			return theTopic.isUnread(request);
+		}).then((isUnread) => {
 			unread = isUnread;
 			if (!isUnread) {
-				client.zrem("topic:user:" + request.session.getUserID() + ":unreadTopics", id, this.parallel());
-
 				request.socketData.notifyOwnClients("topicRead", id);
+
+				return client.zrem("topic:user:" + request.session.getUserID() + ":unreadTopics", id);
+			}
+		}).then(() => {
+			if (unread) {
+				return theTopic.getUnreadMessages(request);
 			}
 
-			this.parallel()();
-		}), h.sF(function () {
-			if (unread) {
-				theTopic.getUnreadMessages(request, this);
-			} else {
-				this.ne([]);
-			}
-		}), cb);
+			return []
+		}).nodeify(cb);
 	};
+
+	this.notifyReceivers = function (request, type, data) {
+		return Bluebird.fromCallback((cb) => {
+			theTopic.getReceiver(request, cb);
+		}).each((receiver) => {
+			receiver.notify(type, data)
+		})
+	}
 
 	/** add a message to this topic */
 	this.addMessage = function addMessageF(request, message, cb) {
@@ -636,24 +624,15 @@ var Topic = function (id) {
 				"newestTime": time
 			});
 
-			multi.exec(this);
+			return Bluebird.fromCallback((cb) => multi.exec(cb))
 		}), h.sF(function () {
-			theReceiver.forEach(function (user) {
-				user.isOnline(this.parallel());
-			}, this);
-		}), h.sF(function (onlineUsers) {
-			theReceiver.forEach(function (user, index) {
-				if (onlineUsers[index]) {
-					user.notify("message", messageID);
-				}
-			});
+			theTopic.notifyReceivers(request, "message", messageID)
 
 			var senderObject = theReceiver.filter(function (u) {
 				return u.getID() === h.parseDecimal(theSender);
 			})[0];
 
 			senderObject.getNames(request, this);
-
 		}), h.sF(function (sender) {
 			sender = sender.firstName || sender.lastName || sender.nickname;
 			pushMessage(request, theReceiver, sender, message);
@@ -701,7 +680,7 @@ var Topic = function (id) {
 	* @param count number of messages to get
 	* @param cb cb
 	*/
-	this.getMessages = function (request, afterMessage, count, cb) {
+	this.getMessages = function (request, afterMessage, count) {
 		var remaining = 0;
 		return hasAccessError(request).then(() => {
 			return Bluebird.all([
@@ -727,7 +706,7 @@ var Topic = function (id) {
 				messages: result,
 				remaining: remaining > 0 ? remaining : 0
 			}
-		}).nodeify(cb);
+		})
 	};
 
 	/** get topic data */
@@ -766,38 +745,30 @@ Topic.unreadCount = function (request, cb) {
 };
 
 Topic.unread = function (request, cb) {
-	step(function () {
-		return client.zrevrangeAsync("topic:user:" + request.session.getUserID() + ":unreadTopics", 0, -1).nodeify(cb)
-	}, h.sF(function (unread) {
-		var result = [], i;
-		for (i = 0; i < unread.length; i += 1) {
-			result.push(new Topic(unread[i]));
-		}
-
-		this.ne(result);
-	}), cb);
+	return client.zrevrangeAsync("topic:user:" + request.session.getUserID() + ":unreadTopics", 0, -1).map((unreadID) => {
+		return new Topic(unreadID)
+	}).nodeify(cb);
 };
 
-Topic.own = function (request, afterTopic, count, noPredecessors, cb) {
-	const topicsListKey = "topic:user:" + request.session.getUserID() + (
-		noPredecessors ? ":topics" : ":topicsWithPredecessors")
+Topic.own = function (request, afterTopic, count, cb) {
+	const topicsListKey = "topic:user:" + request.session.getUserID() + ":topics"
 
-	step(function () {
-		return client.zrevrankAsync(topicsListKey, afterTopic);
-	}, h.sF(function (index) {
+	return client.zrevrankAsync(topicsListKey, afterTopic).then(function (index) {
 		if (index === null) {
 			index = -1;
 		}
 
 		return client.zrevrangeAsync(topicsListKey, index + 1, index + count);
-	}), h.sF(function (topicids) {
-		const topics = topicids.map((topicid) => new Topic(topicid))
-
-		this.ne(topics);
-	}), cb);
+	}).map(function (topicid) {
+		return new Topic(topicid)
+	}).nodeify(cb);
 };
 
 Topic.get = function (topicid, cb) {
+	if (!topicid) {
+		console.trace()
+	}
+
 	return Bluebird.try(function () {
 		return client.existsAsync("topic:" + topicid + ":server");
 	}).then(function (exists) {
@@ -810,15 +781,13 @@ Topic.get = function (topicid, cb) {
 };
 
 Topic.getUserTopicID = function (request, userid, cb) {
-	step(function () {
-		client.get("topic:user:" + request.session.getUserID() + ":single:" + userid, this);
-	}, h.sF(function (topicid) {
+	return client.getAsync("topic:user:" + request.session.getUserID() + ":single:" + userid).then(function (topicid) {
 		if (topicid) {
-			this.ne(topicid);
-		} else {
-			this.ne(false);
+			return topicid
 		}
-	}), cb);
+
+		return false
+	}).nodeify(cb)
 };
 
 Topic.create = function (request, topicMeta, receiverKeys, cb) {
@@ -827,11 +796,9 @@ Topic.create = function (request, topicMeta, receiverKeys, cb) {
 	//TODO: check user can read their crypto key
 
 	function hasUserKeyAccess(uid, key, cb) {
-		step(function () {
-			KeyApi.get(key, this);
-		}, h.sF(function (key) {
-			key.hasUserAccess(uid, this);
-		}), cb);
+		return KeyApi.get(key).then(function (key) {
+			return key.hasUserAccess(uid);
+		}).nodeify(cb);
 	}
 
 	var receiverIDs, receiverWO, theTopicID;

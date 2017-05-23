@@ -3,7 +3,6 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
-
 var Topic = require("../includes/topic");
 var Message = require("../includes/messages");
 
@@ -68,15 +67,7 @@ const getRemainingCount = (counts, remaining) => {
 	return counts.reduce((prev, next) => prev + next.remainingCount, remaining)
 }
 
-const getPredecessorMessages = (request, topic, remaining, count, includePredecessors) => {
-	if (!includePredecessors) {
-		return {
-			remaining,
-			messages: [],
-			topicUpdates: []
-		}
-	}
-
+const getPredecessorMessages = (request, topic, remaining, count) => {
 	return topic.getPredecessor(request).then((predecessorTopic) => {
 		if (count <= 0 || !predecessorTopic) {
 			return topic.getPredecessorsMessageCounts(request).then((counts) => {
@@ -92,7 +83,7 @@ const getPredecessorMessages = (request, topic, remaining, count, includePredece
 	})
 }
 
-const getTopicMessagesAndUpdates = (request, topic, count, afterMessage, includePredecessors) => {
+const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
 	let remaining = 0
 
 	return topic.getMessages(request, afterMessage, count).then(({ remaining: _remaining, messages }) => {
@@ -110,7 +101,7 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage, include
 
 		return Bluebird.all([
 			getTopicUpdates(request, topic, messages, afterMessage),
-			getPredecessorMessages(request, topic, remaining, newCount, includePredecessors)
+			getPredecessorMessages(request, topic, remaining, newCount)
 		]).then(function ([topicUpdates, predecessor]) {
 			const {
 				remaining,
@@ -127,32 +118,19 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage, include
 	})
 }
 
-const createHiddenMessage = (request, topic, message, name, cb) => {
-	message.meta.topicid = topic.getID()
-
-	if (!message.meta.hidden) {
-		throw new Error("message meta is not hidden")
-	}
-
-	Message.create(request, message, cb);
-}
-
 var t = {
 	topic: {
 		createSuccessor: function (data, fn, request) {
 			let successorTopic, topic
 
 			step(function () {
-				Topic.get(data.topicID, this)
+				return Topic.get(data.topicID)
 			}, h.sF(function (_topic) {
 				topic = _topic
-				topic.setSuccessor(request, data.successor, data.receiverKeys, this)
+				return topic.setSuccessor(request, data.successor, data.receiverKey)
 			}), h.sF(function (_successorTopic) {
 				successorTopic = _successorTopic
 
-				createHiddenMessage(request, topic, data.oldChatMessage, "oldChat", this.parallel());
-				createHiddenMessage(request, successorTopic, data.newChatMessage, "newChat", this.parallel());
-			}), h.sF(function () {
 				successorTopic.getFullData(request, this, false, false);
 			}), h.sF(function (successorTopic) {
 				return {
@@ -164,7 +142,7 @@ var t = {
 			step(function () {
 				Topic.get(data.topicID, this)
 			}, h.sF(function (topic) {
-				topic.getSuccessor(request, this)
+				return topic.getSuccessor(request)
 			}), fn);
 		}
 	},
@@ -181,7 +159,7 @@ var t = {
 	},
 	getTopics: function getTopicsF(data, fn, request) {
 		step(function () {
-			Topic.own(request, data.afterTopic, 10, data.noPredecessors, this);
+			Topic.own(request, data.afterTopic, 10, this);
 		}, h.sF(function (topics) {
 			var i;
 			for (i = 0; i < topics.length; i += 1) {

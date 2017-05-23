@@ -44,16 +44,12 @@ var Message = function (id) {
 		return id;
 	};
 
-	function hasAccessError(request, cb) {
-		step(function () {
-			theMessage.hasAccess(request, this);
-		}, h.sF(function (access) {
+	function hasAccessError(request) {
+		return theMessage.hasAccess(request).then(function (access) {
 			if (access !== true) {
 				throw new AccessViolation("message");
 			}
-
-			this.ne();
-		}), cb);
+		})
 	}
 
 	/** does the current user have access */
@@ -70,7 +66,7 @@ var Message = function (id) {
 
 	this.getSortCounter = function (request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.hget(domain + ":meta", "_sortCounter", this);
 		}), h.sF(function (hash) {
@@ -81,7 +77,7 @@ var Message = function (id) {
 	/** sender id */
 	this.getSenderID = function getSenderIDF(request, cb) {
 		step(function () {
-			hasAccessError(request, this);
+			return hasAccessError(request);
 		}, h.sF(function () {
 			client.hget(domain + ":meta", "sender", this);
 		}), h.sF(function (senderid) {
@@ -136,12 +132,10 @@ var Message = function (id) {
 	};
 
 	/** get message meta data */
-	this.getMeta = function getMetaF(request, cb) {
-		step(function () {
-			hasAccessError(request, this);
-		}, h.sF(function () {
-			client.hgetall(domain + ":meta", this);
-		}), h.sF(function (data) {
+	this.getMeta = function (request) {
+		return hasAccessError(request).then(() => {
+			return client.hgetallAsync(domain + ":meta")
+		}).then((data) => {
 			data.createTime = h.parseDecimal(data.createTime);
 			data.sender = h.parseDecimal(data.sender);
 			data.topicid = h.parseDecimal(data.topicid);
@@ -154,40 +148,34 @@ var Message = function (id) {
 				data.images = JSON.parse(data.images);
 			}
 
-			this.ne(data);
-		}), cb);
+			return data
+		})
 	};
 
 	/** get message content */
-	this.getContent = function getContentF(request, cb) {
-		step(function () {
-			hasAccessError(request, this);
-		}, h.sF(function () {
-			client.hgetall(domain + ":content", this);
-		}), h.sF(function (data) {
-			this.ne(data);
-		}), cb);
+	this.getContent = function (request) {
+		return hasAccessError(request).then(() => {
+			return client.hgetallAsync(domain + ":content");
+		})
 	};
 
 	/** get the full data of this message */
-	this.getFullData = function getFullDataF(request, cb) {
-		var result;
-		step(function () {
-			hasAccessError(request, this);
-		}, h.sF(function () {
-			this.parallel.unflatten();
-			theMessage.getMeta(request, this.parallel());
-			theMessage.getContent(request, this.parallel());
-		}), h.sF(function (meta, content) {
-			result = {
+	this.getFullData = function (request, cb) {
+		return hasAccessError(request).then(function () {
+			return Bluebird.all([
+				theMessage.getMeta(request),
+				theMessage.getContent(request),
+			])
+		}).spread(function (meta, content) {
+			const result = {
 				meta: meta,
 				content: content
 			};
 
-			request.addKey(result.meta._key, this);
-		}), h.sF(function () {
-			this.ne(result);
-		}), cb);
+			return Bluebird.fromCallback((cb) => {
+				request.addKey(result.meta._key, cb);
+			}).thenReturn(result)
+		}).nodeify(cb);
 	};
 };
 

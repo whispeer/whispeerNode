@@ -6,18 +6,19 @@
 //first of all: uniquify all keys in one hset
 //second of all: define key visibility in an easier way!
 
-var step = require("step");
-var client = require("./redisClient");
-var h = require("whispeerHelper");
+const Bluebird = require("bluebird")
+const step = require("step");
+const client = require("./redisClient");
+const h = require("whispeerHelper");
 
-var search = require("./search");
+const search = require("./search");
 
-var EccKey = require("./crypto/eccKey");
-var SymKey = require("./crypto/symKey");
+const EccKey = require("./crypto/eccKey");
+const SymKey = require("./crypto/symKey");
 
-var KeyApi = require("./crypto/KeyApi");
+const KeyApi = require("./crypto/KeyApi");
 
-var RedisObserver = require("./asset/redisObserver");
+const RedisObserver = require("./asset/redisObserver");
 
 function logedinF(data, cb) {
 	step(function () {
@@ -412,7 +413,7 @@ var User = function (id) {
 			}
 
 			this.ne(res);
-		}), cb);		
+		}), cb);
 	}
 
 	function getNameF(request, cb) {
@@ -577,9 +578,9 @@ var User = function (id) {
 		}, h.sF(function (mainKey) {
 			addKey(request, "friendsKey", this, function (decryptor) {
 				return !theUser.isOwnUser(request) || decryptor.decryptorid === mainKey;
-			});		
+			});
 		}), cb);
-	
+
 	};
 
 	this.addKeys = function (request, cb) {
@@ -883,7 +884,7 @@ var User = function (id) {
 			//sent correct key and main key for download purposes!
 			request.addKey(backupKey, this.parallel());
 			theUser.addOwnKeys(request, this.parallel());
-			
+
 			//receive password change request hopefully
 		}), cb);
 	};
@@ -934,22 +935,16 @@ User.search = function (text, cb) {
 	}), cb);
 };
 
-User.checkUserIDs = function (ids, cb) {
-	step(function () {
-		ids = ids.map(h.parseDecimal);
-		ids.forEach(function (id) {
-			client.get("user:id:" + id, this.parallel());
-		}, this);
-	}, h.sF(function (serverIDs) {
-		serverIDs = serverIDs.map(h.parseDecimal);
-		ids.forEach(function (id, index) {
-			if (id !== serverIDs[index]) {
-				throw new Error("user not existing: " + id);
-			}
-		});
+User.checkUserID = (id) => {
+	return client.getAsync(`user:id:${id}`).then((serverID) => {
+		if (h.parseDecimal(id) !== h.parseDecimal(serverID)) {
+			throw new Error("user not existing: " + id);
+		}
+	})
+}
 
-		this.ne();
-	}), cb);
+User.checkUserIDs = function (ids, cb) {
+	return Bluebird.resolve(ids).map(User.checkUserID).nodeify(cb)
 };
 
 User.all = function (cb) {
@@ -977,21 +972,25 @@ User.check = function (errors, cb) {
 User.getUser = function (identifier, callback, returnError) {
 	step(function () {
 		if (h.isMail(identifier)) {
-			client.get("user:mail:" + identifier, this);
-		} else if (h.isNickname(identifier)) {
-			client.get("user:nickname:" + identifier.toLowerCase(), this);
-		} else if (h.isID(identifier)) {
-			client.get("user:id:" + identifier, this);
+			return client.getAsync("user:mail:" + identifier);
+		}
+
+		if (h.isNickname(identifier)) {
+			return client.getAsync("user:nickname:" + identifier.toLowerCase());
+		}
+
+		if (h.isID(identifier)) {
+			return client.getAsync("user:id:" + identifier);
+		}
+
+		if (returnError) {
+			this.last.ne(new UserNotExisting(identifier));
 		} else {
-			if (returnError) {
-				this.last.ne(new UserNotExisting(identifier));
-			} else {
-				throw new UserNotExisting(identifier);
-			}
+			throw new UserNotExisting(identifier);
 		}
 	}, h.sF(function (id) {
 		if (id === "-1" && h.isNickname(identifier)) {
-			client.get("user:nickname:old:" + identifier, this);
+			return client.getAsync("user:nickname:old:" + identifier, this);
 		} else {
 			this.ne(id);
 		}

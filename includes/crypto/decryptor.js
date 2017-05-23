@@ -62,8 +62,8 @@ var Decryptor = function (keyRealID, count) {
 	};
 };
 
-Decryptor.getAllWithAccess = function getAllWAF(request, keyRealID, cb) {
-	var p = request.session.logedinError().then(function () {
+Decryptor.getAllWithAccess = function (request, keyRealID, cb) {
+	return request.session.logedinError().then(function () {
 		if (!h.isRealID(keyRealID)) {
 			throw new InvalidRealID();
 		}
@@ -73,9 +73,7 @@ Decryptor.getAllWithAccess = function getAllWAF(request, keyRealID, cb) {
 		return decryptorSet.map(function (decryptorID) {
 			return new Decryptor(keyRealID, decryptorID);
 		});
-	});
-
-	return step.unpromisify(p, cb);
+	}).nodeify(cb)
 };
 
 /** get all decryptors for a certain key id */

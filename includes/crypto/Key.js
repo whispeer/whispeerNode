@@ -2,6 +2,7 @@
 
 //TO-DO rewrite for hset/hgetall/hget
 
+var Bluebird = require("bluebird")
 var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
@@ -10,18 +11,15 @@ var util = require("util");
 
 var Key = function () {};
 
-Key.prototype._getAttribute = function(attr, cb) {
-	var theKey = this;
-	step(function () {
-		client.hget(theKey._domain, attr, this);
-	}, cb);
+Key.prototype._getAttribute = function(attr) {
+	return client.hgetAsync(this._domain, attr)
 };
 
 Key.prototype.addFasterDecryptor = function addFasterDecryptorF(request, decryptor, cb) {
 	var theKey = this;
 	step(function () {
 		console.log(theKey.getRealID());
-		theKey.getDecryptors(request, this);
+		return theKey.getDecryptors(request);
 	}, h.sF(function (decryptors) {
 		var j;
 		for (j = 0; j < decryptors.length; j += 1) {
@@ -44,7 +42,7 @@ Key.prototype.addFasterDecryptor = function addFasterDecryptorF(request, decrypt
 	}), cb);
 };
 
-Key.prototype.getBasicData = function getBasicDataF(request, cb, wDecryptors) {
+Key.prototype.getBasicData = function (request, cb, wDecryptors) {
 	var theKey = this;
 	var result = {};
 	step(function () {
@@ -84,12 +82,12 @@ Key.prototype.getRealID = function getRealIDF() {
 };
 
 /** get the owner of this key */
-Key.prototype.getOwner = function getOwnerF(cb) {
-	this._getAttribute("owner", cb);
+Key.prototype.getOwner = function () {
+	return this._getAttribute("owner")
 };
 
-Key.prototype.getType = function getTypeF(cb) {
-	this._getAttribute("type", cb);
+Key.prototype.getType = function (cb) {
+	return this._getAttribute("type").nodeify(cb);
 };
 
 Key.prototype.getAllAccessedParents = function getAllAccessedParentsF(request, cb, maxdepth) {
@@ -152,7 +150,7 @@ Key.prototype.getUserDecryptors = function getUserDecryptorsF(request, cb) {
 
 /** get this keys decryptors */
 Key.prototype.getDecryptors = function getDecryptorsF(request, cb) {
-	Decryptor.getAllWithAccess(request, this._realid, cb);
+	return Decryptor.getAllWithAccess(request, this._realid).nodeify(cb);
 };
 
 Key.prototype.removeDecryptorForUser = function (m, userid, cb) {
@@ -178,12 +176,12 @@ Key.prototype.removeDecryptorForUser = function (m, userid, cb) {
 Key.prototype.getPWDecryptors = function (request, cb) {
 	var theKey = this, decryptors;
 	step(function () {
-		theKey.getDecryptors(request, this);
+		return theKey.getDecryptors(request);
 	}, h.sF(function (_decryptors) {
 		decryptors = _decryptors;
-		decryptors.forEach(function (decryptor) {
-			decryptor.getType(this.parallel());
-		}, this);
+		return Bluebird.resolve(decryptors).map(function (decryptor) {
+			return decryptor.getType()
+		})
 	}), h.sF(function (types) {
 		this.ne(decryptors.filter(function (decryptor, index) {
 			return types[index] === "pw";
@@ -283,7 +281,7 @@ Key.prototype.remove = function (m, cb) {
 Key.prototype.getDecryptorsJSON = function getDecryptorsJSONF(request, cb) {
 	var theKey = this;
 	step(function () {
-		theKey.getDecryptors(request, this);
+		return theKey.getDecryptors(request);
 	}, h.sF(function (decryptors) {
 		var i;
 		for (i = 0; i < decryptors.length; i += 1) {
@@ -431,7 +429,7 @@ Key.prototype.removeAccessByRealID = function (m, keyRealID, userids, cb) {
 };
 
 /** remove some access. removes access for users which had it by using a given decryptor
-* WARNING: this is not perfect, we have to remove access immediatly (no multi usage) 
+* WARNING: this is not perfect, we have to remove access immediatly (no multi usage)
 * to be able to remove keys which are accessed in two ways.
 * BUT: if something fails we can - in theory - restore all data
 * @param m client multi object
@@ -512,23 +510,22 @@ Key.prototype.removeAccess = function (m, decryptorid, users, cb) {
 	}), cb);
 };
 
-Key.prototype.hasUserAccess = function hasUserAccessF(userid, cb) {
+Key.prototype.hasUserAccess = function (userid) {
 	var theKey = this;
-	step(function hasAccess1() {
-		client.sismember(theKey._domain + ":access", userid, this);
-	}, h.sF(function hasAccess2(access) {
+	return Bluebird.all([
+		client.sismemberAsync(theKey._domain + ":access", userid),
+		theKey.getOwner(),
+	]).spread((access, owner) => {
 		if (access === 1) {
-			this.last.ne(true);
-		} else {
-			theKey.getOwner(this);
+			return true
 		}
-	}), h.sF(function hasAccess3(owner) {
+
 		if (parseInt(owner, 10) === parseInt(userid, 10)) {
-			this.last.ne(true);
-		} else {
-			this.ne(false);
+			return true
 		}
-	}), cb);
+
+		return false
+	})
 };
 
 /** checks if the current user has access to this key
@@ -536,7 +533,7 @@ Key.prototype.hasUserAccess = function hasUserAccessF(userid, cb) {
 * @param cb callback
 */
 Key.prototype.hasAccess = function hasAccessF(request, cb) {
-	this.hasUserAccess(request.session.getUserID(), cb);
+	return this.hasUserAccess(request.session.getUserID()).nodeify(cb);
 };
 
 /** get the users who have access to this key */

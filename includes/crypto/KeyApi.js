@@ -5,6 +5,7 @@ var KeyApi = {};
 var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
+var Bluebird = require("bluebird")
 
 var EccKey = require("./eccKey");
 var SymKey = require("./symKey");
@@ -46,10 +47,10 @@ KeyApi.isKey = function isKeyF(key) {
 KeyApi.removeKeyDecryptorForUser = function (request, realid, userid, cb) {
 	var key, m = client.multi();
 	step(function () {
-		KeyApi.get(realid, this);
+		return KeyApi.get(realid);
 	}, h.sF(function (_key) {
 		key = _key;
-		key.getOwner(this);
+		return key.getOwner();
 	}), h.sF(function (owner) {
 		if (h.parseDecimal(owner) !== request.session.getUserID()) {
 			throw new Error("can only remove decryptors of own keys!");
@@ -69,7 +70,7 @@ KeyApi.removeKeyDecryptor = function (request, realid, decryptorid, cb) {
 		KeyApi.get(realid, this);
 	}, h.sF(function (_key) {
 		key = _key;
-		key.getOwner(this);
+		return key.getOwner();
 	}), h.sF(function (owner) {
 		if (h.parseDecimal(owner) !== request.session.getUserID()) {
 			throw new Error("can only remove decryptors of own keys!");
@@ -88,7 +89,7 @@ KeyApi.removeKey = function (request, realid, cb) {
 		KeyApi.get(realid, this);
 	}, h.sF(function (_key) {
 		key = _key;
-		key.getOwner(this);
+		return key.getOwner();
 	}), h.sF(function (owner) {
 		if (h.parseDecimal(owner) !== request.session.getUserID()) {
 			throw new Error("can only remove decryptors of own keys!");
@@ -103,12 +104,12 @@ KeyApi.removeKey = function (request, realid, cb) {
 /** get a key
 * @param realid keys real id
 */
-KeyApi.get = function getKF(realid, callback) {
+KeyApi.get = function (realid, cb) {
 	if (!realid) {
 		throw new Error("invalid realid " + realid);
 	}
 
-	var p = client.hgetAsync("key:" + realid, "type").then(function (type) {
+	return client.hgetAsync("key:" + realid, "type").then(function (type) {
 		switch (type) {
 		case "sym":
 			return new SymKey(realid);
@@ -117,10 +118,8 @@ KeyApi.get = function getKF(realid, callback) {
 			return new EccKey(realid);
 		default:
 			throw new KeyNotFound("key not found for realid: " + realid);
-		}		
-	});
-
-	return step.unpromisify(p, callback);
+		}
+	}).nodeify(cb)
 };
 
 KeyApi.createWithDecryptors = function (request, keyData, cb) {
@@ -131,22 +130,19 @@ KeyApi.createWithDecryptors = function (request, keyData, cb) {
 	}
 };
 
-KeyApi.getWData = function getDataF(request, realid, callback, wDecryptors) {
+KeyApi.getWData = function (request, realid, callback, wDecryptors) {
 	step(function () {
-		KeyApi.get(realid, this);
+		return KeyApi.get(realid);
 	}, h.sF(function (key) {
 		key.getKData(request, this, wDecryptors);
 	}), callback);
 };
 
 /** get multiple keys */
-KeyApi.getKeys = function getKeysF(realids, callback) {
-	step(function () {
-		var i;
-		for (i = 0; i < realids.length; i += 1) {
-			KeyApi.get(realids[i], this.parallel());
-		}
-	}, callback);
+KeyApi.getKeys = function getKeysF(realids, cb) {
+	return Bluebird.resolve(realids).map((realid) => {
+		return KeyApi.get(realid);
+	}).nodeify(cb)
 };
 
 KeyApi.checkKey = function (errors, realid, cb) {

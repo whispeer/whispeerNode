@@ -1,5 +1,6 @@
 "use strict";
 
+var Bluebird = require("bluebird")
 var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
@@ -27,46 +28,46 @@ EccKey.prototype.isEccKey = function () {
 	return true;
 };
 
-EccKey.prototype.getCurve = function getCurveF(cb) {
-	this._getAttribute("curve", cb);
+EccKey.prototype.getCurve = function (cb) {
+	return this._getAttribute("curve").nodeify(cb);
 };
 
-EccKey.prototype.getPointX = function getPointXF(cb) {
-	this._getAttribute("x", cb);
+EccKey.prototype.getPointX = function () {
+	return this._getAttribute("x")
 };
 
-EccKey.prototype.getPointY = function getPointYF(cb) {
-	this._getAttribute("y", cb);
+EccKey.prototype.getPointY = function () {
+	return this._getAttribute("y")
 };
 
-EccKey.prototype.getPoint = function getPointF(cb) {
-	var theKey = this;
-	step(function () {
-		theKey.getPointX(this.parallel());
-		theKey.getPointY(this.parallel());
-	}, h.sF(function (data) {
-		this.ne({
+EccKey.prototype.getPoint = function (cb) {
+	return Bluebird.all([
+		this.getPointX(),
+		this.getPointY(),
+	]).then(function (data) {
+		return {
 			x: data[0],
 			y: data[1]
-		});
-	}), cb);
+		}
+	}).nodeify(cb);
 };
 
-EccKey.prototype.getKData = function getKDataF(request, cb, wDecryptors) {
+EccKey.prototype.getKData = function (request, cb, wDecryptors) {
 	var theKey = this;
 	var result;
-	step(function () {
-		this.parallel.unflatten();
-		theKey.getPoint(this.parallel());
-		theKey.getCurve(this.parallel());
-		theKey.getBasicData(request, this.parallel(), wDecryptors);
-	}, h.sF(function (point, curve, basic) {
+	return Bluebird.all([
+		theKey.getPoint(),
+		theKey.getCurve(),
+		Bluebird.fromCallback((cb) => {
+			theKey.getBasicData(request, cb, wDecryptors)
+		})
+	]).spread(function (point, curve, basic) {
 		result = basic;
 		result.point = point;
 		result.curve = curve;
 
-		this.last.ne(result);
-	}), cb);
+		return result;
+	}).nodeify(cb);
 };
 
 function validateFormat(data) {
