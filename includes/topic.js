@@ -73,13 +73,11 @@ const moveUnreadMessages = (request, from, to) => {
 }
 
 function pushMessage(request, theReceiver, senderName, message) {
-	step(function () {
-		message.getFullData(request, this, true);
-	}, h.sF(function (messageData) {
-		var receivers = theReceiver.filter(function (user) {
-			return user.getID() !== request.session.getUserID();
-		});
+	const receivers = theReceiver.filter(function (user) {
+		return user.getID() !== request.session.getUserID();
+	});
 
+	return message.getFullData(request).then(function (messageData) {
 		return Bluebird.resolve(receivers).map(function (user) {
 			var referenceType = "message";
 
@@ -94,7 +92,7 @@ function pushMessage(request, theReceiver, senderName, message) {
 				]);
 			})
 		});
-	}), errorService.handleError);
+	}).catch(errorService.handleError)
 }
 
 var Topic = function (id) {
@@ -271,25 +269,18 @@ var Topic = function (id) {
 	this.getReceiver = function(request, cb) {
 		var User = require("./user");
 
-		step(function () {
-			return theTopic.getReceiverIDs(request);
-		}, h.sF(function(receivers) {
-			receivers.forEach((receiver) => {
-				User.getUser(receiver, this.parallel());
+		return theTopic.getReceiverIDs(request).map(function(receiver) {
+			return Bluebird.fromCallback((cb) => {
+				User.getUser(receiver, cb)
 			})
-		}), cb);
+		}).nodeify(cb);
 	};
 
 	/** get receiver user data */
 	this.getReceiverData = function getReceiverDataF(request, cb) {
-		step(function () {
-			theTopic.getReceiver(request, this);
-		}, h.sF(function (receivers) {
-			var i;
-			for (i = 0; i < receivers.length; i += 1) {
-				receivers[i].getUData(request, this.parallel());
-			}
-		}), cb);
+		return theTopic.getReceiver(request).map((receiver) => {
+			return Bluebird.fromCallback((cb) => receiver.getUData(request, cb))
+		}).nodeify(cb)
 	};
 
 	this.isAdmin = (request) => {
@@ -388,8 +379,8 @@ var Topic = function (id) {
 	this.getFullData = function (request, cb) {
 		var server, meta;
 		step(function () {
-			theTopic.getTData(request, this);
-		}, h.sF(function (_server, _meta, additionalKey) {
+			return theTopic.getTData(request);
+		}, h.sF(function ({ server: _server, meta: _meta, additionalKey }) {
 			server = _server;
 			meta = _meta;
 			request.addKey(_meta._key, this.parallel());
@@ -709,18 +700,15 @@ var Topic = function (id) {
 	};
 
 	/** get topic data */
-	this.getTData = function (request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-
+	this.getTData = function (request) {
+		return hasAccessError(request).then(() => {
 			return Bluebird.all([
 				client.hgetallAsync(domain + ":server"),
 				client.hgetallAsync(domain + ":meta"),
 
 				client.hgetAsync(domain + ":receiverKeys", request.session.getUserID()),
 			])
-		}), h.sF(function ([server, meta, additionalKey]) {
+		}).then(function ([server, meta, additionalKey]) {
 			meta.createTime = h.parseDecimal(meta.createTime);
 			meta.creator = h.parseDecimal(meta.creator);
 
@@ -728,8 +716,8 @@ var Topic = function (id) {
 				meta.addedReceivers = JSON.parse(meta.addedReceivers)
 			}
 
-			this.ne(server, meta, additionalKey);
-		}), cb);
+			this.ne({ server, meta, additionalKey });
+		})
 	};
 };
 
