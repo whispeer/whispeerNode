@@ -2,7 +2,6 @@
 
 var KeyApi = {};
 
-var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 var Bluebird = require("bluebird")
@@ -135,9 +134,7 @@ KeyApi.getKeys = function getKeysF(realids, cb) {
 };
 
 KeyApi.checkKey = function (errors, realid, cb) {
-	return KeyApi.get(realid).then((key) => {
-		// return key.check(errors)
-	}).catch((err) => {
+	return KeyApi.get(realid).catch((err) => {
 		errors.push(err)
 	}).nodeify(cb);
 };
