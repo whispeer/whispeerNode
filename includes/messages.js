@@ -71,23 +71,10 @@ var Message = function (id) {
 	};
 
 	/** sender id */
-	this.getSenderID = function getSenderIDF(request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			client.hget(domain + ":meta", "sender", this);
-		}), h.sF(function (senderid) {
-			this.ne(senderid);
-		}), cb);
-	};
-
-	/** sender object */
-	this.getSender = function getSenderF(request, cb) {
-		step(function () {
-			theMessage.getSenderID(request, this);
-		}, h.sF(function (senderid) {
-			User.get(senderid, this);
-		}), cb);
+	this.getSenderID = function (request, cb) {
+		return hasAccessError(request).then(() => {
+			return client.hgetAsync(domain + ":meta", "sender");
+		}).nodeify(cb);
 	};
 
 	/** who will receive this message */
@@ -243,7 +230,7 @@ Message.create = function (request, data, cb) {
 
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
-		client.incr("message:messages", this);
+		return client.incrAsync("message:messages");
 	}), h.sF(function (messageid) {
 		server = {
 			sender: request.session.getUserID(),
@@ -266,7 +253,7 @@ Message.create = function (request, data, cb) {
 			multi.set("message:uuid:" + data.meta.messageUUID, messageid);
 		}
 
-		multi.exec(this);
+		return Bluebird.fromCallback((cb) => multi.exec(cb))
 	}), h.sF(function () {
 		theMessage = new Message(theMessageID);
 

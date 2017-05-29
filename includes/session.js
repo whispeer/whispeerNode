@@ -38,20 +38,13 @@ function code(length, callback) {
 		for (i = 0; i < length; i += 1) {
 			random.getRandomInt(0, h.codeChars.length - 1, this.parallel());
 		}
-
-		return;
-	}, function (err, numbers) {
-		if (err) {
-			callback(err);
-			return;
-		}
-
+	}, h.sF(function ( numbers) {
 		var result = numbers.map(function (number) {
 			return h.codeChars[number];
 		}).join("");
 
-		callback(null, result);
-	});
+		this.ne(result);
+	}), callback);
 }
 
 var Session = function Session() {
@@ -183,24 +176,24 @@ var Session = function Session() {
 	* @author Nilos
 	*/
 	this.setSID = function (theSID, cb) {
-		step(function () {
+		return Bluebird.try(function () {
 			lastChecked = time();
-			client.get("session:" + theSID, this);
-		}, h.sF(function (result) {
-			if (result && h.isID(result)) {
-				if (!logedin || h.parseDecimal(userid) !== h.parseDecimal(result)) {
-					userid = result;
-					sid = theSID;
-					logedin = true;
-
-					callListener(logedin);
-				}
-
-				this.last.ne(true);
-			} else {
-				this.last.ne(false);
+			return client.getAsync("session:" + theSID);
+		}).then((result) => {
+			if (!result || !h.isID(result)) {
+				return false
 			}
-		}), cb);
+
+			if (!logedin || h.parseDecimal(userid) !== h.parseDecimal(result)) {
+				userid = result;
+				sid = theSID;
+				logedin = true;
+
+				callListener(logedin);
+			}
+
+			return true
+		}).nodeify(cb);
 	};
 
 	/** get the session id */
@@ -213,14 +206,16 @@ var Session = function Session() {
 	* @callback (err) error if something went wrong.
 	*/
 	this.logout = function (cb) {
-		step(function () {
+		return Bluebird.try(function () {
 			callListener(false);
 
-			client.del("session:" + sid, this);
+			const p = client.delAsync(`session:${sid}`);
 			logedin = false;
 			userid = 0;
 			sid = undefined;
-		}, cb);
+
+			return p
+		}).nodeify(cb);
 	};
 
 	this._internalLogin = internalLogin;
@@ -232,14 +227,14 @@ var Session = function Session() {
 	* @callback (err, loginSuccess) error if something went wrong, loginSuccess true/false if login ok.
 	* @author Nilos
 	*/
-	this.login = function loginF(request, identifier, externalHash, token, cb) {
+	this.login = function (request, identifier, externalHash, token, cb) {
 		var myUser;
 		step(function () {
 			var User = require("./user.js");
 			User.getUser(identifier, this);
 		}, h.sF(function (user) {
 			myUser = user;
-			myUser.useToken(token, this);
+			return myUser.useToken(token);
 		}), h.sF(function (tokenUsed) {
 			if (tokenUsed !== true) {
 				throw new InvalidToken();
@@ -471,13 +466,11 @@ var Session = function Session() {
 	};
 
 	this.ownUserError = function (user, cb) {
-		step(function () {
-			if (typeof user === "object" && !user.isSaved()) {
-				this.last.ne();
-			}
+		if (typeof user === "object" && !user.isSaved()) {
+			return Bluebird.resolve().nodeify(cb)
+		}
 
-			return session.logedinError();
-		}, h.sF(function () {
+		return session.logedinError().then(() => {
 			var sessionUserID = session.getUserID();
 			if (typeof user === "object") {
 				if (sessionUserID !== user.getID()) {
@@ -495,9 +488,7 @@ var Session = function Session() {
 			} else {
 				throw new AccessViolation();
 			}
-
-			this.ne();
-		}), cb);
+		}).nodeify(cb)
 	};
 
 	this.getOwnUser = function (cb) {

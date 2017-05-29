@@ -5,6 +5,8 @@ var step = require("step");
 
 var client = require("./redisClient");
 
+var Bluebird = require("bluebird")
+
 function SavedEntity(domain) {
 	this._saved = true;
 	this._domain = domain;
@@ -123,9 +125,9 @@ function SavedEntity(domain) {
 			that._executeHooks("read", field.attrs, data, this);
 		}, h.sF(function () {
 			if (fullHash) {
-				client.hgetall(field.key, this);
+				return client.hgetallAsync(field.key, this);
 			} else {
-				client.hget(field.key, field.attr, this);
+				return client.hgetAsync(field.key, field.attr, this);
 			}
 		}), h.sF(function (value) {
 			data.value = value;
@@ -168,7 +170,7 @@ function UnSavedEntity() {
 			this._data[field.key][field.attr] = value;
 		}
 
-		cb();
+		return Bluebird.resolve().nodeify(cb)
 	};
 
 	this.getAttribute = function(request, attrs, cb, fullHash) {
@@ -177,9 +179,9 @@ function UnSavedEntity() {
 		var field = this.getFieldName(attrs, fullHash);
 
 		if (fullHash) {
-			cb(null, this._data[field.key]);
+			return Bluebird.resolve(this._data[field.key]).nodeify(cb)
 		} else {
-			cb(null, this._data[field.key][field.attr]);
+			return Bluebird.resolve(this._data[field.key][field.attr]).nodeify(cb)
 		}
 	};
 

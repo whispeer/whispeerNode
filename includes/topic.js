@@ -1,7 +1,6 @@
 "use strict";
 
 var Topic = require("./topic");
-var step = require("step");
 var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
@@ -574,18 +573,18 @@ var Topic = function (id) {
 	}
 
 	/** add a message to this topic */
-	this.addMessage = function addMessageF(request, message, cb) {
+	this.addMessage = (request, message, cb) => {
 		var theReceiver, theSender, messageID;
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			//TO-DO check that all receiver have access to the messageKey
-			this.parallel.unflatten();
 
-			message.getSenderID(request, this.parallel());
-			message.getTime(request, this.parallel());
-			theTopic.getReceiver(request, this.parallel());
-		}), h.sF(function (senderid, time, receiver) {
+		return hasAccessError(request).then(() => {
+			//TO-DO check that all receiver have access to the messageKey
+
+			return Bluebird.all([
+				message.getSenderID(request),
+				message.getTime(request),
+				this.getReceiver(request),
+			])
+		}).then(([senderid, time, receiver]) => {
 			theReceiver = receiver;
 			theSender = senderid;
 			var multi = client.multi();
@@ -594,7 +593,7 @@ var Topic = function (id) {
 			multi.zadd(mDomain, time, messageID);
 			multi.zadd(domain + ":user:" + senderid + ":messages", time, messageID);
 
-			theReceiver.forEach(function (receiver) {
+			theReceiver.forEach((receiver) => {
 				var rid = receiver.getID();
 
 				if (rid !== h.parseDecimal(theSender)) {
@@ -612,15 +611,15 @@ var Topic = function (id) {
 			});
 
 			return Bluebird.fromCallback((cb) => multi.exec(cb))
-		}), h.sF(function () {
-			theTopic.notifyReceivers(request, "message", messageID)
+		}).then(() => {
+			this.notifyReceivers(request, "message", messageID)
 
-			var senderObject = theReceiver.filter(function (u) {
+			var senderObject = theReceiver.filter((u) => {
 				return u.getID() === h.parseDecimal(theSender);
 			})[0];
 
-			senderObject.getNames(request, this);
-		}), h.sF(function (sender) {
+			return senderObject.getNames(request);
+		}).then((sender) => {
 			sender = sender.firstName || sender.lastName || sender.nickname;
 			pushMessage(request, theReceiver, sender, message);
 			mailer.sendInteractionMails(theReceiver, "message", "new", {
@@ -628,8 +627,8 @@ var Topic = function (id) {
 				interactionID: id
 			});
 
-			this.ne(true);
-		}), cb);
+			return true;
+		}).nodeify(cb);
 	};
 
 	/** get the newest message

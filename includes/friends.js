@@ -598,16 +598,16 @@ var friends = {
 				KeyApi.checkKey(errors, signedList[id], this.parallel());
 			}, this);
 
-			if (!h.emptyUnion(requests, requested)) 	{ errors.push("requests  and requested    are not exclusive for " + uid); }
-			if (!h.emptyUnion(requests, userFriends)) 	{ errors.push("requests  and friends      are not exclusive for " + uid); }
-			if (!h.emptyUnion(requests, unfriended)) 	{ errors.push("requests  and unfriended   are not exclusive for " + uid); }
-			if (!h.emptyUnion(requests, ignored)) 		{ errors.push("requests  and ignored      are not exclusive for " + uid); }
-			if (!h.emptyUnion(requested, userFriends)) 	{ errors.push("requested and friends      are not exclusive for " + uid); }
-			if (!h.emptyUnion(requested, unfriended)) 	{ errors.push("requested and unfriended   are not exclusive for " + uid); }
-			if (!h.emptyUnion(requested, ignored)) 		{ errors.push("requested and ignored      are not exclusive for " + uid); }
-			if (!h.emptyUnion(userFriends, unfriended)) { errors.push("friends   and unfriended   are not exclusive for " + uid); }
-			if (!h.emptyUnion(userFriends, ignored)) 	{ errors.push("friends   and ignored      are not exclusive for " + uid); }
-			if (!h.emptyUnion(unfriended, ignored)) 	{ errors.push("unfriendedand ignored      are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, requested)) 	{ errors.push("requests and requested are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, userFriends)) 	{ errors.push("requests and friends are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, unfriended)) 	{ errors.push("requests and unfriended are not exclusive for " + uid); }
+			if (!h.emptyUnion(requests, ignored)) 		{ errors.push("requests and ignored are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, userFriends)) 	{ errors.push("requested and friends are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, unfriended)) 	{ errors.push("requested and unfriended are not exclusive for " + uid); }
+			if (!h.emptyUnion(requested, ignored)) 		{ errors.push("requested and ignored are not exclusive for " + uid); }
+			if (!h.emptyUnion(userFriends, unfriended)) { errors.push("friends and unfriended are not exclusive for " + uid); }
+			if (!h.emptyUnion(userFriends, ignored)) 	{ errors.push("friends and ignored are not exclusive for " + uid); }
+			if (!h.emptyUnion(unfriended, ignored)) 	{ errors.push("unfriendedand ignored are not exclusive for " + uid); }
 
 			requests.concat(requested).concat(userFriends).concat(unfriended).forEach(function (friendID) {
 				friends.checkFriendShip(errors, uid, friendID, this.parallel());

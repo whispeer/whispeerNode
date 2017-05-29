@@ -21,23 +21,19 @@ const KeyApi = require("./crypto/KeyApi");
 const RedisObserver = require("./asset/redisObserver");
 
 function logedinF(data, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 		if (data.reference.isSaved()) {
-			data.request.session.logedinError(this);
-		} else {
-			this.ne();
+			return data.request.session.logedinError();
 		}
-	}, cb);
+	}).nodeify(cb);
 }
 
 function ownUserF(data, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 		if (data.reference.isSaved()) {
-			data.request.session.ownUserError(data.reference, this);
-		} else {
-			this.ne();
+			return data.request.session.ownUserError(data.reference);
 		}
-	}, cb);
+	}).nodeify(cb)
 }
 
 function hasFriendKeyAccess(data, cb) {
@@ -178,17 +174,17 @@ var validKeys = {
 		read: trueF,
 		match: /^[A-z][A-z0-9]*$/,
 		pre: function (data, cb) {
-			step(function nPre1() {
+			step(function () {
 				ownUserF(data, this);
 			}, h.sF(function () {
 				client.setnx("user:nickname:" + data.value.toLowerCase(), data.reference.getID(), this);
-			}), h.sF(function nPre2(set) {
+			}), h.sF(function (set) {
 				if (set) {
 					this.last.ne();
 				} else {
 					client.get("user:nickname:" + data.value.toLowerCase(), this);
 				}
-			}), h.sF(function nPre3(id) {
+			}), h.sF(function (id) {
 				if (id === data.reference.getID()) {
 					this.last.ne();
 				} else {
@@ -285,55 +281,65 @@ var User = function (id) {
 	});
 
 	function getAttribute(request, attr, cb, fullHash) {
-		databaseUser.getAttribute(request, attr, cb, fullHash);
+		return Bluebird.fromCallback((cb) => databaseUser.getAttribute(request, attr, cb, fullHash)).nodeify(cb)
 	}
 
 	function setAttribute(request, attr, value, cb) {
-		databaseUser.setAttribute(request, attr, value, cb);
+		return Bluebird.fromCallback((cb) => databaseUser.setAttribute(request, attr, value, cb)).nodeify(cb)
 	}
 
 	function createAccessors(attributes) {
-		attributes.forEach(function (attribute) {
+		attributes.forEach((attribute) => {
 			var accessor = h.capitaliseFirstLetter(attribute);
 
-			theUser["get" + accessor] = function getAttribute(request, cb) {
-				databaseUser.getAttribute(request, attribute, cb);
+			this[`get${accessor}`] = function (request, cb) {
+				return getAttribute(request, attribute, cb)
 			};
 
-			theUser["set" + accessor] = function setAttribute(request, value, cb) {
-				databaseUser.setAttribute(request, attribute, value, cb);
+			this[`set${accessor}`] = function (request, value, cb) {
+				return setAttribute(request, attribute, value, cb)
 			};
 		});
 	}
 
-	createAccessors(["password", "salt", "nickname", "migrationState", "email",
-					"mainKey", "cryptKey", "signKey", "friendsKey", "signedOwnKeys", "disabled"]);
+	createAccessors([
+		"password",
+		"salt",
+		"nickname",
+		"migrationState",
+		"email",
+		"mainKey",
+		"cryptKey",
+		"signKey",
+		"friendsKey",
+		"signedOwnKeys",
+		"disabled"
+	]);
 
 	function deleteUser(cb) {
 		//TODO: think about nickname, mail (unique values)
-		step(function () {
-			client.keys(userDomain + ":*", this);
-		}, h.sF(function (keys) {
-			keys.forEach(function (key) {
-				client.del(key, this.parallel());
-			}, this);
-		}), cb);
+
+		return client.keysAsync(userDomain + ":*").map((key) => {
+			return client.delAsync(key);
+		}).nodeify(cb);
 	}
 
 	this.save = function doSave(request, cb) {
 		h.assert(!databaseUser.isSaved());
 
 		step(function doSave() {
-			client.incr("user:count", this);
+			return client.incrAsync("user:count");
 		}, h.sF(function handleNewID(myid) {
 			id = h.parseDecimal(myid);
 			userDomain = "user:" + id;
 
 			this.parallel.unflatten();
 
-			client.setnx("user:id:" + id, id, this.parallel());
-			client.sadd("user:list", id, this.parallel());
-		}), h.sF(function (set) {
+			return Bluebird.all([
+				client.setnx("user:id:" + id, id),
+				client.sadd("user:list", id),
+			])
+		}), h.sF(function ([set]) {
 			h.assert(set);
 
 			databaseUser.save(request, userDomain, this);
@@ -377,8 +383,8 @@ var User = function (id) {
 		return parseInt(request.session.getUserID(), 10) === id;
 	};
 
-	this.isOnline = function isOnlineF(cb) {
-		client.sismember("user:online", id, cb);
+	this.isOnline = function (cb) {
+		return client.sismemberAsync("user:online", id).nodeify(cb);
 	};
 
 	this.donated = function (request, cb) {
@@ -388,13 +394,33 @@ var User = function (id) {
 			.exec(cb);
 	};
 
-	function getNamesF(request, cb) {
-		step(function () {
-			this.parallel.unflatten();
+	this.getName = function (request, cb) {
+		return this.getNames(request).then((names) => {
+			var namesList = [];
 
-			theUser.getNickname(request, this.parallel());
-			theUser.getPublicProfile(request, this.parallel());
-		}, h.sF(function (nickname, profile) {
+			if (names.firstName) {
+				namesList.push(names.firstName);
+			}
+
+			if (names.lastName) {
+				namesList.push(names.lastName);
+			}
+
+			if (names.nickname) {
+				namesList.push(names.nickname);
+			}
+
+			return namesList.join(" ");
+		}).nodeify(cb);
+	}
+
+	this.getNames = (request, cb) => {
+		return Bluebird.try(() => {
+			return Bluebird.all([
+				this.getNickname(request),
+				this.getPublicProfile(request),
+			])
+		}).spread((nickname, profile) => {
 			var res = {};
 			if (profile && profile.content && profile.content.basic)  {
 				var basicProfile = profile.content.basic;
@@ -412,62 +438,33 @@ var User = function (id) {
 				res.nickname = nickname;
 			}
 
-			this.ne(res);
-		}), cb);
+			return res;
+		}).nodeify(cb);
 	}
-
-	function getNameF(request, cb) {
-		step(function () {
-			theUser.getNames(request, this);
-		}, h.sF(function (names) {
-			var namesList = [];
-
-			if (names.firstName) {
-				namesList.push(names.firstName);
-			}
-
-			if (names.lastName) {
-				namesList.push(names.lastName);
-			}
-
-			if (names.nickname) {
-				namesList.push(names.nickname);
-			}
-
-			this.ne(namesList.join(" "));
-		}), cb);
-	}
-
-	this.getName = getNameF;
-	this.getNames = getNamesF;
 
 	this.getEMail = function(request, cb) {
-		step(function () {
-			getAttribute(request, "email", this);
-		}, cb);
+		return getAttribute(request, "email").nodeify(cb);
 	};
 
 	this.setMail = function(request, mail, cb) {
-		step(function doSetMail() {
-			setAttribute(request, "email", mail, this);
-		}, cb);
+		return setAttribute(request, "email", mail).nodeify(cb);
 	};
 
 	this.getSignedKeys = function (request, cb) {
-		getAttribute(request, "signedKeys", cb, true);
+		return getAttribute(request, "signedKeys", null, true).nodeify(cb);
 	};
 
 	this.setSignedKeys = function (request, signedKeys, cb) {
-		setAttribute(request, "signedKeys", signedKeys, cb);
+		return setAttribute(request, "signedKeys", signedKeys).nodeify(cb);
 	};
 
 	this.setPublicProfile = function(request, profile, cb) {
-		setAttribute(request, "profile", profile, cb);
+		return setAttribute(request, "profile", profile).nodeify(cb);
 	};
 
 	this.setMyProfile = function (request, myProfileData, cb) {
 		step(function () {
-			getAttribute(request, "myProfile", this);
+			return getAttribute(request, "myProfile");
 		}, h.sF(function (meID) {
 			var Profile = require("./profile");
 			if (meID) {
@@ -488,7 +485,7 @@ var User = function (id) {
 
 	this.deletePrivateProfilesExceptMine = function (request, cb) {
 		step(function () {
-			getAttribute(request, "myProfile", this);
+			return getAttribute(request, "myProfile");
 		}, h.sF(function (myProfile) {
 			require("./profile").deleteAllExcept(request, myProfile, this);
 		}), cb);
@@ -508,75 +505,60 @@ var User = function (id) {
 	};
 
 	this.getPublicProfile = function(request, cb) {
-		step(function doGetPublicProfile() {
-			getAttribute(request, "profile", this, true);
-		}, cb);
+		return getAttribute(request, "profile", null, true).nodeify(cb);
 	};
 
 	this.getFriendShipKey = function(request, cb) {
-		step(function getFSKF() {
-			request.session.logedinError(this);
-		}, h.sF(function () {
-			client.hget("friends:" + request.session.getUserID() + ":signedList", id, this);
-		}), cb);
+		return request.session.logedinError().then(() => {
+			return client.hgetAsync("friends:" + request.session.getUserID() + ":signedList", id);
+		}).nodeify(cb);
 	};
 
 	this.getReverseFriendShipKey = function(request, cb) {
-		step(function getFSKF() {
-			request.session.logedinError(this);
-		}, h.sF(function () {
-			client.hget("friends:" + id + ":signedList", request.session.getUserID(), this);
-		}), cb);
+		return request.session.logedinError(this).then(() => {
+			return client.hgetAsync(`friends:${id}:signedList`, request.session.getUserID());
+		}).nodeify(cb);
 	};
 
-	function addKey(request, keyName, cb, filter) {
-		step(function () {
-			getAttribute(request, keyName, this);
-		}, h.sF(function (key) {
+	function addKey(request, keyName, filter) {
+		return getAttribute(request, keyName).then((key) => {
 			if (key === null) {
 				throw new Error("key id should not be null for " + keyName + " - " + id);
 			}
 
-			request.addKey(key, this, filter);
-		}), cb);
+			return request.addKey(key, null, filter);
+		})
 	}
 
-	this.addFriendShipKeys = function (request, cb) {
-		step(function () {
-			this.parallel.unflatten();
-
-			theUser.getFriendShipKey(request, this.parallel());
-			theUser.getReverseFriendShipKey(request, this.parallel());
-		}, h.sF(function (friendShipKey, reverseFriendShipKey) {
-			if (friendShipKey) {
-				request.addKey(friendShipKey, this.parallel());
-			}
-
-			if (reverseFriendShipKey) {
-				request.addKey(reverseFriendShipKey, this.parallel());
-			}
-
-			this.parallel()();
-		}), cb);
+	this.addFriendShipKeys = (request, cb) => {
+		return Bluebird.all([
+			this.getFriendShipKey(request),
+			this.getReverseFriendShipKey(request),
+		]).then(([friendShipKey, reverseFriendShipKey]) => {
+			return Bluebird.all([
+				friendShipKey ? request.addKey(friendShipKey) : null,
+				reverseFriendShipKey ? request.addKey(reverseFriendShipKey) : null,
+			])
+		}).nodeify(cb);
 	};
 
 	this.addOwnKeys = function (request, cb) {
-		addKey(request, "mainKey", cb);
+		return addKey(request, "mainKey").nodeify(cb)
 	};
 
 	this.addPublicKeys = function (request, cb) {
-		addKey(request, "signKey", cb);
+		return addKey(request, "signKey").nodeify(cb)
 	};
 
 	this.addFriendsKeys = function (request, cb) {
 		step(function () {
 			if (theUser.isOwnUser(request)) {
-				getAttribute(request, "mainKey", this);
+				return getAttribute(request, "mainKey");
 			} else {
 				this.ne("");
 			}
 		}, h.sF(function (mainKey) {
-			addKey(request, "friendsKey", this, function (decryptor) {
+			return addKey(request, "friendsKey", function (decryptor) {
 				return !theUser.isOwnUser(request) || decryptor.decryptorid === mainKey;
 			});
 		}), cb);
@@ -626,7 +608,7 @@ var User = function (id) {
 
 	this.check = function (errors, cb) {
 		var friends = require("./friends");
-		friends.checkSignedList(errors, this.getID(), cb);
+		return Bluebird.fromCallback((cb) => friends.checkSignedList(errors, this.getID(), cb)).nodeify(cb);
 	};
 
 	function getProfiles(request, cb) {
@@ -645,7 +627,7 @@ var User = function (id) {
 
 	function getMyProfile(request, cb) {
 		step(function () {
-			getAttribute(request, "myProfile", this);
+			return getAttribute(request, "myProfile");
 		}, h.sF(function (meID) {
 			var Profile = require("./profile");
 			new Profile(request.session.getUserID(), meID).getPData(request, this);
@@ -667,7 +649,7 @@ var User = function (id) {
 	this.getUData = function (request, cb) {
 		var result;
 		step(function () {
-			request.session.logedinError(this);
+			return request.session.logedinError();
 		}, h.sF(function () {
 			this.parallel.unflatten();
 
@@ -719,7 +701,7 @@ var User = function (id) {
 			token = random;
 			//TODO expire
 			//client.set(userDomain + ":token:" + random, 'true', 'NX', 'EX', 60 * 5, this);
-			client.setnx(userDomain + ":token:" + random, "true", this);
+			return client.setnxAsync(userDomain + ":token:" + random, "true");
 		}), h.sF(function (set) {
 			if (set) {
 				this.ne(token);
@@ -730,36 +712,23 @@ var User = function (id) {
 	};
 
 	this.addFriendRecommendation = function (user, score, cb) {
-		step(function () {
+		return Bluebird.try(function () {
 			var userid = user.getID();
-			client.zadd(userDomain + ":recommendations", score, userid, this);
-		}, h.sF(function () {
-			this.ne();
-		}), cb);
+			return client.zaddAsync(userDomain + ":recommendations", score, userid);
+		}).then(() => {
+		}).nodeify(cb);
 	};
 
 	this.getOnlineStatus = function(cb) {
-		step(function () {
-			client.sismember("user:online", id, this.parallel());
-		}, h.sF(function (online) {
-			if (online) {
-				this.ne(2);
-			} else {
-				this.ne(0);
-			}
-		}), cb);
+		return client.sismemberAsync("user:online", id).then((online) => {
+			return online ? 2 : 0
+		}).nodeify(cb);
 	};
 
-	this.useToken = function useTokenF(token, cb) {
-		step(function () {
-			client.del(userDomain + ":token:" + token, this);
-		}, h.sF(function (deleted) {
-			if (deleted === 1) {
-				this.ne(true);
-			} else {
-				this.ne(false);
-			}
-		}), cb);
+	this.useToken = function (token, cb) {
+		return client.delAsync(userDomain + ":token:" + token).then(function (deleted) {
+			return deleted === 1
+		}).nodeify(cb);
 	};
 
 	this.changePassword = function (request, password, signedOwnKeys, mainDecryptor, cb) {
@@ -769,14 +738,14 @@ var User = function (id) {
 
 		var mainKey;
 		step(function () {
-			request.session.ownUserError(theUser, this);
+			return request.session.ownUserError(theUser);
 		}, h.sF(function () {
 			theUser.getMainKey(request, this);
 		}), h.sF(function (mainKey) {
-			KeyApi.get(mainKey, this);
+			return KeyApi.get(mainKey);
 		}), h.sF(function (_mainKey) {
 			mainKey = _mainKey;
-			mainKey.removeAllPWDecryptors(request, this);
+			return mainKey.removeAllPWDecryptors(request);
 		}), h.sF(function () {
 			mainKey.addDecryptor(request, mainDecryptor, this.parallel());
 			theUser.setPassword(request, password.hash, this.parallel());
@@ -789,7 +758,7 @@ var User = function (id) {
 	this.addBackupKey = function (request, decryptors, key, cb) {
 		var backupKey;
 		step(function () {
-			request.session.ownUserError(theUser, this);
+			return request.session.ownUserError(theUser);
 		}, h.sF(function () {
 			//get main key!
 			this.parallel.unflatten();
@@ -797,11 +766,11 @@ var User = function (id) {
 			SymKey.create(request, key, this.parallel());
 		}), h.sF(function (mainKey, _backupKey) {
 			backupKey = _backupKey;
-			KeyApi.get(mainKey, this);
+			return KeyApi.get(mainKey);
 		}), h.sF(function (mainKey) {
-			mainKey.addDecryptors(request, decryptors, this);
+			return mainKey.addDecryptors(request, decryptors);
 		}), h.sF(function () {
-			client.sadd(userDomain + ":backupKeys", backupKey.getRealID(), this);
+			return client.saddAsync(userDomain + ":backupKeys", backupKey.getRealID());
 		}), cb);
 	};
 
@@ -882,8 +851,10 @@ var User = function (id) {
 			request.session._internalLogin(theUser.getID(), this);
 		}), h.sF(function () {
 			//sent correct key and main key for download purposes!
-			request.addKey(backupKey, this.parallel());
-			theUser.addOwnKeys(request, this.parallel());
+			return Bluebird.all([
+				request.addKey(backupKey),
+				theUser.addOwnKeys(request),
+			])
 
 			//receive password change request hopefully
 		}), cb);
@@ -948,29 +919,19 @@ User.checkUserIDs = function (ids, cb) {
 };
 
 User.all = function (cb) {
-	step(function () {
-		client.smembers("user:list", this);
-	}, h.sF(function (uids) {
-		uids.forEach(function (uid) {
-			User.getUser(uid, this.parallel());
-		}, this);
-	}), cb);
+	return client.smembersAsync("user:list").map((uid) => {
+		return User.getUser(uid);
+	}).nodeify(cb);
 };
 
 User.check = function (errors, cb) {
-	step(function () {
-		User.all(this);
-	}, h.sF(function (users) {
-		users.forEach(function (user) {
-			user.check(errors, this.parallel());
-		}, this);
-
-		this.parallel()();
-	}), cb);
+	return User.all().map(function (user) {
+		return user.check(errors);
+	}).nodeify(cb);
 };
 
-User.getUser = function (identifier, callback, returnError) {
-	step(function () {
+User.getUser = function (identifier, cb, returnError) {
+	return Bluebird.try(function () {
 		if (h.isMail(identifier)) {
 			return client.getAsync("user:mail:" + identifier);
 		}
@@ -983,40 +944,38 @@ User.getUser = function (identifier, callback, returnError) {
 			return client.getAsync("user:id:" + identifier);
 		}
 
-		if (returnError) {
-			this.last.ne(new UserNotExisting(identifier));
+		throw new UserNotExisting(identifier);
+	}).then(function (id) {
+		if (id === "-1" && h.isNickname(identifier)) {
+			return client.getAsync("user:nickname:old:" + identifier);
+		} else {
+			return id;
+		}
+	}).then(function (id) {
+		if (id && id !== "-1") {
+			return new User(id);
 		} else {
 			throw new UserNotExisting(identifier);
 		}
-	}, h.sF(function (id) {
-		if (id === "-1" && h.isNickname(identifier)) {
-			return client.getAsync("user:nickname:old:" + identifier, this);
-		} else {
-			this.ne(id);
+	}).catch(UserNotExisting, (e) => {
+		if (returnError) {
+			return e
 		}
-	}), h.sF(function (id) {
-		if (id && id !== "-1") {
-			this.last.ne(new User(id));
-		} else {
-			if (returnError) {
-				this.ne(new UserNotExisting(identifier));
-			} else {
-				throw new UserNotExisting(identifier);
-			}
-		}
-	}), callback);
+
+		return Bluebird.reject(e)
+	}).nodeify(cb);
 };
 
 User.isNicknameFree = function (nickname, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 		if (h.isNickname(nickname)) {
-			client.get("user:nickname:" + nickname.toLowerCase(), this);
+			return client.getAsync("user:nickname:" + nickname.toLowerCase());
 		} else {
 			throw new Error("invalid nickname");
 		}
-	}, h.sF(function (id) {
-		this.ne(!id);
-	}), cb);
+	}).then(function (id) {
+		return !id
+	}).nodeify(cb);
 };
 
 module.exports = User;
