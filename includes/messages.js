@@ -65,13 +65,9 @@ var Message = function (id) {
 	};
 
 	this.getSortCounter = function (request, cb) {
-		step(function () {
-			return hasAccessError(request);
-		}, h.sF(function () {
-			client.hget(domain + ":meta", "_sortCounter", this);
-		}), h.sF(function (hash) {
-			this.ne(hash);
-		}), cb);
+		return hasAccessError(request).then(() => {
+			return client.hgetAsync(domain + ":meta", "_sortCounter");
+		}).nodeify(cb)
 	};
 
 	/** sender id */
@@ -179,12 +175,10 @@ var Message = function (id) {
 	};
 };
 
-function processImages(request, images, keys, cb) {
-	step(function () {
-		keys.forEach(function (key) {
-			SymKey.createWDecryptors(request, key, this.parallel());
-		}, this);
-	}, cb);
+function processImages(request, images, keys) {
+	return Bluebird.resolve(keys).map((key) => {
+		return SymKey.create(request, key)
+	})
 }
 
 Message.create = function (request, data, cb) {
@@ -199,19 +193,21 @@ Message.create = function (request, data, cb) {
 			throw new InvalidMessageData();
 		}
 
-		if (data.meta.topicid) {
-			return Topic.get(data.meta.topicid);
+		if (!data.meta.topicid) {
+			throw new InvalidMessageData();
 		}
 
-		throw new InvalidMessageData();
+		return Topic.get(data.meta.topicid);
 	}, h.sF(function (topic) {
 		theTopic = topic;
 
 		this.parallel.unflatten()
 
-		theTopic.getNewest(request, this.parallel());
-		theTopic.getSuccessorID(this.parallel())
-	}), h.sF(function (newest, successor) {
+		return Bluebird.all([
+			theTopic.getNewest(request),
+			theTopic.getSuccessorID(),
+		])
+	}), h.sF(function ([newest, successor]) {
 		if (successor && !meta.hidden) {
 			throw new SuccessorError("Can't send message because topic has a successor")
 		}
@@ -219,7 +215,7 @@ Message.create = function (request, data, cb) {
 		if (newest === 0) {
 			this.ne(0);
 		} else {
-			newest.getSortCounter(request, this);
+			return newest.getSortCounter(request);
 		}
 	}), h.sF(function (newestCounter) {
 		if (newestCounter && parseInt(meta._sortCounter, 10) < newestCounter) {
@@ -229,13 +225,13 @@ Message.create = function (request, data, cb) {
 		}
 
 		if (data.meta.images && data.meta.images.length > 0) {
-			processImages(request, data.meta.images, data.imageKeys, this);
+			return processImages(request, data.meta.images, data.imageKeys);
 		} else {
 			this.ne();
 		}
 	}), h.sF(function () {
 		if (h.isUUID(data.meta.messageUUID)) {
-			client.get("message:uuid:" + data.meta.messageUUID, this);
+			return client.getAsync("message:uuid:" + data.meta.messageUUID);
 		} else {
 			this.ne(false);
 		}

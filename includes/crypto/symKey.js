@@ -1,6 +1,5 @@
 "use strict";
 
-const step = require("step");
 const Bluebird = require("bluebird")
 const h = require("whispeerHelper");
 
@@ -59,23 +58,21 @@ function validateFormat(data) {
 	}
 }
 
-SymKey.validate = function (data, cb) {
+SymKey.validate = function (data) {
 	var err = validateFormat(data);
 	if (err) {
 		throw err;
-	} else {
-		cb();
 	}
 };
 
 SymKey.validateNoThrow = function (data, cb) {
-	step(function () {
+	return Bluebird.try(function () {
 		if (validateFormat(data)) {
-			this.ne(false);
-		} else {
-			this.ne(true);
+			return false
 		}
-	}, cb);
+
+		return true
+	}).nodeify(cb);
 };
 
 
@@ -96,45 +93,37 @@ SymKey.get = function getF(keyRealID, cb) {
 	}).nodeify(cb);
 };
 
-SymKey.createWDecryptors = function (request, data, cb) {
-	step(function () {
+/** create a symmetric key */
+SymKey.create = function (request, data, cb) {
+	var keyRealID, theKey;
+	return Bluebird.try(function () {
 		if (!data.decryptors || data.decryptors.length === 0) {
 			throw new InvalidSymKey("no decryptors given");
 		}
 
-		SymKey.create(request, data, this);
-	}, cb);
-};
+		SymKey.validate(data);
 
-/** create a symmetric key */
-SymKey.create = function (request, data, cb) {
-	var keyRealID, theKey;
-	step(function () {
-		SymKey.validate(data, this);
-	}, h.sF(function () {
 		keyRealID = data.realid;
 
-		client.setnx("key:" + keyRealID + ":used", "1", this);
-	}), h.sF(function (set) {
+		return client.setnxAsync("key:" + keyRealID + ":used", "1");
+	}).then((set) => {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
-		client.hmset("key:" + keyRealID, {
+		return client.hmsetAsync("key:" + keyRealID, {
 			owner: request.session.getUserID(),
 			type: data.type,
 			comment: data.comment || ""
-		}, this);
-	}), h.sF(function () {
+		});
+	}).then(() => {
 		theKey = new SymKey(keyRealID);
 		if (data.decryptors) {
-			theKey.addDecryptors(request, data.decryptors, this);
-		} else {
-			this.last.ne(theKey);
+			return theKey.addDecryptors(request, data.decryptors).thenReturn(theKey);
 		}
-	}), h.sF(function () {
-		this.last.ne(theKey);
-	}), cb);
+
+		return Bluebird.resolve(theKey)
+	}).nodeify(cb)
 };
 
 module.exports = SymKey;

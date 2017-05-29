@@ -29,7 +29,7 @@ var f = {
 	},
 	remove: function (data, fn, request) {
 		step(function () {
-			SymKey.createWDecryptors(request, data.newFriendsKey, this);
+			SymKey.create(request, data.newFriendsKey, this);
 		}, h.sF(function () {
 			Friends.remove(request, data.uid, data.signedList, data.signedRemoval, this);
 		}), h.sF(function (success) {

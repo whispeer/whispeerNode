@@ -794,7 +794,7 @@ var User = function (id) {
 			//get main key!
 			this.parallel.unflatten();
 			theUser.getMainKey(request, this.parallel());
-			SymKey.createWDecryptors(request, key, this.parallel());
+			SymKey.create(request, key, this.parallel());
 		}), h.sF(function (mainKey, _backupKey) {
 			backupKey = _backupKey;
 			KeyApi.get(mainKey, this);

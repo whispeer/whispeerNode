@@ -328,11 +328,11 @@ var Session = function Session() {
 			step(function () {
 				var i;
 				for (i = 0; i < registerSymKeys.length; i += 1) {
-					SymKey.createWDecryptors(request, keys[registerSymKeys[i]], this.parallel());
+					SymKey.create(request, keys[registerSymKeys[i]], this.parallel());
 				}
 
 				for (i = 0; i < registerEccKeys.length; i += 1) {
-					EccKey.createWDecryptors(request, keys[registerEccKeys[i]], this.parallel());
+					EccKey.create(request, keys[registerEccKeys[i]], this.parallel());
 				}
 			}, h.sF(function (keys) {
 				keys = h.arrayToObject(keys, function (val, index) {

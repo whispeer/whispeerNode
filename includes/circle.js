@@ -67,7 +67,7 @@ var Circle = function (userid, id) {
 
 			KeyApi.get(oldKeyID, this.parallel());
 			if (key) {
-				SymKey.createWDecryptors(request, key, this.parallel());
+				SymKey.create(request, key, this.parallel());
 			}
 		}), h.sF(function (oldKey) {
 			oldKey.addDecryptors(request, decryptors, this.parallel());
@@ -165,7 +165,7 @@ Circle.create = function (request, data, cb) {
 
 		this.parallel()();
 	}, h.sF(function () {
-		SymKey.createWDecryptors(request, data.key, this);
+		SymKey.create(request, data.key, this);
 	}), h.sF(function () {
 		client.incr("user:" + userid + ":circle:count", this);
 	}), h.sF(function (circleid) {

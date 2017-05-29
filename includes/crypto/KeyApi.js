@@ -12,24 +12,22 @@ var SymKey = require("./symKey");
 var Decryptor = require("./decryptor");
 
 /** validate key data. Does no duplicate check. */
-KeyApi.validate = function validateF(data, callback) {
-	step(function () {
-		if (data) {
-			switch (data.type) {
-			case "sym":
-				SymKey.validate(data, this);
-				break;
-			case "sign":
-			case "crypt":
-				EccKey.validate(data, this);
-				break;
-			default:
-				throw new InvalidKey();
-			}
-		} else {
+KeyApi.validate = function (data) {
+	if (data) {
+		switch (data.type) {
+		case "sym":
+			SymKey.validate(data);
+			break;
+		case "sign":
+		case "crypt":
+			EccKey.validate(data);
+			break;
+		default:
 			throw new InvalidKey();
 		}
-	}, callback);
+	} else {
+		throw new InvalidKey();
+	}
 };
 
 /** validate a decryptor. No Duplicate check. */
@@ -124,9 +122,9 @@ KeyApi.get = function (realid, cb) {
 
 KeyApi.createWithDecryptors = function (request, keyData, cb) {
 	if (keyData.type === "sign" || keyData.type === "crypt") {
-		EccKey.createWDecryptors(request, keyData, cb);
+		EccKey.create(request, keyData, cb);
 	} else {
-		SymKey.createWDecryptors(request, keyData, cb);
+		SymKey.create(request, keyData, cb);
 	}
 };
 

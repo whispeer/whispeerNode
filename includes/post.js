@@ -452,7 +452,9 @@ Post.validateFormat = function (data, cb) {
 			throw new InvalidPost("time too old");
 		}
 
-		KeyApi.validate(data.meta._key, this);
+		KeyApi.validate(data.meta._key);
+
+		this.ne()
 	}, cb);
 };
 
@@ -469,7 +471,7 @@ function processWallUser(userid, cb) {
 function processKey(request, keyData, cb) {
 	if (keyData) {
 		step(function () {
-			SymKey.createWDecryptors(request, keyData, this);
+			SymKey.create(request, keyData, this);
 		}, h.sF(function (key) {
 			this.ne(key.getRealID());
 		}), cb);
@@ -481,7 +483,7 @@ function processKey(request, keyData, cb) {
 function processImages(request, images, keys, cb) {
 	step(function () {
 		keys.forEach(function (key) {
-			SymKey.createWDecryptors(request, key, this.parallel());
+			SymKey.create(request, key, this.parallel());
 		}, this);
 	}, cb);
 }

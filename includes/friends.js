@@ -440,7 +440,7 @@ var friends = {
 
 			setSignedList(request, m, signedList, [uid], [], this);
 		}), h.sF(function () {
-			SymKey.createWDecryptors(request, key, this);
+			SymKey.create(request, key, this);
 		}), h.sF(function keyCreated() {
 			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this);
 		}), h.sF(function (valid) {

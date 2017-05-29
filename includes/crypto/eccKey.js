@@ -1,7 +1,6 @@
 "use strict";
 
 var Bluebird = require("bluebird")
-var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 var Key = require("./Key");
@@ -92,23 +91,21 @@ function validateFormat(data) {
 	}
 }
 
-EccKey.validate = function validateF(data, cb) {
+EccKey.validate = function (data) {
 	var err = validateFormat(data);
 	if (err) {
 		throw err;
-	} else {
-		cb();
 	}
 };
 
-EccKey.validateNoThrow = function validateF(data, cb) {
-	step(function () {
+EccKey.validateNoThrow = function (data, cb) {
+	return Bluebird.try(function () {
 		if (validateFormat(data)) {
-			this.ne(false);
-		} else {
-			this.ne(true);
+			return false
 		}
-	}, cb);
+
+		return true
+	}).nodeify(cb);
 };
 
 /** get all decryptors for a certain key id */
@@ -128,51 +125,43 @@ EccKey.get = function getF(keyRealID, cb) {
 	}).nodeify(cb);
 };
 
-EccKey.createWDecryptors = function (request, data, cb) {
-	step(function () {
-		if (!data.decryptors || data.decryptors.length === 0) {
-			throw new InvalidEccKey();
-		}
-
-		EccKey.create(request, data, this);
-	}, cb);
-};
-
-
 /** create a symmetric key */
 EccKey.create = function (request, data, cb) {
 	var domain, keyRealID, theKey;
 
-	step(function () {
-		EccKey.validate(data, this);
-	}, h.sF(function () {
+	return Bluebird.try(function () {
+		if (!data.decryptors || data.decryptors.length === 0) {
+			throw new InvalidEccKey();
+		}
+
+		EccKey.validate(data);
+
 		keyRealID = data.realid;
 		domain = "key:" + keyRealID;
 
-		client.setnx(domain + ":used", "1", this);
-	}), h.sF(function (set) {
+		return client.setnxAsync(domain + ":used", "1");
+	}).then(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
-		client.hmset(domain, {
+		return client.hmsetAsync(domain, {
 			curve: data.curve,
 			x: data.point.x,
 			y: data.point.y,
 			type: data.type,
 			owner: request.session.getUserID(),
 			comment: data.comment || ""
-		}, this);
-	}), h.sF(function () {
+		});
+	}).then(function () {
 		theKey = new EccKey(keyRealID);
+
 		if (data.decryptors) {
-			theKey.addDecryptors(request, data.decryptors, this);
-		} else {
-			this.last.ne(theKey);
+			return theKey.addDecryptors(request, data.decryptors).thenReturn(theKey);
 		}
-	}), h.sF(function () {
-		this.ne(theKey);
-	}), cb);
+
+		return Bluebird.resolve(theKey)
+	}).nodeify(cb);
 };
 
 module.exports = EccKey;
