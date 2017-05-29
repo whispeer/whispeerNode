@@ -1,8 +1,9 @@
 "use strict";
-var step = require("step");
 var h = require("whispeerHelper");
 
-var sjcl = require("./crypto/sjcl");
+const Bluebird = require("bluebird")
+
+const sjcl = require("./crypto/sjcl");
 
 function fingerPrintData(data) {
 	return sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(data));
@@ -58,19 +59,17 @@ var SignKey = function (keyData) {
 		return fingerPrintPublicKey(publicKey);
 	};
 
-	this.verify = function (signature, hash, callback) {
-		step(function () {
-			this.ne(publicKey.verify(hash, signature));
-		}, h.sF(function (valid) {
-			this.ne(valid);
-		}), callback);
+	this.verify = function (signature, hash) {
+		return Bluebird.try(() => {
+			return publicKey.verify(hash, signature);
+		})
 	};
 };
 
 var ObjectHasher = require("./crypto/ObjectHasher");
 
 function verifyObject(signature, object, keyData, callback) {
-	step(function signO1() {
+	return Bluebird.try(() => {
 		var key = new SignKey(keyData);
 
 		if (object._v2 === "false") {
@@ -87,20 +86,16 @@ function verifyObject(signature, object, keyData, callback) {
 
 		var hash = new ObjectHasher(object, hashVersion).hashBits();
 
-		key.verify(sjcl.codec.hex.toBits(signature), hash, this);
-	}, function (e, correct) {
-		if (e) {
-			this.ne(false);
-		} else {
-			this.ne(correct);
-		}
-	}, callback);
+		return key.verify(sjcl.codec.hex.toBits(signature), hash);
+	}).catch(() => {
+		return false
+	}).nodeify(callback)
 }
 
 function verifySecuredMeta(signKey, metaData, type, cb) {
 	var attributesNeverVerified = ["_signature", "_hashObject"];
 
-	step(function () {
+	return Bluebird.try(function () {
 		var metaCopy = h.deepCopyObj(metaData);
 
 		attributesNeverVerified.forEach(function(attr) {
@@ -111,31 +106,31 @@ function verifySecuredMeta(signKey, metaData, type, cb) {
 			throw new Error("invalid object type. is: " + metaCopy._type + " should be: " + type);
 		}
 
-		verifyObject(metaData._signature, metaCopy, signKey, this);
-	}, h.sF(function (correctSignature) {
+		return verifyObject(metaData._signature, metaCopy, signKey);
+	}).then(function (correctSignature) {
 		if (!correctSignature) {
 			//alert("Bug: signature did not match (" + that._original.meta._type + ") Please report this bug!");
 			throw new Error("invalid signature for " + type);
 		}
 
-		this.ne(true);
-	}), cb);
+		return true;
+	}).nodeify(cb)
 }
 
 var User = require("./user");
 var KeyApi = require("./crypto/KeyApi");
 
 function verifyUserMeta(request, metaData, type, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 		var ownUserID = request.session.getUserID();
-		User.getUser(ownUserID, this);
-	}, h.sF(function (ownUser) {
-		ownUser.getSignKey(request, this);
-	}), h.sF(function (ownSignKey) {
-		KeyApi.getWData(request, ownSignKey, this);
-	}), h.sF(function (ownSignKeyObj) {
-		verifySecuredMeta(ownSignKeyObj, metaData, type, this);
-	}), cb);
+		return User.getUser(ownUserID);
+	}).then((ownUser) => {
+		return ownUser.getSignKey(request);
+	}).then((ownSignKey) => {
+		return KeyApi.getWData(request, ownSignKey);
+	}).then((ownSignKeyObj) => {
+		return verifySecuredMeta(ownSignKeyObj, metaData, type);
+	}).nodeify(cb);
 }
 
 verifyUserMeta.byKey = verifySecuredMeta;

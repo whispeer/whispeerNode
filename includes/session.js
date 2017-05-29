@@ -21,30 +21,31 @@ var verifySecuredMeta = require("./verifyObject");
 
 var Bluebird = require("bluebird");
 
+var random = require("secure_random");
+
 /** get a random sid of given length
 * @param length length of sid
 * @param callback callback
 * @callback (error, sid)
 */
 function code(length, callback) {
-	var random = require("secure_random");
-
-	step(function generateRandom() {
+	return Bluebird.try(() => {
 		if (length <= 0) {
 			throw new Error("length not long enough");
 		}
 
-		var i = 0;
-		for (i = 0; i < length; i += 1) {
-			random.getRandomInt(0, h.codeChars.length - 1, this.parallel());
-		}
-	}, h.sF(function ( numbers) {
-		var result = numbers.map(function (number) {
-			return h.codeChars[number];
-		}).join("");
+		const promises = []
 
-		this.ne(result);
-	}), callback);
+		for (let i = 0; i < length; i += 1) {
+			promises.push(random.getRandomIntAsync(0, h.codeChars.length - 1))
+		}
+
+		return Bluebird.all(promises)
+	}).map((number) => {
+		return h.codeChars[number];
+	}).then((numbers) => {
+		return numbers.join("");
+	}).nodeify(callback);
 }
 
 var Session = function Session() {
@@ -63,41 +64,28 @@ var Session = function Session() {
 	* @callback	(err, sid) error and session id
 	* @author Nilos
 	*/
-	function createSession(id, callback, tries) {
+	function createSession(id, tries = 10) {
 		console.log("Create Session!");
 
-		var tempSID;
-
 		if (tries < 0) {
-			console.error("session generation failed!!");
+			throw new Error("session generation failed!!");
 		}
 
-		step(function generate() {
-			code(SESSIONKEYLENGTH, this);
-		}, h.sF(function (theSID) {
+		return code(SESSIONKEYLENGTH).then((theSID) => {
 			console.log("Generated SID:" + theSID);
 
-			tempSID = theSID;
-
-			client.setnx("session:" + tempSID, id, this);
-		}), h.sF(function (set) {
-			if (set === 1) {
-				this.ne(tempSID);
-			} else {
-				createSession(id, this.last, tries-1);
-				return;
-			}
-		}), callback);
+			return client.setnxAsync("session:" + theSID, id).then((set) => {
+				return set === 1 ? theSID : createSession(id, tries-1)
+			})
+		})
 	}
 
 	function time() {
 		return new Date().getTime();
 	}
 
-	function internalLogin(uid, callback) {
-		step(function () {
-			createSession(uid, this);
-		}, h.sF(function (sessionid) {
+	function internalLogin(uid) {
+		return createSession(uid).then((sessionid) => {
 			console.log("login changed");
 			userid = uid;
 			sid = sessionid;
@@ -106,8 +94,8 @@ var Session = function Session() {
 
 			callListener(logedin);
 
-			this.ne(sid);
-		}), callback);
+			return sid;
+		})
 	}
 
 	/** check if already loged in
@@ -229,19 +217,18 @@ var Session = function Session() {
 	*/
 	this.login = function (request, identifier, externalHash, token, cb) {
 		var myUser;
-		step(function () {
-			var User = require("./user.js");
-			User.getUser(identifier, this);
-		}, h.sF(function (user) {
+
+		var User = require("./user.js");
+		return User.getUser(identifier).then(function (user) {
 			myUser = user;
 			return myUser.useToken(token);
-		}), h.sF(function (tokenUsed) {
+		}).then(function (tokenUsed) {
 			if (tokenUsed !== true) {
 				throw new InvalidToken();
 			}
 
-			myUser.getPassword(request, this);
-		}), h.sF(function (internalPassword) {
+			return myUser.getPassword(request);
+		}).then(function (internalPassword) {
 
 			var crypto = require("crypto");
 
@@ -249,18 +236,14 @@ var Session = function Session() {
 			shasum.update(internalPassword + token);
 			var internalHash = shasum.digest("hex");
 
-			if (externalHash === internalHash) {
-				internalLogin(myUser.getID(), this);
-			} else {
+			if (externalHash !== internalHash) {
 				throw new InvalidLogin();
 			}
-		}), h.sF(function (theSid) {
-			if (theSid) {
-				this.ne(true);
-			} else {
-				this.ne(false);
-			}
-		}), cb);
+
+			return internalLogin(myUser.getID());
+		}).then(function (theSid) {
+			return Boolean(theSid);
+		}).nodeify(cb);
 	};
 
 	var registerSymKeys = ["main", "friends", "profile"];
@@ -320,22 +303,16 @@ var Session = function Session() {
 		}
 
 		function createKeys(request, keys, cb) {
-			step(function () {
-				var i;
-				for (i = 0; i < registerSymKeys.length; i += 1) {
-					SymKey.create(request, keys[registerSymKeys[i]], this.parallel());
-				}
-
-				for (i = 0; i < registerEccKeys.length; i += 1) {
-					EccKey.create(request, keys[registerEccKeys[i]], this.parallel());
-				}
-			}, h.sF(function (keys) {
-				keys = h.arrayToObject(keys, function (val, index) {
-					return keyName[index];
-				});
-
-				this.ne(keys);
-			}), cb);
+			return Bluebird.all([
+				Bluebird.all(registerSymKeys.map((registerSymKey) => SymKey.create(request, keys[registerSymKey]))),
+				Bluebird.all(registerEccKeys.map((registerEccKey) => EccKey.create(request, keys[registerEccKey]))),
+			]).then(function ([symKeys, eccKeys]) {
+				return Object.assign(
+					{},
+					h.arrayToObject(symKeys, (val, index) => registerSymKeys[index]),
+					h.arrayToObject(eccKeys, (val, index) => registerEccKeys[index])
+				)
+			}).nodeify(cb)
 		}
 
 		function validateKeys(keys, cb) {
@@ -387,7 +364,7 @@ var Session = function Session() {
 		}, h.sF(function checkMailUnique() {
 			if (mail) {
 				console.log("mail:" + mail);
-				User.getUser(mail, this);
+				return User.getUser(mail);
 			} else {
 				this();
 			}
@@ -396,7 +373,7 @@ var Session = function Session() {
 				regErr("mailUsed");
 			}
 
-			User.isNicknameFree(nickname, this);
+			return User.isNicknameFree(nickname);
 		}, UserNotExisting), h.sF(function checkMainKey(nicknameFree) {
 			if (!nicknameFree) {
 				regErr("nicknameUsed");
@@ -431,11 +408,11 @@ var Session = function Session() {
 		}), h.sF(function userCreation() {
 			myUser.save(request, this);
 		}), h.sF(function createS() {
-			internalLogin(myUser.getID(), this);
+			return internalLogin(myUser.getID());
 		}), h.sF(function sessionF(theSid) {
 			mySid = theSid;
 
-			createKeys(request, keys, this);
+			return createKeys(request, keys);
 		}), h.sF(function keysCreated(theKeys) {
 			keys = theKeys;
 
@@ -451,7 +428,7 @@ var Session = function Session() {
 				client.sadd("analytics:registration:id:" + preID + ":user", myUser.getID());
 			}
 
-			client.zadd("user:registered", new Date().getTime(), myUser.getID(), this);
+			return client.zaddAsync("user:registered", new Date().getTime(), myUser.getID());
 		}), h.sF(function () {
 			this.ne(mySid);
 		}), cb);

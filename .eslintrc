@@ -25,6 +25,7 @@
     "NotAEccKey": true,
     "InvalidEccKey": true,
     "InvalidKey": true,
+    "KeyNotFound": true,
     "InvalidHexError": true,
     "InvalidTopicData": true,
     "InvalidMessageData": true,

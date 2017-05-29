@@ -848,7 +848,7 @@ var User = function (id) {
 		}), h.sF(function (_backupKey) {
 			backupKey = _backupKey;
 			//generate a session for the user so he is now logged in
-			request.session._internalLogin(theUser.getID(), this);
+			return request.session._internalLogin(theUser.getID());
 		}), h.sF(function () {
 			//sent correct key and main key for download purposes!
 			return Bluebird.all([

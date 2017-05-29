@@ -2,6 +2,7 @@
 
 var step = require("step");
 var h = require("whispeerHelper");
+const Bluebird = require("bluebird")
 
 var client = require("./redisClient");
 var KeyApi = require("./crypto/KeyApi");
@@ -36,65 +37,51 @@ function pushFriendRequest(request, senderId, receiver) {
 var Notification = require("./notification");
 
 function hasFriend(uid, friendid, cb) {
-	client.sismember("friends:" + uid, friendid, cb);
+	return client.sismemberAsync("friends:" + uid, friendid).nodeify(cb);
 }
 
 function mutual(uid1, uid2, cb) {
-		step(function () {
-			client.sinter("friends:" + uid1, "friends:" + uid2, this);
-		}, h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
+		return client.sinterAsync("friends:" + uid1, "friends:" + uid2).nodeify(cb);
 }
 
 function getFriends(request, uid, cb) {
-	step(function () {
-		client.smembers("friends:" + uid, this);
-	}, h.sF(function (ids) {
-		this.ne(ids);
-	}), cb);
+	return client.smembersAsync("friends:" + uid).nodeify(cb);
 }
 
 function addFriendName(request, user) {
-	step(function () {
+	return Bluebird.try(() => {
 		user.updateSearch(request);
-		request.session.getOwnUser(this);
-	}, h.sF(function (me) {
+		return request.session.getOwnUser();
+	}).then((me) => {
 		me.updateSearch(request);
-	}), function (e) {
+	}).catch((e) => {
 		console.error(e);
-	});
+	})
 }
 
 function getUserOnlineFriends(uid, cb) {
-	step(function () {
-		client.sinter("friends:" + uid, "user:online", this);
-	}, h.sF(function (friends) {
-		friends = friends || [];
-
-		this.ne(friends);
-	}), cb);
+	return client.sinterAsync("friends:" + uid, "user:online").then((friends) => {
+		return friends || []
+	}).nodeify(cb);
 }
 
 function getUserOnlineFriendsStatus(uid, cb) {
-	step(function () {
-		getUserOnlineFriends(uid, this);
-	}, h.sF(function (onlineFriends) {
+	return getUserOnlineFriends(uid).then(function (onlineFriends) {
 		var result = {};
 
 		onlineFriends.forEach(function (friend) {
 			result[friend] = 2;
 		});
 
-		this.ne(result);
-	}), cb);
+		return result;
+	}).nodeify(cb);
 }
 
 function setSignedList(request, m, signedList, add, remove, cb) {
 	var ownID = request.session.getUserID();
 
 	step(function () {
-		client.hgetall("friends:" + ownID + ":signedList", this);
+		return client.hgetallAsync("friends:" + ownID + ":signedList");
 	}, h.sF(function (oldSignedList) {
 		oldSignedList = oldSignedList || {};
 
@@ -203,12 +190,11 @@ var friends = {
 		}, cb);
 	},
 	hasFriendsKeyAccess: function (request, uid, cb) {
-		step(function () {
-			if (h.parseDecimal(request.session.getUserID()) === h.parseDecimal(uid)) {
-				this.last.ne(true);
-				return;
-			}
+		if (h.parseDecimal(request.session.getUserID()) === h.parseDecimal(uid)) {
+			return Bluebird.resolve(true).nodeify(cb);
+		}
 
+		step(function () {
 			this.parallel.unflatten();
 
 			friends.areFriends(request, uid, this.parallel());

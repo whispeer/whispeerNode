@@ -2,8 +2,10 @@
 
 var redis = require("redis");
 var Bluebird = require("bluebird");
+var random = require("secure_random");
 
 Bluebird.promisifyAll(redis);
+Bluebird.promisifyAll(random);
 
 var configManager = require("./configManager");
 var config = configManager.get();

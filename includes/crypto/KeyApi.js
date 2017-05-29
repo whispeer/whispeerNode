@@ -31,10 +31,8 @@ KeyApi.validate = function (data) {
 };
 
 /** validate a decryptor. No Duplicate check. */
-KeyApi.validateDecryptor = function validateDecryptorF(request, data, key, callback) {
-	step(function () {
-		Decryptor.validate(request, data, key, this);
-	}, callback);
+KeyApi.validateDecryptor = function (request, data, key, cb) {
+	return Decryptor.validate(request, data, key).nodeify(cb);
 };
 
 KeyApi.isKey = function isKeyF(key) {
@@ -44,59 +42,54 @@ KeyApi.isKey = function isKeyF(key) {
 /** warning: side effects possible */
 KeyApi.removeKeyDecryptorForUser = function (request, realid, userid, cb) {
 	var key, m = client.multi();
-	step(function () {
-		return KeyApi.get(realid);
-	}, h.sF(function (_key) {
+
+	return KeyApi.get(realid).then(function (_key) {
 		key = _key;
 		return key.getOwner();
-	}), h.sF(function (owner) {
+	}).then(function (owner) {
 		if (h.parseDecimal(owner) !== request.session.getUserID()) {
 			throw new Error("can only remove decryptors of own keys!");
 		}
 
 		console.log("removing decryptor for user: " + userid);
-		key.removeDecryptorForUser(m, userid, this);
-	}), h.sF(function () {
-		m.exec(this);
-	}), cb);
+		return key.removeDecryptorForUser(m, userid);
+	}).then(function () {
+		return Bluebird.fromCallback((cb) => m.exec(cb));
+	}).nodeify(cb)
 };
 
 /** warning: side effects possible */
 KeyApi.removeKeyDecryptor = function (request, realid, decryptorid, cb) {
-	var key, m = client.multi();
-	step(function () {
-		KeyApi.get(realid, this);
-	}, h.sF(function (_key) {
-		key = _key;
-		return key.getOwner();
-	}), h.sF(function (owner) {
-		if (h.parseDecimal(owner) !== request.session.getUserID()) {
-			throw new Error("can only remove decryptors of own keys!");
-		}
+	var m = client.multi();
 
-		key.removeDecryptor(m, decryptorid, this);
-	}), h.sF(function () {
-		m.exec(this);
-	}), cb);
+	return KeyApi.get(realid).then((key) => {
+		return key.getOwner().then((owner) => {
+			if (h.parseDecimal(owner) !== request.session.getUserID()) {
+				throw new Error("can only remove decryptors of own keys!");
+			}
+		}).thenReturn(key)
+	}).then((key) => {
+		return key.removeDecryptor(m, decryptorid);
+	}).then(() => {
+		return Bluebird.fromCallback((cb) => m.exec(cb))
+	}).nodeify(cb);
 };
 
 /** warning: side effects possible */
 KeyApi.removeKey = function (request, realid, cb) {
-	var key, m = client.multi();
-	step(function () {
-		KeyApi.get(realid, this);
-	}, h.sF(function (_key) {
-		key = _key;
-		return key.getOwner();
-	}), h.sF(function (owner) {
-		if (h.parseDecimal(owner) !== request.session.getUserID()) {
-			throw new Error("can only remove decryptors of own keys!");
-		}
+	var m = client.multi();
 
-		key.remove(m, this);
-	}), h.sF(function () {
-		m.exec(this);
-	}), cb);
+	return KeyApi.get(realid).then(function (key) {
+		return key.getOwner().then((owner) => {
+			if (h.parseDecimal(owner) !== request.session.getUserID()) {
+				throw new Error("can only remove decryptors of own keys!");
+			}
+		}).thenReturn(key)
+	}).then(function (key) {
+		return key.remove(m);
+	}).then(function () {
+		return Bluebird.fromCallback((cb) => m.exec(cb))
+	}).nodeify(cb);
 };
 
 /** get a key
@@ -129,11 +122,9 @@ KeyApi.createWithDecryptors = function (request, keyData, cb) {
 };
 
 KeyApi.getWData = function (request, realid, callback, wDecryptors) {
-	step(function () {
-		return KeyApi.get(realid);
-	}, h.sF(function (key) {
+	return KeyApi.get(realid).then((key) => {
 		return key.getKData(request, wDecryptors);
-	}), callback);
+	}).nodeify(callback);
 };
 
 /** get multiple keys */
@@ -144,16 +135,11 @@ KeyApi.getKeys = function getKeysF(realids, cb) {
 };
 
 KeyApi.checkKey = function (errors, realid, cb) {
-	step(function () {
-		KeyApi.get(realid, this);
-	}, function (err, key) {
-		if (err) {
-			errors.push(err);
-			this.ne();
-		} else {
-			key.check(errors, this);
-		}
-	}, cb);
+	return KeyApi.get(realid).then((key) => {
+		// return key.check(errors)
+	}).catch((err) => {
+		errors.push(err)
+	}).nodeify(cb);
 };
 
 module.exports = KeyApi;
