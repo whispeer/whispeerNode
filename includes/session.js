@@ -9,9 +9,6 @@ var EccKey = require("./crypto/eccKey.js");
 
 var settingsService = require("./settings");
 
-//delete session if it was not used for 30 days.
-var SESSIONTIME = 30 * 24 * 60 * 60;
-
 /** how long is the session id */
 var SESSIONKEYLENGTH = 30;
 
@@ -92,7 +89,6 @@ var Session = function Session() {
 			client.setnx("session:" + tempSID, id, this);
 		}), h.sF(function (set) {
 			if (set === 1) {
-				client.expire("session:" + tempSID, SESSIONTIME);
 				this.ne(tempSID);
 			} else {
 				createSession(id, this.last, tries-1);
@@ -127,8 +123,8 @@ var Session = function Session() {
 	* it might be that true is returned even if loged out on another tab/pc with the same session.
 	* anyhow it will be turned to false shortly after.
 	*/
-	function checkLogin(cb) {
-		var p = Bluebird.try(function () {
+	this.logedin = (cb) => {
+		return Bluebird.try(function () {
 			if (!logedin) {
 				return false;
 			}
@@ -140,30 +136,22 @@ var Session = function Session() {
 						console.log("Logout: " + id + " - " + userid);
 						return false;
 					} else {
-						client.expire("session:" + sid, SESSIONTIME);
 						return true;
 					}
 				});
 			} else {
 				return true;
 			}
-		});
+		}).nodeify(cb)
+	};
 
-		return step.unpromisify(p, cb);
-	}
-
-	function checkLoginError(cb) {
-		var p = session.logedin().then(function (logedin) {
+	this.logedinError = (cb) => {
+		return this.logedin().then((logedin) => {
 			if (!logedin) {
 				throw new NotLogedin();
 			}
-		});
-
-		return step.unpromisify(p, cb);
+		}).nodeify(cb)
 	}
-
-	this.logedin = checkLogin;
-	this.logedinError = checkLoginError;
 
 	this.isBusiness = (cb) => {
 		return client.scardAsync(`user:${userid}:companies`).then((companies) => {
@@ -482,13 +470,13 @@ var Session = function Session() {
 		return h.parseDecimal(userid);
 	};
 
-	this.ownUserError = function ownUserErrorF(user, cb) {
+	this.ownUserError = function (user, cb) {
 		step(function () {
 			if (typeof user === "object" && !user.isSaved()) {
 				this.last.ne();
 			}
 
-			session.logedinError(this);
+			return session.logedinError();
 		}, h.sF(function () {
 			var sessionUserID = session.getUserID();
 			if (typeof user === "object") {
@@ -513,16 +501,14 @@ var Session = function Session() {
 	};
 
 	this.getOwnUser = function (cb) {
-		step(function checks() {
-			checkLoginError(this);
-		}, h.sF(function () {
+		return session.logedinError().then(() => {
 			if (!sessionUser || sessionUser.getID() !== userid) {
-				var User = require("./user.js");
+				const User = require("./user.js");
 				sessionUser = new User(userid);
 			}
 
-			this.ne(sessionUser);
-		}), cb);
+			return sessionUser
+		}).nodeify(cb)
 	};
 };
 

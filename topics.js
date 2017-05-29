@@ -147,7 +147,7 @@ var whispeerAPI = {
 				}, this);
 			}, fn);
 		},
-		get: function getKeyChainF(data, fn, request) {
+		get: function (data, fn, request) {
 			var theKey, result = [];
 			step(function () {
 				KeyApi.get(data.realid, this);
@@ -157,7 +157,7 @@ var whispeerAPI = {
 				}
 
 				theKey = key;
-				theKey.getAllAccessedParents(request, this, MAXDEPTH);
+				return theKey.getAllAccessedParents(request, MAXDEPTH);
 			}), h.sF(function (parents) {
 				var i;
 				if (data.loaded && Array.isArray(data.loaded)) {

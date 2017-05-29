@@ -1,8 +1,5 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
-
 var Bluebird = require("bluebird")
 
 var KeyApi = require("./crypto/KeyApi");
@@ -86,25 +83,20 @@ function RequestData(socketData, rawRequest, channel) {
 		}
 
 		if (this.rootRequest) {
-			this.rootRequest.addKey(realid, cb, filter);
-		} else {
-			step(function () {
-				return KeyApi.get(realid);
-			}, h.sF(function (key) {
-				return key.getKData(request, true);
-			}), h.sF(function (keyData) {
-				if (typeof filter === "function") {
-					keyData.decryptors = keyData.decryptors.filter(filter);
-				}
-
-				request.keyData.push(keyData);
-				this.ne();
-			}), function (e) {
-				errorService.handleError(e, request);
-
-				this.ne();
-			}, cb);
+			return this.rootRequest.addKey(realid, cb, filter);
 		}
+
+		return KeyApi.get(realid).then(function (key) {
+			return key.getKData(request, true);
+		}).then(function (keyData) {
+			if (typeof filter === "function") {
+				keyData.decryptors = keyData.decryptors.filter(filter);
+			}
+
+			request.keyData.push(keyData);
+		}).catch((e) => {
+			errorService.handleError(e, request);
+		}).nodeify(cb);
 	};
 
 	this.addKeyData = function (keyData) {

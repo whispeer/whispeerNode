@@ -96,4 +96,6 @@ global.TimeSpanExceeded  = addError("timespan has been exceeded", 62, true);
 global.InvalidBlobID = addError("invalid blob id", 70, true);
 global.BlobNotFound = addError("blob not found", 71, true);
 
+global.BreakPromiseChain = addError("break promise chain", 100, true);
+
 module.exports = possibleErrors;

@@ -378,22 +378,21 @@ var Topic = function (id) {
 	/** get topic full data */
 	this.getFullData = function (request, cb) {
 		var server, meta;
-		step(function () {
-			return theTopic.getTData(request);
-		}, h.sF(function ({ server: _server, meta: _meta, additionalKey }) {
+		return theTopic.getTData(request).then(function ({ server: _server, meta: _meta, additionalKey }) {
 			server = _server;
 			meta = _meta;
-			request.addKey(_meta._key, this.parallel());
-			if (additionalKey) {
-				request.addKey(additionalKey, this.parallel());
-			}
-		}), h.sF(function () {
+
+			return Bluebird.all([
+				request.addKey(_meta._key),
+				additionalKey ? request.addKey(additionalKey) : null
+			])
+		}).then(function () {
 			return theTopic.getReceiverIDs(request);
-		}), h.sF(function (receiver) {
+		}).then(function (receiver) {
 			meta.receiver = receiver.map(h.parseDecimal);
 
 			return theTopic.getUnreadMessages(request);
-		}), h.sF(function (unreadMessages) {
+		}).then(function (unreadMessages) {
 			server.unread = unreadMessages;
 
 			if (h.parseDecimal(server.newest) !== 0) {
@@ -405,26 +404,24 @@ var Topic = function (id) {
 						return
 					}
 
-					return Bluebird.fromCallback((cb) => newest.getFullData(request, cb, true))
+					return newest.getFullData(request)
 				})
-			} else {
-				this.ne();
 			}
-		}), h.sF(function (newest) {
+		}).then(function (newest) {
 			server.newest = newest;
 			server.meta = meta;
 
 			if (newest) {
 				return theTopic.getTopicUpdatesAfterNewestMessage(request, newest.meta.messageid);
-			} else {
-				this.ne([]);
 			}
-		}), h.sF(function (latestTopicUpdates) {
+
+			return [];
+		}).then(function (latestTopicUpdates) {
 			server.latestTopicUpdate = h.array.last(latestTopicUpdates);
 			server.latestTopicUpdates = latestTopicUpdates;
 
-			this.ne(server);
-		}), cb);
+			return server
+		}).nodeify(cb)
 	};
 
 	/** how many messages in this topic? */
@@ -716,7 +713,7 @@ var Topic = function (id) {
 				meta.addedReceivers = JSON.parse(meta.addedReceivers)
 			}
 
-			this.ne({ server, meta, additionalKey });
+			return { server, meta, additionalKey };
 		})
 	};
 };

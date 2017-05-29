@@ -1,12 +1,14 @@
 "use strict";
 
-var step = require("step");
-var client = require("../redisClient");
-var h = require("whispeerHelper");
+const step = require("step");
+const Bluebird = require("bluebird")
+const h = require("whispeerHelper");
 
-var Key = require("./Key");
+const client = require("../redisClient");
 
-var Decryptor = require("./decryptor");
+const Key = require("./Key");
+
+const Decryptor = require("./decryptor");
 
 var SymKey = function (keyRealID) {
 	if (!h.isRealID(keyRealID)) {
@@ -57,7 +59,7 @@ function validateFormat(data) {
 	}
 }
 
-SymKey.validate = function validateF(data, cb) {
+SymKey.validate = function (data, cb) {
 	var err = validateFormat(data);
 	if (err) {
 		throw err;
@@ -66,7 +68,7 @@ SymKey.validate = function validateF(data, cb) {
 	}
 };
 
-SymKey.validateNoThrow = function validateF(data, cb) {
+SymKey.validateNoThrow = function (data, cb) {
 	step(function () {
 		if (validateFormat(data)) {
 			this.ne(false);
@@ -79,19 +81,19 @@ SymKey.validateNoThrow = function validateF(data, cb) {
 
 /** get all decryptors for a certain key id */
 SymKey.get = function getF(keyRealID, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 			if (!h.isRealID(keyRealID)) {
 				throw new InvalidRealID();
 			}
 
-			client.hget("key:" + keyRealID, "type", this);
-	}, h.sF(function (type) {
+			return client.hgetAsync("key:" + keyRealID, "type");
+	}).then((type) => {
 		if (type === "sym") {
-			this.ne(new SymKey(keyRealID));
-		} else {
-			throw new NotASymKey(keyRealID);
+			return new SymKey(keyRealID);
 		}
-	}), cb);
+
+		throw new NotASymKey(keyRealID);
+	}).nodeify(cb);
 };
 
 SymKey.createWDecryptors = function (request, data, cb) {

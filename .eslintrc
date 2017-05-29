@@ -36,6 +36,7 @@
     "TimeSpanExceeded": true,
     "InvalidBlobID": true,
     "BlobNotFound": true,
+    "BreakPromiseChain": true,
     "CircleNotExisting": true
   },
   "rules": {

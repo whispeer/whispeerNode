@@ -3,7 +3,6 @@
 //TO-DO rewrite for hset/hgetall/hget
 
 var Bluebird = require("bluebird")
-var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 var Decryptor = require("./decryptor");
@@ -15,31 +14,24 @@ Key.prototype._getAttribute = function(attr) {
 	return client.hgetAsync(this._domain, attr)
 };
 
-Key.prototype.addFasterDecryptor = function addFasterDecryptorF(request, decryptor, cb) {
-	var theKey = this;
-	step(function () {
-		console.log(theKey.getRealID());
-		return theKey.getDecryptors(request);
-	}, h.sF(function (decryptors) {
-		var j;
-		for (j = 0; j < decryptors.length; j += 1) {
-			decryptors[j].getType(this.parallel());
-		}
-	}), h.sF(function (types) {
+Key.prototype.addFasterDecryptor = function (request, decryptor, cb) {
+	console.log(this.getRealID());
+	return this.getDecryptors(request).map((decryptor) => {
+		decryptor.getType();
+	}).then((types) => {
 		if (types.length === 0) {
-			this.last.ne(false);
+			return false
 		}
 
 		var i;
 		for (i = 0; i < types.length; i += 1) {
 			if (types[i] !== "cryptKey") {
-				this.last.ne(false);
-				return;
+				return false
 			}
 		}
 
-		theKey.addDecryptor(request, decryptor, this);
-	}), cb);
+		return this.addDecryptor(request, decryptor);
+	}).nodeify(cb);
 };
 
 Key.prototype.getBasicData = function (request, wDecryptors) {
@@ -88,62 +80,27 @@ Key.prototype.getType = function (cb) {
 	return this._getAttribute("type").nodeify(cb);
 };
 
-Key.prototype.getAllAccessedParents = function getAllAccessedParentsF(request, cb, maxdepth) {
-	var theKey = this;
-	var theKeys = [];
-	step(function () {
-		if (maxdepth === 0) {
-			this.last.ne();
-		} else {
-			theKey.getUserDecryptors(request, this);
-		}
-	}, h.sF(function (keys) {
-		if (keys) {
-			theKeys = keys;
-			var i;
-			for (i = 0; i < keys.length; i += 1) {
-				keys[i].getAllAccessedParents(request, this.parallel(), maxdepth-1);
-			}
+Key.prototype.getAllAccessedParents = function (request, maxdepth) {
+	if (maxdepth === 0) {
+		return Bluebird.resolve()
+	}
 
-			this.parallel()();
-		} else {
-			this.last.ne(theKeys);
-		}
-	}), h.sF(function (parents) {
-		if (parents) {
-			var i;
-			for (i = 0; i < parents.length; i += 1) {
-				theKeys = theKeys.concat(parents[i]);
-			}
-		}
-
-		this.ne(theKeys);
-	}), cb);
+	return this.getUserDecryptors(request).map((keyDecryptors) => {
+		return keyDecryptors.getAllAccessedParents(request, maxdepth-1);
+	}), h.sF((parents) => {
+		return parents.reduce((prev, parent) => {
+			return prev.concat(parent);
+		}, [])
+	})
 };
 
-Key.prototype.getUserDecryptors = function getUserDecryptorsF(request, cb) {
+Key.prototype.getUserDecryptors = function (request, cb) {
 	var theKey = this;
-	step(function () {
-		Decryptor.getAllWithAccess(request, theKey._realid, this);
-	}, h.sF(function (decryptors) {
-		var i;
-		for (i = 0; i < decryptors.length; i += 1) {
-			decryptors[i].getDecryptorKey(this.parallel());
-		}
-		this.parallel()();
-	}), h.sF(function (keys) {
-		var i, result = [];
-
-		if (keys) {
-			for (i = 0; i < keys.length; i += 1) {
-				if (keys[i] && typeof keys[i] === "object") {
-					result.push(keys[i]);
-				}
-			}
-		}
-
-		this.last.ne(result);
-	}), cb);
+	return Decryptor.getAllWithAccess(request, theKey._realid).map(function (decryptor) {
+		return decryptor.getDecryptorKey()
+	}).filter(function (key) {
+		return key && typeof key === "object"
+	}).nodeify(cb)
 };
 
 /** get this keys decryptors */
@@ -152,128 +109,77 @@ Key.prototype.getDecryptors = function getDecryptorsF(request, cb) {
 };
 
 Key.prototype.removeDecryptorForUser = function (m, userid, cb) {
-	var theKey = this;
-	step(function () {
-		client.smembers(theKey._domain + ":accessVia:" + userid, this);
-	}, h.sF(function (_decryptors) {
-		if (_decryptors.length === 0) {
-			this.last.ne(); //nothing to do here
-			return;
-		}
-
-		var decryptors = _decryptors.map(function (decryptorID) {
-			return new Decryptor(theKey._realid, decryptorID);
-		});
-
-		decryptors.forEach(function (decryptor) {
-			theKey.removeDecryptor(m, decryptor.getID(), this.parallel());
-		}, this);
-	}), cb);
+	return client.smembersAsync(this._domain + ":accessVia:" + userid).map((decryptorID) => {
+		return new Decryptor(this._realid, decryptorID);
+	}).each((decryptor) => {
+		return Bluebird.fromCallback((cb) => {
+			this.removeDecryptor(m, decryptor.getID(), cb);
+		})
+	}).nodeify(cb);
 };
 
 Key.prototype.getPWDecryptors = function (request, cb) {
-	var theKey = this, decryptors;
-	step(function () {
-		return theKey.getDecryptors(request);
-	}, h.sF(function (_decryptors) {
-		decryptors = _decryptors;
-		return Bluebird.resolve(decryptors).map(function (decryptor) {
-			return decryptor.getType()
+	return this.getDecryptors(request).filter(function (decryptor) {
+		return decryptor.getType().then((type) => {
+			return type === "pw"
 		})
-	}), h.sF(function (types) {
-		this.ne(decryptors.filter(function (decryptor, index) {
-			return types[index] === "pw";
-		}));
-	}), cb);
+	}).nodeify(cb);
 };
 
 Key.prototype.removeAllPWDecryptors = function (request, cb) {
 	var theKey = this, m = client.multi();
-	step(function () {
-		theKey.getPWDecryptors(request, this);
-	}, h.sF(function (decryptors) {
-		this.parallel.unflatten();
-
-		decryptors.forEach(function (decryptor) {
-			client.srem(theKey._domain + ":accessVia:" + request.session.getUserID(), decryptor.getID(), this.parallel());
-			decryptor.removeData(m, this.parallel());
-		}, this);
-	}), h.sF(function () {
+	return theKey.getPWDecryptors(request).map((decryptor) => {
+		return Bluebird.all([
+			client.srem(theKey._domain + ":accessVia:" + request.session.getUserID(), decryptor.getID()),
+			decryptor.removeData(m),
+		])
+	}).then(function () {
 		m.exec(this);
-	}), cb);
+	}).nodeify(cb);
 };
 
 Key.prototype.removeDecryptor = function (m, decryptorid, cb) {
-	var theKey = this;
-	step(function () {
-		client.smembers(theKey._domain + ":access", this);
-	}, h.sF(function (accessors) {
-		theKey.removeAccess(m, decryptorid, accessors, this);
-	}), h.sF(function () {
-		new Decryptor(theKey._realid, decryptorid).removeData(m, this);
-	}), cb);
+	return client.smembersAsync(this._domain + ":access").then((accessors) => {
+		return this.removeAccess(m, decryptorid, accessors)
+	}).then(() => {
+		return new Decryptor(this._realid, decryptorid).removeData(m);
+	}).nodeify(cb);
 };
 
 Key.prototype.removeDecryptorByRealID = function (m, realid, cb) {
-	var theKey = this;
-	step(function () {
-		client.hget(theKey._domain + ":decryptor:map", realid, this);
-	}, h.sF(function (decryptorid) {
-		theKey.removeDecryptor(m, decryptorid, this);
-	}), cb);
+	return client.hgetAsync(this._domain + ":decryptor:map", realid).then((decryptorid) => {
+		return this.removeDecryptor(m, decryptorid);
+	}).nodeify(cb);
 };
 
 Key.prototype.removeFromEncryptorLists = function (m, cb) {
-	var theKey = this;
-	step(function () {
-		Decryptor.getAll(theKey._realid, this);
-	}, h.sF(function (decryptors) {
-		decryptors.forEach(function (decryptor) {
-			decryptor.getDecryptorID(this.parallel());
-		}, this);
-
-		if (decryptors.length === 0) {
-			this.last.ne();
+	return Decryptor.getAll(this._realid).map(function (decryptor) {
+		return decryptor.getDecryptorID();
+	}).map((decryptorid) => {
+		if (decryptorid) {
+			m.srem("key:" + decryptorid + ":encryptors", this._realid);
 		}
-	}), h.sF(function (decryptorids) {
-		decryptorids.forEach(function (decryptorid) {
-			if (decryptorid) {
-				m.srem("key:" + decryptorid + ":encryptors", theKey._realid);
-			}
-		});
-
-		this.ne();
-	}), cb);
+	}).nodeify(cb);
 };
 
 /** warning: side effects possible */
 Key.prototype.remove = function (m, cb) {
-	var theKey = this;
-	step(function () {
-		client.keys(theKey._domain + ":*", this);
-	}, h.sF(function (keys) {
-		keys.forEach(function (key) {
+	return client.keysAsync(this._domain + ":*").then((keys) => {
+		keys.forEach((key) => {
 			m.del(key);
 		});
-		m.del(theKey._domain);
+		m.del(this._domain);
 
-		theKey.removeFromEncryptorLists(m, this);
-	}), h.sF(function () {
-		theKey.getEncryptors(this);
-	}), h.sF(function (encryptors) {
-		if (encryptors.length === 0) {
-			this.ne();
-		}
-
-		var toCall = encryptors.map(function (encryptor) {
-			return function () {
-				encryptor.removeDecryptorByRealID(m, theKey._realid, this);
-			};
-		});
-		toCall.push(this);
-
-		step.apply(null, toCall);
-	}), cb);
+		return this.removeFromEncryptorLists(m);
+	}).then(() => {
+		return this.getEncryptors();
+	}).then((encryptors) => {
+		return encryptors.reduce((promise, encryptor) => {
+			return promise.then(() => {
+				return encryptor.removeDecryptorByRealID(m, this._realid);
+			})
+		}, Bluebird.resolve())
+	}).nodeify(cb);
 };
 
 Key.prototype.getDecryptorsJSON = function (request, cb) {
@@ -292,11 +198,10 @@ Key.prototype.getDecryptorsJSON = function (request, cb) {
 * @param request request
 * @param data decryptor data
 */
-Key.prototype.addDecryptor = function addDecryptorF(request, data, cb) {
-	var theKey = this;
-	step(function () {
-		if (data[theKey.getRealID()]) {
-			data = data[theKey.getRealID()];
+Key.prototype.addDecryptor = function (request, data, cb) {
+	return Bluebird.try(() => {
+		if (data[this.getRealID()]) {
+			data = data[this.getRealID()];
 		}
 
 		if (util.isArray(data)) {
@@ -307,63 +212,49 @@ Key.prototype.addDecryptor = function addDecryptorF(request, data, cb) {
 			}
 		}
 
-		Decryptor.create(request, theKey, data, this);
-	}, cb);
+		return Decryptor.create(request, this, data);
+	}).nodeify(cb);
 };
 
 /** add decryptors
 * @param request request
 * @param data decryptor data
 */
-Key.prototype.addDecryptors = function addDecryptorF(request, data, cb) {
-	var theKey = this;
-	step(function () {
-		if (data[theKey.getRealID()]) {
-			data = data[theKey.getRealID()];
+Key.prototype.addDecryptors = function (request, data, cb) {
+	return Bluebird.try(() => {
+		if (data[this.getRealID()]) {
+			return data[this.getRealID()];
 		}
 
-		var i;
-		for (i = 0; i < data.length; i += 1) {
-			Decryptor.create(request, theKey, data[i], this.parallel());
-		}
-	}, cb);
+		return data
+	}).map((decryptorData) => {
+		return Decryptor.create(request, this, decryptorData);
+	}).nodeify(cb);
 };
 
 /** add a key which is encrypted by this key
 * @param realid encrypted keys real id
 * @param cb callback
 */
-Key.prototype.addEncryptor = function addEncryptorF(realid, cb) {
-	var theKey = this;
-	step(function () {
-		client.sadd(theKey._domain + ":encryptors", realid, this);
-	}, cb);
+Key.prototype.addEncryptor = (realid, cb) => {
+	return client.saddAsync(this._domain + ":encryptors", realid).nodeify(cb)
 };
 
 /** get the keys that are encrypted by this key
 * @param cb callback
 */
-Key.prototype.getEncryptors = function getEncryptorsF(cb) {
-	var theKey = this;
-	step(function () {
-		client.smembers(theKey._domain + ":encryptors", this);
-	}, h.sF(function (encrs) {
-		var KeyApi = require("./KeyApi");
-		if (encrs.length > 0) {
-			KeyApi.getKeys(encrs, this);
-		} else {
-			this.ne([]);
-		}
-	}), cb);
+Key.prototype.getEncryptors = function (cb) {
+	var KeyApi = require("./KeyApi");
+
+	return client.smembersAsync(this._domain + ":encryptors").map((encryptorID) => {
+		return KeyApi.get(encryptorID)
+	}).nodeify(cb)
 };
 
-Key.prototype.addAccessByRealID = function addAccessByRealIDF(keyRealID, userids, cb, added) {
-	var theKey = this;
-	step(function () {
-		client.hget(theKey._domain + ":decryptor:map", keyRealID, this);
-	}, h.sF(function (decryptorid) {
-		theKey.addAccess(decryptorid, userids, this, added);
-	}), cb);
+Key.prototype.addAccessByRealID = function (keyRealID, userids, added) {
+	return client.hgetAsync(this._domain + ":decryptor:map", keyRealID).then((decryptorid) => {
+		return this.addAccess(decryptorid, userids, added)
+	})
 };
 
 /** add access for users to this key
@@ -372,51 +263,47 @@ Key.prototype.addAccessByRealID = function addAccessByRealIDF(keyRealID, userids
 * @param cb callback
 * @param added helper for keys already added. prevents loops
 */
-Key.prototype.addAccess = function addAccessF(decryptorid, userids, cb, added) {
+Key.prototype.addAccess = function (decryptorid, userids, added = []) {
 	var theKey = this;
-	step(function () {
-		added = added || [];
+
+	if (userids.length === 0) {
+		return Bluebird.resolve()
+	}
+
+	if (added.indexOf(theKey._realid) > -1) {
+		console.log("loop!");
+		return Bluebird.resolve()
+	}
+
+	return Bluebird.try(() => {
 		added = added.slice();
-
-		if (userids.length === 0) {
-			this.last.ne();
-			return;
-		}
-
-		if (added.indexOf(theKey._realid) > -1) {
-			console.log("loop!");
-			this.last.ne();
-			return;
-		}
 
 		added.push(theKey._realid);
 
-		userids.forEach(function (userid) {
-			client.sadd(theKey._domain + ":access", userid, this.parallel());
-			client.sadd(theKey._domain + ":accessVia:" + userid, decryptorid, this.parallel());
-		}, this);
-	}, h.sF(function () {
-		theKey.getEncryptors(this);
-	}), h.sF(function (encryptors) {
+		return Bluebird.all(userids.map((userid) => {
+			return Bluebird.all([
+				client.saddAsync(theKey._domain + ":access", userid),
+				client.saddAsync(theKey._domain + ":accessVia:" + userid, decryptorid),
+			])
+		}));
+	}).then(() => {
+		return theKey.getEncryptors();
+	}).then((encryptors) => {
 		if (encryptors.length === 0) {
-			this.last.ne();
-			return;
+			return Bluebird.resolve();
 		}
 
-		encryptors.forEach(function (encryptor) {
-			encryptor.addAccessByRealID(theKey._realid, userids, this.parallel(), added);
-		}, this);
-	}), cb);
+		return Bluebird.resolve(encryptors).map((encryptor) => {
+			return encryptor.addAccessByRealID(theKey._realid, userids, added);
+		});
+	})
 };
 
 /** warning: side effects possible */
-Key.prototype.removeAccessByRealID = function (m, keyRealID, userids, cb) {
-	var theKey = this;
-	step(function () {
-		client.hget(theKey._domain + ":decryptor:map", keyRealID, this);
-	}, h.sF(function (decryptorid) {
-		theKey.removeAccess(m, decryptorid, userids, this);
-	}), cb);
+Key.prototype.removeAccessByRealID = function (m, keyRealID, userids) {
+	return client.hgetAsync(this._domain + ":decryptor:map", keyRealID).then((decryptorid) => {
+		return this.removeAccess(m, decryptorid, userids);
+	})
 };
 
 /** remove some access. removes access for users which had it by using a given decryptor
@@ -429,76 +316,70 @@ Key.prototype.removeAccessByRealID = function (m, keyRealID, userids, cb) {
 * @param cb callback
 */
 Key.prototype.removeAccess = function (m, decryptorid, users, cb) {
-	var theKey = this, accessLost, accessors;
+	var accessLost, accessors;
 	decryptorid = h.parseDecimal(decryptorid);
 
-	step(function () {
+	return Bluebird.try(function () {
 		users = users.slice();
-		client.smembers(theKey._domain + ":access", this);
-	}, h.sF(function (_accessors) {
+		return client.smembersAsync(this._domain + ":access");
+	}).then((_accessors) => {
 		accessors = _accessors;
-		users.forEach(function (userid) {
-			client.smembers(theKey._domain + ":accessVia:" + userid, this.parallel());
-		}, this);
-	}), h.sF(function (viaMembers) {
+		return Bluebird.all(users.map((userid) => {
+			return client.smembersAsync(this._domain + ":accessVia:" + userid);
+		}))
+	}).then((viaMembers) => {
 		var originalMembers = h.joinArraysToObject({
 			user: users,
 			via: viaMembers
 		});
 
-		var members = originalMembers.filter(function (member) {
+		var members = originalMembers.filter((member) => {
 			member.via = member.via.map(h.parseDecimal);
 			return member.via.indexOf(decryptorid) > -1;
 		});
 
-		accessLost = members.filter(function (member) {
+		accessLost = members.filter((member) => {
 			return member.via.length === 1;
 		});
 
 		if (accessLost.length === accessors.length) {
 			//no decryptors left: remove key
-			theKey.remove(m, this.last);
-			return;
+			return this.remove(m).thenReturn(Bluebird.reject(new BreakPromiseChain()))
 		}
 
 		var m2 = client.multi();
-		members.forEach(function (member) {
-			m2.srem(theKey._domain + ":accessVia:" + member.user, decryptorid);
+		members.forEach((member) => {
+			m2.srem(this._domain + ":accessVia:" + member.user, decryptorid);
 		});
 
-		accessLost.forEach(function (member) {
-			m2.srem(theKey._domain + ":access", member.user);
+		accessLost.forEach((member) => {
+			m2.srem(this._domain + ":access", member.user);
 		});
 
 		if (members.length === 0) {
-			this.last.ne();
-			return;
+			return Bluebird.reject(new BreakPromiseChain());
 		}
 
-		m2.exec(this);
-	}), h.sF(function () {
+		return Bluebird.fromCallback((cb) => m2.exec(cb))
+	}).then(() => {
 		if (accessLost.length === 0) {
-			this.last.ne();
-			return;
+			return Bluebird.reject(new BreakPromiseChain());
 		}
 
-		theKey.getEncryptors(this);
-	}), h.sF(function (encryptors) {
+		return this.getEncryptors();
+	}).then((encryptors) => {
 		if (encryptors.length === 0) {
-			this.last.ne();
-			return;
+			return Bluebird.reject(new BreakPromiseChain());
 		}
 
-		var accessIDs = accessLost.map(function (member) { return member.user; });
-		var toCall = encryptors.map(function (encryptor) {
-			return function () {
-				encryptor.removeAccessByRealID(m, theKey._realid,  accessIDs, this);
-			};
-		});
-		toCall.push(this);
+		var accessIDs = accessLost.map((member) => { return member.user; });
 
-		step.apply(null, toCall);
-	}), cb);
+		return encryptors.reduce((promise, encryptor) => {
+			return promise.then(() =>
+				encryptor.removeAccessByRealID(m, this._realid,  accessIDs)
+			)
+		}, Bluebird.resolve())
+	}).catch(BreakPromiseChain, () => {}).nodeify(cb);
 };
 
 Key.prototype.hasUserAccess = function (userid) {
@@ -529,7 +410,7 @@ Key.prototype.hasAccess = function (request, cb) {
 
 /** get the users who have access to this key */
 Key.prototype.getAccess = function getAccessF(cb) {
-	client.smembers(this._domain + ":access", cb);
+	return client.smembersAsync(this._domain + ":access").nodeify(cb);
 };
 
 /** count how many users have access to this key */

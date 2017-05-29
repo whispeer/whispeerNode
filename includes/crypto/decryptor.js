@@ -1,6 +1,5 @@
 "use strict";
 
-var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 
@@ -19,26 +18,21 @@ var Decryptor = function (keyRealID, count) {
 	};
 
 	this.getDecryptorID = function getRealIDF(cb) {
-		var p = getAttribute("decryptorid");
-		return step.unpromisify(p, cb);
+		return getAttribute("decryptorid").nodeify(cb);
 	};
 
 	this.getDecryptorKey = function getDecryptorKeyF(cb) {
-		var p = getAttribute("decryptorid").then(function (decryptorid) {
+		return getAttribute("decryptorid").then(function (decryptorid) {
 			if (decryptorid) {
-				//todo: make promise possible!
 				var KeyApi = require("./KeyApi");
 				return KeyApi.get(decryptorid);
 			}
-		});
-
-		return step.unpromisify(p, cb);
+		}).nodeify(cb)
 	};
 
 	/** get the type of this decryptor */
 	this.getType = function getTypeF(cb) {
-		var p = getAttribute("type");
-		return step.unpromisify(p, cb);
+		return getAttribute("type").nodeify(cb)
 	};
 
 	/** get the json data for this decryptor */
@@ -47,17 +41,15 @@ var Decryptor = function (keyRealID, count) {
 	};
 
 	/** remove this decryptors data */
-	this.removeData = function delF(m, cb) {
-		var p = client.hgetAsync("key:" + keyRealID + ":decryptor:" + count, "decryptorid").then(function (decryptorid) {
+	this.removeData = function (m, cb) {
+		return client.hgetAsync("key:" + keyRealID + ":decryptor:" + count, "decryptorid").then(function (decryptorid) {
 			m.srem("key:" + keyRealID + ":decryptor:decryptorSet", count);
 			m.del(domain);
 
 			if (decryptorid) {
 				m.hdel("key:" + keyRealID + ":decryptor:map", decryptorid);
 			}
-		});
-
-		return step.unpromisify(p, cb);
+		}).nodeify(cb)
 	};
 };
 
@@ -68,16 +60,14 @@ Decryptor.getAllWithAccess = function (request, keyRealID, cb) {
 		}
 
 		return client.smembersAsync("key:" + keyRealID + ":accessVia:" + request.session.getUserID());
-	}).then(function (decryptorSet) {
-		return decryptorSet.map(function (decryptorID) {
-			return new Decryptor(keyRealID, decryptorID);
-		});
+	}).map((decryptorID) => {
+		return new Decryptor(keyRealID, decryptorID);
 	}).nodeify(cb)
 };
 
 /** get all decryptors for a certain key id */
 Decryptor.getAll = function getAllF(keyRealID, cb) {
-	var p = Bluebird.try(function () {
+	return Bluebird.try(function () {
 		if (!h.isRealID(keyRealID)) {
 			throw new InvalidRealID();
 		}
@@ -87,9 +77,7 @@ Decryptor.getAll = function getAllF(keyRealID, cb) {
 		return decryptorSet.map(function (count) {
 			return new Decryptor(keyRealID, count);
 		});
-	});
-
-	return step.unpromisify(p, cb);
+	}).nodeify(cb)
 };
 
 Decryptor.validateFormat = function validateFormat(data) {
@@ -119,89 +107,79 @@ Decryptor.validateFormat = function validateFormat(data) {
 };
 
 Decryptor.validateNoThrow = function validateF(request, data, key, cb) {
-	step(function validate() {
-		Decryptor.validate(request, data, key, this);
-	}, function validate2(e) {
-		if (e) {
-			this.ne(false);
-		} else {
-			this.ne(true);
-		}
-	}, cb);
+	return Decryptor.validate(request, data, key).then(() => true).catch(() => false).nodeify(cb)
 };
 
 Decryptor.validate = function validateF(request, data, key, cb) {
 	var keyRealID = key.getRealID();
 	var parentKey;
-	step(function validateF1() {
+	return Bluebird.try(function () {
 		Decryptor.validateFormat(data);
+
+		return key.hasAccess(request);
+	}).then(function (keyAcc) {
+		if (!keyAcc) {
+			throw new AccessViolation(`No Key Access here! (${keyRealID})`);
+		}
 
 		//find dat key
 		if (data.type === "symKey") {
-			var SymKey = require("./symKey.js");
-			SymKey.get(data.decryptorid, this);
+			var SymKey = require("./symKey.js")
+			return SymKey.get(data.decryptorid)
 		} else if (data.type === "cryptKey") {
-			var EccKey = require("./eccKey.js");
-			EccKey.get(data.decryptorid, this);
+			var EccKey = require("./eccKey.js")
+			return EccKey.get(data.decryptorid)
 		} else if (data.type === "pw" || data.type === "backup") {
-			this.ne(true);
-		} else {
-			throw new InvalidDecryptor("invalid type.");
+			return true
 		}
-	}, h.sF(function validateF2(k) {
+
+		throw new InvalidDecryptor("invalid type.");
+	}).then(function (k) {
 		parentKey = k;
-		if (!key) {
+		if (!parentKey) {
 			throw new InvalidDecryptor("key not found.");
 		}
 
-		this.parallel.unflatten();
-		key.hasAccess(request, this.parallel());
-
 		if (typeof parentKey === "object") {
-			parentKey.hasAccess(request, this.parallel());
-			parentKey.getType(this.parallel());
-		} else {
-			this.parallel()(null, true);
+			return Bluebird.all([
+				parentKey.hasAccess(request),
+				parentKey.getType(),
+			])
 		}
-	}), h.sF(function createD22(keyAcc, parentAcc, parentType) {
-		if (keyAcc === true && (parentAcc === true || parentType === "crypt")) {
-			//is there already a key like this one?
-			client.hget("key:" + keyRealID + ":decryptor:map", data.decryptorid, this);
-		} else {
-			throw new AccessViolation("No Access here! " + keyAcc + "-" + parentAcc + "("+ keyRealID + " - " + (parentKey.getRealID ? parentKey.getRealID() : "") + ")");
+
+		return Bluebird.resolve([true])
+	}).spread((parentAcc, parentType) => {
+		if (!parentAcc && parentType !== "crypt") {
+			throw new AccessViolation("No Access here! " + parentAcc + "(" + keyRealID + " - " + (parentKey.getRealID ? parentKey.getRealID() : "") + ")");
 		}
-	}), h.sF(function createD23(val) {
+
+		//is there already a key like this one?
+		return client.hgetAsync("key:" + keyRealID + ":decryptor:map", data.decryptorid);
+	}).then(function (val) {
 		if (val !== null) {
 			throw new InvalidDecryptor("already existing");
 		}
 
-		this.ne(parentKey);
-	}), cb);
+		return parentKey
+	}).nodeify(cb);
 };
 
 /** create a decryptor */
 Decryptor.create = function (request, key, data, cb) {
 	var decryptorInternalID, keyRealID = key.getRealID(), parentKey;
 
-	step(function createD1() {
-		//only allow key creation when logged in
-		request.session.logedinError(this);
-	}, h.sF(function createD12() {
+	//only allow key creation when logged in
+	return request.session.logedinError().then(() => {
 		//validate our decryptor
-		Decryptor.validate(request, data, key, this);
-	}), h.sF(function createD2(p) {
+		return Decryptor.validate(request, data, key);
+	}).then((p) => {
 		parentKey = p;
 
-		client.incr("key:" + keyRealID + ":decryptor:count", this);
-	}), h.sF(function createD24(count) {
+		return client.incrAsync("key:" + keyRealID + ":decryptor:count");
+	}).then((count) => {
 		decryptorInternalID = count;
 
 		var domain = "key:" + keyRealID + ":decryptor:" + count;
-
-		if (data.type !== "pw") {
-			//add the decryptors id to the list
-			client.hset("key:" + keyRealID + ":decryptor:map", data.decryptorid, count, this.parallel());
-		}
 
 		var toSet = {
 			ct: data.ct,
@@ -224,25 +202,37 @@ Decryptor.create = function (request, key, data, cb) {
 			toSet.salt = data.salt;
 		}
 
-		client.hmset(domain, toSet, this.parallel());
+		const hashSetDecryptorData = client.hmsetAsync(domain, toSet);
 
 		//add to list. we need this to grab all decryptors.
-		client.sadd("key:" + keyRealID + ":decryptor:decryptorSet", decryptorInternalID, this.parallel());
-	}), h.sF(function createD4() {
-		if (data.type === "pw" || data.type === "backup") {
-			this.ne([request.session.getUserID()]);
-		} else {
-			parentKey.getAccess(this);
-		}
-	}), h.sF(function createD41(access) {
-		if (typeof parentKey === "object") {
-			parentKey.addEncryptor(keyRealID, this.parallel());
-		}
+		const addDecryptorToList = client.saddAsync(`key:${keyRealID}:decryptor:decryptorSet`, decryptorInternalID);
 
-		key.addAccess(decryptorInternalID, access, this.parallel());
-	}), h.sF(function createD5() {
-		this.ne(new Decryptor(keyRealID, data.decryptorid));
-	}), cb);
+		const addDecryptorToMap = data.type !== "pw" ? client.hsetAsync(`key:${keyRealID}:decryptor:map`, data.decryptorid, count) : null
+
+		return Bluebird.all([
+			hashSetDecryptorData,
+			addDecryptorToList,
+			addDecryptorToMap
+		])
+	}).then(() => {
+		if (data.type === "pw" || data.type === "backup") {
+			return [request.session.getUserID()];
+		} else {
+			return parentKey.getAccess();
+		}
+	}).then(function (access) {
+
+		const addEncryptor = typeof parentKey === "object" ? parentKey.addEncryptor(keyRealID) : null
+
+		const addKeyAccess = key.addAccess(decryptorInternalID, access)
+
+		return Bluebird.all([
+			addKeyAccess,
+			addEncryptor,
+		])
+	}).then(function () {
+		return new Decryptor(keyRealID, data.decryptorid)
+	}).nodeify(cb);
 };
 
 module.exports = Decryptor;

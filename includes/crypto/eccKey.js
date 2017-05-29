@@ -113,19 +113,19 @@ EccKey.validateNoThrow = function validateF(data, cb) {
 
 /** get all decryptors for a certain key id */
 EccKey.get = function getF(keyRealID, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 		if (h.isRealID(keyRealID)) {
-			client.hget("key:" + keyRealID, "type", this);
-		} else {
-			throw new InvalidRealID(keyRealID);
+			return client.hgetAsync("key:" + keyRealID, "type")
 		}
-	}, h.sF(function (type) {
+
+		throw new InvalidRealID(keyRealID);
+	}).then(function (type) {
 		if (type === "crypt" || type === "sign") {
-			this.ne(new EccKey(keyRealID));
-		} else {
-			throw new NotAEccKey();
+			return new EccKey(keyRealID)
 		}
-	}), cb);
+
+		throw new NotAEccKey();
+	}).nodeify(cb);
 };
 
 EccKey.createWDecryptors = function (request, data, cb) {
