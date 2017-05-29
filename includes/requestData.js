@@ -26,10 +26,10 @@ function RequestData(socketData, rawRequest, channel) {
 		this.keyData = [];
 	}
 
-	this.blockNonBusinessAccess = () => {
+	this.blockPrivateAccess = () => {
 		return this.session.isBusiness().then((isBusiness) => {
 			if (!isBusiness) {
-				throw new AccessViolation("Not a business account")
+				throw new NoBusinessLicense("Not a business account")
 			}
 		})
 	}

@@ -9,6 +9,7 @@
     "InvalidLogin": true,
     "AccessViolation": true,
     "InvalidToken": true,
+    "NoBusinessLicense": true,
     "UserNotExisting": true,
     "MailInUse": true,
     "NicknameInUse": true,
