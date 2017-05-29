@@ -98,14 +98,8 @@ EccKey.validate = function (data) {
 	}
 };
 
-EccKey.validateNoThrow = function (data, cb) {
-	return Bluebird.try(function () {
-		if (validateFormat(data)) {
-			return false
-		}
-
-		return true
-	}).nodeify(cb);
+EccKey.validateNoThrow = function (data) {
+	return !validateFormat(data)
 };
 
 /** get all decryptors for a certain key id */

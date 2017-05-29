@@ -92,7 +92,7 @@ function verifyObject(signature, object, keyData, callback) {
 	}).nodeify(callback)
 }
 
-function verifySecuredMeta(signKey, metaData, type, cb) {
+function verifySecuredMeta(signKey, metaData, type) {
 	var attributesNeverVerified = ["_signature", "_hashObject"];
 
 	return Bluebird.try(function () {
@@ -114,7 +114,7 @@ function verifySecuredMeta(signKey, metaData, type, cb) {
 		}
 
 		return true;
-	}).nodeify(cb)
+	})
 }
 
 var User = require("./user");

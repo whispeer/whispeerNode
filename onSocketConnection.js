@@ -35,9 +35,7 @@ function registerSocketListener(socketData) {
 		return;
 	}
 
-	step(function () {
-		socketData.session.getOwnUser(this);
-	}, h.sF(function (ownUser) {
+	return socketData.session.getOwnUser().then((ownUser) => {
 		ownUser.listenAll(socketData, function (channel, data) {
 			if (listener[channel]) {
 				listener[channel](socketData, data);
@@ -45,24 +43,18 @@ function registerSocketListener(socketData) {
 				socketData.socket.emit("notify." + channel, (typeof data === "string" ? JSON.parse(data) : data));
 			}
 		});
-	}), function (e) {
-		if (e) {
-			console.error(e);
-		}
+	}).catch((e) => {
+		console.error(e);
 	});
 }
 
 var handle
 
 function createKeys(request, keys, cb) {
-	step(function () {
-		request.session.logedinError(this);
-	}, h.sF(function () {
+	return request.session.logedinError().thenReturn(keys).map((keyData) => {
 		//TODO: this might fail if one of the decryptors is a key we also want to add!
-		keys.forEach(function (keyData) {
-			KeyApi.createWithDecryptors(request, keyData, this.parallel());
-		}, this);
-	}), cb);
+		KeyApi.createWithDecryptors(request, keyData, this.parallel());
+	}).nodeify(cb)
 }
 
 function callExplicitHandler(handler, data, cb, request) {

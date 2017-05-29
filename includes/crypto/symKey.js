@@ -61,14 +61,8 @@ SymKey.validate = function (data) {
 	}
 };
 
-SymKey.validateNoThrow = function (data, cb) {
-	return Bluebird.try(function () {
-		if (validateFormat(data)) {
-			return false
-		}
-
-		return true
-	}).nodeify(cb);
+SymKey.validateNoThrow = function (data) {
+	return !validateFormat(data)
 };
 
 

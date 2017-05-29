@@ -426,9 +426,9 @@ var friends = {
 
 			setSignedList(request, m, signedList, [uid], [], this);
 		}), h.sF(function () {
-			SymKey.create(request, key, this);
+			return SymKey.create(request, key);
 		}), h.sF(function keyCreated() {
-			Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends, this);
+			return Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends);
 		}), h.sF(function (valid) {
 			if (!valid) {
 				throw new InvalidDecryptor();

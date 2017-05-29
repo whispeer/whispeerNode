@@ -125,9 +125,9 @@ function SavedEntity(domain) {
 			that._executeHooks("read", field.attrs, data, this);
 		}, h.sF(function () {
 			if (fullHash) {
-				return client.hgetallAsync(field.key, this);
+				return client.hgetallAsync(field.key);
 			} else {
-				return client.hgetAsync(field.key, field.attr, this);
+				return client.hgetAsync(field.key, field.attr);
 			}
 		}), h.sF(function (value) {
 			data.value = value;

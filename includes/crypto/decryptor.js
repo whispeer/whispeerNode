@@ -106,8 +106,8 @@ Decryptor.validateFormat = function validateFormat(data) {
 	}
 };
 
-Decryptor.validateNoThrow = function validateF(request, data, key, cb) {
-	return Decryptor.validate(request, data, key).then(() => true).catch(() => false).nodeify(cb)
+Decryptor.validateNoThrow = function (request, data, key) {
+	return Decryptor.validate(request, data, key).then(() => true).catch(() => false)
 };
 
 Decryptor.validate = function validateF(request, data, key, cb) {

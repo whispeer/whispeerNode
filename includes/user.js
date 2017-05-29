@@ -292,11 +292,11 @@ var User = function (id) {
 		attributes.forEach((attribute) => {
 			var accessor = h.capitaliseFirstLetter(attribute);
 
-			this[`get${accessor}`] = function (request, cb) {
+			theUser[`get${accessor}`] = function (request, cb) {
 				return getAttribute(request, attribute, cb)
 			};
 
-			this[`set${accessor}`] = function (request, value, cb) {
+			theUser[`set${accessor}`] = function (request, value, cb) {
 				return setAttribute(request, attribute, value, cb)
 			};
 		});

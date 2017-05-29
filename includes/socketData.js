@@ -5,8 +5,6 @@ const client = require("./redisClient");
 
 const OnlineStatusUpdater = require("./onlineStatus");
 const errorService = require("./errorService");
-const step = require("step");
-const h = require("whispeerHelper");
 
 const socketS = require("socket.io-stream");
 
@@ -92,16 +90,10 @@ function SocketData(socket, session) {
 	};
 
 	this.notifyOwnClients = function (channel, message) {
-		step(function () {
-			theSocketData.session.getOwnUser(this);
-		}, h.sF(function (me) {
-			me.notify(channel, message);
-		}), function (e) {
-			if (e) {
-				console.error(e);
-			}
-		});
-	};
+		return theSocketData.session.getOwnUser().then((me) => {
+			me.notify(channel, message)
+		}).catch((e) => console.error(e))
+	}
 
 	var statusUpdater = new OnlineStatusUpdater(this, session);
 

@@ -248,7 +248,6 @@ var Session = function Session() {
 
 	var registerSymKeys = ["main", "friends", "profile"];
 	var registerEccKeys = ["sign", "crypt"];
-	var keyName = registerSymKeys.concat(registerEccKeys);
 
 	/** register a user.
 	* @param mail users mail (compulsory or nickname)
@@ -315,26 +314,18 @@ var Session = function Session() {
 			}).nodeify(cb)
 		}
 
-		function validateKeys(keys, cb) {
-			step(function () {
-				var i;
-				for (i = 0; i < registerSymKeys.length; i += 1) {
-					SymKey.validateNoThrow(keys[registerSymKeys[i]], this.parallel());
+		function validateKeys(keys) {
+			registerSymKeys.forEach((registerSymKey) => {
+				if (!SymKey.validateNoThrow(keys[registerSymKey])) {
+					regErr("invalid" + registerSymKey + "Key", keys);
 				}
+			})
 
-				for (i = 0; i < registerEccKeys.length; i += 1) {
-					EccKey.validateNoThrow(keys[registerEccKeys[i]], this.parallel());
+			registerEccKeys.forEach((registerEccKey) => {
+				if (!EccKey.validateNoThrow(keys[registerEccKey])) {
+					regErr("invalid" + registerEccKey + "Key", keys);
 				}
-			}, h.sF(function (res) {
-				var i;
-				for (i = 0; i < res.length; i += 1) {
-					if (!res[i]) {
-						regErr("invalid" + keyName[i] + "Key", keys);
-					}
-				}
-
-				this.ne();
-			}), cb);
+			})
 		}
 
 		step(function nicknameSet() {
@@ -360,34 +351,34 @@ var Session = function Session() {
 				regErr("invalidPassword");
 			}
 
-			this();
-		}, h.sF(function checkMailUnique() {
 			if (mail) {
 				console.log("mail:" + mail);
 				return User.getUser(mail);
 			} else {
 				this();
 			}
-		}), h.hE(function checkNicknameUnique(e) {
+		}, h.hE(function checkNicknameUnique(e) {
 			if (!e && mail) {
 				regErr("mailUsed");
 			}
 
 			return User.isNicknameFree(nickname);
-		}, UserNotExisting), h.sF(function checkMainKey(nicknameFree) {
+		}, UserNotExisting), h.sF(function (nicknameFree) {
 			if (!nicknameFree) {
 				regErr("nicknameUsed");
 			}
 
-			validateKeys(keys, this);
-		}, UserNotExisting), h.sF(function validateSettings() {
+			validateKeys(keys);
+
 			if (!settings || !settings.content.iv || !settings.content.ct) {
 				regErr("settingsInvalid");
 			}
 
-			verifySecuredMeta.byKey(keys.sign, signedKeys, "signedKeys", this.parallel());
-			verifySecuredMeta.byKey(keys.sign, settings.meta, "settings", this.parallel());
-		}), h.sF(function createActualUser() {
+			return Bluebird.all([
+				verifySecuredMeta.byKey(keys.sign, signedKeys, "signedKeys"),
+				verifySecuredMeta.byKey(keys.sign, settings.meta, "settings"),
+			])
+		}, UserNotExisting), h.sF(function createActualUser() {
 			if (result.error === true) {
 				this.last.ne(result);
 			} else {

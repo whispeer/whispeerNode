@@ -78,10 +78,6 @@ function RequestData(socketData, rawRequest, channel) {
 	};
 
 	this.addKey = function (realid, cb, filter) {
-		if (typeof cb !== "function") {
-			throw new Error("did not get a function callback");
-		}
-
 		if (this.rootRequest) {
 			return this.rootRequest.addKey(realid, cb, filter);
 		}
