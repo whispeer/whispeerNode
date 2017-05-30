@@ -32,7 +32,7 @@ var errorService = require("./errorService");
 var pushAPI = require("./pushAPI");
 var Bluebird = require("bluebird");
 
-const topicUpdateModel = require("./models/topicUpdateModel");
+const topicUpdateModel = require("./models/topicUpdate");
 
 const updateServer = (succID, myID) => {
 	return client.hgetallAsync(`topic:${myID}:server`).then((myServer) => {

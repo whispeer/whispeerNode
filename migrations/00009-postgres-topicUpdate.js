@@ -2,7 +2,7 @@ var Bluebird = require("bluebird");
 var	client = require("../includes/redisClient");
 
 const sequelize = require("../includes/dbConnector/sequelizeClient");
-const topicUpdateModel = require("../includes/models/topicUpdateModel");
+const topicUpdateModel = require("../includes/models/topicUpdate");
 
 var h = require("whispeerHelper");
 
