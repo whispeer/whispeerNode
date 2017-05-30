@@ -14,29 +14,32 @@ const {
 } = require("./utils/columns")
 
 const Chunk = sequelize.define("Chunk", {
-	id: autoIncrementInteger,
+	id: autoIncrementInteger(),
 
-	createTime: requiredInteger,
-	receiver: requiredInteger, // TODO: own table!
-	creator: requiredInteger,
+	createTime: requiredInteger(),
+	creator: requiredInteger(),
 
-	_key: key,
-	_version: requiredInteger,
+	_key: key(),
+	_version: requiredInteger(),
 	_type: {
 		type: Sequelize.STRING,
 		allowNull: false,
 		validate: { isIn: [["topic", "chatChunk"]] }
 	},
-	_hashVersion: requiredInteger,
-	_contentHash: hash,
-	_ownHash: hash,
-	_signature: signature
+	_hashVersion: requiredInteger(),
+	_contentHash: hash(),
+	_ownHash: hash(),
+	_signature: signature(),
 })
 
+const Receiver = sequelize.define("Receiver", {
+	id: requiredInteger
+})
 
-Chunk.belongsTo(Chunk, {foreignKey: "successor"})
+Chunk.hasMany(Receiver, { as: "receiver" })
 
-Chunk.hasOne(Chat)
+Chunk.belongsTo(Chunk, { foreignKey: "successor" })
+
 Chat.hasMany(Chunk)
 
 module.exports = Chunk

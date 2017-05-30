@@ -7,7 +7,7 @@ const {
 } = require("./utils/columns")
 
 const Chat = sequelize.define("Chat", {
-	id: autoIncrementInteger,
+	id: autoIncrementInteger(),
 });
 
 module.exports = Chat;

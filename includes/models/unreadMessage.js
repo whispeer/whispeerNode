@@ -11,14 +11,11 @@ const {
 } = require("./utils/columns")
 
 const UserUnreadMessage = sequelize.define("UserUnreadMessage", {
-	id: autoIncrementInteger,
-	userID: requiredInteger
+	id: autoIncrementInteger(),
+	userID: requiredInteger()
 });
 
-UserUnreadMessage.hasOne(Message)
 Message.hasMany(UserUnreadMessage)
-
-UserUnreadMessage.hasOne(Chat)
 Chat.hasMany(UserUnreadMessage)
 
 module.exports = UserUnreadMessage;

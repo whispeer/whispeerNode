@@ -4,7 +4,7 @@ const sequelize = require("../dbConnector/sequelizeClient");
 const Sequelize = require("sequelize")
 
 const Chat = require("./chat")
-const Chunk = require("./chunk")
+const Chunk = require("./chatChunk")
 
 const {
 	autoIncrementInteger,
@@ -17,34 +17,36 @@ const {
 	type
 } = require("./utils/columns")
 
-const Message = sequelize.define("Message", {
-	id: autoIncrementInteger,
-
-	ct: ct,
-	iv: iv,
-
-	_contentHash: hash,
-	topicid: requiredInteger,
-	_signature: signature,
-	sender: requiredInteger,
-	createTime: requiredInteger,
-	sendTime: requiredInteger,
-	_type: type("message"),
-	_key: key,
-	_ownHash: hash,
-	_parent: hash,
-	_version: requiredInteger,
-	_hashVersion: requiredInteger,
-	images: {
+const Image = sequelize.define("Image", {
+	id: autoIncrementInteger(),
+	name: {
 		type: Sequelize.STRING,
-		allowNull: true,
+		allowNull: false,
 	}
+})
+
+const Message = sequelize.define("Message", {
+	id: autoIncrementInteger(),
+
+	ct: ct(),
+	iv: iv(),
+
+	_contentHash: hash(),
+	_signature: signature(),
+	sender: requiredInteger(),
+	createTime: requiredInteger(),
+	sendTime: requiredInteger(),
+	_type: type("message"),
+	_key: key(),
+	_ownHash: hash(),
+	_parent: hash(),
+	_version: requiredInteger(),
+	_hashVersion: requiredInteger()
 });
 
-Message.hasOne(Chat)
-Chat.hasMany(Message)
+Message.hasMany(Image, { as: "images" })
 
-Message.hasOne(Chunk)
+Chat.hasMany(Message)
 Chunk.hasMany(Message)
 
 module.exports = Message;

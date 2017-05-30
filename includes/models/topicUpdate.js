@@ -6,13 +6,13 @@ const Sequelize = require("sequelize");
 const h = require("whispeerHelper");
 
 const Chat = require("./chat")
-const Chunk = require("./chunk")
+const Chunk = require("./chatChunk")
 
 const contentKeys = ["ct", "iv"];
 const metaKeys = ["userID", "time", "_parent", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
 
 const {
-	UUID,
+	uuid,
 	requiredInteger,
 	key,
 	hash,
@@ -46,28 +46,28 @@ const setObject = (objectKeys, errorMessage) => {
 };
 
 const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
-	id: UUID,
-	ct: ct,
-	iv: iv,
-	userID: requiredInteger,
+	id: uuid(),
+	ct: ct(),
+	iv: iv(),
+	userID: requiredInteger(),
 	time: {
 		type: Sequelize.BIGINT,
 		allowNull: false
 	},
-	_parent: Object.assign({}, hash, {
+	_parent: Object.assign({}, hash(), {
 		unique: false
 	}),
-	_key: key,
-	_version: requiredInteger,
+	_key: key(),
+	_version: requiredInteger(),
 	_type: {
 		type: Sequelize.STRING,
 		allowNull: false,
 		validate: { is: "topicUpdate" }
 	},
-	_hashVersion: requiredInteger,
-	_contentHash: hash,
-	_ownHash: hash,
-	_signature: signature
+	_hashVersion: requiredInteger(),
+	_contentHash: hash(),
+	_ownHash: hash(),
+	_signature: signature(),
 }, {
 	instanceMethods: {
 		getMeta: getObject(metaKeys),

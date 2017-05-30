@@ -5,51 +5,51 @@ const Sequelize = require("sequelize")
 const { hex, hash, key } = require("./validations")
 
 module.exports = {
-	autoIncrementInteger: {
+	autoIncrementInteger: () => ({
 		type: Sequelize.INTEGER,
 		allowNull: false,
 		autoIncrement: true,
 		primaryKey: true
-	},
-	UUID: {
+	}),
+	uuid: () => ({
 		type: Sequelize.UUID,
 		allowNull: false,
 		defaultValue: Sequelize.UUIDV4,
 		primaryKey: true
-	},
-	requiredInteger: {
+	}),
+	requiredInteger: () => ({
 		type: Sequelize.INTEGER,
 		allowNull: false
-	},
-	key: {
+	}),
+	key: () => ({
 		type: Sequelize.STRING,
 		allowNull: false,
 		validate: { is: key }
-	},
-	hash: {
+	}),
+	hash: () => ({
 		type: Sequelize.STRING,
 		allowNull: false,
 		unique: true,
 		validate: { is: hash }
-	},
-	signature: {
+	}),
+	signature: () => ({
 		type: Sequelize.STRING,
 		allowNull: false,
 		unique: true,
 		validate: { is: hex }
-	},
-	iv: {
+	}),
+	iv: () => ({
 		type: Sequelize.STRING,
 		allowNull: false,
 		unique: true,
 		validate: { is: hex }
-	},
-	ct: {
+	}),
+	ct: () => ({
 		type: Sequelize.TEXT,
 		allowNull: false,
 		unique: true,
 		validate: { is: hex }
-	},
+	}),
 	type: (type) => ({
 		type: Sequelize.STRING,
 		allowNull: false,
