@@ -5,12 +5,21 @@ const Sequelize = require("sequelize");
 
 const h = require("whispeerHelper");
 
+const Chat = require("./chat")
+const Chunk = require("./chunk")
+
 const contentKeys = ["ct", "iv"];
 const metaKeys = ["userID", "time", "_parent", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
 
-const hex = /^[0-9a-f]+$/i;
-const hash = /^hash::[0-9a-f]+$/i;
-const key = /^.*:[0-9a-f]+$/i;
+const {
+	UUID,
+	requiredInteger,
+	key,
+	hash,
+	signature,
+	ct,
+	iv,
+} = require("./utils/columns")
 
 const getObject = (objectKeys) => {
 	return function() {
@@ -37,77 +46,28 @@ const setObject = (objectKeys, errorMessage) => {
 };
 
 const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
-	id: {
-		type: Sequelize.UUID,
-		allowNull: false,
-		defaultValue: Sequelize.UUIDV4,
-		primaryKey: true
-	},
-	topicID: {
-		type: Sequelize.INTEGER,
-		allowNull: false
-	},
-	ct: {
-		type: Sequelize.TEXT,
-		allowNull: false,
-		unique: true,
-		validate: { is: hex }
-	},
-	iv: {
-		type: Sequelize.STRING,
-		allowNull: false,
-		unique: true,
-		validate: { is: hex }
-	},
-	userID: {
-		type: Sequelize.INTEGER,
-		allowNull: false
-	},
+	id: UUID,
+	ct: ct,
+	iv: iv,
+	userID: requiredInteger,
 	time: {
 		type: Sequelize.BIGINT,
 		allowNull: false
 	},
-	_parent: {
-		type: Sequelize.STRING,
-		allowNull: false,
-		validate: { is: hash }
-	},
-	_key: {
-		type: Sequelize.STRING,
-		allowNull: false,
-		validate: { is: key }
-	},
-	_version: {
-		type: Sequelize.INTEGER,
-		allowNull: false
-	},
+	_parent: Object.assign({}, hash, {
+		unique: false
+	}),
+	_key: key,
+	_version: requiredInteger,
 	_type: {
 		type: Sequelize.STRING,
 		allowNull: false,
 		validate: { is: "topicUpdate" }
 	},
-	_hashVersion: {
-		type: Sequelize.INTEGER,
-		allowNull: false
-	},
-	_contentHash: {
-		type: Sequelize.STRING,
-		allowNull: false,
-		unique: true,
-		validate: { is: hash }
-	},
-	_ownHash: {
-		type: Sequelize.STRING,
-		allowNull: false,
-		unique: true,
-		validate: { is: hash }
-	},
-	_signature: {
-		type: Sequelize.STRING,
-		allowNull: false,
-		unique: true,
-		validate: { is: hex }
-	}
+	_hashVersion: requiredInteger,
+	_contentHash: hash,
+	_ownHash: hash,
+	_signature: signature
 }, {
 	instanceMethods: {
 		getMeta: getObject(metaKeys),
@@ -127,5 +87,8 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 	}
 
 });
+
+topicTitleUpdate.belongsTo(Chunk)
+topicTitleUpdate.belongsTo(Chat)
 
 module.exports = topicTitleUpdate;

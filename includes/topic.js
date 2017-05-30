@@ -61,16 +61,6 @@ const copyPredecessors = (succID, myID) => {
 	})
 }
 
-const moveUnreadMessages = (request, from, to) => {
-	const toID = to.getID(), fromID = from.getID()
-
-	return from.getReceiverIDs(request).each((receiverID) => {
-		return client.zunionstoreAsync(`topic:${toID}:user:${receiverID}:unread`, 1, `topic:${fromID}:user:${receiverID}:unread`)
-	}).each((receiverID) => {
-		return client.del(`topic:${fromID}:user:${receiverID}:unread`)
-	})
-}
-
 function pushMessage(request, theReceiver, senderName, message) {
 	const receivers = theReceiver.filter(function (user) {
 		return user.getID() !== request.session.getUserID();
@@ -321,7 +311,6 @@ var Topic = function (id) {
 				copyPredecessors(succID, myID),
 				this.markReadForAll(request),
 				successorTopic.markUnreadForOthers(request),
-				moveUnreadMessages(request, theTopic, successorTopic),
 				this.removeSingle(),
 			]).then(() => {
 				return successorTopic.notifyReceivers(request, "topic", successorTopic.getID())
@@ -462,82 +451,10 @@ var Topic = function (id) {
 		}).nodeify(cb);
 	};
 
-	this.getMissingMessages = function (inBetween, newestIndex, oldestIndex) {
-		return client.zrevrangeAsync(mDomain, newestIndex + 1, oldestIndex - 1).map(h.parseDecimal).then(function (ids) {
-			return h.arraySubtract(ids, inBetween);
-		});
-	};
-
-	this.getMessagesBefore = function (newestIndex) {
-		return client.zrevrangeAsync(mDomain, 0, newestIndex - 1);
-	};
-
-	this.getNewestMessages = function (count) {
-		return client.zrevrangeAsync(mDomain, 0, count - 1);
-	};
-
 	this.refetch = function (request, data, cb) {
-		var oldest = data.oldest,
-			newest = data.newest,
-			inBetween = data.inBetween,
-			maximum = data.maximum,
-			messageCountOnFlush = data.messageCountOnFlush;
-
-		var hasAccessErrorAsync = Bluebird.promisify(hasAccessError);
-		var clearMessages = false;
-
-		if (!oldest || !newest) {
-			console.warn(`Refetch messages undefined oldest (${oldest}) or newest (${newest}). Topic: ${this.getID()}`);
-			return Bluebird.resolve({
-				clearMessages: false,
-				messages: []
-			}).nodeify(cb)
-		}
-
-		return hasAccessErrorAsync(request).bind(this).then(function () {
-			return Bluebird.all([
-				client.zrevrankAsync(mDomain, oldest),
-				client.zrevrankAsync(mDomain, newest),
-			]);
-		}).spread(function (oldestIndex, newestIndex) {
-			var missingNewCount = newestIndex;
-			var missingMessageCount = oldestIndex - newestIndex - inBetween.length - 1;
-
-			if (missingMessageCount + missingNewCount > maximum) {
-				clearMessages = true;
-				return this.getNewestMessages(messageCountOnFlush);
-			}
-
-			if (missingNewCount === 0 && missingMessageCount === 0) {
-				return [];
-			}
-
-			var requests = [];
-
-			if (missingNewCount > 0) {
-				requests.push(this.getMessagesBefore(newestIndex));
-			}
-
-			if (missingMessageCount > 0) {
-				requests.push(this.getMissingMessages(inBetween, newestIndex, oldestIndex));
-			}
-
-			return Bluebird.all(requests);
-		}).then(function (data) {
-			return h.array.flatten(data);
-		}).map(function (missingMessageID) {
-			var Message = require("./messages");
-			return new Message(missingMessageID);
-		}).map(function (missingMessage) {
-			var getFullData = Bluebird.promisify(missingMessage.getFullData, {
-			    context: missingMessage
-			});
-			return getFullData(request);
-		}).then(function (data) {
-			return {
-				clearMessages,
-				messages: data
-			};
+		return Bluebird.resolve({
+			clearMessages: false,
+			messages: []
 		}).nodeify(cb)
 	};
 
