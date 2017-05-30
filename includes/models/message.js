@@ -41,7 +41,10 @@ const Message = sequelize.define("Message", {
 	}
 });
 
-Message.belongsTo(Chat)
-Message.belongsTo(Chunk)
+Message.hasOne(Chat)
+Chat.hasMany(Message)
+
+Message.hasOne(Chunk)
+Chunk.hasMany(Message)
 
 module.exports = Message;

@@ -10,42 +10,6 @@ var Bluebird = require("bluebird");
 
 var MAXMESSAGELENGTH = 200 * 1000;
 
-/*
-
-	topic: {
-		createTime: (int)
-		key: key,
-		cryptKeys: [key],
-		receiver: (int),
-		creator: (int),
-		newest (int),
-		unread: (bool)
-	}
-
-	message: {
-		unsignedMeta: {
-			topicid: (int),
-			read: (bool)
-		},
-		meta: {
-			createTime: (int),
-			topicHash: (hex)
-			previousMessage: (int),
-			previousMessageHash: (hex),
-			ownHash: (hex)
-			sender: (int)
-		}
-		content: {
-			key,
-			iv: (hex),
-			text: (hex)
-		}
-		signature: (hex)
-		encrSignature: (hex)
-	}
-
-*/
-
 const getTopicUpdates = (request, topic, messages, lastMessage) => {
 	if (!messages || messages.length === 0) {
 		return Bluebird.resolve([]);
@@ -131,7 +95,7 @@ var t = {
 			}), h.sF(function (_successorTopic) {
 				successorTopic = _successorTopic
 
-				successorTopic.getFullData(request, this, false, false);
+				return successorTopic.getFullData(request, this);
 			}), h.sF(function (successorTopic) {
 				return {
 					successorTopic
@@ -148,9 +112,9 @@ var t = {
 	},
 	getTopic: function getTopicF(data, fn, request) {
 		step(function () {
-			Topic.get(data.topicid, this);
+			return Topic.get(data.topicid, this);
 		}, h.sF(function (topic) {
-			topic.getFullData(request, this, true, false);
+			return topic.getFullData(request, this, true, false);
 		}), h.sF(function (topicData) {
 			this.ne({
 				topic: topicData

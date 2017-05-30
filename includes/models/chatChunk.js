@@ -17,7 +17,7 @@ const Chunk = sequelize.define("Chunk", {
 	id: autoIncrementInteger,
 
 	createTime: requiredInteger,
-	receiver: requiredInteger,
+	receiver: requiredInteger, // TODO: own table!
 	creator: requiredInteger,
 
 	_key: key,
@@ -33,6 +33,10 @@ const Chunk = sequelize.define("Chunk", {
 	_signature: signature
 })
 
-Chunk.belongsTo(Chat)
+
+Chunk.belongsTo(Chunk, {foreignKey: "successor"})
+
+Chunk.hasOne(Chat)
+Chat.hasMany(Chunk)
 
 module.exports = Chunk
