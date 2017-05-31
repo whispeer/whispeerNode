@@ -3,8 +3,6 @@
 const sequelize = require("../dbConnector/sequelizeClient");
 const Sequelize = require("sequelize");
 
-const h = require("whispeerHelper");
-
 const Chat = require("./chat")
 const Chunk = require("./chatChunk")
 
@@ -21,29 +19,10 @@ const {
 	iv,
 } = require("./utils/columns")
 
-const getObject = (objectKeys) => {
-	return function() {
-		const obj = {};
-
-		objectKeys.forEach((key) => {
-			obj[key] = this[key];
-		});
-
-		return obj;
-	};
-};
-
-const setObject = (objectKeys, errorMessage) => {
-	return function(value) {
-		if (!h.arrayEqual(Object.keys(value), objectKeys)) {
-			throw new Error(errorMessage);
-		}
-
-		objectKeys.forEach((key) => {
-			this.setDataValue(key, value[key]);
-		});
-	};
-};
+const {
+	getObject,
+	setObject,
+} = require("./utils/methods")
 
 const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 	id: uuid(),
