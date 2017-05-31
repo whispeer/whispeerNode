@@ -21,6 +21,10 @@ module.exports = {
 		type: Sequelize.INTEGER,
 		allowNull: false
 	}),
+	requiredTimestamp: () => ({
+		type: Sequelize.BIGINT,
+		allowNull: false
+	}),
 	key: () => ({
 		type: Sequelize.STRING,
 		allowNull: false,
