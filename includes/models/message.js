@@ -23,6 +23,8 @@ const Image = sequelize.define("Image", {
 		type: Sequelize.STRING,
 		allowNull: false,
 	}
+}, {
+	timestamps: false,
 })
 
 const Message = sequelize.define("Message", {

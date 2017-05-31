@@ -33,7 +33,10 @@ const Chunk = sequelize.define("Chunk", {
 })
 
 const Receiver = sequelize.define("Receiver", {
-	id: requiredInteger
+	id: autoIncrementInteger(),
+	userID: requiredInteger()
+}, {
+	timestamps: false,
 })
 
 Chunk.hasMany(Receiver, { as: "receiver" })
