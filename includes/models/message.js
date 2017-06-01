@@ -73,7 +73,8 @@ const Image = sequelize.define("Image", {
 	name: {
 		type: Sequelize.STRING,
 		allowNull: false,
-	}
+	},
+	index: requiredInteger()
 }, {
 	timestamps: false,
 })
