@@ -23,6 +23,14 @@ const {
 	hasMany
 } = require("./utils/relations")
 
+const mapToUserID = function (val) {
+	if (typeof val === "number") {
+		return val.map((userID) => ({ userID }))
+	}
+
+	return val
+}
+
 const metaKeys = ["creator", "createTime", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
 
 const Chunk = sequelize.define("Chunk", {
@@ -60,7 +68,11 @@ const Chunk = sequelize.define("Chunk", {
 		}
 	},
 	setterMethods: {
-		meta: setObject(metaKeys, "invalid meta keys")
+		meta: function (value) {
+			setObject(metaKeys, "invalid meta keys").call(this, value)
+		},
+		receiver: mapToUserID,
+		addedReceiver: mapToUserID
 	}
 })
 
