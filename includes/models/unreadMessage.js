@@ -10,12 +10,16 @@ const {
 	requiredInteger,
 } = require("./utils/columns")
 
+const {
+	hasMany
+} = require("./utils/relations")
+
 const UserUnreadMessage = sequelize.define("UserUnreadMessage", {
 	id: autoIncrementInteger(),
 	userID: requiredInteger()
 });
 
-Message.hasMany(UserUnreadMessage)
-Chat.hasMany(UserUnreadMessage)
+hasMany(Message, UserUnreadMessage)
+hasMany(Chat, UserUnreadMessage)
 
 module.exports = UserUnreadMessage;

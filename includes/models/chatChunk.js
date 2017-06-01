@@ -19,6 +19,10 @@ const {
 	setObject,
 } = require("./utils/methods")
 
+const {
+	hasMany
+} = require("./utils/relations")
+
 const metaKeys = ["creator", "createTime", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
 
 const Chunk = sequelize.define("Chunk", {
@@ -42,10 +46,10 @@ const Chunk = sequelize.define("Chunk", {
 	instanceMethods: {
 		getMetaBase: getObject(metaKeys),
 		getMeta: function () {
-			debugger
 			return Object.assign({}, this.getMetaBase(), {
 				addedReceiver: this.addedReceiver.map((u) => u.userID),
-				receiver: this.receiver.map((u) => u.userID)
+				receiver: this.receiver.map((u) => u.userID),
+				predecessor: this.predecessorId
 			})
 		},
 		getAPIFormatted: function () {
@@ -54,6 +58,9 @@ const Chunk = sequelize.define("Chunk", {
 				meta: this.getMeta()
 			};
 		}
+	},
+	setterMethods: {
+		meta: setObject(metaKeys, "invalid meta keys")
 	}
 })
 
@@ -71,11 +78,19 @@ const AddedReceiver = sequelize.define("AddedReceiver", {
 	timestamps: false,
 })
 
-Chunk.Receiver = Chunk.hasMany(Receiver, { as: "receiver" })
-Chunk.AddedReceiver = Chunk.hasMany(AddedReceiver, { as: "addedReceiver" })
+hasMany(Chunk, Receiver)
+hasMany(Chunk, AddedReceiver)
 
-Chunk.Successor = Chunk.belongsTo(Chunk, { foreignKey: "successor" })
+Chunk.Predecessor = Chunk.belongsTo(Chunk, { as: "predecessor" })
 
-Chat.hasMany(Chunk)
+hasMany(Chat, Chunk)
+
+Chunk.addScope("defaultScope", {
+	include: [{
+		association: Chunk.Receiver,
+	}, {
+		association: Chunk.AddedReceiver,
+	}]
+}, { override: true })
 
 module.exports = Chunk

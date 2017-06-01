@@ -64,7 +64,6 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 		meta: setObject(metaKeys, "invalid meta keys"),
 		content: setObject(contentKeys, "invalid content keys")
 	}
-
 });
 
 topicTitleUpdate.belongsTo(Chunk)
