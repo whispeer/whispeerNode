@@ -58,5 +58,9 @@ module.exports = {
 		type: Sequelize.STRING,
 		allowNull: false,
 		validate: { is: type }
+	}),
+	requiredBoolean: () => ({
+		type: Sequelize.BOOLEAN,
+		allowNull: false,
 	})
 }

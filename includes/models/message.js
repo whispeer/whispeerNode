@@ -15,7 +15,8 @@ const {
 	signature,
 	ct,
 	iv,
-	type
+	type,
+	requiredBoolean,
 } = require("./utils/columns")
 
 const {
@@ -47,7 +48,9 @@ const Message = sequelize.define("Message", {
 	_ownHash: hash(),
 	_parent: hash(),
 	_version: requiredInteger(),
-	_hashVersion: requiredInteger()
+	_hashVersion: requiredInteger(),
+
+	hasImages: requiredBoolean()
 }, {
 	instanceMethods: {
 		getMeta: getObject(metaKeys),

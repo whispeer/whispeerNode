@@ -12,6 +12,7 @@ const {
 	key,
 	hash,
 	signature,
+	requiredBoolean,
 } = require("./utils/columns")
 
 const {
@@ -24,11 +25,7 @@ const {
 } = require("./utils/relations")
 
 const mapToUserID = function (val) {
-	if (typeof val === "number") {
-		return val.map((userID) => ({ userID }))
-	}
-
-	return val
+	return val.map((userID, index) => ({ userID, index }))
 }
 
 const metaKeys = ["creator", "createTime", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
@@ -50,6 +47,8 @@ const Chunk = sequelize.define("Chunk", {
 	_contentHash: hash(),
 	_ownHash: hash(),
 	_signature: signature(),
+
+	emptyAddedReceiver: requiredBoolean()
 }, {
 	instanceMethods: {
 		getMetaBase: getObject(metaKeys),
@@ -70,22 +69,56 @@ const Chunk = sequelize.define("Chunk", {
 	setterMethods: {
 		meta: function (value) {
 			setObject(metaKeys, "invalid meta keys").call(this, value)
-		},
-		receiver: mapToUserID,
-		addedReceiver: mapToUserID
+		}
 	}
 })
 
+Chunk.sequelizeCreate = Chunk.create
+
+Chunk.create = (values, allowedFields) => {
+	if (!values.meta) {
+		return Chunk.sequelizeCreate(values, allowedFields)
+	}
+
+	const {
+		addedReceiver,
+		receiver,
+		predecessor: predecessorId
+	} = values.meta
+
+	delete values.meta.addedReceiver
+	delete values.meta.receiver
+	delete values.meta.predecessor
+
+	values.emptyAddedReceiver = typeof addedReceiver === "undefined"
+
+	const newValues = Object.assign({}, values, {
+		receiver: mapToUserID(receiver),
+	})
+
+	if (predecessorId) {
+		newValues.predecessorId = predecessorId
+	}
+
+	if (addedReceiver) {
+		newValues.addedReceiver = mapToUserID(addedReceiver)
+	}
+
+	return Chunk.sequelizeCreate(newValues, allowedFields)
+}
+
 const Receiver = sequelize.define("Receiver", {
 	id: autoIncrementInteger(),
-	userID: requiredInteger()
+	userID: requiredInteger(),
+	index: requiredInteger(),
 }, {
 	timestamps: false,
 })
 
 const AddedReceiver = sequelize.define("AddedReceiver", {
 	id: autoIncrementInteger(),
-	userID: requiredInteger()
+	userID: requiredInteger(),
+	index: requiredInteger(),
 }, {
 	timestamps: false,
 })
