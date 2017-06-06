@@ -24,7 +24,6 @@ const chatAPI = {
 	},
 
 	getAllIDs: (data, fn, request) => {
-		debugger
 		return Chat.findAll({
 			attributes: ["id"],
 			include: [{
@@ -42,8 +41,10 @@ const chatAPI = {
 					where: { userID: request.session.getUserID() }
 				}]
 			}]
-		}).then((r) => {
-			debugger
+		}).then((results) => {
+			return {
+				chats: results.map((result) => result.id)
+			}
 		})
 	},
 
