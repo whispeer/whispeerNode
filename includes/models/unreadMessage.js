@@ -7,7 +7,8 @@ const Message = require("./message")
 
 const {
 	autoIncrementInteger,
-	requiredInteger,
+	required,
+	integer,
 } = require("./utils/columns")
 
 const {
@@ -16,7 +17,7 @@ const {
 
 const UserUnreadMessage = sequelize.define("UserUnreadMessage", {
 	id: autoIncrementInteger(),
-	userID: requiredInteger()
+	userID: required(integer()),
 });
 
 hasMany(Message, UserUnreadMessage)

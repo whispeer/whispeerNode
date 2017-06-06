@@ -10,13 +10,16 @@ const contentKeys = ["ct", "iv"];
 const metaKeys = ["userID", "time", "_parent", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
 
 const {
-	uuid,
-	requiredInteger,
+	autoUUID,
+	required,
+
+	integer,
 	key,
 	hash,
 	signature,
 	ct,
 	iv,
+	timestamp,
 } = require("./utils/columns")
 
 const {
@@ -25,28 +28,26 @@ const {
 } = require("./utils/methods")
 
 const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
-	id: uuid(),
-	ct: ct(),
-	iv: iv(),
-	userID: requiredInteger(),
-	time: {
-		type: Sequelize.BIGINT,
-		allowNull: false
-	},
-	_parent: Object.assign({}, hash(), {
+	id: autoUUID(),
+
+	ct: required(ct()),
+	iv: required(iv()),
+
+	userID: required(integer()),
+	time: required(timestamp()),
+	_parent: Object.assign({}, required(hash()), {
 		unique: false
 	}),
-	_key: key(),
-	_version: requiredInteger(),
-	_type: {
+	_key: required(key()),
+	_version: required(integer()),
+	_type: required({
 		type: Sequelize.STRING,
-		allowNull: false,
 		validate: { is: "topicUpdate" }
-	},
-	_hashVersion: requiredInteger(),
-	_contentHash: hash(),
-	_ownHash: hash(),
-	_signature: signature(),
+	}),
+	_hashVersion: required(integer()),
+	_contentHash: required(hash()),
+	_ownHash: required(hash()),
+	_signature: required(signature()),
 }, {
 	instanceMethods: {
 		getMeta: getObject(metaKeys),

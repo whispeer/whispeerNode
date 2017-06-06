@@ -6,13 +6,17 @@ const Sequelize = require("sequelize")
 const Chat = require("./chat")
 
 const {
+	required,
+	optional,
+	text,
+
 	autoIncrementInteger,
-	requiredInteger,
-	requiredTimestamp,
+	integer,
+	timestamp,
 	key,
 	hash,
 	signature,
-	requiredBoolean,
+	boolean,
 } = require("./utils/columns")
 
 const {
@@ -28,36 +32,52 @@ const mapToUserID = function (val) {
 	return val.map((userID, index) => ({ userID, index }))
 }
 
-const metaKeys = ["creator", "createTime", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
+const metaKeys = [
+	"creator",
+	"createTime",
+
+	"_key",
+	"_version",
+	"_type",
+	"_contentHash",
+	"_ownHash",
+	"_signature",
+
+	"_hashVersion",
+	"_v2"
+]
 
 const Chunk = sequelize.define("Chunk", {
 	id: autoIncrementInteger(),
 
-	createTime: requiredTimestamp(),
-	creator: requiredInteger(),
+	creator: required(integer()),
+	createTime: required(timestamp()),
 
-	_key: key(),
-	_version: requiredInteger(),
-	_type: {
+	_key: required(key()),
+	_version: required(integer()),
+	_type: required({
 		type: Sequelize.STRING,
-		allowNull: false,
 		validate: { isIn: [["topic", "chatChunk"]] }
-	},
-	_hashVersion: requiredInteger(),
-	_contentHash: hash(),
-	_ownHash: hash(),
-	_signature: signature(),
+	}),
+	_contentHash: required(hash()),
+	_ownHash: required(hash()),
+	_signature: required(signature()),
 
-	emptyAddedReceiver: requiredBoolean()
+	_hashVersion: optional(integer()),
+	_v2: optional(boolean()),
+
+	emptyAddedReceiver: required(boolean()),
+	originalMeta: required(text())
 }, {
 	instanceMethods: {
 		getMetaBase: getObject(metaKeys),
 		getMeta: function () {
+			const addedReceiver = this.emptyAddedReceiver ? {} : { addedReceiver: this.addedReceiver.map((u) => u.userID) }
+
 			return Object.assign({}, this.getMetaBase(), {
-				addedReceiver: this.addedReceiver.map((u) => u.userID),
 				receiver: this.receiver.map((u) => u.userID),
 				predecessor: this.predecessorId
-			})
+			}, addedReceiver)
 		},
 		getAPIFormatted: function () {
 			return {
@@ -68,7 +88,8 @@ const Chunk = sequelize.define("Chunk", {
 	},
 	setterMethods: {
 		meta: function (value) {
-			setObject(metaKeys, "invalid meta keys").call(this, value)
+			this.originalMeta = JSON.stringify(value)
+			setObject(metaKeys).call(this, value)
 		}
 	}
 })

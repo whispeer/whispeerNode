@@ -8,22 +8,24 @@ module.exports = {
 			const obj = {};
 
 			objectKeys.forEach((key) => {
-				obj[key] = this[key];
+				const value = this.getDataValue(key)
+
+				if (value) {
+					obj[key] = value
+				}
 			});
 
 			return obj;
 		};
 	},
 
-	setObject: (objectKeys, errorMessage) => {
+	setObject: (objectKeys) => {
 		return function(value) {
-			if (!h.arrayEqual(Object.keys(value), objectKeys)) {
-				throw new Error(errorMessage);
-			}
-
 			objectKeys.forEach((key) => {
-				this.setDataValue(key, value[key]);
-			});
+				if (value[key]) {
+					this.setDataValue(key, value[key])
+				}
+			})
 		};
 	}
 }

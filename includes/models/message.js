@@ -8,15 +8,21 @@ const Chunk = require("./chatChunk")
 
 const {
 	autoIncrementInteger,
-	requiredInteger,
-	requiredTimestamp,
+
+	required,
+	optional,
+
+	uuid,
+	integer,
+	timestamp,
 	key,
 	hash,
 	signature,
 	ct,
 	iv,
 	type,
-	requiredBoolean,
+	boolean,
+	text,
 } = require("./utils/columns")
 
 const {
@@ -34,23 +40,29 @@ const metaKeys = ["sender", "createTime", "sendTime", "_contentHash", "_signatur
 const Message = sequelize.define("Message", {
 	id: autoIncrementInteger(),
 
-	ct: ct(),
-	iv: iv(),
+	ct: required(ct()),
+	iv: required(iv()),
 
-	sender: requiredInteger(),
-	createTime: requiredTimestamp(),
-	sendTime: requiredTimestamp(),
+	sender: required(integer()),
+	createTime: required(timestamp()),
+	sendTime: required(timestamp()),
 
-	_contentHash: hash(),
-	_signature: signature(),
-	_type: type("message"),
-	_key: key(),
-	_ownHash: hash(),
-	_parent: hash(),
-	_version: requiredInteger(),
-	_hashVersion: requiredInteger(),
+	_contentHash: required(hash()),
+	_signature: required(signature()),
+	_type: required(type("message")),
+	_key: required(key()),
+	_ownHash: required(hash()),
+	_parent: required(hash()),
+	_version: required(integer()),
 
-	hasImages: requiredBoolean()
+	_sortCounter: optional(integer()),
+	messageUUID: optional(uuid()),
+	_hashVersion: optional(integer()),
+	_v2: optional(boolean()),
+
+	hasImages: required(boolean()),
+	usesTopicReference: required(boolean()),
+	originalMeta: required(text())
 }, {
 	instanceMethods: {
 		getMeta: getObject(metaKeys),
