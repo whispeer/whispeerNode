@@ -83,7 +83,10 @@ const Chunk = sequelize.define("Chunk", {
 		},
 		getAPIFormatted: function () {
 			return {
-				id: this.id,
+				server: {
+					id: this.id,
+					chatID: this.ChatId
+				},
 				meta: this.getMeta()
 			};
 		}
@@ -103,9 +106,9 @@ const Chunk = sequelize.define("Chunk", {
 
 Chunk.sequelizeCreate = Chunk.create
 
-Chunk.create = (values, allowedFields) => {
+Chunk.create = (values, options) => {
 	if (!values.meta) {
-		return Chunk.sequelizeCreate(values, allowedFields)
+		return Chunk.sequelizeCreate(values, options)
 	}
 
 	const {
@@ -132,7 +135,8 @@ Chunk.create = (values, allowedFields) => {
 		newValues.addedReceiver = mapToUserID(addedReceiver)
 	}
 
-	return Chunk.sequelizeCreate(newValues, allowedFields)
+
+	return Chunk.sequelizeCreate(newValues, options)
 }
 
 const Receiver = sequelize.define("Receiver", {

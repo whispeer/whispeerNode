@@ -82,8 +82,21 @@ const chatAPI = {
 	},
 
 	chunk: {
-		create: ({ predecessor, chunkMeta, receiverKey }) => {
+		create: ({ predecessorId, chunkMeta, receiverKey }) => {
+			// ensure we are admin/creatir of predecessorId!
+			// create receiver keys
 
+			const notImplemented = true
+
+			if (notImplemented) {
+				throw new Error("Not yet implemented")
+			}
+
+			return Sequelize.transaction((transaction) => {
+				return Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessorId }}).then(() =>
+					Chunk.create({ meta: chunkMeta }, { transaction })
+				)
+			})
 		},
 
 		get: ({ id }) => {
