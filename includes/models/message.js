@@ -1,7 +1,14 @@
 "use strict";
 
+/*
+Initial keys:
+	topicid
+
+Optional Keys:
+
+*/
+
 const sequelize = require("../dbConnector/sequelizeClient");
-const Sequelize = require("sequelize")
 
 const Chat = require("./chat")
 const Chunk = require("./chatChunk")
@@ -35,7 +42,22 @@ const {
 } = require("./utils/relations")
 
 const contentKeys = ["ct", "iv"];
-const metaKeys = ["sender", "createTime", "sendTime", "_contentHash", "_signature", "_type", "_key", "_ownHash", "_parent", "_version", "_hashVersion"];
+const metaKeys = [
+	"createTime",
+
+	"_contentHash",
+	"_signature",
+	"_type",
+	"_key",
+	"_ownHash",
+	"_parent",
+	"_version",
+
+	"_sortCounter",
+	"messageUUID",
+	"_hashVersion",
+	"_v2",
+];
 
 const Message = sequelize.define("Message", {
 	id: autoIncrementInteger(),
@@ -60,43 +82,41 @@ const Message = sequelize.define("Message", {
 	_hashVersion: optional(integer()),
 	_v2: optional(boolean()),
 
-	hasImages: required(boolean()),
-	usesTopicReference: required(boolean()),
-	originalMeta: required(text())
+	images: required(text()),
+	originalMeta: required(text()),
 }, {
 	instanceMethods: {
-		getMeta: getObject(metaKeys),
+		getMetaBase: getObject(metaKeys),
+		getMeta: function () {
+			const meta = this.getMetaBase()
+
+			const imagesJSON = this.getDataValue("images")
+
+			const images = imagesJSON ? JSON.parse(imagesJSON) : ""
+
+			return Object.assign({}, meta, { images })
+		},
 		getContent: getObject(contentKeys),
 		getAPIFormatted: function () {
 			return {
 				id: this.id,
-				chunkID: this.ChunkId,
-				chatID: this.ChatId,
+				server: {
+					chunkID: this.ChunkId,
+					chatID: this.ChatId,
+					sendTime: this.getDataValue("sendTime"),
+					sender: this.getDataValue("sender"),
+					messageid: this.getDataValue("id"),
+				},
 				content: this.getContent(),
 				meta: this.getMeta()
 			};
 		}
 	},
 	setterMethods: {
-		meta: setObject(metaKeys, "invalid meta keys"),
-		content: setObject(contentKeys, "invalid content keys")
+		meta: setObject(metaKeys),
+		content: setObject(contentKeys)
 	}
 });
-
-const Image = sequelize.define("Image", {
-	id: autoIncrementInteger(),
-	name: {
-		type: Sequelize.STRING,
-		allowNull: false,
-	},
-	index: requiredInteger()
-}, {
-	timestamps: false,
-})
-
-Message.hasMany(Image, { as: "images" })
-
-hasMany(Message, Image, { getManyName: "images" })
 
 hasMany(Chat, Message)
 hasMany(Chunk, Message)

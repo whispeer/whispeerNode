@@ -73,11 +73,11 @@ const Chunk = sequelize.define("Chunk", {
 		getMetaBase: getObject(metaKeys),
 		getMeta: function () {
 			const addedReceiver = this.emptyAddedReceiver ? {} : { addedReceiver: this.addedReceiver.map((u) => u.userID) }
+			const predecessor = this.predecessorId ? { predecessor: this.predecessorId } : {}
 
 			return Object.assign({}, this.getMetaBase(), {
-				receiver: this.receiver.map((u) => u.userID),
-				predecessor: this.predecessorId
-			}, addedReceiver)
+				receiver: this.receiver.map((u) => u.userID)
+			}, predecessor, addedReceiver)
 		},
 		getAPIFormatted: function () {
 			return {
@@ -88,7 +88,12 @@ const Chunk = sequelize.define("Chunk", {
 	},
 	setterMethods: {
 		meta: function (value) {
-			this.originalMeta = JSON.stringify(value)
+			this.setDataValue("originalMeta", JSON.stringify(value))
+
+			if (typeof value.addedReceiver === "undefined") {
+				this.setDataValue("emptyAddedReceiver", true)
+			}
+
 			setObject(metaKeys).call(this, value)
 		}
 	}
@@ -130,16 +135,16 @@ Chunk.create = (values, allowedFields) => {
 
 const Receiver = sequelize.define("Receiver", {
 	id: autoIncrementInteger(),
-	userID: requiredInteger(),
-	index: requiredInteger(),
+	userID: required(integer()),
+	index: required(integer()),
 }, {
 	timestamps: false,
 })
 
 const AddedReceiver = sequelize.define("AddedReceiver", {
 	id: autoIncrementInteger(),
-	userID: requiredInteger(),
-	index: requiredInteger(),
+	userID: required(integer()),
+	index: required(integer()),
 }, {
 	timestamps: false,
 })
