@@ -8,7 +8,7 @@ const Chat = require("./chat")
 const {
 	required,
 	optional,
-	text,
+	defaultValue,
 
 	autoIncrementInteger,
 	integer,
@@ -17,6 +17,7 @@ const {
 	hash,
 	signature,
 	boolean,
+	text,
 } = require("./utils/columns")
 
 const {
@@ -67,6 +68,7 @@ const Chunk = sequelize.define("Chunk", {
 	_v2: optional(boolean()),
 
 	emptyAddedReceiver: required(boolean()),
+	latest: defaultValue(boolean(), true),
 	originalMeta: required(text())
 }, {
 	instanceMethods: {
@@ -97,7 +99,7 @@ const Chunk = sequelize.define("Chunk", {
 			setObject(metaKeys).call(this, value)
 		}
 	}
-})
+}, { indexes: [ { fields: "latest" } ] })
 
 Chunk.sequelizeCreate = Chunk.create
 
@@ -155,6 +157,9 @@ hasMany(Chunk, AddedReceiver)
 Chunk.Predecessor = Chunk.belongsTo(Chunk, { as: "predecessor" })
 
 hasMany(Chat, Chunk)
+
+Chunk.ReceiverModel = Receiver
+Chunk.AddedReceiverModel = AddedReceiver
 
 Chunk.addScope("defaultScope", {
 	include: [{

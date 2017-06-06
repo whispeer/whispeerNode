@@ -99,8 +99,8 @@ const Message = sequelize.define("Message", {
 		getContent: getObject(contentKeys),
 		getAPIFormatted: function () {
 			return {
-				id: this.id,
 				server: {
+					id: this.id,
 					chunkID: this.ChunkId,
 					chatID: this.ChatId,
 					sendTime: this.getDataValue("sendTime"),

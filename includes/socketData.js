@@ -8,6 +8,8 @@ const errorService = require("./errorService");
 
 const socketS = require("socket.io-stream");
 
+const Bluebird = require("bluebird")
+
 function SocketData(socket, session) {
 	this.session = session;
 	this.socket = socket;
@@ -33,13 +35,12 @@ function SocketData(socket, session) {
 	});
 
 	this.getShortIP = function () {
-		var address = socket.handshake.address, ipV4, ipV6;
+		var address = socket.handshake.address, ipV4;
 
 		var lastDouble = address.lastIndexOf(":");
 		var lastSingle = address.lastIndexOf(".");
 
 		if (lastSingle > -1 && lastDouble > -1) {
-			ipV6 = address.substr(0, lastDouble);
 			ipV4 = address.substr(lastDouble + 1, lastSingle);
 		} else if (lastDouble === -1) {
 			ipV4 = address;
@@ -109,13 +110,13 @@ util.inherits(SocketData, EventEmitter);
 SocketData.logedinStub = {
 	session: {
 		ownUserError: function (user, cb) {
-			cb();
+			return Bluebird.resolve().nodeify(cb);
 		},
 		logedin: function (cb) {
-			cb(null, true);
+			return Bluebird.resolve(true).nodeify(cb);
 		},
 		logedinError: function (cb) {
-			cb();
+			return Bluebird.resolve().nodeify(cb);
 		}
 	}
 };

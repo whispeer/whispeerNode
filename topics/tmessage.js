@@ -84,14 +84,14 @@ const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
 
 var t = {
 	topic: {
-		createSuccessor: function (data, fn, request) {
+		createSuccessor: function ({ topicID, successor, receiverKey }, fn, request) {
 			let successorTopic, topic
 
 			step(function () {
-				return Topic.get(data.topicID)
+				return Topic.get(topicID)
 			}, h.sF(function (_topic) {
 				topic = _topic
-				return topic.setSuccessor(request, data.successor, data.receiverKey)
+				return topic.setSuccessor(request, successor, receiverKey)
 			}), h.sF(function (_successorTopic) {
 				successorTopic = _successorTopic
 
@@ -224,18 +224,18 @@ var t = {
 		}), fn);
 		//message
 	},
-	sendNewTopic: function sendNewTopicF(data, fn, request) {
+	sendNewTopic: function sendNewTopicF({ topicData, message, receiverKeys }, fn, request) {
 		var topic;
 		step(function () {
-			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
+			if (message.content.ct.length > MAXMESSAGELENGTH) {
 				throw new Error("message to long");
 			}
 
-			Topic.create(request, data.topic, data.receiverKeys, this);
+			Topic.create(request, topicData, receiverKeys, this);
 		}, h.sF(function (theTopic) {
 			topic = theTopic;
-			data.message.meta.topicid = theTopic.getID();
-			Message.create(request, data.message, this);
+			message.meta.topicid = theTopic.getID();
+			Message.create(request, message, this);
 		}), h.sF(function () {
 			topic.getFullData(request, this, false, false);
 		}), h.sF(function (data) {

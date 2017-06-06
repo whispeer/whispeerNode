@@ -6,6 +6,8 @@ const Bluebird = require("bluebird")
 
 var verifySecuredMeta = require("./includes/verifyObject");
 
+var chatAPI = require("./topics/chatAPI")
+
 var user = require("./topics/tuser");
 var session = require("./topics/tsession");
 var messages = require("./topics/tmessage");
@@ -69,6 +71,7 @@ var whispeerAPI = {
 	blob: blob,
 	invites: invites,
 	recovery: recovery,
+	chat: chatAPI,
 	pushNotification: {
 		subscribe: function (data, fn, request) {
 			step(function () {

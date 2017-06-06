@@ -8,6 +8,8 @@ module.exports = {
 	required: (def) => Object.assign({}, def, { allowNull: false }),
 	optional: (def) => Object.assign({}, def, { allowNull: true }),
 
+	defaultValue: (def, val) => Object.assign({}, def, { defaultValue: val }),
+
 	autoIncrementInteger: () => ({
 		type: Sequelize.INTEGER,
 		allowNull: false,
