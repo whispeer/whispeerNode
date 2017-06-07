@@ -32,7 +32,7 @@ var apnConnectionSandbox = new apn.Connection(apnConfigSandbox);
 apnConnection.on("transmissionError", function (errCode, notification, device) {
 	var message = "APN Transmission Error:";
 
-	message += "\nNotification caused error: " + errCode + " for device " + JSON.stringify(device) + "-" + JSON.stringify(notification);
+	message += "\nNotification caused error: " + errCode + " for device " + device.toString("hex") + "-" + JSON.stringify(notification);
     if (errCode === 8) {
         message += "\nA error code of 8 indicates that the device token is invalid. This could be for a number of reasons - are you using the correct environment? i.e. Production vs. Sandbox";
     }
