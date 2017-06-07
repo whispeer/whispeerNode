@@ -28,7 +28,7 @@
     "InvalidKey": true,
     "KeyNotFound": true,
     "InvalidHexError": true,
-    "InvalidTopicData": true,
+    "InvalidChunkData": true,
     "InvalidMessageData": true,
     "TopicNotExisting": true,
     "MessageNotExisting": true,

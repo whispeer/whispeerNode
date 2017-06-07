@@ -7,8 +7,14 @@ const Chunk = require("../includes/models/chatChunk")
 const Message = require("../includes/models/message")
 const UserUnreadMessage = require("../includes/models/unreadMessage")
 
+// TODO: access violations!
+
 const chatAPI = {
 	create: ({ initialChunk, firstMessage }) => {
+		// Topic.validateBeforeCreate(request, chunkMeta, receiverKeys)
+		// create a new chat first
+		// create the initial chunk next
+		// create the first message after that? (or in a transaction with the chunk?)
 	},
 
 	getUnreadIDs: (data, fn, request) => {
@@ -18,9 +24,9 @@ const chatAPI = {
 				userID: request.session.getUserID()
 			},
 			group: ["ChatId"]
-		}).then(() => {
-
-		}).nodeify(fn)
+		}).map((entry) => entry.id).then((chatIDs) => ({
+			chatIDs
+		})).nodeify(fn)
 	},
 
 	getAllIDs: (data, fn, request) => {
@@ -41,11 +47,9 @@ const chatAPI = {
 					where: { userID: request.session.getUserID() }
 				}]
 			}]
-		}).then((results) => {
-			return {
-				chats: results.map((result) => result.id)
-			}
-		})
+		}).map((entry) => entry.id).then((chatIDs) => ({
+			chatIDs
+		})).nodeify(fn)
 	},
 
 	get: ({ id }) => {
@@ -53,23 +57,28 @@ const chatAPI = {
 	},
 
 	getMultiple: ({ ids }) => {
-
+		return Chat.findAll({
+			where: {
+				id: {
+					$in: ids
+				}
+			}
+		}).map((chat) => chat.getAPIFormatted())
 	},
 
 	markRead: ({ id }) => {
 		return Chat.findById(id).then((chat) => chat.markRead())
 	},
 
-	getChunkIDs: ({ id }) => {
-		return Chat.findAll({
+	getChunkIDs: ({ id }, fn, request) => {
+		return Chunk.findAll({
+			attributes: ["id"],
 			where: {
-				id
-			},
-			include: [{
-				model: Chunk,
-				attributes: ["id"]
-			}]
-		})
+				ChatId: id
+			}
+		}).map((chunkData) => chunkData.id).then((chunkIDs) => ({
+			chunkIDs
+		}))
 		// all chunks where this is the chat
 	},
 
@@ -82,9 +91,11 @@ const chatAPI = {
 	},
 
 	chunk: {
-		create: ({ predecessorId, chunkMeta, receiverKey }) => {
-			// ensure we are admin/creatir of predecessorId!
-			// create receiver keys
+		create: ({ predecessorId, chunkMeta, receiverKeys }, fn, request) => {
+			// ensure we are admin/creator of predecessorId!
+			// set receiver keys
+
+			Topic.validateBeforeCreate(request, chunkMeta, receiverKeys)
 
 			const notImplemented = true
 
@@ -92,21 +103,23 @@ const chatAPI = {
 				throw new Error("Not yet implemented")
 			}
 
-			return Sequelize.transaction((transaction) => {
-				return Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessorId }}).then(() =>
-					Chunk.create({ meta: chunkMeta }, { transaction })
+			return Sequelize.transaction((transaction) =>
+				Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessorId }}).then(() =>
+					Chunk.create({ meta: chunkMeta, receiverKeys }, { transaction })
 				)
-			})
+			)
 		},
 
 		get: ({ id }) => {
-
+			return Chunk.findById(id).then((chunk) => chunk.getAPIFormatted())
 		},
 	},
 
 	message: {
 		create: ({ chunkID, message }) => {
-
+			// ensure chunk is the latest
+			// ensure I am a receiver of chunk
+			//
 		},
 
 		get: ({ id }) => {

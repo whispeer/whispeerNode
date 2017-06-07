@@ -692,47 +692,53 @@ Topic.getUserTopicID = function (request, userid, cb) {
 	}).nodeify(cb)
 };
 
-Topic.create = function (request, topicMeta, receiverKeys, cb) {
+const ensureUserKeyAccess = (uid, key) => {
+	return KeyApi.get(key).then(function (key) {
+		return key.hasUserAccess(uid);
+	}).then((access) => {
+		if (!access) {
+			throw new Error("keys might not be accessible by all user");
+		}
+	})
+}
+
+Topic.validateBeforeCreate = (request, chunkMeta, receiverKeys) => {
 	var User = require("./user.js");
 
-	function ensureUserKeyAccess(uid, key) {
-		return KeyApi.get(key).then(function (key) {
-			return key.hasUserAccess(uid);
-		}).then((access) => {
-			if (!access) {
-				throw new Error("keys might not be accessible by all user");
-			}
-		})
-	}
+	const receiverIDs = chunkMeta.receiver;
+	const receiverWO = receiverIDs.filter(h.not(request.session.isMyID));
 
-	var receiverIDs, receiverWO, theTopicID;
 	return Bluebird.try(function () {
-		var err = validator.validate("topicCreate", topicMeta);
+		var err = validator.validate("topicCreate", chunkMeta);
 
 		if (err) {
-			throw new InvalidTopicData();
+			throw new InvalidChunkData();
 		}
 
-		if (!request.session.isMyID(topicMeta.creator)) {
-			throw new InvalidTopicData("session changed? invalid creator!");
+		if (!request.session.isMyID(chunkMeta.creator)) {
+			throw new InvalidChunkData("session changed? invalid creator!");
 		}
 
-		if (Math.abs(topicMeta.createTime - new Date().getTime()) > MAXTIME) {
-			throw new InvalidTopicData("max time exceeded!");
+		if (Math.abs(chunkMeta.createTime - new Date().getTime()) > MAXTIME) {
+			throw new InvalidChunkData("max time exceeded!");
 		}
-
-		receiverIDs = topicMeta.receiver;
-		receiverWO = receiverIDs.filter(h.not(request.session.isMyID));
 
 		return User.checkUserIDs(receiverIDs);
 	}).then(function () {
 		return Bluebird.resolve(receiverWO).map(function (uid) {
 			return Bluebird.all([
-				ensureUserKeyAccess(uid, topicMeta._key),
+				ensureUserKeyAccess(uid, chunkMeta._key),
 				ensureUserKeyAccess(uid, receiverKeys[uid]),
 			])
 		});
-	}).then(function () {
+	})
+}
+
+Topic.create = function (request, topicMeta, receiverKeys, cb) {
+	const receiverIDs = topicMeta.receiver;
+
+	var theTopicID;
+	return Topic.validateBeforeCreate(request, topicMeta, receiverKeys).then(function () {
 		return client.incrAsync("topic:topics");
 	}).then(function (topicid) {
 		theTopicID = topicid;

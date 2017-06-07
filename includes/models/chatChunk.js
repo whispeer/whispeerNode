@@ -113,9 +113,12 @@ Chunk.create = (values, options) => {
 
 	const {
 		addedReceiver,
-		receiver,
 		predecessor: predecessorId
 	} = values.meta
+
+	const receiverKeys = values.receiverKeys
+
+	const receiver = values.meta.receiver.map((userID, index) => ({ userID, index, key: receiverKeys[userID] }))
 
 	delete values.meta.addedReceiver
 	delete values.meta.receiver
@@ -124,7 +127,7 @@ Chunk.create = (values, options) => {
 	values.emptyAddedReceiver = typeof addedReceiver === "undefined"
 
 	const newValues = Object.assign({}, values, {
-		receiver: mapToUserID(receiver),
+		receiver,
 	})
 
 	if (predecessorId) {
@@ -141,6 +144,7 @@ Chunk.create = (values, options) => {
 
 const Receiver = sequelize.define("Receiver", {
 	id: autoIncrementInteger(),
+	key: required(key()),
 	userID: required(integer()),
 	index: required(integer()),
 }, {
