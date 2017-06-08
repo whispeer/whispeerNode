@@ -7,14 +7,37 @@ const Chunk = require("../includes/models/chatChunk")
 const Message = require("../includes/models/message")
 const UserUnreadMessage = require("../includes/models/unreadMessage")
 
+const sequelize = require("../includes/dbConnector/sequelizeClient");
+
+const Topic = require("../includes/topic")
+
+const Bluebird = require("bluebird")
+
 // TODO: access violations!
 
 const chatAPI = {
-	create: ({ initialChunk, firstMessage }) => {
-		// Topic.validateBeforeCreate(request, chunkMeta, receiverKeys)
-		// create a new chat first
-		// create the initial chunk next
-		// create the first message after that? (or in a transaction with the chunk?)
+	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
+		return Topic.validateBeforeCreate(request, initialChunk, receiverKeys).then(() => {
+			debugger
+			return sequelize.transaction((transaction) => {
+				return Bluebird.all([
+					Chat.create({}, { transaction }),
+					Chunk.create({ receiverKeys, meta: initialChunk }, { transaction }),
+					Message.create(Object.assign({}, firstMessage, {
+						sender: request.session.getUserID(),
+						sendTime: new Date().getTime(),
+					}), { transaction }),
+				]).then(([ chat, chunk, message ]) => {
+					return Bluebird.all([
+						chunk.setChat(chat, { transaction }),
+						message.setChunk(chunk, { transaction }),
+						message.setChat(chat, { transaction }),
+					]).thenReturn([ chat, chunk, message ])
+				})
+			})
+		}).then(([ chat, chunk, message ]) => {
+			console.log(chat, chunk, message)
+		})
 	},
 
 	getUnreadIDs: (data, fn, request) => {
@@ -52,22 +75,32 @@ const chatAPI = {
 		})).nodeify(fn)
 	},
 
-	get: ({ id }) => {
-		return Chat.findById(id).then((chat) => chat.getAPIFormatted())
+	get: ({ id }, fn, request) => {
+		return Chat.findById(id).then((chat) =>
+			chat.validateAccess(request).thenReturn(chat)
+		).then((chat) =>
+			chat.getAPIFormatted()
+		).nodeify(fn)
 	},
 
-	getMultiple: ({ ids }) => {
+	getMultiple: ({ ids }, fn, request) => {
 		return Chat.findAll({
 			where: {
 				id: {
 					$in: ids
 				}
 			}
-		}).map((chat) => chat.getAPIFormatted())
+		}).each((chat) =>
+			chat.validateAccess(request)).map((chat) => chat.getAPIFormatted()
+		).nodeify(fn)
 	},
 
-	markRead: ({ id }) => {
-		return Chat.findById(id).then((chat) => chat.markRead())
+	markRead: ({ id }, fn, request) => {
+		return Chat.findById(id).then((chat) =>
+			chat.validateAccess(request).thenReturn(chat)
+		).then((chat) =>
+			chat.markRead()
+		).nodeify(fn)
 	},
 
 	getChunkIDs: ({ id }, fn, request) => {
@@ -104,7 +137,7 @@ const chatAPI = {
 			}
 
 			return Sequelize.transaction((transaction) =>
-				Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessorId }}).then(() =>
+				Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessorId }, transaction }).then(() =>
 					Chunk.create({ meta: chunkMeta, receiverKeys }, { transaction })
 				)
 			)
