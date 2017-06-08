@@ -1,6 +1,5 @@
 "use strict";
 
-var Topic = require("./topic");
 var h = require("whispeerHelper");
 
 var validator = require("whispeerValidations");
@@ -697,7 +696,7 @@ const ensureUserKeyAccess = (uid, key) => {
 		return key.hasUserAccess(uid);
 	}).then((access) => {
 		if (!access) {
-			throw new Error("keys might not be accessible by all user");
+			throw new Error(`keys might not be accessible by all user ${key} - ${uid}`);
 		}
 	})
 }

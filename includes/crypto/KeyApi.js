@@ -114,9 +114,9 @@ KeyApi.get = function (realid, cb) {
 
 KeyApi.createWithDecryptors = function (request, keyData, cb) {
 	if (keyData.type === "sign" || keyData.type === "crypt") {
-		EccKey.create(request, keyData, cb);
+		return EccKey.create(request, keyData).nodeify(cb);
 	} else {
-		SymKey.create(request, keyData, cb);
+		return SymKey.create(request, keyData).nodeify(cb);
 	}
 };
 

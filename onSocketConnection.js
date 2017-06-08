@@ -53,7 +53,7 @@ var handle
 function createKeys(request, keys, cb) {
 	return request.session.logedinError().thenReturn(keys).map((keyData) => {
 		//TODO: this might fail if one of the decryptors is a key we also want to add!
-		KeyApi.createWithDecryptors(request, keyData, this.parallel());
+		return KeyApi.createWithDecryptors(request, keyData);
 	}).nodeify(cb)
 }
 
