@@ -18,7 +18,6 @@ const Bluebird = require("bluebird")
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
 		return Topic.validateBeforeCreate(request, initialChunk, receiverKeys).then(() => {
-			debugger
 			return sequelize.transaction((transaction) => {
 				return Bluebird.all([
 					Chat.create({}, { transaction }),
