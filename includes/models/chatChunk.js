@@ -62,7 +62,7 @@ const Chunk = sequelize.define("Chunk", {
 		type: Sequelize.STRING,
 		validate: { isIn: [["topic", "chatChunk"]] }
 	}),
-	_contentHash: required(hash()),
+	_contentHash: Object.assign(required(hash()), { unique: false }),
 	_ownHash: required(hash()),
 	_signature: required(signature()),
 
@@ -160,7 +160,7 @@ Chunk.create = (values, options) => {
 
 const Receiver = sequelize.define("Receiver", {
 	id: autoIncrementInteger(),
-	key: required(key()),
+	key: optional(key()),
 	userID: required(integer()),
 	index: required(integer()),
 }, {

@@ -19,9 +19,18 @@ const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
 		return Topic.validateBeforeCreate(request, initialChunk, receiverKeys).then(() => {
 			return sequelize.transaction((transaction) => {
+				const includeReceiverInCreate = {
+					include: [{
+						association: Chunk.Receiver,
+					}, {
+						association: Chunk.AddedReceiver,
+					}],
+					transaction
+				}
+
 				return Bluebird.all([
 					Chat.create({}, { transaction }),
-					Chunk.create({ receiverKeys, meta: initialChunk }, { transaction }),
+					Chunk.create({ receiverKeys, meta: initialChunk }, includeReceiverInCreate),
 					Message.create(Object.assign({}, firstMessage, {
 						sender: request.session.getUserID(),
 						sendTime: new Date().getTime(),
@@ -35,8 +44,12 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
-			console.log(chat, chunk, message)
-		})
+			return {
+				chat: chat.getAPIFormatted(),
+				chunk: chunk.getAPIFormatted(),
+				message: message.getAPIFormatted(),
+			}
+		}).nodeify(fn)
 	},
 
 	getUnreadIDs: (data, fn, request) => {
@@ -90,7 +103,9 @@ const chatAPI = {
 				}
 			}
 		}).each((chat) =>
-			chat.validateAccess(request)).map((chat) => chat.getAPIFormatted()
+			chat.validateAccess(request)
+		).map((chat) =>
+			chat.getAPIFormatted()
 		).nodeify(fn)
 	},
 
@@ -108,17 +123,42 @@ const chatAPI = {
 			where: {
 				ChatId: id
 			}
-		}).map((chunkData) => chunkData.id).then((chunkIDs) => ({
+		}).each((chunk) =>
+			chunk.validateAccess(request).thenReturn(chunk)
+		).map((chunkData) => chunkData.id).then((chunkIDs) => ({
 			chunkIDs
 		}))
-		// all chunks where this is the chat
 	},
 
 	getMessages: ({ id, oldestKnownMessage, limit = 20 }) => {
-
+		// how to check access?
+		// how to check remaining count?
 	},
 
-	getChatWithUser: ({ userID }) => {
+	getChatWithUser: ({ userID }, fn, request) => {
+		Chat.findAll({
+			attributes: ["id"],
+			include: [{
+				association: Chat.Chunk,
+				model: Chunk.unscoped(),
+				attributes: [],
+				where: {
+					latest: true
+				},
+				required: true,
+				include: [{
+					attributes: [],
+					association: Chunk.Receiver,
+					required: true,
+					where: { userID: request.session.getUserID() }
+				}, {
+					attributes: [],
+					association: Chunk.Receiver,
+					required: true,
+					where: { userID }
+				}]
+			}]
+		})
 		// where I am the receiver and the other user is the receiver (and no one else!)
 	},
 

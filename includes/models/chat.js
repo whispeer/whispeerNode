@@ -23,6 +23,11 @@ const Chat = sequelize.define("Chat", {
 				}
 			}).then((chunks) => chunks[0])
 		},
+		getAPIFormatted: function () {
+			return {
+				id: this.getDataValue("id")
+			}
+		},
 		hasAccess: function (request) {
 			return this.getLatestChunk().then((chunk) => chunk.hasAccess(request))
 		},
