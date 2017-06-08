@@ -138,6 +138,7 @@ const chatAPI = {
 	getChatWithUser: ({ userID }, fn, request) => {
 		Chat.findAll({
 			attributes: ["id"],
+			where: ['"chunk.receiver3"."id" IS null'],
 			include: [{
 				association: Chat.Chunk,
 				model: Chunk.unscoped(),
@@ -156,6 +157,14 @@ const chatAPI = {
 					association: Chunk.Receiver,
 					required: true,
 					where: { userID }
+				}, {
+					attributes: [],
+					association: Chunk.Receiver,
+					where: {
+						userID: {
+							$notIn: [userID, request.session.getUserID()]
+						}
+					}
 				}]
 			}]
 		})
