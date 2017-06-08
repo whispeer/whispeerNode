@@ -82,7 +82,7 @@ const Message = sequelize.define("Message", {
 	_hashVersion: optional(integer()),
 	_v2: optional(boolean()),
 
-	images: required(text()),
+	images: optional(text()),
 	originalMeta: required(text()),
 }, {
 	instanceMethods: {
@@ -110,10 +110,29 @@ const Message = sequelize.define("Message", {
 				content: this.getContent(),
 				meta: this.getMeta()
 			};
-		}
+		},
+		hasAccess: function (request) {
+			return this.getChunk().then((chunk) => chunk.hasAccess(request))
+		},
+		validateAccess: function (request) {
+			return this.hasAccess(request).then((access) => {
+				if (!access) {
+					throw new AccessViolation(`No access to message ${this.id}`)
+				}
+			})
+		},
 	},
 	setterMethods: {
-		meta: setObject(metaKeys),
+		meta: function (value) {
+			this.setDataValue("originalMeta", JSON.stringify(value))
+
+			if (value.images) {
+				this.setDataValue("images", JSON.stringify(value.images))
+				delete value.images
+			}
+
+			setObject(metaKeys).call(this, value)
+		},
 		content: setObject(contentKeys)
 	}
 });

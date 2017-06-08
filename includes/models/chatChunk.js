@@ -3,6 +3,8 @@
 const sequelize = require("../dbConnector/sequelizeClient")
 const Sequelize = require("sequelize")
 
+const Bluebird = require("bluebird")
+
 const Chat = require("./chat")
 
 const {
@@ -89,7 +91,21 @@ const Chunk = sequelize.define("Chunk", {
 				},
 				meta: this.getMeta()
 			};
-		}
+		},
+		hasAccess: function (request) {
+			const receiverPromise = this.receiver || this.getReceiver()
+
+			return Bluebird.resolve(receiverPromise).then((receiver) =>
+				receiver.some((receiver) => request.session.isMyID(receiver.userID))
+			)
+		},
+		validateAccess: function (request) {
+			return this.hasAccess(request).then((access) => {
+				if (!access) {
+					throw new AccessViolation(`No access to chunk ${this.id}`)
+				}
+			})
+		},
 	},
 	setterMethods: {
 		meta: function (value) {
