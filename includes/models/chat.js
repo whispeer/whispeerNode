@@ -1,5 +1,7 @@
 "use strict";
 
+const Bluebird = require("bluebird")
+
 const sequelize = require("../dbConnector/sequelizeClient");
 
 const Chunk = require("./chatChunk")
@@ -19,10 +21,10 @@ const Chat = sequelize.define("Chat", {
 }, {
 	instanceMethods: {
 		getLatestChunk: function () {
-			const latestChunk = this.chunks && this.chunks.filter((chunk) => chunk.latest === true)[0]
+			const latestChunk = this.chunk && this.chunk.filter((chunk) => chunk.latest === true)[0]
 
 			if (latestChunk) {
-				return latestChunk
+				return Bluebird.resolve(latestChunk)
 			}
 
 			return this.getChunk({
@@ -33,7 +35,8 @@ const Chat = sequelize.define("Chat", {
 		},
 		getAPIFormatted: function () {
 			return {
-				id: this.getDataValue("id")
+				id: this.getDataValue("id"),
+				chunks: this.chunk.map((chunk) => chunk.getAPIFormatted())
 			}
 		},
 		hasAccess: function (request) {
