@@ -106,6 +106,9 @@ const Chunk = sequelize.define("Chunk", {
 				}
 			})
 		},
+		isAdmin: function (userID) {
+			return this.getDataValue("creator") === parseInt(userID, 10)
+		}
 	},
 	setterMethods: {
 		meta: function (value) {
@@ -144,6 +147,7 @@ Chunk.create = (values, options) => {
 
 	const newValues = Object.assign({}, values, {
 		receiver,
+		userWithAccess: receiver
 	})
 
 	if (predecessorId) {
@@ -154,7 +158,6 @@ Chunk.create = (values, options) => {
 		newValues.addedReceiver = mapToUserID(addedReceiver)
 	}
 
-
 	return Chunk.sequelizeCreate(newValues, options)
 }
 
@@ -163,6 +166,13 @@ const Receiver = sequelize.define("Receiver", {
 	key: optional(key()),
 	userID: required(integer()),
 	index: required(integer()),
+}, {
+	timestamps: false,
+})
+
+const UserWithAccess = sequelize.define("UserWithAccess", {
+	id: autoIncrementInteger(),
+	userID: required(integer()),
 }, {
 	timestamps: false,
 })
@@ -177,6 +187,7 @@ const AddedReceiver = sequelize.define("AddedReceiver", {
 
 hasMany(Chunk, Receiver)
 hasMany(Chunk, AddedReceiver)
+hasMany(Chunk, UserWithAccess)
 
 Chunk.Predecessor = Chunk.belongsTo(Chunk, { as: "predecessor" })
 

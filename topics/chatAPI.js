@@ -6,6 +6,7 @@ const Chat = require("../includes/models/chat")
 const Chunk = require("../includes/models/chatChunk")
 const Message = require("../includes/models/message")
 const UserUnreadMessage = require("../includes/models/unreadMessage")
+const TopicUpdate = require("../includes/models/topicUpdate")
 
 const sequelize = require("../includes/dbConnector/sequelizeClient");
 
@@ -130,15 +131,44 @@ const chatAPI = {
 		}))
 	},
 
-	getMessages: ({ id, oldestKnownMessage, limit = 20 }) => {
-		// how to check access?
-		// how to check remaining count?
+	getLatestChunk: ({ chatID }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chunk = yield Chunk.findAll({
+				where: {
+					ChatId: chatID,
+					latest: true,
+				}
+			})
+
+			yield chunk.validateAccess(request)
+
+			return chunk.getAPIFormatted()
+		}).nodeify(fn)
+	},
+
+	getLatestTopicUpdate: ({ chatID }, fn, request) => {
+
+	},
+
+	getMessages: ({ id, oldestKnownMessage, limit = 20 }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chat = yield Chat.findById(id)
+
+			yield chat.validateAccess(request)
+
+			const { messages, remainingMessagesCount } = yield chat.getMessages(oldestKnownMessage, limit)
+
+			return {
+				messages: messages.map((message) => message.getAPIFormatted()),
+				remainingMessagesCount
+			}
+		}).nodeify(fn)
 	},
 
 	getChatWithUser: ({ userID }, fn, request) => {
-		Chat.findAll({
+		return Chat.findAll({
 			attributes: ["id"],
-			where: ['"chunk.receiver3"."id" IS null'],
+			where: ["\"chunk.receiver3\".\"id\" IS null"],
 			include: [{
 				association: Chat.Chunk,
 				model: Chunk.unscoped(),
@@ -168,27 +198,31 @@ const chatAPI = {
 				}]
 			}]
 		})
-		// where I am the receiver and the other user is the receiver (and no one else!)
 	},
 
 	chunk: {
-		create: ({ predecessorId, chunkMeta, receiverKeys }, fn, request) => {
-			// ensure we are admin/creator of predecessorId!
-			// set receiver keys
+		create: ({ chunkMeta, receiverKeys }, fn, request) => {
+			return Bluebird.coroutine(function* () {
+				const validateChunkPromise = Topic.validateBeforeCreate(request, chunkMeta, receiverKeys)
 
-			Topic.validateBeforeCreate(request, chunkMeta, receiverKeys)
+				const predecessor = yield Chunk.findById(chunkMeta.predecessorId)
+				yield validateChunkPromise
 
-			const notImplemented = true
+				yield predecessor.validateAccess(request)
 
-			if (notImplemented) {
-				throw new Error("Not yet implemented")
-			}
 
-			return Sequelize.transaction((transaction) =>
-				Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessorId }, transaction }).then(() =>
-					Chunk.create({ meta: chunkMeta, receiverKeys }, { transaction })
+
+				if (!predecessor.isAdmin(request.session.getUserID())) {
+					throw new AccessViolation(`Not an admin of chunk ${predecessor.id}: ${request.session.getUserID()}`)
+				}
+
+				yield Sequelize.transaction((transaction) =>
+					Bluebird.all([
+						Chunk.update({ latest: false }, { where: { latest: true, ChatId: chunkMeta.predecessorId }, transaction }),
+						Chunk.create({ meta: chunkMeta, receiverKeys }, { transaction })
+					])
 				)
-			)
+			})
 		},
 
 		get: ({ id }) => {
@@ -197,24 +231,63 @@ const chatAPI = {
 	},
 
 	message: {
-		create: ({ chunkID, message }) => {
-			// ensure chunk is the latest
-			// ensure I am a receiver of chunk
-			//
+		create: ({ chunkID, message }, fn, request) => {
+			return Bluebird.coroutine(function* () {
+				const chunk = yield Chunk.findById(chunkID)
+
+				yield chunk.validateAccess()
+
+				if (!chunk.latest) {
+					throw new SuccessorError("chunk already has a successor")
+				}
+
+				const dbMessage = yield Message.create(Object.assign({}, message, {
+					sender: request.session.getUserID(),
+					sendTime: new Date().getTime(),
+					ChatId: chunk.ChatId,
+					ChunkId: chunk.id
+				}))
+
+				return dbMessage.getAPIFormatted()
+			})
 		},
 
 		get: ({ id }) => {
+			return Bluebird.coroutine(function* () {
+				const message = yield Message.findById(id)
 
+				yield message.validateAccess()
+
+				return message.getAPIFormatted()
+			})
 		}
 	},
 
 	topicUpdate: {
-		create: ({ chunkID, topicUpdate }) => {
+		create: ({ chunkID, topicUpdate }, fn, request) => {
+			return Bluebird.coroutine(function* () {
+				const chunk = yield Chunk.findById(chunkID)
 
+				yield chunk.validateAccess(request)
+
+				if (!chunk.latest) {
+					throw new SuccessorError("chunk already has a successor")
+				}
+
+				const dbTopicUpdate = TopicUpdate.create(topicUpdate)
+
+				return dbTopicUpdate.getAPIFormatted()
+			})
 		},
 
-		get: ({ id }) => {
+		get: ({ id }, fn, request) => {
+			return Bluebird.coroutine(function* () {
+				const topicUpdate = yield TopicUpdate.findById(id)
 
+				yield topicUpdate.validateAccess(request)
+
+				return topicUpdate.getAPIFormatted()
+			}).nodeify(fn)
 		}
 	}
 }

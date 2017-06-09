@@ -14,10 +14,12 @@ const contentKeys = ["ct", "iv"];
 const metaKeys = ["userID", "time", "_parent", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
 
 const {
-	autoUUID,
 	required,
+	defaultValue,
 
+	autoUUID,
 	integer,
+	boolean,
 	key,
 	hash,
 	signature,
@@ -52,6 +54,8 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 	_contentHash: required(hash()),
 	_ownHash: required(hash()),
 	_signature: required(signature()),
+
+	latest: defaultValue(boolean(), true),
 }, {
 	instanceMethods: {
 		getMeta: getObject(metaKeys),
