@@ -88,7 +88,7 @@ const chatAPI = {
 		})).nodeify(fn)
 	},
 
-	get: ({ id }, fn, request) => {
+	get: ({ id, include: { latestChunk, latestMessage } = {} }, fn, request) => {
 		return Chat.findById(id).then((chat) =>
 			chat.validateAccess(request).thenReturn(chat)
 		).then((chat) =>
@@ -146,8 +146,46 @@ const chatAPI = {
 		}).nodeify(fn)
 	},
 
-	getLatestTopicUpdate: ({ chatID }, fn, request) => {
+	getLatestTopicUpdate: ({ id }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chat = yield Chat.findById(id)
 
+			yield chat.validateAccess(request)
+
+			const topicUpdate = yield TopicUpdate.findOne({
+				where: {
+					$and: [{ latest: true }, { ChatId: id }]
+				}
+			})
+
+			return topicUpdate.getAPIFormatted()
+		}).nodeify(fn)
+	},
+
+	getTopicUpdates: ({ id, oldestKnownTopicUpdate, limit = 20 }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chat = yield Chat.findById(id)
+
+			yield chat.validateAccess(request)
+
+			const tempSQL = sequelize.dialect.QueryGenerator.selectQuery(TopicUpdate, {
+				attributes: ["index"],
+				where: {
+					id: oldestKnownTopicUpdate,
+					ChatId: id,
+				}
+			}).slice(0,-1)
+
+			const topicUpdates = yield TopicUpdate.findAll({
+				where: {
+					$and: [{ ChatId: id }, { index: { $lt: sequelize.literal(`(${tempSQL})`) }}]
+				},
+				limit,
+				order: ["index"]
+			})
+
+			return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted())
+		}).nodeify(fn)
 	},
 
 	getMessages: ({ id, oldestKnownMessage, limit = 20 }, fn, request) => {
@@ -156,7 +194,35 @@ const chatAPI = {
 
 			yield chat.validateAccess(request)
 
-			const { messages, remainingMessagesCount } = yield chat.getMessages(oldestKnownMessage, limit)
+			const include = [{
+				association: Message.Chunk,
+				model: Chunk.unscoped(),
+				attributes: [],
+				required: true,
+				include: [{
+					attributes: [],
+					association: Chunk.UserWithAccess,
+					required: true,
+					where: { userID: request.session.getUserID() }
+				}]
+			}]
+
+			const messages = yield Message.findAll({
+				where: {
+					$and: [{ ChatId: id }, { index: { $lt: oldestKnownMessage }}]
+				},
+				include,
+				limit,
+				order: ["id"]
+			})
+
+			const remainingMessagesCount = (yield Message.findAll({
+				attributes: [[sequelize.fn("COUNT", sequelize.col("id")), "count"]],
+				where: {
+					$and: [{ ChatId: id }, { index: { $lt: messages[messages.length - 1].id }}]
+				},
+				include
+			})).count
 
 			return {
 				messages: messages.map((message) => message.getAPIFormatted()),
@@ -248,6 +314,18 @@ const chatAPI = {
 					ChunkId: chunk.id
 				}))
 
+				yield Bluebird.all(chunk.receiver.map((receiver) => {
+					if(request.session.isMyID(receiver.userID)) {
+						return
+					}
+
+					return UserUnreadMessage.create({
+						userID: receiver.userID,
+						MessageId: dbMessage.id,
+						ChatId: chunk.ChatId
+					})
+				}))
+
 				return dbMessage.getAPIFormatted()
 			})
 		},
@@ -274,7 +352,12 @@ const chatAPI = {
 					throw new SuccessorError("chunk already has a successor")
 				}
 
-				const dbTopicUpdate = TopicUpdate.create(topicUpdate)
+				const dbTopicUpdate = yield sequelize.transaction((transaction) => {
+					return Bluebird.all([
+						TopicUpdate.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
+						TopicUpdate.create(topicUpdate, { transaction })
+					])
+				})
 
 				return dbTopicUpdate.getAPIFormatted()
 			})

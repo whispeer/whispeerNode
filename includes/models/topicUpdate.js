@@ -17,6 +17,8 @@ const {
 	required,
 	defaultValue,
 
+	autoIncrementInteger,
+
 	autoUUID,
 	integer,
 	boolean,
@@ -35,6 +37,8 @@ const {
 
 const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 	id: autoUUID(),
+
+	index: autoIncrementInteger(),
 
 	ct: required(ct()),
 	iv: required(iv()),
