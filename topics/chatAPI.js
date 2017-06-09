@@ -134,20 +134,22 @@ const chatAPI = {
 					userID: request.session.getUserID()
 				}
 			})
-		})
+		}).nodeify(fn)
 	},
 
 	getChunkIDs: ({ id }, fn, request) => {
-		return Chunk.findAll({
-			attributes: ["id"],
-			where: {
-				ChatId: id
-			}
-		}).each((chunk) =>
-			chunk.validateAccess(request).thenReturn(chunk)
-		).map((chunkData) => chunkData.id).then((chunkIDs) => ({
-			chunkIDs
-		}))
+		return Bluebird.coroutine(function* () {
+			const chunks = yield Chunk.findAll({
+				attributes: ["id"],
+				where: {
+					ChatId: id
+				}
+			})
+
+			yield Bluebird.all(chunks.map((chunk) => chunk.validateAccess(request)))
+
+			return { chunkIDs: chunks.map((chunk) => chunk.id) }
+		}).nodeify(fn)
 	},
 
 	getLatestChunk: ({ chatID }, fn, request) => {
@@ -282,7 +284,7 @@ const chatAPI = {
 					}
 				}]
 			}]
-		})
+		}).nodeify(fn)
 	},
 
 	chunk: {
@@ -307,11 +309,17 @@ const chatAPI = {
 						Chunk.create({ meta: chunkMeta, receiverKeys }, { transaction })
 					])
 				)
-			})
+			}).nodeify(fn)
 		},
 
-		get: ({ id }) => {
-			return Chunk.findById(id).then((chunk) => chunk.getAPIFormatted())
+		get: ({ id }, fn, request) => {
+			return Bluebird.coroutine(function* () {
+				const chunk = yield Chunk.findById(id)
+
+				yield chunk.validateAccess(request)
+
+				return chunk.getAPIFormatted()
+			}).nodeify(fn)
 		},
 	},
 
@@ -336,17 +344,17 @@ const chatAPI = {
 				yield addToUnread(chunk, message.id, request)
 
 				return dbMessage.getAPIFormatted()
-			})
+			}).nodeify(fn)
 		},
 
-		get: ({ id }) => {
+		get: ({ id }, fn, request) => {
 			return Bluebird.coroutine(function* () {
 				const message = yield Message.findById(id)
 
-				yield message.validateAccess()
+				yield message.validateAccess(request)
 
 				return message.getAPIFormatted()
-			})
+			}).nodeify(fn)
 		}
 	},
 
@@ -369,7 +377,7 @@ const chatAPI = {
 				})
 
 				return dbTopicUpdate.getAPIFormatted()
-			})
+			}).nodeify(fn)
 		},
 
 		get: ({ id }, fn, request) => {
