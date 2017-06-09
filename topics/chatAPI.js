@@ -16,6 +16,20 @@ const Bluebird = require("bluebird")
 
 // TODO: access violations!
 
+const addToUnread = (chunk, messageId, request) => {
+	return Bluebird.all(chunk.receiver.map((receiver) => {
+		if(request.session.isMyID(receiver.userID)) {
+			return
+		}
+
+		return UserUnreadMessage.create({
+			userID: receiver.userID,
+			MessageId: messageId,
+			ChatId: chunk.ChatId
+		})
+	}))
+}
+
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
 		return Topic.validateBeforeCreate(request, initialChunk, receiverKeys).then(() => {
@@ -45,11 +59,11 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
-			return {
+			return addToUnread(chunk, message.id, request).thenReturn({
 				chat: chat.getAPIFormatted(),
 				chunk: chunk.getAPIFormatted(),
 				message: message.getAPIFormatted(),
-			}
+			})
 		}).nodeify(fn)
 	},
 
@@ -111,11 +125,16 @@ const chatAPI = {
 	},
 
 	markRead: ({ id }, fn, request) => {
-		return Chat.findById(id).then((chat) =>
-			chat.validateAccess(request).thenReturn(chat)
-		).then((chat) =>
-			chat.markRead()
-		).nodeify(fn)
+		return Bluebird.coroutine(function* () {
+			const chat = yield Chat.findById(id)
+			yield chat.validateAccess(request)
+			yield UserUnreadMessage.delete({
+				where: {
+					ChatId: chat.id,
+					userID: request.session.getUserID()
+				}
+			})
+		})
 	},
 
 	getChunkIDs: ({ id }, fn, request) => {
@@ -314,17 +333,7 @@ const chatAPI = {
 					ChunkId: chunk.id
 				}))
 
-				yield Bluebird.all(chunk.receiver.map((receiver) => {
-					if(request.session.isMyID(receiver.userID)) {
-						return
-					}
-
-					return UserUnreadMessage.create({
-						userID: receiver.userID,
-						MessageId: dbMessage.id,
-						ChatId: chunk.ChatId
-					})
-				}))
+				yield addToUnread(chunk, message.id, request)
 
 				return dbMessage.getAPIFormatted()
 			})
