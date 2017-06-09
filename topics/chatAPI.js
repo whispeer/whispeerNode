@@ -14,8 +14,6 @@ const Topic = require("../includes/topic")
 
 const Bluebird = require("bluebird")
 
-// TODO: access violations!
-
 const addToUnread = (chunk, messageId, request) => {
 	return Bluebird.all(chunk.receiver.map((receiver) => {
 		if(request.session.isMyID(receiver.userID)) {

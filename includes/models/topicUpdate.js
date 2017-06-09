@@ -3,13 +3,6 @@
 const sequelize = require("../dbConnector/sequelizeClient");
 const Sequelize = require("sequelize");
 
-const Chat = require("./chat")
-const Chunk = require("./chatChunk")
-
-const {
-	hasMany
-} = require("./utils/relations")
-
 const contentKeys = ["ct", "iv"];
 const metaKeys = ["userID", "time", "_parent", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
 
@@ -78,8 +71,5 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 		content: setObject(contentKeys, "invalid content keys")
 	}
 });
-
-hasMany(Chunk, topicTitleUpdate)
-hasMany(Chat, topicTitleUpdate)
 
 module.exports = topicTitleUpdate;

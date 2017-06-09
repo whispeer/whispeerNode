@@ -10,9 +10,6 @@ Optional Keys:
 
 const sequelize = require("../dbConnector/sequelizeClient");
 
-const Chat = require("./chat")
-const Chunk = require("./chatChunk")
-
 const {
 	autoIncrementInteger,
 
@@ -36,10 +33,6 @@ const {
 	getObject,
 	setObject,
 } = require("./utils/methods")
-
-const {
-	hasMany
-} = require("./utils/relations")
 
 const contentKeys = ["ct", "iv"];
 const metaKeys = [
@@ -136,8 +129,5 @@ const Message = sequelize.define("Message", {
 		content: setObject(contentKeys)
 	}
 });
-
-hasMany(Chat, Message)
-hasMany(Chunk, Message)
 
 module.exports = Message;

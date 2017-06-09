@@ -5,7 +5,8 @@ const Sequelize = require("sequelize")
 
 const Bluebird = require("bluebird")
 
-const Chat = require("./chat")
+const Message = require("./message")
+const topicTitleUpdate = require("./topicUpdate")
 
 const {
 	required,
@@ -188,10 +189,10 @@ const AddedReceiver = sequelize.define("AddedReceiver", {
 hasMany(Chunk, Receiver)
 hasMany(Chunk, AddedReceiver)
 hasMany(Chunk, UserWithAccess)
+hasMany(Chunk, topicTitleUpdate)
+hasMany(Chunk, Message)
 
 Chunk.Predecessor = Chunk.belongsTo(Chunk, { as: "predecessor" })
-
-hasMany(Chat, Chunk)
 
 Chunk.ReceiverModel = Receiver
 Chunk.AddedReceiverModel = AddedReceiver
@@ -203,5 +204,6 @@ Chunk.addScope("defaultScope", {
 		association: Chunk.AddedReceiver,
 	}]
 }, { override: true })
+
 
 module.exports = Chunk

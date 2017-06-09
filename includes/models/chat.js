@@ -2,6 +2,14 @@
 
 const sequelize = require("../dbConnector/sequelizeClient");
 
+const Chunk = require("./chatChunk")
+const Message = require("./message")
+const topicTitleUpdate = require("./topicUpdate")
+
+const {
+	hasMany
+} = require("./utils/relations")
+
 const {
 	autoIncrementInteger,
 } = require("./utils/columns")
@@ -49,5 +57,18 @@ const Chat = sequelize.define("Chat", {
 		}
 	}
 });
+
+hasMany(Chat, Chunk)
+hasMany(Chat, topicTitleUpdate)
+hasMany(Chat, Message)
+
+Chat.addScope("defaultScope", {
+	include: [{
+		association: Chat.Chunk,
+		where: {
+			latest: true
+		}
+	}]
+}, { override: true })
 
 module.exports = Chat;
