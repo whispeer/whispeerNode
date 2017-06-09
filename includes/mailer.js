@@ -24,6 +24,8 @@ var readFile = Bluebird.promisify(fs.readFile, fs);
 
 var settingsAPI = require("./settings");
 
+var errorService = require("./errorService");
+
 //mail
 //- <userid>
 //-- mails set
@@ -286,7 +288,9 @@ var mailer = {
 				subject: subject,
 				html: content,
 				generateTextFromHTML: true
-			}, this);
+			}, errorService.criticalError);
+
+			this.ne()
 		}), cb);
 	},
 	mailAdmin: function (subject, text, cb) {
