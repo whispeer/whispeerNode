@@ -15,18 +15,16 @@ const {
 
 	required,
 	optional,
+	unique,
 
+	ct,
+	iv,
 	uuid,
 	integer,
 	timestamp,
-	key,
 	hash,
 	signature,
-	ct,
-	iv,
-	type,
-	boolean,
-	text,
+	json,
 } = require("./utils/columns")
 
 const {
@@ -35,21 +33,12 @@ const {
 } = require("./utils/methods")
 
 const contentKeys = ["ct", "iv"];
-const metaKeys = [
-	"createTime",
-
+const metaExtraKeys = [
 	"_contentHash",
-	"_signature",
-	"_type",
-	"_key",
 	"_ownHash",
-	"_parent",
-	"_version",
+	"_signature",
 
-	"_sortCounter",
 	"messageUUID",
-	"_hashVersion",
-	"_v2",
 ];
 
 const Message = sequelize.define("Message", {
@@ -59,35 +48,20 @@ const Message = sequelize.define("Message", {
 	iv: required(iv()),
 
 	sender: required(integer()),
-	createTime: required(timestamp()),
 	sendTime: required(timestamp()),
 
-	_contentHash: required(hash()),
+	_contentHash: unique(required(hash())),
+	_ownHash: unique(required(hash())),
 	_signature: required(signature()),
-	_type: required(type("message")),
-	_key: required(key()),
-	_ownHash: required(hash()),
-	_parent: required(hash()),
-	_version: required(integer()),
 
-	_sortCounter: optional(integer()),
-	messageUUID: optional(uuid()),
-	_hashVersion: optional(integer()),
-	_v2: optional(boolean()),
+	messageUUID: unique(optional(uuid())),
 
-	images: optional(text()),
-	originalMeta: required(text()),
+	meta: required(json()),
 }, {
 	instanceMethods: {
-		getMetaBase: getObject(metaKeys),
+		getMetaExtra: getObject(metaExtraKeys),
 		getMeta: function () {
-			const meta = this.getMetaBase()
-
-			const imagesJSON = this.getDataValue("images")
-
-			const images = imagesJSON ? JSON.parse(imagesJSON) : ""
-
-			return Object.assign({}, meta, { images })
+			return Object.assign({}, this.getDataValue("meta"), this.getMetaExtra())
 		},
 		getContent: getObject(contentKeys),
 		getAPIFormatted: function () {
@@ -117,14 +91,11 @@ const Message = sequelize.define("Message", {
 	},
 	setterMethods: {
 		meta: function (value) {
-			this.setDataValue("originalMeta", JSON.stringify(value))
+			metaExtraKeys.forEach((key) => {
+				this.setDataValue(key, value[key])
+			})
 
-			if (value.images) {
-				this.setDataValue("images", JSON.stringify(value.images))
-				delete value.images
-			}
-
-			setObject(metaKeys).call(this, value)
+			this.setDataValue("meta", value)
 		},
 		content: setObject(contentKeys)
 	}

@@ -1,26 +1,30 @@
 "use strict";
 
 const sequelize = require("../dbConnector/sequelizeClient");
-const Sequelize = require("sequelize");
 
 const contentKeys = ["ct", "iv"];
-const metaKeys = ["userID", "time", "_parent", "_key", "_version", "_type", "_hashVersion", "_contentHash", "_ownHash", "_signature"];
+const metaKeys = [
+	"userID",
+	"_contentHash",
+	"_ownHash",
+	"_signature"
+];
 
 const {
 	required,
 	defaultValue,
+	unique,
 
 	autoIncrementInteger,
 
 	autoUUID,
 	integer,
 	boolean,
-	key,
 	hash,
 	signature,
 	ct,
 	iv,
-	timestamp,
+	json,
 } = require("./utils/columns")
 
 const {
@@ -28,7 +32,7 @@ const {
 	setObject,
 } = require("./utils/methods")
 
-const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
+const chunkTitleUpdate = sequelize.define("chunkTitleUpdate", {
 	id: autoUUID(),
 
 	index: autoIncrementInteger(),
@@ -37,20 +41,12 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 	iv: required(iv()),
 
 	userID: required(integer()),
-	time: required(timestamp()),
-	_parent: Object.assign({}, required(hash()), {
-		unique: false
-	}),
-	_key: required(key()),
-	_version: required(integer()),
-	_type: required({
-		type: Sequelize.STRING,
-		validate: { is: "topicUpdate" }
-	}),
-	_hashVersion: required(integer()),
-	_contentHash: required(hash()),
-	_ownHash: required(hash()),
+
+	_contentHash: unique(required(hash())),
+	_ownHash: unique(required(hash())),
 	_signature: required(signature()),
+
+	meta: required(json()),
 
 	latest: defaultValue(boolean(), true),
 }, {
@@ -60,7 +56,7 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 		getAPIFormatted: function () {
 			return {
 				id: this.id,
-				topicID: this.topicID,
+				chunkID: this.chunkID,
 				content: this.getContent(),
 				meta: this.getMeta()
 			};
@@ -72,4 +68,4 @@ const topicTitleUpdate = sequelize.define("topicTitleUpdate", {
 	}
 });
 
-module.exports = topicTitleUpdate;
+module.exports = chunkTitleUpdate;

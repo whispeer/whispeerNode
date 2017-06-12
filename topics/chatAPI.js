@@ -35,8 +35,6 @@ const chatAPI = {
 				const includeReceiverInCreate = {
 					include: [{
 						association: Chunk.Receiver,
-					}, {
-						association: Chunk.AddedReceiver,
 					}],
 					transaction
 				}
