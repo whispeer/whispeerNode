@@ -6,7 +6,7 @@ const Chat = require("../includes/models/chat")
 const Chunk = require("../includes/models/chatChunk")
 const Message = require("../includes/models/message")
 const UserUnreadMessage = require("../includes/models/unreadMessage")
-const TopicUpdate = require("../includes/models/topicUpdate")
+const ChunkUpdate = require("../includes/models/topicUpdate")
 
 const sequelize = require("../includes/dbConnector/sequelizeClient");
 
@@ -26,6 +26,45 @@ const addToUnread = (chunk, messageId, request) => {
 			ChatId: chunk.ChatId
 		})
 	}))
+}
+
+const chatLatestMessage = (chat) => {
+	return Message.findOne({
+		where: {
+			latest: true
+		},
+		include: [{
+			association: Message.Chunk,
+			required: true,
+			where: {
+				ChatId: chat.id
+			},
+		}]
+	})
+}
+
+const chatResponse = (chat) => {
+	return chatLatestMessage(chat).then((latestMessage) => {
+		return {
+			chat: chat.getAPIFormatted(),
+			chunks: latestMessage.chunk.getAPIFormatted(),
+			messages: [latestMessage.getAPIFormatted()]
+		}
+	})
+}
+
+const getChats = (chatIDs, request) => {
+	return Chat.findAll({
+		where: {
+			id: {
+				$in: chatIDs
+			}
+		}
+	}).each((chat) =>
+		chat.validateAccess(request)
+	).map((chat) =>
+		chatResponse(chat)
+	)
 }
 
 const chatAPI = {
@@ -50,7 +89,6 @@ const chatAPI = {
 					return Bluebird.all([
 						chunk.setChat(chat, { transaction }),
 						message.setChunk(chunk, { transaction }),
-						message.setChat(chat, { transaction }),
 					]).thenReturn([ chat, chunk, message ])
 				})
 			})
@@ -98,25 +136,17 @@ const chatAPI = {
 		})).nodeify(fn)
 	},
 
-	get: ({ id, include: { latestChunk, latestMessage } = {} }, fn, request) => {
-		return Chat.findById(id).then((chat) =>
-			chat.validateAccess(request).thenReturn(chat)
+	get: ({ id }, fn, request) => {
+		return getChats([id], request).then((chats) =>
+			chats[0]
 		).then((chat) =>
-			chat.getAPIFormatted()
+			({ chat })
 		).nodeify(fn)
 	},
 
 	getMultiple: ({ ids }, fn, request) => {
-		return Chat.findAll({
-			where: {
-				id: {
-					$in: ids
-				}
-			}
-		}).each((chat) =>
-			chat.validateAccess(request)
-		).map((chat) =>
-			chat.getAPIFormatted()
+		return getChats(ids, request).then((chats) =>
+			({ chats })
 		).nodeify(fn)
 	},
 
@@ -163,37 +193,37 @@ const chatAPI = {
 		}).nodeify(fn)
 	},
 
-	getLatestTopicUpdate: ({ id }, fn, request) => {
+	getLatestChunkUpdate: ({ id }, fn, request) => {
 		return Bluebird.coroutine(function* () {
 			const chat = yield Chat.findById(id)
 
 			yield chat.validateAccess(request)
 
-			const topicUpdate = yield TopicUpdate.findOne({
+			const chunkUpdate = yield ChunkUpdate.findOne({
 				where: {
 					$and: [{ latest: true }, { ChatId: id }]
 				}
 			})
 
-			return topicUpdate.getAPIFormatted()
+			return chunkUpdate.getAPIFormatted()
 		}).nodeify(fn)
 	},
 
-	getTopicUpdates: ({ id, oldestKnownTopicUpdate, limit = 20 }, fn, request) => {
+	getChunkUpdates: ({ id, oldestKnownChunkUpdate, limit = 20 }, fn, request) => {
 		return Bluebird.coroutine(function* () {
 			const chat = yield Chat.findById(id)
 
 			yield chat.validateAccess(request)
 
-			const tempSQL = sequelize.dialect.QueryGenerator.selectQuery(TopicUpdate, {
+			const tempSQL = sequelize.dialect.QueryGenerator.selectQuery(ChunkUpdate, {
 				attributes: ["index"],
 				where: {
-					id: oldestKnownTopicUpdate,
+					id: oldestKnownChunkUpdate,
 					ChatId: id,
 				}
 			}).slice(0,-1)
 
-			const topicUpdates = yield TopicUpdate.findAll({
+			const chunkUpdates = yield ChunkUpdate.findAll({
 				where: {
 					$and: [{ ChatId: id }, { index: { $lt: sequelize.literal(`(${tempSQL})`) }}]
 				},
@@ -201,7 +231,7 @@ const chatAPI = {
 				order: ["index"]
 			})
 
-			return topicUpdates.map((topicUpdate) => topicUpdate.getAPIFormatted())
+			return chunkUpdates.map((chunkUpdate) => chunkUpdate.getAPIFormatted())
 		}).nodeify(fn)
 	},
 
@@ -216,6 +246,9 @@ const chatAPI = {
 				model: Chunk.unscoped(),
 				attributes: [],
 				required: true,
+				where: {
+					ChatId: id
+				},
 				include: [{
 					attributes: [],
 					association: Chunk.UserWithAccess,
@@ -226,7 +259,7 @@ const chatAPI = {
 
 			const messages = yield Message.findAll({
 				where: {
-					$and: [{ ChatId: id }, { index: { $lt: oldestKnownMessage }}]
+					$and: [{ id: { $lt: oldestKnownMessage }}]
 				},
 				include,
 				limit,
@@ -249,6 +282,8 @@ const chatAPI = {
 	},
 
 	getChatWithUser: ({ userID }, fn, request) => {
+		return Bluebird.resolve({}).nodeify(fn)
+
 		return Chat.findAll({
 			attributes: ["id"],
 			where: ["\"chunk.receiver3\".\"id\" IS null"],
@@ -333,7 +368,6 @@ const chatAPI = {
 				const dbMessage = yield Message.create(Object.assign({}, message, {
 					sender: request.session.getUserID(),
 					sendTime: new Date().getTime(),
-					ChatId: chunk.ChatId,
 					ChunkId: chunk.id
 				}))
 
@@ -354,8 +388,8 @@ const chatAPI = {
 		}
 	},
 
-	topicUpdate: {
-		create: ({ chunkID, topicUpdate }, fn, request) => {
+	chunkUpdate: {
+		create: ({ chunkID, chunkUpdate }, fn, request) => {
 			return Bluebird.coroutine(function* () {
 				const chunk = yield Chunk.findById(chunkID)
 
@@ -365,24 +399,24 @@ const chatAPI = {
 					throw new SuccessorError("chunk already has a successor")
 				}
 
-				const dbTopicUpdate = yield sequelize.transaction((transaction) => {
+				const dbChunkUpdate = yield sequelize.transaction((transaction) => {
 					return Bluebird.all([
-						TopicUpdate.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
-						TopicUpdate.create(topicUpdate, { transaction })
+						ChunkUpdate.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
+						ChunkUpdate.create(chunkUpdate, { transaction })
 					])
 				})
 
-				return dbTopicUpdate.getAPIFormatted()
+				return dbChunkUpdate.getAPIFormatted()
 			}).nodeify(fn)
 		},
 
 		get: ({ id }, fn, request) => {
 			return Bluebird.coroutine(function* () {
-				const topicUpdate = yield TopicUpdate.findById(id)
+				const chunkUpdate = yield ChunkUpdate.findById(id)
 
-				yield topicUpdate.validateAccess(request)
+				yield chunkUpdate.validateAccess(request)
 
-				return topicUpdate.getAPIFormatted()
+				return chunkUpdate.getAPIFormatted()
 			}).nodeify(fn)
 		}
 	}

@@ -55,8 +55,10 @@ const chunkTitleUpdate = sequelize.define("chunkTitleUpdate", {
 		getContent: getObject(contentKeys),
 		getAPIFormatted: function () {
 			return {
-				id: this.id,
-				chunkID: this.chunkID,
+				server: {
+					id: this.id,
+					chunkID: this.chunkID,
+				},
 				content: this.getContent(),
 				meta: this.getMeta()
 			};

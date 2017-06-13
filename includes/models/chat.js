@@ -33,8 +33,7 @@ const Chat = sequelize.define("Chat", {
 		},
 		getAPIFormatted: function () {
 			return {
-				id: this.getDataValue("id"),
-				chunks: this.chunk.map((chunk) => chunk.getAPIFormatted())
+				id: this.getDataValue("id")
 			}
 		},
 		hasAccess: function (request) {
@@ -60,14 +59,5 @@ const Chat = sequelize.define("Chat", {
 });
 
 hasMany(Chat, Chunk)
-
-Chat.addScope("defaultScope", {
-	include: [{
-		association: Chat.Chunk,
-		where: {
-			latest: true
-		}
-	}]
-}, { override: true })
 
 module.exports = Chat;

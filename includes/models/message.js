@@ -16,6 +16,7 @@ const {
 	required,
 	optional,
 	unique,
+	defaultValue,
 
 	ct,
 	iv,
@@ -25,6 +26,7 @@ const {
 	hash,
 	signature,
 	json,
+	boolean,
 } = require("./utils/columns")
 
 const {
@@ -55,6 +57,8 @@ const Message = sequelize.define("Message", {
 	_signature: required(signature()),
 
 	messageUUID: unique(optional(uuid())),
+
+	latest: defaultValue(boolean(), true),
 
 	meta: required(json()),
 }, {
