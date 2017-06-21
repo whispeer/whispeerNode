@@ -43,14 +43,40 @@ const chatLatestMessage = (chat) => {
 	})
 }
 
+const getLaterChunks = (chunk) => {
+	if (chunk.latest) {
+		return Bluebird.resolve([chunk])
+	}
+
+	return Chunk.findAll({
+		where: {
+			id: {
+				$gt: chunk.id
+			},
+			ChatId: chunk.ChatId
+		}
+	}).then((chunks) => {
+		return [...chunks, chunk]
+	})
+}
+
 const chatResponse = (chat) => {
-	return chatLatestMessage(chat).then((latestMessage) => {
+	return Bluebird.coroutine(function* () {
+		const latestMessage = yield chatLatestMessage(chat)
+
+		const laterChunks = yield getLaterChunks(latestMessage.chunk)
+
+		const latestChunk = laterChunks.find((chunk) => chunk.latest)
+
 		return {
-			chat: chat.getAPIFormatted(),
-			chunks: latestMessage.chunk.getAPIFormatted(),
+			chat: Object.assign({
+				latestMessageID: latestMessage.id,
+				latestChunkID: latestChunk.id,
+			}, chat.getAPIFormatted()),
+			chunks: laterChunks.map((chunk) => chunk.getAPIFormatted()),
 			messages: [latestMessage.getAPIFormatted()]
 		}
-	})
+	})()
 }
 
 const getChats = (chatIDs, request) => {
@@ -95,8 +121,8 @@ const chatAPI = {
 		}).then(([ chat, chunk, message ]) => {
 			return addToUnread(chunk, message.id, request).thenReturn({
 				chat: chat.getAPIFormatted(),
-				chunk: chunk.getAPIFormatted(),
-				message: message.getAPIFormatted(),
+				chunks: [chunk.getAPIFormatted()],
+				messages: [message.getAPIFormatted()],
 			})
 		}).nodeify(fn)
 	},
