@@ -20,7 +20,7 @@ const MESSAGE_QUERY = `
 	SELECT "Message".* FROM "Messages" AS "Message"
 		INNER JOIN "Chunks" AS "chunk" ON "Message"."ChunkId" = "chunk"."id" AND "chunk"."ChatId" = $id
 		INNER JOIN "Receivers" AS "chunk.receiver" ON "chunk"."id" = "chunk.receiver"."ChunkId" AND "chunk.receiver"."userID" = $userID
-	WHERE ("Message"."id" < $oldestID) ORDER BY "Message"."id" LIMIT 20;
+	WHERE ("Message"."id" < $oldestID) ORDER BY "Message"."id" DESC LIMIT 20;
 `
 
 const MESSAGE_COUNT_QUERY = `
@@ -405,11 +405,18 @@ const chatAPI = {
 					throw new SuccessorError("chunk already has a successor")
 				}
 
-				const dbMessage = yield Message.create(Object.assign({}, message, {
+				const dbMessageData = Object.assign({}, message, {
 					sender: request.session.getUserID(),
 					sendTime: new Date().getTime(),
 					ChunkId: chunk.id
-				}))
+				})
+
+				const dbMessage = (yield sequelize.transaction((transaction) => {
+					return Bluebird.all([
+						Message.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
+						Message.create(dbMessageData, { transaction })
+					])
+				}))[1]
 
 				yield addToUnread(chunk, message.id, request)
 
@@ -439,12 +446,12 @@ const chatAPI = {
 					throw new SuccessorError("chunk already has a successor")
 				}
 
-				const dbChunkUpdate = yield sequelize.transaction((transaction) => {
+				const dbChunkUpdate = (yield sequelize.transaction((transaction) => {
 					return Bluebird.all([
 						ChunkUpdate.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
 						ChunkUpdate.create(chunkUpdate, { transaction })
 					])
-				})
+				}))[1]
 
 				return dbChunkUpdate.getAPIFormatted()
 			}).nodeify(fn)
