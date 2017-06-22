@@ -12,7 +12,23 @@ const sequelize = require("../includes/dbConnector/sequelizeClient");
 
 const Topic = require("../includes/topic")
 
+const h = require("whispeerHelper")
+
 const Bluebird = require("bluebird")
+
+const MESSAGE_QUERY = `
+	SELECT "Message".* FROM "Messages" AS "Message"
+		INNER JOIN "Chunks" AS "chunk" ON "Message"."ChunkId" = "chunk"."id" AND "chunk"."ChatId" = $id
+		INNER JOIN "Receivers" AS "chunk.receiver" ON "chunk"."id" = "chunk.receiver"."ChunkId" AND "chunk.receiver"."userID" = $userID
+	WHERE ("Message"."id" < $oldestID) ORDER BY "Message"."id" LIMIT 20;
+`
+
+const MESSAGE_COUNT_QUERY = `
+	SELECT COUNT("Message".id) FROM "Messages" AS "Message"
+		INNER JOIN "Chunks" AS "chunk" ON "Message"."ChunkId" = "chunk"."id" AND "chunk"."ChatId" = $id
+		INNER JOIN "Receivers" AS "chunk.receiver" ON "chunk"."id" = "chunk.receiver"."ChunkId" AND "chunk.receiver"."userID" = $userID
+	WHERE ("Message"."id" < $oldestID);
+`
 
 const addToUnread = (chunk, messageId, request) => {
 	return Bluebird.all(chunk.receiver.map((receiver) => {
@@ -267,81 +283,79 @@ const chatAPI = {
 
 			yield chat.validateAccess(request)
 
-			const include = [{
-				association: Message.Chunk,
-				model: Chunk.unscoped(),
-				attributes: [],
-				required: true,
-				where: {
-					ChatId: id
+			const messagesCountResponse = yield sequelize.query(MESSAGE_COUNT_QUERY, {
+				bind: {
+					id,
+					userID: request.session.getUserID(),
+					oldestID: oldestKnownMessage + 2,
 				},
-				include: [{
-					attributes: [],
-					association: Chunk.UserWithAccess,
-					required: true,
-					where: { userID: request.session.getUserID() }
-				}]
-			}]
-
-			const messages = yield Message.findAll({
-				where: {
-					$and: [{ id: { $lt: oldestKnownMessage }}]
-				},
-				include,
-				limit,
-				order: ["id"]
 			})
 
-			const remainingMessagesCount = (yield Message.findAll({
-				attributes: [[sequelize.fn("COUNT", sequelize.col("id")), "count"]],
-				where: {
-					$and: [{ ChatId: id }, { index: { $lt: messages[messages.length - 1].id }}]
+			const messagesCount = h.parseDecimal(messagesCountResponse[0][0].count)
+
+			if (messagesCount === 0) {
+				return {
+					messages: [],
+					remainingMessagesCount: 0
+				}
+			}
+
+			const messages = yield sequelize.query(MESSAGE_QUERY, {
+				type: sequelize.QueryTypes.SELECT,
+				model: Message,
+				bind: {
+					id,
+					userID: request.session.getUserID(),
+					oldestID: oldestKnownMessage,
 				},
-				include
-			})).count
+			})
 
 			return {
 				messages: messages.map((message) => message.getAPIFormatted()),
-				remainingMessagesCount
+				remainingMessagesCount: messagesCount - messages.length
 			}
-		}).nodeify(fn)
+		})().nodeify(fn)
 	},
 
 	getChatWithUser: ({ userID }, fn, request) => {
 		return Bluebird.resolve({}).nodeify(fn)
 
-		return Chat.findAll({
-			attributes: ["id"],
-			where: ["\"chunk.receiver3\".\"id\" IS null"],
-			include: [{
-				association: Chat.Chunk,
-				model: Chunk.unscoped(),
-				attributes: [],
-				where: {
-					latest: true
-				},
-				required: true,
+		/*
+			This code does not work due to a bug with sequelize
+			See: https://github.com/sequelize/sequelize/issues/7754
+			return Chat.findAll({
+				attributes: ["id"],
+				where: ["\"chunk.receiver3\".\"id\" IS null"],
 				include: [{
+					association: Chat.Chunk,
+					model: Chunk.unscoped(),
 					attributes: [],
-					association: Chunk.Receiver,
-					required: true,
-					where: { userID: request.session.getUserID() }
-				}, {
-					attributes: [],
-					association: Chunk.Receiver,
-					required: true,
-					where: { userID }
-				}, {
-					attributes: [],
-					association: Chunk.Receiver,
 					where: {
-						userID: {
-							$notIn: [userID, request.session.getUserID()]
+						latest: true
+					},
+					required: true,
+					include: [{
+						attributes: [],
+						association: Chunk.Receiver,
+						required: true,
+						where: { userID: request.session.getUserID() }
+					}, {
+						attributes: [],
+						association: Chunk.Receiver,
+						required: true,
+						where: { userID }
+					}, {
+						attributes: [],
+						association: Chunk.Receiver,
+						where: {
+							userID: {
+								$notIn: [userID, request.session.getUserID()]
+							}
 						}
-					}
+					}]
 				}]
-			}]
-		}).nodeify(fn)
+			})
+		*/
 	},
 
 	chunk: {
