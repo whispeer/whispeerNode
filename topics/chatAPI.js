@@ -30,6 +30,23 @@ const MESSAGE_COUNT_QUERY = `
 	WHERE ("Message"."id" < $oldestID);
 `
 
+const CHAT_WITH_USER_QUERY = `
+	SELECT "Chat"."id" FROM "Chats" AS "Chat"
+		INNER JOIN "Chunks" AS "chunk"
+			ON "Chat"."id" = "chunk"."ChatId"
+			AND "chunk"."latest" = TRUE
+		INNER JOIN "Receivers" AS "chunk.receiver1"
+			ON "chunk"."id" = "chunk.receiver1"."ChunkId"
+			AND "chunk.receiver1"."userID" = $userIDMe
+		INNER JOIN "Receivers" AS "chunk.receiver2"
+			ON "chunk"."id" = "chunk.receiver2"."ChunkId"
+			AND "chunk.receiver2"."userID" = $userIDOther
+		LEFT OUTER JOIN "Receivers" AS "chunk.receiver3"
+			ON "chunk"."id" = "chunk.receiver3"."ChunkId"
+			AND "chunk.receiver3"."userID" NOT IN ($userIDMe, $userIDOther)
+	WHERE "chunk.receiver3"."id" IS null;
+`
+
 const addToUnread = (chunk, messageId, request) => {
 	return Bluebird.all(chunk.receiver.map((receiver) => {
 		if(request.session.isMyID(receiver.userID)) {
@@ -318,7 +335,26 @@ const chatAPI = {
 	},
 
 	getChatWithUser: ({ userID }, fn, request) => {
-		return Bluebird.resolve({}).nodeify(fn)
+		// return Bluebird.resolve({}).nodeify(fn)
+
+		return Bluebird.coroutine(function* () {
+			const chats = yield sequelize.query(CHAT_WITH_USER_QUERY, {
+				type: sequelize.QueryTypes.SELECT,
+				model: Chat,
+				bind: {
+					userIDMe: request.session.getUserID(),
+					userIDOther: userID,
+				},
+			})
+
+			if (chats.length === 0) {
+				return {}
+			}
+
+			return {
+				chatID: chats[0].id
+			}
+		})().nodeify(fn)
 
 		/*
 			This code does not work due to a bug with sequelize
