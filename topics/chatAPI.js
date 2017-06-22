@@ -461,16 +461,26 @@ const chatAPI = {
 					ChunkId: chunk.id
 				})
 
-				const dbMessage = (yield sequelize.transaction((transaction) => {
-					return Bluebird.all([
-						Message.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
-						Message.create(dbMessageData, { transaction })
-					])
-				}))[1]
+				try {
+					const dbMessage = (yield sequelize.transaction((transaction) => {
+						return Bluebird.all([
+							Message.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
+							Message.create(dbMessageData, { transaction })
+						])
+					}))[1]
 
-				yield addToUnread(chunk, dbMessage.id, request)
+					yield addToUnread(chunk, dbMessage.id, request)
 
-				return Object.assign({ success: true }, dbMessage.getAPIFormatted())
+					return Object.assign({ success: true }, dbMessage.getAPIFormatted())
+				} catch (err) {
+					if (err instanceof Sequelize.UniqueConstraintError && err.fields.messageUUID && Object.keys(err.fields).length === 1) {
+						const existingDBMessage = yield Message.findOne({ where: { messageUUID: err.fields.messageUUID }})
+
+						return Object.assign({ success: true }, existingDBMessage.getAPIFormatted())
+					} else {
+						return Bluebird.reject(err)
+					}
+				}
 			})().nodeify(fn)
 		},
 
