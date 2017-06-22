@@ -93,9 +93,22 @@ const getLaterChunks = (chunk) => {
 	})
 }
 
-const chatResponse = (chat) => {
+const chatUnreadMessages = (chat, userID) => {
+	return UserUnreadMessage.findAll({
+		attributes: ["MessageId"],
+		where: {
+			ChatId: chat.id,
+			userID,
+		}
+	}).map((unreadMessage) =>
+		unreadMessage.MessageId
+	)
+}
+
+const chatResponse = (chat, userID) => {
 	return Bluebird.coroutine(function* () {
 		const latestMessage = yield chatLatestMessage(chat)
+		const unreadMessageIDs = yield chatUnreadMessages(chat, userID)
 
 		const laterChunks = yield getLaterChunks(latestMessage.chunk)
 
@@ -105,9 +118,10 @@ const chatResponse = (chat) => {
 			chat: Object.assign({
 				latestMessageID: latestMessage.id,
 				latestChunkID: latestChunk.id,
+				unreadMessageIDs,
 			}, chat.getAPIFormatted()),
 			chunks: laterChunks.map((chunk) => chunk.getAPIFormatted()),
-			messages: [latestMessage.getAPIFormatted()]
+			messages: [latestMessage.getAPIFormatted()],
 		}
 	})()
 }
@@ -122,7 +136,7 @@ const getChats = (chatIDs, request) => {
 	}).each((chat) =>
 		chat.validateAccess(request)
 	).map((chat) =>
-		chatResponse(chat)
+		chatResponse(chat, request.session.getUserID())
 	)
 }
 
@@ -167,7 +181,7 @@ const chatAPI = {
 				userID: request.session.getUserID()
 			},
 			group: ["ChatId"]
-		}).map((entry) => entry.id).then((chatIDs) => ({
+		}).map((entry) => entry.ChatId).then((chatIDs) => ({
 			chatIDs
 		})).nodeify(fn)
 	},
@@ -317,6 +331,8 @@ const chatAPI = {
 				}
 			}
 
+			// TODO: (CH) return some chunks?
+
 			const messages = yield sequelize.query(MESSAGE_QUERY, {
 				type: sequelize.QueryTypes.SELECT,
 				model: Message,
@@ -335,8 +351,6 @@ const chatAPI = {
 	},
 
 	getChatWithUser: ({ userID }, fn, request) => {
-		// return Bluebird.resolve({}).nodeify(fn)
-
 		return Bluebird.coroutine(function* () {
 			const chats = yield sequelize.query(CHAT_WITH_USER_QUERY, {
 				type: sequelize.QueryTypes.SELECT,
@@ -454,7 +468,7 @@ const chatAPI = {
 					])
 				}))[1]
 
-				yield addToUnread(chunk, message.id, request)
+				yield addToUnread(chunk, dbMessage.id, request)
 
 				return Object.assign({ success: true }, dbMessage.getAPIFormatted())
 			})().nodeify(fn)
