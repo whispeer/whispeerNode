@@ -287,7 +287,7 @@ const chatAPI = {
 				bind: {
 					id,
 					userID: request.session.getUserID(),
-					oldestID: oldestKnownMessage + 2,
+					oldestID: oldestKnownMessage,
 				},
 			})
 
@@ -399,7 +399,7 @@ const chatAPI = {
 			return Bluebird.coroutine(function* () {
 				const chunk = yield Chunk.findById(chunkID)
 
-				yield chunk.validateAccess()
+				yield chunk.validateAccess(request)
 
 				if (!chunk.latest) {
 					throw new SuccessorError("chunk already has a successor")
@@ -413,8 +413,8 @@ const chatAPI = {
 
 				yield addToUnread(chunk, message.id, request)
 
-				return dbMessage.getAPIFormatted()
-			}).nodeify(fn)
+				return Object.assign({ success: true }, dbMessage.getAPIFormatted())
+			})().nodeify(fn)
 		},
 
 		get: ({ id }, fn, request) => {
