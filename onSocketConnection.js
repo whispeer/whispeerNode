@@ -14,6 +14,8 @@ const Session = require("./includes/session");
 const APIVERSION = "0.0.1";
 const KeyApi = require("./includes/crypto/KeyApi");
 
+const errorService = require("./includes/errorService");
+
 Error.stackTraceLimit = Infinity;
 
 const log = (val) => {
@@ -44,7 +46,7 @@ function registerSocketListener(socketData) {
 			}
 		});
 	}).catch((e) => {
-		console.error(e);
+		errorService.handleError(e)
 	});
 }
 
@@ -83,6 +85,7 @@ handle = function (handler, data, fn, request) {
 		callExplicitHandler(handler, data, fn, request);
 	} else {
 		console.log("could not match handler and data");
+		throw new Error("no handler found for request")
 	}
 };
 
@@ -98,13 +101,11 @@ function always(request, response, fn) {
 		request.socketData.recentActivity();
 	}, function (e, logedin, isBusiness) {
 		if (e) {
-			console.error(e);
-			response.status = 0;
+			errorService.handleError(e, request);
+			response.error = true;
 		}
 
-		if (response.status !== 0) {
-			response.status = 1;
-		}
+		response.status = 1;
 
 		response.version = APIVERSION;
 
@@ -159,8 +160,9 @@ module.exports = function (socket) {
 				handle(handler, data, this, request);
 			}), function (e, result) {
 				if (e) {
+					errorService.handleError(e, request);
 					result = {
-						status: 0
+						error: true
 					};
 				}
 

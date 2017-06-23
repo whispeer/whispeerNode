@@ -25,7 +25,7 @@ var HandlerCallback = function (fn, request) {
 		}
 	};
 
-	var doResult = function doResult(err, value) {
+	var doResult = function (err, value) {
 		if (err) {
 			result = {
 				error: true

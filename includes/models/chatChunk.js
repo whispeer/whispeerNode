@@ -1,5 +1,7 @@
 "use strict";
 
+const h = require("whispeerHelper")
+
 const sequelize = require("../dbConnector/sequelizeClient")
 
 const Bluebird = require("bluebird")
@@ -79,7 +81,7 @@ const Chunk = sequelize.define("Chunk", {
 			})
 		},
 		isAdmin: function (userID) {
-			return this.getDataValue("creator") === parseInt(userID, 10)
+			return h.parseDecimal(this.getDataValue("meta").creator) === h.parseDecimal(userID)
 		}
 	},
 	setterMethods: {

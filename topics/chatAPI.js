@@ -409,28 +409,57 @@ const chatAPI = {
 	},
 
 	chunk: {
-		create: ({ chunkMeta, receiverKeys }, fn, request) => {
+		create: ({ predecessorID, chunkMeta, receiverKeys }, fn, request) => {
 			return Bluebird.coroutine(function* () {
 				const validateChunkPromise = Topic.validateBeforeCreate(request, chunkMeta, receiverKeys)
 
-				const predecessor = yield Chunk.findById(chunkMeta.predecessorId)
+				const predecessor = yield Chunk.findById(predecessorID)
 				yield validateChunkPromise
 
 				yield predecessor.validateAccess(request)
-
-
 
 				if (!predecessor.isAdmin(request.session.getUserID())) {
 					throw new AccessViolation(`Not an admin of chunk ${predecessor.id}: ${request.session.getUserID()}`)
 				}
 
-				yield Sequelize.transaction((transaction) =>
+				if (!predecessor.latest) {
+					throw new SuccessorError("Not the latest chunk")
+				}
+
+				const dbChunk = (yield sequelize.transaction((transaction) =>
 					Bluebird.all([
-						Chunk.update({ latest: false }, { where: { latest: true, ChatId: chunkMeta.predecessorId }, transaction }),
-						Chunk.create({ meta: chunkMeta, receiverKeys }, { transaction })
+						Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessor.ChatId }, transaction }),
+						Chunk.create({ meta: chunkMeta, receiverKeys, ChatId: predecessor.ChatId, predecessorId: predecessor.id }, {
+							include: [{
+								association: Chunk.Receiver,
+							}],
+							transaction
+						})
 					])
-				)
-			}).nodeify(fn)
+				))[1]
+
+				return {
+					chunk: dbChunk.getAPIFormatted()
+				}
+			})().nodeify(fn)
+		},
+
+		successor: ({ id }, fn, request) => {
+			return Bluebird.coroutine(function* () {
+				const chunk = yield Chunk.findOne({
+					where: {
+						predecessorId: id
+					}
+				})
+
+				if (!chunk) {
+					return {}
+				}
+
+				yield chunk.validateAccess(request)
+
+				return { chunk: chunk.getAPIFormatted() }
+			})().nodeify(fn)
 		},
 
 		get: ({ id }, fn, request) => {
@@ -440,7 +469,7 @@ const chatAPI = {
 				yield chunk.validateAccess(request)
 
 				return chunk.getAPIFormatted()
-			}).nodeify(fn)
+			})().nodeify(fn)
 		},
 	},
 
