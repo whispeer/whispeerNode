@@ -68,28 +68,23 @@ const chatLatestMessage = (chat) => {
 		},
 		include: [{
 			association: Message.Chunk,
+			model: Chunk.unscoped(),
 			required: true,
 			where: {
 				ChatId: chat.id
-			},
+			}
 		}]
 	})
 }
 
 const getLaterChunks = (chunk) => {
-	if (chunk.latest) {
-		return Bluebird.resolve([chunk])
-	}
-
 	return Chunk.findAll({
 		where: {
 			id: {
-				$gt: chunk.id
+				$gte: chunk.id
 			},
 			ChatId: chunk.ChatId
 		}
-	}).then((chunks) => {
-		return [...chunks, chunk]
 	})
 }
 
@@ -227,13 +222,13 @@ const chatAPI = {
 		return Bluebird.coroutine(function* () {
 			const chat = yield Chat.findById(id)
 			yield chat.validateAccess(request)
-			yield UserUnreadMessage.delete({
+			yield UserUnreadMessage.destroy({
 				where: {
 					ChatId: chat.id,
 					userID: request.session.getUserID()
 				}
 			})
-		}).nodeify(fn)
+		})().nodeify(fn)
 	},
 
 	getChunkIDs: ({ id }, fn, request) => {
