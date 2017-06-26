@@ -47,6 +47,16 @@ const CHAT_WITH_USER_QUERY = `
 	WHERE "chunk.receiver3"."id" IS null;
 `
 
+const UPDATE_LATEST_MESSAGES_QUERY = `
+	UPDATE "Messages"
+	SET "latest" = false
+	FROM "Chunks"
+	WHERE
+		"Chunks"."ChatId" = $ChatId AND
+		"Messages"."latest" = true AND
+		"Messages"."ChunkId" = "Chunks"."id"
+`
+
 const addToUnread = (chunk, messageId, request) => {
 	return Bluebird.all(chunk.receiver.map((receiver) => {
 		if(request.session.isMyID(receiver.userID)) {
@@ -103,8 +113,8 @@ const chatUnreadMessages = (chat, userID) => {
 const chatResponse = (chat, userID) => {
 	return Bluebird.coroutine(function* () {
 		const latestMessage = yield chatLatestMessage(chat)
-		const unreadMessageIDs = yield chatUnreadMessages(chat, userID)
 
+		const unreadMessageIDs = yield chatUnreadMessages(chat, userID)
 		const laterChunks = yield getLaterChunks(latestMessage.chunk)
 
 		const latestChunk = laterChunks.find((chunk) => chunk.latest)
@@ -338,8 +348,15 @@ const chatAPI = {
 				},
 			})
 
+			const chunkIDs = messages.map((message) => message.ChunkId).filter((value, index, self) =>
+				self.indexOf(value) === index
+			)
+
+			const chunks = yield Chunk.findAll({ where: { id: { $in: chunkIDs }}})
+
 			return {
 				messages: messages.map((message) => message.getAPIFormatted()),
+				chunks: chunks.map((chunk) => chunk.getAPIFormatted()),
 				remainingMessagesCount: messagesCount - messages.length
 			}
 		})().nodeify(fn)
@@ -488,7 +505,12 @@ const chatAPI = {
 				try {
 					const dbMessage = (yield sequelize.transaction((transaction) => {
 						return Bluebird.all([
-							Message.update({ latest: false }, { where: { latest: true, ChunkId: chunkID }, transaction }),
+							sequelize.query(UPDATE_LATEST_MESSAGES_QUERY, {
+								bind: {
+									ChatId: chunk.ChatId
+								},
+								transaction
+							}),
 							Message.create(dbMessageData, { transaction })
 						])
 					}))[1]
