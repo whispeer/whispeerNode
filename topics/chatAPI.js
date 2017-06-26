@@ -145,6 +145,15 @@ const getChats = (chatIDs, request) => {
 	)
 }
 
+const pushToUsers = (user, { chat, chunk, message, chunkUpdate }) => {
+	const chatData = chat ? { chat: chat.getAPIFormatted() } : {}
+	const chunkData = chunk ? { chunk: chunk.getAPIFormatted() } : {}
+	const messageData = message ? { message: message.getAPIFormatted() } : {}
+	const chunkUpdateData = chunkUpdate ? { chunkUpdate: chunkUpdate.getAPIFormatted() } : {}
+
+	const pushData = Object.assign({}, chatData, chunkData, messageData, chunkUpdateData)
+}
+
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
 		return Topic.validateBeforeCreate(request, initialChunk, receiverKeys).then(() => {
@@ -171,6 +180,7 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
+			pushToUsers(chunk.receiver, { chat, chunk, message })
 			return addToUnread(chunk, message.id, request).thenReturn({
 				chat: chat.getAPIFormatted(),
 				chunks: [chunk.getAPIFormatted()],
@@ -450,6 +460,8 @@ const chatAPI = {
 					])
 				))[1]
 
+				pushToUsers(dbChunk.receiver, { chunk: dbChunk })
+
 				return {
 					chunk: dbChunk.getAPIFormatted()
 				}
@@ -517,6 +529,8 @@ const chatAPI = {
 
 					yield addToUnread(chunk, dbMessage.id, request)
 
+					pushToUsers(chunk.receiver, { message: dbMessage })
+
 					return Object.assign({ success: true }, dbMessage.getAPIFormatted())
 				} catch (err) {
 					if (err instanceof Sequelize.UniqueConstraintError && err.fields.messageUUID && Object.keys(err.fields).length === 1) {
@@ -537,7 +551,7 @@ const chatAPI = {
 				yield message.validateAccess(request)
 
 				return message.getAPIFormatted()
-			}).nodeify(fn)
+			})().nodeify(fn)
 		}
 	},
 
@@ -559,6 +573,8 @@ const chatAPI = {
 					])
 				}))[1]
 
+				pushToUsers(chunk.receiver, { chunkUpdate: dbChunkUpdate })
+
 				return dbChunkUpdate.getAPIFormatted()
 			}).nodeify(fn)
 		},
@@ -570,7 +586,7 @@ const chatAPI = {
 				yield chunkUpdate.validateAccess(request)
 
 				return chunkUpdate.getAPIFormatted()
-			}).nodeify(fn)
+			})().nodeify(fn)
 		}
 	}
 }
