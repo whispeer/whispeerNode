@@ -75,8 +75,9 @@ function loadMigrations(cb) {
 	step(function () {
 		fs.readdir(path.resolve(__dirname, "migrations"), this);
 	}, h.sF(function (files) {
-		availableMigrations = files;
-
+		availableMigrations = files.filter(function (file) {
+			return fs.statSync(file).isFile();
+		});
 		this.ne();
 	}), cb);
 }
