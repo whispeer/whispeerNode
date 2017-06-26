@@ -16,6 +16,8 @@ const h = require("whispeerHelper")
 
 const Bluebird = require("bluebird")
 
+const User = require("../includes/user")
+
 const MESSAGE_QUERY = `
 	SELECT "Message".* FROM "Messages" AS "Message"
 		INNER JOIN "Chunks" AS "chunk" ON "Message"."ChunkId" = "chunk"."id" AND "chunk"."ChatId" = $id
@@ -110,24 +112,26 @@ const chatUnreadMessages = (chat, userID) => {
 	)
 }
 
+const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
+	return {
+		chat: Object.assign({
+			latestMessageID: latestMessage.id,
+			latestChunkID: chunks.find((chunk) => chunk.latest).id,
+			unreadMessageIDs,
+		}, chat.getAPIFormatted()),
+		chunks: chunks.map((chunk) => chunk.getAPIFormatted()),
+		messages: [latestMessage.getAPIFormatted()],
+	}
+}
+
 const chatResponse = (chat, userID) => {
 	return Bluebird.coroutine(function* () {
 		const latestMessage = yield chatLatestMessage(chat)
 
 		const unreadMessageIDs = yield chatUnreadMessages(chat, userID)
-		const laterChunks = yield getLaterChunks(latestMessage.chunk)
+		const chunks = yield getLaterChunks(latestMessage.chunk)
 
-		const latestChunk = laterChunks.find((chunk) => chunk.latest)
-
-		return {
-			chat: Object.assign({
-				latestMessageID: latestMessage.id,
-				latestChunkID: latestChunk.id,
-				unreadMessageIDs,
-			}, chat.getAPIFormatted()),
-			chunks: laterChunks.map((chunk) => chunk.getAPIFormatted()),
-			messages: [latestMessage.getAPIFormatted()],
-		}
+		return formatChatResponse(chat, chunks, unreadMessageIDs, latestMessage)
 	})()
 }
 
@@ -145,13 +149,10 @@ const getChats = (chatIDs, request) => {
 	)
 }
 
-const pushToUsers = (user, { chat, chunk, message, chunkUpdate }) => {
-	const chatData = chat ? { chat: chat.getAPIFormatted() } : {}
-	const chunkData = chunk ? { chunk: chunk.getAPIFormatted() } : {}
-	const messageData = message ? { message: message.getAPIFormatted() } : {}
-	const chunkUpdateData = chunkUpdate ? { chunkUpdate: chunkUpdate.getAPIFormatted() } : {}
-
-	const pushData = Object.assign({}, chatData, chunkData, messageData, chunkUpdateData)
+const pushToUsers = (user, pushData) => {
+	user.forEach((userID) => {
+		new User(userID).notify("chat", pushData)
+	})
 }
 
 const chatAPI = {
@@ -180,12 +181,10 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
-			pushToUsers(chunk.receiver, { chat, chunk, message })
-			return addToUnread(chunk, message.id, request).thenReturn({
-				chat: chat.getAPIFormatted(),
-				chunks: [chunk.getAPIFormatted()],
-				messages: [message.getAPIFormatted()],
-			})
+			const chatResponse = formatChatResponse(chat, [chunk], [message.id], message)
+
+			pushToUsers(chunk.receiver.map((r) => r.userID), chatResponse)
+			return addToUnread(chunk, message.id, request).thenReturn({ chat: chatResponse })
 		}).nodeify(fn)
 	},
 
@@ -460,7 +459,7 @@ const chatAPI = {
 					])
 				))[1]
 
-				pushToUsers(dbChunk.receiver, { chunk: dbChunk })
+				pushToUsers(dbChunk.receiver.map(r => r.userID), { chunk: dbChunk.getAPIFormatted() })
 
 				return {
 					chunk: dbChunk.getAPIFormatted()
@@ -529,7 +528,7 @@ const chatAPI = {
 
 					yield addToUnread(chunk, dbMessage.id, request)
 
-					pushToUsers(chunk.receiver, { message: dbMessage })
+					pushToUsers(chunk.receiver.map(r => r.userID), { message: dbMessage.getAPIFormatted() })
 
 					return Object.assign({ success: true }, dbMessage.getAPIFormatted())
 				} catch (err) {
@@ -573,7 +572,7 @@ const chatAPI = {
 					])
 				}))[1]
 
-				pushToUsers(chunk.receiver, { chunkUpdate: dbChunkUpdate })
+				pushToUsers(chunk.receiver.map(r => r.userID), { chunkUpdate: dbChunkUpdate.getAPIFormatted() })
 
 				return dbChunkUpdate.getAPIFormatted()
 			}).nodeify(fn)
