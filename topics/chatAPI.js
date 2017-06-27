@@ -89,7 +89,7 @@ const chatLatestMessage = (chat) => {
 	})
 }
 
-const getLaterChunks = (chunk) => {
+const getLaterChunks = (chunk, userID) => {
 	return Chunk.findAll({
 		where: {
 			id: {
@@ -97,7 +97,9 @@ const getLaterChunks = (chunk) => {
 			},
 			ChatId: chunk.ChatId
 		}
-	})
+	}).filter((chunk) =>
+		Boolean(chunk.receiver.find((r) => r.userID === userID))
+	)
 }
 
 const chatUnreadMessages = (chat, userID) => {
@@ -113,14 +115,15 @@ const chatUnreadMessages = (chat, userID) => {
 }
 
 const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
+	const latestMessageInfo = latestMessage ? { latestMessageID: latestMessage.id } : {}
+
 	return {
 		chat: Object.assign({
-			latestMessageID: latestMessage.id,
 			latestChunkID: chunks.find((chunk) => chunk.latest).id,
 			unreadMessageIDs,
-		}, chat.getAPIFormatted()),
+		}, latestMessageInfo, chat.getAPIFormatted()),
 		chunks: chunks.map((chunk) => chunk.getAPIFormatted()),
-		messages: [latestMessage.getAPIFormatted()],
+		messages: latestMessage ? [latestMessage.getAPIFormatted()] : [],
 	}
 }
 
@@ -129,9 +132,11 @@ const chatResponse = (chat, userID) => {
 		const latestMessage = yield chatLatestMessage(chat)
 
 		const unreadMessageIDs = yield chatUnreadMessages(chat, userID)
-		const chunks = yield getLaterChunks(latestMessage.chunk)
+		const chunks = yield getLaterChunks(latestMessage.chunk, userID)
 
-		return formatChatResponse(chat, chunks, unreadMessageIDs, latestMessage)
+		const hasLatestMessageAccess = Boolean(chunks.find((chunk) => chunk.id === latestMessage.chunk.id))
+
+		return formatChatResponse(chat, chunks, unreadMessageIDs, hasLatestMessageAccess ? latestMessage : null)
 	})()
 }
 
@@ -181,6 +186,7 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
+			// TODO (CH) fix unread message ids
 			const chatResponse = formatChatResponse(chat, [chunk], [message.id], message)
 
 			pushToUsers(chunk.receiver.map((r) => r.userID), chatResponse)
