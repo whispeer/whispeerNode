@@ -176,6 +176,10 @@ module.exports = function (socket) {
 			step(function () {
 				log(` (${getVersion(data)}) Received data on channel ${channel}`);
 
+				if (!data.clientInfo) {
+					log(`User has old version: ${request.session.getUserID()}: ${data.version}`)
+				}
+
 				if (session.getSID() !== data.sid) {
 					session.setSID(data.sid, this);
 				} else {
