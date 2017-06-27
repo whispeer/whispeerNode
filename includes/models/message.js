@@ -8,13 +8,15 @@ Optional Keys:
 
 */
 
+const uuidv4 = require("uuid/v4");
+
 const sequelize = require("../dbConnector/sequelizeClient");
+const Sequelize = require("sequelize")
 
 const {
 	autoIncrementInteger,
 
 	required,
-	optional,
 	unique,
 	defaultValue,
 
@@ -39,8 +41,6 @@ const metaExtraKeys = [
 	"_contentHash",
 	"_ownHash",
 	"_signature",
-
-	"messageUUID",
 ];
 
 const Message = sequelize.define("Message", {
@@ -56,7 +56,7 @@ const Message = sequelize.define("Message", {
 	_ownHash: unique(required(hash())),
 	_signature: required(signature()),
 
-	messageUUID: unique(optional(uuid())),
+	messageUUID: defaultValue(required(unique(uuid())), Sequelize.UUIDV4),
 
 	latest: defaultValue(boolean(), true),
 
@@ -76,7 +76,7 @@ const Message = sequelize.define("Message", {
 					chatID: this.ChatId,
 					sendTime: this.getDataValue("sendTime"),
 					sender: this.getDataValue("sender"),
-					messageid: this.getDataValue("id"),
+					uuid: this.getDataValue("messageUUID"),
 				},
 				content: this.getContent(),
 				meta: this.getMeta()
@@ -98,6 +98,8 @@ const Message = sequelize.define("Message", {
 			metaExtraKeys.forEach((key) => {
 				this.setDataValue(key, value[key])
 			})
+
+			this.setDataValue("messageUUID", value.messageUUID || uuidv4())
 
 			this.setDataValue("meta", value)
 		},
