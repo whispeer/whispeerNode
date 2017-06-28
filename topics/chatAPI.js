@@ -127,14 +127,22 @@ const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
 	}
 }
 
-const chatResponse = (chat, userID) => {
+const chatResponse = (chat, request) => {
 	return Bluebird.coroutine(function* () {
+		const userID = request.session.getUserID()
+
 		const latestMessage = yield chatLatestMessage(chat)
 
 		const unreadMessageIDs = yield chatUnreadMessages(chat, userID)
 		const chunks = yield getLaterChunks(latestMessage.chunk, userID)
 
 		const hasLatestMessageAccess = Boolean(chunks.find((chunk) => chunk.id === latestMessage.chunk.id))
+
+		if (hasLatestMessageAccess) {
+			yield addMessageKeys([latestMessage], request)
+		}
+
+		yield addChunksKeys(chunks, request)
 
 		return formatChatResponse(chat, chunks, unreadMessageIDs, hasLatestMessageAccess ? latestMessage : null)
 	})()
@@ -150,7 +158,7 @@ const getChats = (chatIDs, request) => {
 	}).each((chat) =>
 		chat.validateAccess(request)
 	).map((chat) =>
-		chatResponse(chat, request.session.getUserID())
+		chatResponse(chat, request)
 	)
 }
 
@@ -159,6 +167,16 @@ const pushToUsers = (user, pushData) => {
 		new User(userID).notify("chat", pushData)
 	})
 }
+
+const addMessageKeys = (messages, request) => Bluebird.all(messages.map((message) => request.addKey(message.meta._key)))
+
+const addChunksKeys = (chunks, request) => Bluebird.all(chunks.map((chunk) => {
+	const meReceiver = chunk.receiver.find((receiver) => receiver.userID === request.session.getUserID())
+
+	if (meReceiver.key) {
+		return request.addKey(meReceiver.key)
+	}
+}))
 
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
@@ -367,15 +385,8 @@ const chatAPI = {
 
 			const chunks = yield Chunk.findAll({ where: { id: { $in: chunkIDs }}})
 
-			yield Bluebird.all(messages.map((message) => request.addKey(message.meta._key)))
-
-			yield Bluebird.all(chunks.map((chunk) => {
-				const meReceiver = chunk.receiver.find((receiver) => receiver.userID === request.session.getUserID())
-
-				if (meReceiver.key) {
-					return request.addKey(meReceiver.key)
-				}
-			}))
+			yield addMessageKeys(messages, request)
+			yield addChunksKeys(chunks, request)
 
 			return {
 				messages: messages.map((message) => message.getAPIFormatted()),
