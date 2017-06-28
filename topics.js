@@ -138,6 +138,13 @@ var whispeerAPI = {
 			});
 		}, fn);
 	},
+	whispeerPing: function (data, fn) {
+		step(function () {
+			this.ne({
+				pong: true
+			});
+		}, fn);
+	},
 	key: {
 		getMultiple: function (data, fn, request) {
 			step(function () {
