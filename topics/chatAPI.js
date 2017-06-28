@@ -351,8 +351,6 @@ const chatAPI = {
 				}
 			}
 
-			// TODO: (CH) return some chunks?
-
 			const messages = yield sequelize.query(MESSAGE_QUERY, {
 				type: sequelize.QueryTypes.SELECT,
 				model: Message,
@@ -368,6 +366,16 @@ const chatAPI = {
 			)
 
 			const chunks = yield Chunk.findAll({ where: { id: { $in: chunkIDs }}})
+
+			yield Bluebird.all(messages.map((message) => request.addKey(message.meta._key)))
+
+			yield Bluebird.all(chunks.map((chunk) => {
+				const meReceiver = chunk.receiver.find((receiver) => receiver.userID === request.session.getUserID())
+
+				if (meReceiver.key) {
+					return request.addKey(meReceiver.key)
+				}
+			}))
 
 			return {
 				messages: messages.map((message) => message.getAPIFormatted()),
