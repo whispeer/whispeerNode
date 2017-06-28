@@ -18,6 +18,8 @@ const {
 	unique,
 
 	autoIncrementInteger,
+	ct,
+	iv,
 	integer,
 	json,
 	key,
@@ -45,6 +47,9 @@ const Chunk = sequelize.define("Chunk", {
 	_ownHash: unique(required(hash())),
 	_signature: required(signature()),
 
+	ct: optional(ct()),
+	iv: optional(iv()),
+
 	meta: required(json()),
 
 	latest: defaultValue(boolean(), true),
@@ -57,14 +62,16 @@ const Chunk = sequelize.define("Chunk", {
 			})
 		},
 		getAPIFormatted: function () {
-			return {
+			const contentInfo = this.hasContent() ? { content: this.getContent() } : {}
+
+			return Object.assign({
 				server: {
 					id: this.id,
 					chatID: this.ChatId,
 					predecessorID: this.predecessorId
 				},
-				meta: this.getMeta()
-			};
+				meta: this.getMeta(),
+			}, contentInfo)
 		},
 		hasAccess: function (request) {
 			const receiverPromise = this.receiver || this.getReceiver()
@@ -82,6 +89,15 @@ const Chunk = sequelize.define("Chunk", {
 		},
 		isAdmin: function (userID) {
 			return h.parseDecimal(this.getDataValue("meta").creator) === h.parseDecimal(userID)
+		},
+		hasContent: function () {
+			return Boolean(this.getDataValue("ct")) && Boolean(this.getDataValue("iv"))
+		},
+		getContent: function () {
+			return {
+				ct: this.getDataValue("ct"),
+				iv: this.getDataValue("iv"),
+			}
 		}
 	},
 	setterMethods: {
@@ -91,6 +107,10 @@ const Chunk = sequelize.define("Chunk", {
 			})
 
 			this.setDataValue("meta", value)
+		},
+		content: function (value) {
+			this.setDataValue("ct", value.ct)
+			this.setDataValue("iv", value.iv)
 		}
 	}
 }, { indexes: [ { fields: "latest" } ] })
