@@ -122,7 +122,7 @@ Chunk.create = (values, options) => {
 		return Chunk.sequelizeCreate(values, options)
 	}
 
-	const receiverKeys = values.receiverKeys
+	const receiverKeys = values.receiverKeys || {}
 
 	const receiver = values.meta.receiver.map((userID) => ({ userID, key: receiverKeys[userID] }))
 
