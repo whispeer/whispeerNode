@@ -185,7 +185,7 @@ const addChunksKeys = (chunks, request) => Bluebird.all(chunks.map((chunk) => {
 
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
-		return Topic.validateBeforeCreate(request, initialChunk, receiverKeys).then(() => {
+		return Topic.validateBeforeCreate(request, initialChunk.meta, receiverKeys).then(() => {
 			return sequelize.transaction((transaction) => {
 				const includeReceiverInCreate = {
 					include: [{
@@ -196,7 +196,7 @@ const chatAPI = {
 
 				return Bluebird.all([
 					Chat.create({}, { transaction }),
-					Chunk.create({ receiverKeys, meta: initialChunk }, includeReceiverInCreate),
+					Chunk.create({ receiverKeys, meta: initialChunk.meta, content: initialChunk.content }, includeReceiverInCreate),
 					Message.create(Object.assign({}, firstMessage, {
 						sender: request.session.getUserID(),
 						sendTime: new Date().getTime(),
