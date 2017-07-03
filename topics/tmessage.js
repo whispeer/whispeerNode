@@ -1,11 +1,5 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
-
-var Topic = require("../includes/topic");
-var Message = require("../includes/messages");
-
 const Chunk = require("../includes/models/chatChunk")
 const NewMessage = require("../includes/models/message")
 const chatAPI = require("./chatAPI")
@@ -27,6 +21,20 @@ const DELETE_UNREAD_MESSAGES_QUERY = `
 		"Messages"."id" = "UserUnreadMessages"."MessageId" AND
 		"UserUnreadMessages"."userID" = $userID AND
 		"Messages"."ChunkId" = $chunkID
+`
+
+const TOPIC_WITH_USER_QUERY = `
+	SELECT "Chunks"."id" FROM "Chunks"
+		INNER JOIN "Receivers" AS "receiverMe"
+			ON "Chunks"."id" = "receiverMe"."ChunkId"
+			AND "receiverMe"."userID" = $userIDMe
+		INNER JOIN "Receivers" AS "receiverOther"
+			ON "Chunks"."id" = "receiverOther"."ChunkId"
+			AND "receiverOther"."userID" = $userIDOther
+		LEFT OUTER JOIN "Receivers" AS "receiverNone"
+			ON "Chunks"."id" = "receiverNone"."ChunkId"
+			AND "receiverNone"."userID" NOT IN ($userIDMe, $userIDOther)
+	WHERE "receiverNone"."id" IS null AND "Chunks"."latest" = true;
 `
 
 const formatTopic = (chunk) => {
@@ -124,14 +132,25 @@ var t = {
 	createTopicUpdate:  (data, fn) => {
 		return Bluebird.reject(new Error("Topic Updates are not supported any more")).nodeify(fn)
 	},
-	getUserTopic:  (data, fn, request) => {
-		step(function () {
-			Topic.getUserTopicID(request, data.userid, this);
-		}, h.sF(function (topicid) {
-			this.ne({
-				topicid: topicid
-			});
-		}), fn);
+	getUserTopic:  ({ userid }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chunks = yield sequelize.query(TOPIC_WITH_USER_QUERY, {
+				type: sequelize.QueryTypes.SELECT,
+				model: Chunk,
+				bind: {
+					userIDMe: request.session.getUserID(),
+					userIDOther: parseInt(userid, 10),
+				},
+			})
+
+			if (chunks.length === 0) {
+				return {}
+			}
+
+			return {
+				topicid: chunks[0].id
+			}
+		})().nodeify(fn)
 	},
 	getUnreadTopicIDs:  (data, fn, request) => {
 		return sequelize.query(UNREAD_TOPICS_QUERY, {
@@ -185,26 +204,6 @@ var t = {
 				success: true
 			}
 		}).nodeify(fn)
-
-		/*var topic;
-		step(function () {
-			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
-				throw new Error("message to long");
-			}
-
-			Topic.create(request, topic, receiverKeys, this);
-		}, h.sF(function (theTopic) {
-			topic = theTopic;
-			message.meta.topicid = theTopic.getID();
-			Message.create(request, message, this);
-		}), h.sF(function () {
-			topic.getFullData(request, this, false, false);
-		}), h.sF(function (data) {
-			this.ne({
-				topic: data,
-				success: true
-			});
-		}), fn);*/
 	}
 };
 
