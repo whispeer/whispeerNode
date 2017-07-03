@@ -17,6 +17,8 @@ const Bluebird = require("bluebird")
 
 const User = require("../includes/user")
 
+var MAXMESSAGELENGTH = 200 * 1000;
+
 const MESSAGE_QUERY = `
 	SELECT "Message".* FROM "Messages" AS "Message"
 		INNER JOIN "Chunks" AS "chunk" ON "Message"."ChunkId" = "chunk"."id" AND "chunk"."ChatId" = $id
@@ -487,6 +489,10 @@ const chatAPI = {
 	message: {
 		create: ({ chunkID, message }, fn, request) => {
 			return Bluebird.coroutine(function* () {
+				if (message.content.ct.length > MAXMESSAGELENGTH) {
+					throw new Error("message to long");
+				}
+
 				const chunk = yield Chunk.findById(chunkID)
 
 				yield chunk.validateAccess(request)
