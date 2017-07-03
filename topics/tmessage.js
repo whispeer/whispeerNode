@@ -3,148 +3,84 @@
 var step = require("step");
 var h = require("whispeerHelper");
 
+
 var Topic = require("../includes/topic");
 var Message = require("../includes/messages");
+
+const Chat = require("../includes/models/chat")
+const Chunk = require("../includes/models/chatChunk")
+const NewMessage = require("../includes/models/message")
+const UserUnreadMessage = require("../includes/models/unreadMessage")
 
 var Bluebird = require("bluebird");
 
 var MAXMESSAGELENGTH = 200 * 1000;
 
-const getTopicUpdates = (request, topic, messages, lastMessage) => {
-	if (!messages || messages.length === 0) {
-		return Bluebird.resolve([]);
+const formatTopic = (chunk) => {
+	const newest = chunk.message[0]
+
+	return {
+		latestTopicUpdates: [],
+		meta: chunk.getMeta(),
+		topicid: chunk.id,
+		unread: [], // TODO
+		newest: {
+			content: newest.getContent(),
+			meta: Object.assign({
+				sender: newest.sender,
+				sendTime: newest.sendTime,
+				messageid: newest.id,
+				topicid: chunk.id,
+			}, newest.getMeta()),
+		},
+		newestTime: newest.sendTime
 	}
-
-	return Bluebird.try(() => {
-		messages.sort((m1, m2) => {
-			return m1.meta.sendTime - m2.meta.sendTime;
-		});
-
-		return topic.getTopicUpdatesBetween(request,
-			h.array.first(messages).meta.messageid,
-			lastMessage
-		);
-	});
-};
-
-const getRemainingCount = (counts, remaining) => {
-	return counts.reduce((prev, next) => prev + next.remainingCount, remaining)
-}
-
-const getPredecessorMessages = (request, topic, remaining, count) => {
-	return topic.getPredecessor(request).then((predecessorTopic) => {
-		if (count <= 0 || !predecessorTopic) {
-			return topic.getPredecessorsMessageCounts(request).then((counts) => {
-				return {
-					remaining: getRemainingCount(counts, remaining),
-					messages: [],
-					topicUpdates: [],
-				}
-			})
-		}
-
-		return getTopicMessagesAndUpdates(request, predecessorTopic, count, 0, true)
-	})
-}
-
-const getTopicMessagesAndUpdates = (request, topic, count, afterMessage) => {
-	let remaining = 0
-
-	return topic.getMessages(request, afterMessage, count).then(({ remaining: _remaining, messages }) => {
-		remaining = _remaining;
-
-		return messages
-	}).filter((message) => {
-		return message.hasAccess(request)
-	}).map((message) => {
-		return Bluebird.fromCallback(function(cb) {
-			return message.getFullData(request, cb, true)
-		})
-	}).then((messages) => {
-		const newCount = remaining > 0 ? 0 : count - messages.length
-
-		return Bluebird.all([
-			getTopicUpdates(request, topic, messages, afterMessage),
-			getPredecessorMessages(request, topic, remaining, newCount)
-		]).then(function ([topicUpdates, predecessor]) {
-			const {
-				remaining,
-				messages: predecessorMessages,
-				topicUpdates: predecessorTopicUpdates,
-			} = predecessor
-
-			return {
-				topicUpdates: predecessorTopicUpdates.concat(topicUpdates),
-				remaining,
-				messages: predecessorMessages.concat(messages),
-			}
-		});
-	})
 }
 
 var t = {
-	topic: {
-		createSuccessor: function ({ topicID, successor, receiverKey }, fn, request) {
-			let successorTopic, topic
-
-			step(function () {
-				return Topic.get(topicID)
-			}, h.sF(function (_topic) {
-				topic = _topic
-				return topic.setSuccessor(request, successor, receiverKey)
-			}), h.sF(function (_successorTopic) {
-				successorTopic = _successorTopic
-
-				return successorTopic.getFullData(request, this);
-			}), h.sF(function (successorTopic) {
-				return {
-					successorTopic
-				}
-			}), fn)
-		},
-		successor: function (data, fn, request) {
-			step(function () {
-				Topic.get(data.topicID, this)
-			}, h.sF(function (topic) {
-				return topic.getSuccessor(request)
-			}), fn);
-		}
+	getTopic: function getTopicF({ topicid }, fn, request) {
+		return Chunk.findOne({
+			where: { id: topicid },
+			include: [{
+				association: Chunk.Message,
+				required: true,
+				where: { latest: true }
+			}]
+		}).then((chunk) => {
+			return chunk.validateAccess(request).thenReturn(chunk)
+		}).then((chunk) => {
+			return { topic: formatTopic(chunk) }
+		}).nodeify(fn)
 	},
-	getTopic: function getTopicF(data, fn, request) {
-		step(function () {
-			return Topic.get(data.topicid, this);
-		}, h.sF(function (topic) {
-			return topic.getFullData(request, this, true, false);
-		}), h.sF(function (topicData) {
-			this.ne({
-				topic: topicData
-			});
-		}), fn);
-	},
-	getTopics: function getTopicsF(data, fn, request) {
-		step(function () {
-			Topic.own(request, data.afterTopic, 10, this);
-		}, h.sF(function (topics) {
-			var i;
-			for (i = 0; i < topics.length; i += 1) {
-				topics[i].getFullData(request, this.parallel(), true, false);
-			}
+	getTopics: function getTopicsF({ afterTopic }, fn, request) {
+		return Chunk.findAll({
+			attributes: ["id"],
+			include: [{
+				attributes: [],
+				association: Chunk.Receiver,
+				required: true,
+				where: { userID: request.session.getUserID() }
+			}]
+		}).map((chunk) => chunk.id).then((chunkIDs) =>
+			// TODO: sort? after topic id?
 
-			if (topics.length === 0) {
-				this.ne([]);
-			}
-		}), h.sF(function (results) {
-			this.ne({
-				topics: results
-			});
-		}), fn);
+			Chunk.findAll({
+				where: { id: { $in: chunkIDs } },
+				include: [{
+					association: Chunk.Message,
+					required: true,
+					where: { latest: true }
+				}]
+			})
+		).map((chunk) =>
+			formatTopic(chunk)
+		).then((topics) => ({ topics })).nodeify(fn)
 	},
-	refetch: function (data, fn, request) {
-		step(function () {
-			return Topic.get(data.topicid);
-		}, h.sF(function (topic) {
-			topic.refetch(request, data, this);
-		}), fn);
+	refetch: function (data, fn) {
+		return Bluebird.resolve({
+			clearMessages: false,
+			messages: []
+		}).nodeify(fn)
 	},
 	getUserTopic: function (data, fn, request) {
 		step(function () {
@@ -166,12 +102,50 @@ var t = {
 			});
 		}), fn);
 	},
-	getTopicMessages: function (data, fn, request) {
-		var count = Math.min(data.maximum || 20, 20);
+	getTopicMessages: function getMessagesF({ topicid, afterMessage }, fn, request) {
+		// TODO check access
 
-		return Topic.get(data.topicid).then(function (topic) {
-			return getTopicMessagesAndUpdates(request, topic, count, data.afterMessage, data.includePredecessors)
-		}).nodeify(fn)
+		return NewMessage.findAll({
+			where: {
+				ChunkId: topicid
+			}
+		}).map((message) => {
+			return {
+				content: message.getContent(),
+				meta: Object.assign({
+					sender: message.sender,
+					sendTime: message.sendTime,
+					messageid: message.id,
+					topicid: topicid,
+				}, message.getMeta()),
+			}
+		}).then((messages) => ({ topicUpdates: [], messages, remaining: 0 })).nodeify(fn)
+
+		/*step(function () {
+			Topic.get(topicid, this);
+		}, h.sF(function (_topic) {
+			topic = _topic;
+			var count = Math.min(maximum || 20, 20);
+
+			topic.getMessages(request, afterMessage, count, this);
+		}), h.sF(function (data) {
+			remainingCount = data.remaining;
+			var messages = data.messages;
+			var i;
+			for (i = 0; i < messages.length; i += 1) {
+				messages[i].getFullData(request, this.parallel(), true);
+			}
+
+			this.parallel()();
+		}), h.sF(function (messages) {
+			return getTopicUpdates(request, topic, messages, afterMessage).then(function (topicUpdates) {
+				return {
+					topicUpdates: topicUpdates,
+					remaining: remainingCount,
+					messages: messages
+				};
+			});
+		}), fn);*/
 	},
 	getUnreadTopicIDs: function (data, fn, request) {
 		step(function () {
@@ -224,18 +198,18 @@ var t = {
 		}), fn);
 		//message
 	},
-	sendNewTopic: function sendNewTopicF({ topicData, message, receiverKeys }, fn, request) {
+	sendNewTopic: function sendNewTopicF(data, fn, request) {
 		var topic;
 		step(function () {
-			if (message.content.ct.length > MAXMESSAGELENGTH) {
+			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
 				throw new Error("message to long");
 			}
 
-			Topic.create(request, topicData, receiverKeys, this);
+			Topic.create(request, data.topic, data.receiverKeys, this);
 		}, h.sF(function (theTopic) {
 			topic = theTopic;
-			message.meta.topicid = theTopic.getID();
-			Message.create(request, message, this);
+			data.message.meta.topicid = theTopic.getID();
+			Message.create(request, data.message, this);
 		}), h.sF(function () {
 			topic.getFullData(request, this, false, false);
 		}), h.sF(function (data) {
