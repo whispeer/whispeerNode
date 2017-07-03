@@ -1,6 +1,9 @@
 "use strict"
 
 const Sequelize = require("sequelize")
+const validator = require("whispeerValidations");
+const h = require("whispeerHelper")
+const Bluebird = require("bluebird")
 
 const Chat = require("../includes/models/chat")
 const Chunk = require("../includes/models/chatChunk")
@@ -9,15 +12,13 @@ const UserUnreadMessage = require("../includes/models/unreadMessage")
 
 const sequelize = require("../includes/dbConnector/sequelizeClient");
 
-const Topic = require("../includes/topic")
-
-const h = require("whispeerHelper")
-
-const Bluebird = require("bluebird")
-
 const User = require("../includes/user")
+const KeyApi = require("../includes/crypto/KeyApi");
 
-var MAXMESSAGELENGTH = 200 * 1000;
+
+const MAXMESSAGELENGTH = 200 * 1000;
+//maximum difference: 5 minutes.
+const MAXTIME = 60 * 60 * 1000;
 
 const MESSAGE_QUERY = `
 	SELECT "Message".* FROM "Messages" AS "Message"
@@ -185,9 +186,49 @@ const addChunksKeys = (chunks, request) => Bluebird.all(chunks.map((chunk) => {
 	}
 }))
 
+const ensureUserKeyAccess = (uid, key) => {
+	return KeyApi.get(key).then(function (key) {
+		return key.hasUserAccess(uid);
+	}).then((access) => {
+		if (!access) {
+			throw new Error(`keys might not be accessible by all user ${key} - ${uid}`);
+		}
+	})
+}
+
+const validateChunk = (request, chunkMeta, receiverKeys) => {
+	const receiverIDs = chunkMeta.receiver;
+	const receiverWO = receiverIDs.filter(h.not(request.session.isMyID));
+
+	return Bluebird.try(function () {
+		var err = validator.validate("topicCreate", chunkMeta);
+
+		if (err) {
+			throw new InvalidChunkData();
+		}
+
+		if (!request.session.isMyID(chunkMeta.creator)) {
+			throw new InvalidChunkData("session changed? invalid creator!");
+		}
+
+		if (Math.abs(chunkMeta.createTime - new Date().getTime()) > MAXTIME) {
+			throw new InvalidChunkData("max time exceeded!");
+		}
+
+		return User.checkUserIDs(receiverIDs);
+	}).then(function () {
+		return Bluebird.resolve(receiverWO).map(function (uid) {
+			return Bluebird.all([
+				ensureUserKeyAccess(uid, chunkMeta._key),
+				ensureUserKeyAccess(uid, receiverKeys[uid]),
+			])
+		});
+	})
+}
+
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
-		return Topic.validateBeforeCreate(request, initialChunk.meta, receiverKeys).then(() => {
+		return validateChunk(request, initialChunk.meta, receiverKeys).then(() => {
 			return sequelize.transaction((transaction) => {
 				const includeReceiverInCreate = {
 					include: [{
@@ -422,7 +463,7 @@ const chatAPI = {
 	chunk: {
 		create: ({ predecessorID, chunk: { meta, content }, receiverKeys }, fn, request) => {
 			return Bluebird.coroutine(function* () {
-				const validateChunkPromise = Topic.validateBeforeCreate(request, meta, receiverKeys)
+				const validateChunkPromise = validateChunk(request, meta, receiverKeys)
 
 				const predecessor = yield Chunk.findById(predecessorID)
 				yield validateChunkPromise

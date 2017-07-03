@@ -109,8 +109,10 @@ const Chunk = sequelize.define("Chunk", {
 			this.setDataValue("meta", value)
 		},
 		content: function (value) {
-			this.setDataValue("ct", value.ct)
-			this.setDataValue("iv", value.iv)
+			if (value) {
+				this.setDataValue("ct", value.ct)
+				this.setDataValue("iv", value.iv)
+			}
 		}
 	}
 }, { indexes: [ { fields: "latest" } ] })

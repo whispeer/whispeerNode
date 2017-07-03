@@ -171,10 +171,17 @@ var t = {
 		chatAPI.message.create({ chunkID: topicid, message: data.message}, fn, request)
 	},
 	sendNewTopic: ({ topic, receiverKeys, message }, fn, request) => {
-		return chatAPI.create({ initialChunk: topic, firstMessage: message, receiverKeys }, null, request).then(({ chat }) => {
-			debugger
+		return chatAPI.create({
+			initialChunk: { meta: topic },
+			firstMessage: message,
+			receiverKeys
+		}, null, request).then(({ chat }) => {
+			const topicid = chat.chunks[0].server.id
 
+			return t.getTopic({ topicid }, null, request)
+		}).then(({ topic }) => {
 			return {
+				topic,
 				success: true
 			}
 		}).nodeify(fn)
