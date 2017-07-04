@@ -70,7 +70,7 @@ var listener = {
 			}
 		});
 	},
-	message: function messageLF(socketData, messageid) {
+	message: function (socketData, messageid) {
 		var Message = require("./messages.js");
 		var m, mData, theTopic;
 
