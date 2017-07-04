@@ -50,7 +50,6 @@ module.exports = {
 	}),
 	ct: () => ({
 		type: Sequelize.TEXT,
-		unique: true,
 		validate: { is: hex }
 	}),
 	type: (type) => ({ type: Sequelize.STRING, validate: { is: type } }),
