@@ -1,7 +1,9 @@
 "use strict";
 
 const Chunk = require("../includes/models/chatChunk")
-const NewMessage = require("../includes/models/message")
+const Message = require("../includes/models/message")
+const ChunkTitleUpdate = require("../includes/models/chunkTitleUpdate")
+
 const chatAPI = require("./chatAPI")
 
 const sequelize = require("../includes/dbConnector/sequelizeClient");
@@ -37,11 +39,28 @@ const TOPIC_WITH_USER_QUERY = `
 	WHERE "receiverNone"."id" IS null AND "Chunks"."latest" = true;
 `
 
-const formatTopic = (chunk) => {
-	const newest = chunk.message[0]
+const formatTopicUpdate = (chunkTitleUpdate) => {
+	if (!chunkTitleUpdate) {
+		return
+	}
+
+	const apiFormatted = chunkTitleUpdate.getAPIFormatted()
 
 	return {
-		latestTopicUpdates: [],
+		id: apiFormatted.server.id,
+		meta: apiFormatted.meta,
+		content: apiFormatted.content,
+	}
+}
+
+const formatTopic = (chunk) => {
+	const newest = chunk.message[0]
+	const latestTopicUpdate = formatTopicUpdate(chunk.chunkTitleUpdate[0])
+
+	const latestTopicUpdates = latestTopicUpdate ? [latestTopicUpdate] : []
+
+	return {
+		latestTopicUpdates,
 		meta: chunk.getMeta(),
 		topicid: chunk.id,
 		unread: [], // TODO
@@ -66,6 +85,10 @@ var t = {
 				association: Chunk.Message,
 				required: true,
 				where: { latest: true }
+			}, {
+				association: Chunk.ChunkTitleUpdate,
+				required: false,
+				where: { latest: true }
 			}]
 		}).then((chunk) => {
 			return chunk.validateAccess(request).thenReturn(chunk)
@@ -89,6 +112,10 @@ var t = {
 					association: Chunk.Message,
 					required: true,
 					where: { latest: true }
+				}, {
+					association: Chunk.ChunkTitleUpdate,
+					required: false,
+					where: { latest: true }
 				}]
 			})
 		).map((chunk) =>
@@ -108,15 +135,22 @@ var t = {
 		}).nodeify(fn)
 	},
 	getTopicMessages: ({ topicid, afterMessage }, fn, request) => {
-		// TODO remaining count, after message
+		// TODO remaining count
+
+		const idClause = afterMessage ? {
+			id: {
+				$lt: afterMessage
+			}
+		} : {}
 
 		return Chunk.findById(topicid).then((chunk) => {
 			return chunk.validateAccess(request).thenReturn(chunk)
 		}).then((chunk) => {
-			return NewMessage.findAll({
-				where: {
+			return Message.findAll({
+				where: Object.assign({
 					ChunkId: chunk.id
-				}
+				}, idClause),
+				limit: 20
 			})
 		}).map((message) => {
 			return {
@@ -130,11 +164,46 @@ var t = {
 			}
 		}).then((messages) => ({ topicUpdates: [], messages, remaining: 0 })).nodeify(fn)
 	},
-	getLatestTopicUpdate: (data, fn) => {
-		return Bluebird.resolve({}).nodeify(fn)
+	getLatestTopicUpdate: ({ topicID }, fn, request) => {
+		return Chunk.findById(topicID).then((chunk) => {
+			return chunk.validateAccess(request).thenReturn(chunk)
+		}).then((chunk) => {
+			return ChunkTitleUpdate.findOne({
+				where: {
+					latest: true,
+					ChunkId: chunk.id,
+				}
+			})
+		}).then((chunkTitleUpdate) => {
+			if (!chunkTitleUpdate) {
+				return {}
+			}
+
+			return {
+				topicUpdate: formatTopicUpdate(chunkTitleUpdate)
+			}
+		}).nodeify(fn)
 	},
-	createTopicUpdate:  (data, fn) => {
-		return Bluebird.reject(new Error("Topic Updates are not supported any more")).nodeify(fn)
+	createTopicUpdate:  ({ topicID, topicUpdate }, fn, request) => {
+		return Chunk.findById(topicID).then((chunk) => {
+			return chunk.validateAccess(request).thenReturn(chunk)
+		}).then((chunk) => {
+			if (!chunk.latest) {
+				throw new SuccessorError("Chunk has a successor")
+			}
+
+			return ChunkTitleUpdate.create({
+				ChunkId: chunk.id,
+				meta: topicUpdate.meta,
+				content: topicUpdate.content,
+			})
+		}).then((chunkTitleUpdate) => {
+			const apiFormatted = chunkTitleUpdate.getAPIFormatted()
+
+			return {
+				id: apiFormatted.server.id
+			}
+		}).nodeify(fn)
 	},
 	getUserTopic:  ({ userid }, fn, request) => {
 		return Bluebird.coroutine(function* () {

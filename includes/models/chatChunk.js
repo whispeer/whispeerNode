@@ -7,7 +7,7 @@ const sequelize = require("../dbConnector/sequelizeClient")
 const Bluebird = require("bluebird")
 
 const Message = require("./message")
-const chatTitleUpdate = require("./topicUpdate")
+const chunkTitleUpdate = require("./chunkTitleUpdate")
 
 const {
 	required,
@@ -153,7 +153,7 @@ const UserWithAccess = sequelize.define("UserWithAccess", {
 
 hasMany(Chunk, Receiver)
 hasMany(Chunk, UserWithAccess)
-hasMany(Chunk, chatTitleUpdate)
+hasMany(Chunk, chunkTitleUpdate)
 hasMany(Chunk, Message)
 
 Chunk.Predecessor = Chunk.belongsTo(Chunk, { as: "predecessor" })

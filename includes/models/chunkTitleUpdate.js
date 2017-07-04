@@ -3,8 +3,7 @@
 const sequelize = require("../dbConnector/sequelizeClient");
 
 const contentKeys = ["ct", "iv"];
-const metaKeys = [
-	"userID",
+const metaExtraKeys = [
 	"_contentHash",
 	"_ownHash",
 	"_signature"
@@ -15,10 +14,7 @@ const {
 	defaultValue,
 	unique,
 
-	autoIncrementInteger,
-
 	autoUUID,
-	integer,
 	boolean,
 	hash,
 	signature,
@@ -32,32 +28,36 @@ const {
 	setObject,
 } = require("./utils/methods")
 
-const chunkTitleUpdate = sequelize.define("chunkTitleUpdate", {
+const chunkTitleUpdate = sequelize.define("ChunkTitleUpdate", {
 	id: autoUUID(),
-
-	index: autoIncrementInteger(),
 
 	ct: required(ct()),
 	iv: required(iv()),
 
-	userID: required(integer()),
-
 	_contentHash: unique(required(hash())),
 	_ownHash: unique(required(hash())),
-	_signature: required(signature()),
+	_signature: unique(required(signature())),
 
 	meta: required(json()),
 
 	latest: defaultValue(boolean(), true),
 }, {
 	instanceMethods: {
-		getMeta: getObject(metaKeys),
-		getContent: getObject(contentKeys),
+		getMetaExtra: getObject(metaExtraKeys),
+		getMeta: function () {
+			return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
+		},
+		getContent: function () {
+			return {
+				ct: this.getDataValue("ct"),
+				iv: this.getDataValue("iv"),
+			}
+		},
 		getAPIFormatted: function () {
 			return {
 				server: {
 					id: this.id,
-					chunkID: this.chunkID,
+					chunkID: this.ChunkId,
 				},
 				content: this.getContent(),
 				meta: this.getMeta()
@@ -65,7 +65,13 @@ const chunkTitleUpdate = sequelize.define("chunkTitleUpdate", {
 		}
 	},
 	setterMethods: {
-		meta: setObject(metaKeys, "invalid meta keys"),
+		meta: function (value) {
+			metaExtraKeys.forEach((key) => {
+				this.setDataValue(key, value[key])
+			})
+
+			this.setDataValue("meta", value)
+		},
 		content: setObject(contentKeys, "invalid content keys")
 	}
 });
