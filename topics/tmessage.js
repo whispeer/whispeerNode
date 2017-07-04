@@ -83,8 +83,6 @@ var t = {
 				where: { userID: request.session.getUserID() }
 			}]
 		}).map((chunk) => chunk.id).then((chunkIDs) =>
-			// TODO: sort? after topic id?
-
 			Chunk.findAll({
 				where: { id: { $in: chunkIDs } },
 				include: [{
@@ -95,7 +93,13 @@ var t = {
 			})
 		).map((chunk) =>
 			formatTopic(chunk)
-		).then((topics) => ({ topics })).nodeify(fn)
+		).then((topics) => {
+			topics.sort((topic1, topic2) => parseInt(topic2.newest.meta.sendTime, 10) - parseInt(topic1.newest.meta.sendTime, 10))
+
+			const afterIndex = topics.findIndex((topic) => topic.topicid === afterTopic)
+
+			return afterIndex === -1 ? topics : topics.slice(afterIndex + 1, afterIndex + 21)
+		}).then((topics) => ({ topics })).nodeify(fn)
 	},
 	refetch:  (data, fn) => {
 		return Bluebird.resolve({
