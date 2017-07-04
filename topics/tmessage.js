@@ -63,7 +63,7 @@ const formatTopic = (chunk) => {
 		latestTopicUpdates,
 		meta: chunk.getMeta(),
 		topicid: chunk.id,
-		unread: [], // TODO
+		unread: [], // TODO unread messages
 		newest: {
 			content: newest.getContent(),
 			meta: Object.assign({
@@ -135,34 +135,49 @@ var t = {
 		}).nodeify(fn)
 	},
 	getTopicMessages: ({ topicid, afterMessage }, fn, request) => {
-		// TODO remaining count
-
 		const idClause = afterMessage ? {
 			id: {
 				$lt: afterMessage
 			}
 		} : {}
 
-		return Chunk.findById(topicid).then((chunk) => {
-			return chunk.validateAccess(request).thenReturn(chunk)
-		}).then((chunk) => {
-			return Message.findAll({
+		return Bluebird.coroutine(function* () {
+			const chunk = yield Chunk.findById(topicid)
+
+			yield chunk.validateAccess(request)
+
+			const messageCount = yield Message.count({
+				where: Object.assign({
+					ChunkId: chunk.id
+				}, idClause)
+			})
+
+			if (messageCount === 0) {
+				return { topicUpdates: [], messages: [], remaining: 0 }
+			}
+
+			const messages = yield Message.findAll({
 				where: Object.assign({
 					ChunkId: chunk.id
 				}, idClause),
-				limit: 20
+				order: [["id", "DESC"]],
+				limit: 20,
 			})
-		}).map((message) => {
-			return {
-				content: message.getContent(),
-				meta: Object.assign({
-					sender: message.sender,
-					sendTime: message.sendTime,
-					messageid: message.id,
-					topicid: topicid,
-				}, message.getMeta()),
-			}
-		}).then((messages) => ({ topicUpdates: [], messages, remaining: 0 })).nodeify(fn)
+
+			const apiMessages = messages.map((message) => {
+				return {
+					content: message.getContent(),
+					meta: Object.assign({
+						sender: message.sender,
+						sendTime: message.sendTime,
+						messageid: message.id,
+						topicid: topicid,
+					}, message.getMeta()),
+				}
+			})
+
+			return { topicUpdates: [], messages: apiMessages, remaining: messageCount - apiMessages.length }
+		})().nodeify(fn)
 	},
 	getLatestTopicUpdate: ({ topicID }, fn, request) => {
 		return Chunk.findById(topicID).then((chunk) => {
