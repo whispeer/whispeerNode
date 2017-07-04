@@ -172,7 +172,9 @@ const getChats = (chatIDs, request) => {
 
 const pushToUsers = (user, pushData) => {
 	user.forEach((userID) => {
-		new User(userID).notify("chat", pushData)
+		const user = new User(userID)
+		user.notify("chat", pushData)
+		user.notify("message", pushData)
 	})
 }
 

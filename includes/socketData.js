@@ -21,6 +21,8 @@ function SocketData(socket, session) {
 
 	var closeSubscribers = [];
 
+	let version
+
 	theSocketData.once("disconnect", function () {
 		console.log("removing subscribers");
 		closeSubscribers.forEach(function (closeSubscriber) {
@@ -33,6 +35,12 @@ function SocketData(socket, session) {
 
 		closeSubscribers = [];
 	});
+
+	this.setVersion = (_version) => {
+		version = _version
+	}
+
+	this.getVersion = () => version
 
 	this.getShortIP = function () {
 		var address = socket.handshake.address, ipV4;

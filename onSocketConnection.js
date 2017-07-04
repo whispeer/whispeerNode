@@ -146,6 +146,8 @@ module.exports = function (socket) {
 
 	function handleF(handler, channel) {
 		return function (data, fn) {
+			socketData.setVersion(data.version)
+
 			var time = new Date().getTime();
 			var request = new RequestData(socketData, data, channel);
 			step(function () {
