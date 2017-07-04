@@ -4,12 +4,14 @@
 
 const Bluebird = require("bluebird");
 const client = require("../../includes/redisClient");
+const sequelize = require("../../includes/dbConnector/sequelizeClient");
 
 const setup = require("../../includes/setup")
 
 const ChatChunk = require("../../includes/models/chatChunk");
 const Chat = require("../../includes/models/chat");
 const Message = require("../../includes/models/message")
+const ChunkTitleUpdate = require("../../includes/models/chunkTitleUpdate")
 
 const h = require("whispeerHelper")
 
@@ -106,6 +108,62 @@ function scanTopics(error, [pointer, topics]) {
 	})
 }
 
-setup().then(() => {
+const migrateTopicUpdates = () => {
+	return sequelize.query("SELECT * from \"topicTitleUpdates\" ORDER BY \"createdAt\" ASC", {
+		type: sequelize.QueryTypes.SELECT
+	}).then((topicUpdates) => {
+		const latestByTopicID = {}
+
+		topicUpdates.forEach((topicUpdate) => {
+			latestByTopicID[topicUpdate.topicID] = topicUpdate
+		})
+
+		Object.keys(latestByTopicID).forEach((key) => {
+			latestByTopicID[key].latest = true
+		})
+
+		return topicUpdates
+	}).map((topicUpdate) => {
+		const metaKeys = [
+			"_parent",
+			"_key",
+			"_version",
+			"_type",
+			"_hashVersion",
+			"_contentHash",
+			"_ownHash",
+			"_signature",
+			"userID",
+			"time",
+		]
+
+		const meta = {}
+
+		metaKeys.forEach((key) => meta[key] = topicUpdate[key])
+
+		return ChunkTitleUpdate.create({
+			id: topicUpdate.id,
+			ChunkId: topicUpdate.topicID,
+
+			latest: Boolean(topicUpdate.latest),
+
+			createdAt: topicUpdate.createdAt,
+			updatedAt: topicUpdate.updatedAt,
+
+			ct: topicUpdate.ct,
+			iv: topicUpdate.iv,
+
+			_contentHash: topicUpdate._contentHash,
+			_ownHash: topicUpdate._ownHash,
+			_signature: topicUpdate._signature,
+
+			meta,
+		})
+	})
+}
+
+setup().then(() =>
+	migrateTopicUpdates()
+).then(() => {
 	client.scan(0, "match", "topic:*:meta", "count", 5, scanTopics)
 })
