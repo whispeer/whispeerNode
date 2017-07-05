@@ -275,7 +275,17 @@ var t = {
 		delete data.message.meta.sendTime
 		delete data.message.meta.topicid
 
-		chatAPI.message.create({ chunkID: topicid, message: data.message}, fn, request)
+		return chatAPI.message.create({ chunkID: topicid, message: data.message}, null, request).then(({ success, server }) => {
+			return {
+				success,
+				server: {
+					messageid: server.id,
+					topicid: server.chunkID,
+					sendTime: server.sendTime,
+					sender: server.sender,
+				}
+			}
+		}).nodeify(fn)
 	},
 	sendNewTopic: ({ topic, receiverKeys, message }, fn, request) => {
 		return chatAPI.create({
