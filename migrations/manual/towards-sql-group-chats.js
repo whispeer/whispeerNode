@@ -158,13 +158,19 @@ const getTopicIDs = () => {
 	}).map((id) => {
 		return migrateTopic(id)
 	}, { concurrency: 1 }).then(() => {
+		return Bluebird.all([
+			sequelize.query("select setval('\"Chats_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
+			sequelize.query("select setval('\"Chunks_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
+			sequelize.query("select setval('\"Messages_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
+		])
+	}).then(() => {
 		console.log("END")
 		process.exit(0)
 	})
 }
 
 setup().then(() => {
-	// return migrateTopicUpdates()
+	return migrateTopicUpdates()
 }).then(() => {
 	return getTopicIDs()
 }).catch((e) => {

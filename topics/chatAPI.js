@@ -156,7 +156,7 @@ const getChats = (chatIDs, request) => {
 		order: [
 			[
 				Sequelize.col("sendTime"),
-				"ASC"
+				"DESC"
 			]
 		]
 	}).each((chat) => {
