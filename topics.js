@@ -288,6 +288,7 @@ var whispeerAPI = {
 
 whispeerAPI.preRegisterID.noLoginNeeded = true;
 whispeerAPI.ping.noLoginNeeded = true;
+whispeerAPI.whispeerPing.noLoginNeeded = true
 whispeerAPI.nicknameFree.noLoginNeeded = true;
 whispeerAPI.mailFree.noLoginNeeded = true;
 whispeerAPI.logedin.noLoginNeeded = true;

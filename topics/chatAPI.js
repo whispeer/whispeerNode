@@ -75,22 +75,6 @@ const addToUnread = (chunk, messageId, request) => {
 	}))
 }
 
-const chatLatestMessage = (chat) => {
-	return Message.findOne({
-		where: {
-			latest: true
-		},
-		include: [{
-			association: Message.Chunk,
-			model: Chunk.unscoped(),
-			required: true,
-			where: {
-				ChatId: chat.id
-			},
-		}]
-	})
-}
-
 const getLaterChunks = (chunk, userID) => {
 	return Chunk.findAll({
 		where: {
@@ -104,20 +88,8 @@ const getLaterChunks = (chunk, userID) => {
 	)
 }
 
-const chatUnreadMessages = (chat, userID) => {
-	return UserUnreadMessage.findAll({
-		attributes: ["MessageId"],
-		where: {
-			ChatId: chat.id,
-			userID,
-		}
-	}).map((unreadMessage) =>
-		unreadMessage.MessageId
-	)
-}
-
 const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
-	const latestMessageInfo = latestMessage ? { latestMessageID: latestMessage.id } : {}
+	const latestMessageInfo = latestMessage ? { latestMessageID: latestMessage.messageUUID } : {}
 
 	return {
 		chat: Object.assign({
@@ -132,20 +104,19 @@ const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
 const chatResponse = (chat, request) => {
 	return Bluebird.coroutine(function* () {
 		const userID = request.session.getUserID()
+		const latestMessage = chat.chunk[0].message[0]
+		const messageChunk = chat.chunk[0]
 
-		const latestMessage = yield chatLatestMessage(chat)
+		const unreadMessageIDs = chat.userUnreadMessage.map((m) => m.MessageId)
 
-		const unreadMessageIDs = yield chatUnreadMessages(chat, userID)
+		const chunks = messageChunk.latest ? [messageChunk] : yield getLaterChunks(messageChunk, userID)
 
-		const chunks = yield getLaterChunks(latestMessage.chunk, userID)
+		const hasLatestMessageAccess = Boolean(chunks.find((chunk) => chunk.id === messageChunk.id))
 
-		const hasLatestMessageAccess = Boolean(chunks.find((chunk) => chunk.id === latestMessage.chunk.id))
-
-		if (hasLatestMessageAccess) {
-			yield addMessageKeys([latestMessage], request)
-		}
-
-		yield addChunksKeys(chunks, request)
+		yield Bluebird.all([
+			hasLatestMessageAccess ? addMessageKeys([latestMessage], request) : null,
+			addChunksKeys(chunks, request)
+		])
 
 		return formatChatResponse(
 			chat,
@@ -162,12 +133,37 @@ const getChats = (chatIDs, request) => {
 			id: {
 				$in: chatIDs
 			}
-		}
-	}).each((chat) =>
-		chat.validateAccess(request)
-	).map((chat) =>
-		chatResponse(chat, request)
-	)
+		},
+		include: [{
+			association: Chat.UserUnreadMessage,
+			required: false,
+			where: {
+				userID: request.session.getUserID()
+			}
+		}, {
+			association: Chat.Chunk,
+			as: "chunk",
+			required: false,
+			include: [{
+				association: Chunk.Message,
+				as: "message",
+				required: true,
+				where: {
+					latest: true
+				}
+			}]
+		}],
+		order: [
+			[
+				Sequelize.col("sendTime"),
+				"ASC"
+			]
+		]
+	}).each((chat) => {
+		return chat.validateAccess(request)
+	}).map((chat) => {
+		return chatResponse(chat, request)
+	})
 }
 
 const pushToUsers = (user, pushData) => {
@@ -254,7 +250,7 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
-			// TODO (CH) fix unread message ids
+			// TODO CH fix unread message ids
 			const chatResponse = formatChatResponse(chat, [chunk], [message.id], message)
 
 			pushToUsers(chunk.receiver.map((r) => r.userID), chatResponse)
@@ -290,8 +286,18 @@ const chatAPI = {
 					association: Chunk.Receiver,
 					required: true,
 					where: { userID: request.session.getUserID() }
+				}, {
+					attributes: ["sendTime"],
+					association: Chunk.Message,
+					where: { latest: true }
 				}]
-			}]
+			}],
+			order: [
+				[
+					Sequelize.col("sendTime"),
+					"DESC"
+				]
+			]
 		}).map((entry) => entry.id).then((chatIDs) => ({
 			chatIDs
 		})).nodeify(fn)
@@ -393,8 +399,10 @@ const chatAPI = {
 
 			const chunks = yield Chunk.findAll({ where: { id: { $in: chunkIDs }}})
 
-			yield addMessageKeys(messages, request)
-			yield addChunksKeys(chunks, request)
+			yield Bluebird.all([
+				addMessageKeys(messages, request),
+				addChunksKeys(chunks, request),
+			])
 
 			return {
 				messages: messages.map((message) => message.getAPIFormatted()),
