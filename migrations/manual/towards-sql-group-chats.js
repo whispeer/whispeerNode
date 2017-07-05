@@ -16,8 +16,6 @@ const ChunkTitleUpdate = require("../../includes/models/chunkTitleUpdate")
 const h = require("whispeerHelper")
 
 function migrateMessage(messageID, latest) {
-	console.log("Message", messageID)
-
 	return Bluebird.all([
 		client.hgetallAsync(`message:${messageID}:meta`),
 		client.hgetallAsync(`message:${messageID}:content`),
@@ -77,34 +75,14 @@ function migrateTopic(id) {
 
 			return chunk
 		}).then(() => {
-			return client.zrangeAsync(`topic:${id}:messages`, 0, -1).then((messageIDs) => {
-				return Bluebird.all(messageIDs.map(h.parseDecimal).sort((a, b) =>
+			return client.zrangeAsync(`topic:${id}:messages`, 0, -1).map(h.parseDecimal).then((messageIDs) => {
+				return messageIDs.sort((a, b) =>
 					a - b
-				).map((messageID, index) =>
-					migrateMessage(messageID, index === messageIDs.length - 1)
-				))
+				)
+			}).map((messageID, index, len) => {
+				return migrateMessage(messageID, index === len - 1)
 			})
 		})
-	})
-}
-
-function scanTopics(error, [pointer, topics]) {
-	if (error) {
-		console.error("Error scanning topics.")
-		process.exit(1)
-	}
-
-	process.stdout.write(".")
-
-	Bluebird.all(topics.map((key) =>
-		migrateTopic(h.parseDecimal(key.split(":")[1]))
-	)).then(() => {
-		if (pointer !== "0") {
-			client.scan(pointer, "match", "topic:*:meta", "count", 5, scanTopics)
-		} else {
-			console.log("END")
-			process.exit(0)
-		}
 	})
 }
 
@@ -162,8 +140,34 @@ const migrateTopicUpdates = () => {
 	})
 }
 
-setup().then(() =>
-	migrateTopicUpdates()
-).then(() => {
-	client.scan(0, "match", "topic:*:meta", "count", 5, scanTopics)
+const getTopicIDs = () => {
+	return client.getAsync("topic:topics").then((maximumIDString) => {
+		const maximumID = parseInt(maximumIDString, 10)
+
+		const possibleTopics = []
+
+		for (let i = 1; i < maximumID; i += 1) {
+			possibleTopics.push(i)
+		}
+
+		return possibleTopics
+	}).filter((id) => {
+		return client.typeAsync(`topic:${id}:meta`).then((type) => {
+			return type === "hash"
+		})
+	}).map((id) => {
+		return migrateTopic(id)
+	}, { concurrency: 1 }).then(() => {
+		console.log("END")
+		process.exit(0)
+	})
+}
+
+setup().then(() => {
+	// return migrateTopicUpdates()
+}).then(() => {
+	return getTopicIDs()
+}).catch((e) => {
+	console.error(e);
+	process.exit(1);
 })
