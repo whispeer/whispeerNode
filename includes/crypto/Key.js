@@ -319,7 +319,7 @@ Key.prototype.removeAccess = function (m, decryptorid, users, cb) {
 	var accessLost, accessors;
 	decryptorid = h.parseDecimal(decryptorid);
 
-	return Bluebird.try(function () {
+	return Bluebird.try(() => {
 		users = users.slice();
 		return client.smembersAsync(this._domain + ":access");
 	}).then((_accessors) => {
