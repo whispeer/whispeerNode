@@ -9,158 +9,9 @@ var Bluebird = require("bluebird");
 var validator = require("whispeerValidations");
 var client = require("./redisClient");
 
-var User = require("./user");
-
 var SymKey = require("./crypto/symKey");
 
-/*
-	message: {
-		meta: {
-			createTime: (int),
-			_parent: (hex)
-			_sortCounter
-			ownHash: (hex)
-			sender: (int),
-			topicid: (int),
-			read: (bool)
-			signature: (hex)
-			encrSignature: (hex)
-		}
-		content: {
-			key,
-			iv: (hex),
-			text: (hex)
-		}
-	}
-*/
-
-var Message = function (id) {
-	var topic
-	var theMessage = this;
-	var domain = "message:" + id;
-
-	/** the messages id */
-	this.getID = function getIDF() {
-		return id;
-	};
-
-	function hasAccessError(request) {
-		return theMessage.hasAccess(request).then(function (access) {
-			if (access !== true) {
-				throw new AccessViolation("message");
-			}
-		})
-	}
-
-	/** does the current user have access */
-	this.hasAccess = function (request, cb) {
-		return theMessage.getTopic().then((theTopic) => {
-			return theTopic.hasAccess(request);
-		}).nodeify(cb)
-	};
-
-	/** message send time */
-	this.getTime = function (request, cb) {
-		return client.hgetAsync(domain + ":meta", "sendTime").nodeify(cb);
-	};
-
-	this.getSortCounter = function (request, cb) {
-		return hasAccessError(request).then(() => {
-			return client.hgetAsync(domain + ":meta", "_sortCounter");
-		}).nodeify(cb)
-	};
-
-	/** sender id */
-	this.getSenderID = function (request, cb) {
-		return hasAccessError(request).then(() => {
-			return client.hgetAsync(domain + ":meta", "sender");
-		}).nodeify(cb);
-	};
-
-	/** who will receive this message */
-	this.getReceiver = function getReceiverF(request, cb) {
-		step(function () {
-			return theMessage.getTopic();
-		}, h.sF(function (topic) {
-			topic.getReceiver(request, this);
-		}), cb);
-	};
-
-	/** this message topic id */
-	this.getTopicID = function getTopicIDF(cb) {
-		return client.hgetAsync(domain + ":meta", "topicid").nodeify(cb);
-	};
-
-	/** this message topic object */
-	this.getTopic = function getTopicF(cb) {
-		if (topic) {
-			return Bluebird.resolve(topic).nodeify(cb)
-		}
-
-		return theMessage.getTopicID().then((topicid) => {
-			return Topic.get(topicid);
-		}).then(function (theTopic) {
-			topic = theTopic;
-			return topic
-		}).nodeify(cb)
-	};
-
-	/** is this message topic topicID?`*/
-	this.hasTopic = function hasTopicF(topicID, cb) {
-		step(function () {
-			theMessage.getTopicID(this);
-		}, h.sF(function (realTopicID) {
-			this.ne(topicID === realTopicID);
-		}), cb);
-	};
-
-	/** get message meta data */
-	this.getMeta = function (request) {
-		return hasAccessError(request).then(() => {
-			return client.hgetallAsync(domain + ":meta")
-		}).then((data) => {
-			data.createTime = h.parseDecimal(data.createTime);
-			data.sender = h.parseDecimal(data.sender);
-			data.topicid = h.parseDecimal(data.topicid);
-
-			if (data._sortCounter) {
-				data._sortCounter = h.parseDecimal(data._sortCounter);
-			}
-
-			if (data.images) {
-				data.images = JSON.parse(data.images);
-			}
-
-			return data
-		})
-	};
-
-	/** get message content */
-	this.getContent = function (request) {
-		return hasAccessError(request).then(() => {
-			return client.hgetallAsync(domain + ":content");
-		})
-	};
-
-	/** get the full data of this message */
-	this.getFullData = function (request, cb) {
-		return hasAccessError(request).then(function () {
-			return Bluebird.all([
-				theMessage.getMeta(request),
-				theMessage.getContent(request),
-			])
-		}).spread(function (meta, content) {
-			const result = {
-				meta: meta,
-				content: content
-			};
-
-			return Bluebird.fromCallback((cb) => {
-				request.addKey(result.meta._key, cb);
-			}).thenReturn(result)
-		}).nodeify(cb);
-	};
-};
+var Message = function () {};
 
 function processImages(request, images, keys) {
 	return Bluebird.resolve(keys).map((key) => {
@@ -206,7 +57,6 @@ Message.create = function (request, data, cb) {
 		}
 	}), h.sF(function (newestCounter) {
 		if (newestCounter && parseInt(meta._sortCounter, 10) < newestCounter) {
-			console.warn("invalid counter");
 			this.last.ne({ success: false });
 			return;
 		}
