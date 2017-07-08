@@ -13,7 +13,8 @@ const UserUnreadMessage = require("../includes/models/unreadMessage")
 const sequelize = require("../includes/dbConnector/sequelizeClient");
 
 const User = require("../includes/user")
-const KeyApi = require("../includes/crypto/KeyApi");
+const KeyApi = require("../includes/crypto/KeyApi")
+const SymKey = require("../includes/crypto/symKey")
 
 const pushAPI = require("../includes/pushAPI");
 
@@ -302,9 +303,20 @@ const pushNotify = (request, receiverIDs, data) => {
 	)
 }
 
+const createSymKeys = (request, keys) => {
+	if (!Array.isArray(keys)) {
+		return Bluebird.resolve()
+	}
+
+	return Bluebird.resolve(keys).map((key) => {
+		return SymKey.create(request, key)
+	})
+}
 
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
+		console.log(firstMessage)
+
 		return validateChunk(request, initialChunk.meta, receiverKeys).then(() => {
 			return sequelize.transaction((transaction) => {
 				const includeReceiverInCreate = {
@@ -338,7 +350,10 @@ const chatAPI = {
 			notifyUsers(request, otherReceiver, chatResponseOthers)
 			notifyUsers(request, [myID], chatResponseMe)
 
-			return addToUnread(chunk, message.id, request).thenReturn({ chat: chatResponseMe })
+			return Bluebird.all([
+				addToUnread(chunk, message.id, request),
+				createSymKeys(request, firstMessage.imageKeys)
+			]).thenReturn({ chat: chatResponseMe })
 		}).nodeify(fn)
 	},
 
@@ -654,6 +669,8 @@ const chatAPI = {
 							Message.create(dbMessageData, { transaction })
 						])
 					}))[1]
+
+					yield createSymKeys(request, message.imageKeys)
 
 					yield addToUnread(chunk, dbMessage.id, request)
 
