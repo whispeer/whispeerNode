@@ -15,6 +15,8 @@ const sequelize = require("../includes/dbConnector/sequelizeClient");
 const User = require("../includes/user")
 const KeyApi = require("../includes/crypto/KeyApi");
 
+const pushAPI = require("../includes/pushAPI");
+
 
 const MAXMESSAGELENGTH = 200 * 1000;
 //maximum difference: 5 minutes.
@@ -166,12 +168,14 @@ const getChats = (chatIDs, request) => {
 	})
 }
 
-const pushToUsers = (user, pushData) => {
-	user.forEach((userID) => {
+const notifyUsers = (request, receiverIDs, pushData) => {
+	receiverIDs.forEach((userID) => {
 		const user = new User(userID)
 		user.notify("chat", pushData)
 		user.notify("message", pushData)
 	})
+
+	return pushNotify(request, receiverIDs, pushData)
 }
 
 const addMessageKeys = (messages, request) => Bluebird.all(messages.map((message) => request.addKey(message.meta._key)))
@@ -224,6 +228,81 @@ const validateChunk = (request, chunkMeta, receiverKeys) => {
 	})
 }
 
+const getUserNotificationsCount = (userID) => {
+	return UserUnreadMessage.count({
+		where: {
+			userID
+		}
+	})
+}
+
+const updateBadge = (userID) => {
+	return getUserNotificationsCount(userID).then((notificationsCount) =>
+		pushAPI.updateBadgeForUser(userID, notificationsCount)
+	)
+}
+
+const pushToUser = (userID, data, senderName) => {
+	const referenceType = "message";
+
+	if (data.message) {
+		const server = data.message.server
+
+		data.message.meta = Object.assign({
+			sender: server.sender,
+			sendTime: server.sendTime,
+			messageid: server.id,
+			topicid: server.chunkID,
+		}, data.message.meta)
+	}
+
+	const pushData = pushAPI.pushDataToUser(userID, data)
+
+	if (!data.message) {
+		return pushData
+	}
+
+	const pushNotification = pushAPI.getTitle(new User(userID), referenceType, senderName).then((title) =>
+		pushAPI.notifyUser(userID, title, {
+			type: referenceType,
+			id: data.message.server.chatID
+		})
+	)
+
+	return Bluebird.all([
+		pushNotification,
+		pushData,
+		updateBadge(userID),
+	]);
+}
+
+const getUserName = (request, userID) => {
+	var user = new User(userID)
+
+	return user.getNames(request).then((userNames) => {
+		return userNames.firstName || userNames.lastName || userNames.nickname;
+	})
+}
+
+const pushNotify = (request, receiverIDs, data) => {
+	const senderID = request.session.getUserID()
+
+	var receivers = receiverIDs.filter(function (userID) {
+		return userID !== senderID;
+	});
+
+	if (receivers.length === 0) {
+		return Bluebird.resolve()
+	}
+
+	return getUserName(request, senderID).then((senderName) =>
+		Bluebird.all(receivers.map((userID) =>
+			pushToUser(userID, data, senderName)
+		))
+	)
+}
+
+
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
 		return validateChunk(request, initialChunk.meta, receiverKeys).then(() => {
@@ -250,11 +329,16 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
-			// TODO CH fix unread message ids
-			const chatResponse = formatChatResponse(chat, [chunk], [message.id], message)
+			const chatResponseOthers = formatChatResponse(chat, [chunk], [message.id], message)
+			const chatResponseMe = formatChatResponse(chat, [chunk], [], message)
+			const myID = request.session.getUserID()
 
-			pushToUsers(chunk.receiver.map((r) => r.userID), chatResponse)
-			return addToUnread(chunk, message.id, request).thenReturn({ chat: chatResponse })
+			const otherReceiver = chunk.receiver.map((r) => r.userID).filter((userID) => userID !== myID)
+
+			notifyUsers(request, otherReceiver, chatResponseOthers)
+			notifyUsers(request, [myID], chatResponseMe)
+
+			return addToUnread(chunk, message.id, request).thenReturn({ chat: chatResponseMe })
 		}).nodeify(fn)
 	},
 
@@ -500,7 +584,7 @@ const chatAPI = {
 					])
 				))[1]
 
-				pushToUsers(dbChunk.receiver.map(r => r.userID), { chunk: dbChunk.getAPIFormatted() })
+				notifyUsers(request, dbChunk.receiver.map(r => r.userID), { chunk: dbChunk.getAPIFormatted() })
 
 				return {
 					chunk: dbChunk.getAPIFormatted()
@@ -573,7 +657,7 @@ const chatAPI = {
 
 					yield addToUnread(chunk, dbMessage.id, request)
 
-					pushToUsers(chunk.receiver.map(r => r.userID), { message: dbMessage.getAPIFormatted() })
+					notifyUsers(request, chunk.receiver.map(r => r.userID), { message: dbMessage.getAPIFormatted() })
 
 					return Object.assign({ success: true }, dbMessage.getAPIFormatted())
 				} catch (err) {

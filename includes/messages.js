@@ -1,13 +1,11 @@
 "use strict";
 
-var Topic = require("./topic");
 var step = require("step");
 var h = require("whispeerHelper");
 
 var Bluebird = require("bluebird");
 
 var validator = require("whispeerValidations");
-var client = require("./redisClient");
 
 var SymKey = require("./crypto/symKey");
 
@@ -20,9 +18,8 @@ function processImages(request, images, keys) {
 }
 
 Message.create = function (request, data, cb) {
-	var theTopic, theMessageID, theMessage;
+	var theTopic
 	var meta = data.meta;
-	var server = {};
 
 	step(function () {
 		var err = validator.validate("message", data);
@@ -34,13 +31,7 @@ Message.create = function (request, data, cb) {
 		if (!data.meta.topicid) {
 			throw new InvalidMessageData();
 		}
-
-		return Topic.get(data.meta.topicid);
-	}, h.sF(function (topic) {
-		theTopic = topic;
-
-		this.parallel.unflatten()
-
+	}, h.sF(function () {
 		return Bluebird.all([
 			theTopic.getNewest(request),
 			theTopic.getSuccessorID(),
@@ -67,53 +58,8 @@ Message.create = function (request, data, cb) {
 			this.ne();
 		}
 	}), h.sF(function () {
-		if (h.isUUID(data.meta.messageUUID)) {
-			return client.getAsync("message:uuid:" + data.meta.messageUUID);
-		} else {
-			this.ne(false);
-		}
-	}), h.sF(function (uuidMessage) {
-		if (uuidMessage) {
-			this.last.ne({ success: true });
-			return;
-		}
-
 		//TODOS: check overall signature
 		//chelper.checkSignature(user.key, toHash, meta.encrSignature)
-		return client.incrAsync("message:messages");
-	}), h.sF(function (messageid) {
-		server = {
-			sender: request.session.getUserID(),
-			sendTime: new Date().getTime(),
-			messageid: messageid
-		};
-
-		if (data.meta.images) {
-			data.meta.images = JSON.stringify(data.meta.images);
-		}
-
-		data.meta = h.extend(data.meta, server, 1);
-
-		theMessageID = messageid;
-		var multi = client.multi();
-		multi.hmset("message:" + messageid + ":meta", data.meta, this.parallel());
-		multi.hmset("message:" + messageid + ":content", data.content, this.parallel());
-
-		if (h.isUUID(data.meta.messageUUID)) {
-			multi.set("message:uuid:" + data.meta.messageUUID, messageid);
-		}
-
-		return Bluebird.fromCallback((cb) => multi.exec(cb))
-	}), h.sF(function () {
-		theMessage = new Message(theMessageID);
-
-		if (data.meta.hidden) {
-			this.ne()
-		} else {
-			theTopic.addMessage(request, theMessage, this)
-		}
-	}), h.sF(function (success) {
-		this.ne({ success, server });
 	}), cb);
 };
 

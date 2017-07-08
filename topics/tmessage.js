@@ -54,6 +54,18 @@ const formatTopicUpdate = (chunkTitleUpdate) => {
 	}
 }
 
+const formatMessage = (message, topicid) => {
+	return {
+		content: message.getContent(),
+		meta: Object.assign({
+			sender: message.sender,
+			sendTime: message.sendTime,
+			messageid: message.id,
+			topicid,
+		}, message.getMeta()),
+	}
+}
+
 const formatTopic = (chunk, unread = []) => {
 	const newest = chunk.message[0]
 	const latestTopicUpdate = formatTopicUpdate(chunk.chunkTitleUpdate[0])
@@ -65,15 +77,7 @@ const formatTopic = (chunk, unread = []) => {
 		meta: chunk.getMeta(),
 		topicid: chunk.id,
 		unread,
-		newest: {
-			content: newest.getContent(),
-			meta: Object.assign({
-				sender: newest.sender,
-				sendTime: newest.sendTime,
-				messageid: newest.id,
-				topicid: chunk.id,
-			}, newest.getMeta()),
-		},
+		newest: formatMessage(newest, chunk.id),
 		newestTime: newest.sendTime
 	}
 }
@@ -122,6 +126,10 @@ var t = {
 					where: { latest: true }
 				}]
 			})
+
+			if (!chunk) {
+				throw new Error(`could not find topic ${topicid}`)
+			}
 
 			yield chunk.validateAccess(request)
 
@@ -205,17 +213,9 @@ var t = {
 				limit: 20,
 			})
 
-			const apiMessages = messages.map((message) => {
-				return {
-					content: message.getContent(),
-					meta: Object.assign({
-						sender: message.sender,
-						sendTime: message.sendTime,
-						messageid: message.id,
-						topicid: topicid,
-					}, message.getMeta()),
-				}
-			})
+			const apiMessages = messages.map((message) =>
+				formatMessage(message, topicid)
+			)
 
 			return { topicUpdates: [], messages: apiMessages, remaining: messageCount - apiMessages.length }
 		})().nodeify(fn)
