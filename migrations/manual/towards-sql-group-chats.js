@@ -140,7 +140,7 @@ const migrateTopicUpdates = () => {
 	})
 }
 
-const getTopicIDs = () => {
+const migrateTopics = () => {
 	return client.getAsync("topic:topics").then((maximumIDString) => {
 		const maximumID = parseInt(maximumIDString, 10)
 
@@ -170,9 +170,9 @@ const getTopicIDs = () => {
 }
 
 setup().then(() => {
-	return migrateTopicUpdates()
+	return migrateTopics()
 }).then(() => {
-	return getTopicIDs()
+	return migrateTopicUpdates()
 }).catch((e) => {
 	console.error(e);
 	process.exit(1);
