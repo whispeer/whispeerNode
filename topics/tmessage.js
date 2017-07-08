@@ -2,6 +2,7 @@
 
 const Chunk = require("../includes/models/chatChunk")
 const Message = require("../includes/models/message")
+const UserUnreadMessage = require("../includes/models/unreadMessage")
 const ChunkTitleUpdate = require("../includes/models/chunkTitleUpdate")
 
 const chatAPI = require("./chatAPI")
@@ -53,7 +54,7 @@ const formatTopicUpdate = (chunkTitleUpdate) => {
 	}
 }
 
-const formatTopic = (chunk) => {
+const formatTopic = (chunk, unread = []) => {
 	const newest = chunk.message[0]
 	const latestTopicUpdate = formatTopicUpdate(chunk.chunkTitleUpdate[0])
 
@@ -63,7 +64,7 @@ const formatTopic = (chunk) => {
 		latestTopicUpdates,
 		meta: chunk.getMeta(),
 		topicid: chunk.id,
-		unread: [], // TODO unread messages
+		unread,
 		newest: {
 			content: newest.getContent(),
 			meta: Object.assign({
@@ -77,36 +78,72 @@ const formatTopic = (chunk) => {
 	}
 }
 
+const getUserUnreadMessagesByChunk = (userID) => {
+	return UserUnreadMessage.findAll({
+		where: {
+			userID
+		},
+		include: [{
+			attributes: ["id", "ChunkId"],
+			association: UserUnreadMessage.Message
+		}]
+	}).then((unreadMessages) => {
+		return unreadMessages.map((unreadMessage) =>
+			unreadMessage.message
+		)
+	}).then((unreadMessages) => {
+		const byChunk = {}
+
+		unreadMessages.forEach((message) => {
+			if (typeof byChunk[message.ChunkId] === "undefined") {
+				byChunk[message.ChunkId] = []
+			}
+
+			byChunk[message.ChunkId].push(message.id)
+		})
+
+		return byChunk
+	})
+
+}
+
 var t = {
 	getTopic: ({ topicid }, fn, request) => {
-		return Chunk.findOne({
-			where: { id: topicid },
-			include: [{
-				association: Chunk.Message,
-				required: true,
-				where: { latest: true }
-			}, {
-				association: Chunk.ChunkTitleUpdate,
-				required: false,
-				where: { latest: true }
-			}]
-		}).then((chunk) => {
-			return chunk.validateAccess(request).thenReturn(chunk)
-		}).then((chunk) => {
-			return { topic: formatTopic(chunk) }
-		}).nodeify(fn)
+		return Bluebird.coroutine(function* () {
+			const chunk = yield Chunk.findOne({
+				where: { id: topicid },
+				include: [{
+					association: Chunk.Message,
+					required: true,
+					where: { latest: true }
+				}, {
+					association: Chunk.ChunkTitleUpdate,
+					required: false,
+					where: { latest: true }
+				}]
+			})
+
+			yield chunk.validateAccess(request)
+
+			const byChunkUnread = yield getUserUnreadMessagesByChunk(request.session.getUserID())
+
+			return { topic: formatTopic(chunk, byChunkUnread[chunk.id]) }
+		})().nodeify(fn)
 	},
 	getTopics: ({ afterTopic }, fn, request) => {
-		return Chunk.findAll({
-			attributes: ["id"],
-			include: [{
-				attributes: [],
-				association: Chunk.Receiver,
-				required: true,
-				where: { userID: request.session.getUserID() }
-			}]
-		}).map((chunk) => chunk.id).then((chunkIDs) =>
-			Chunk.findAll({
+		return Bluebird.coroutine(function* () {
+
+		const chunkIDs = (yield Chunk.findAll({
+				attributes: ["id"],
+				include: [{
+					attributes: [],
+					association: Chunk.Receiver,
+					required: true,
+					where: { userID: request.session.getUserID() }
+				}]
+			})).map((chunk) => chunk.id)
+
+			const chunks = yield Chunk.findAll({
 				where: { id: { $in: chunkIDs } },
 				include: [{
 					association: Chunk.Message,
@@ -118,15 +155,19 @@ var t = {
 					where: { latest: true }
 				}]
 			})
-		).map((chunk) =>
-			formatTopic(chunk)
-		).then((topics) => {
+
+			const byChunkUnread = yield getUserUnreadMessagesByChunk(request.session.getUserID())
+
+			const topics = chunks.map((chunk) => formatTopic(chunk, byChunkUnread[chunk.id]))
+
 			topics.sort((topic1, topic2) => parseInt(topic2.newest.meta.sendTime, 10) - parseInt(topic1.newest.meta.sendTime, 10))
 
 			const afterIndex = topics.findIndex((topic) => topic.topicid === afterTopic)
 
-			return afterIndex === -1 ? topics : topics.slice(afterIndex + 1, afterIndex + 21)
-		}).then((topics) => ({ topics })).nodeify(fn)
+			const paginatedTopics = afterIndex === -1 ? topics.slice(0, 20) : topics.slice(afterIndex + 1, afterIndex + 21)
+
+			return { topics: paginatedTopics }
+		})().nodeify(fn)
 	},
 	refetch:  (data, fn) => {
 		return Bluebird.resolve({
@@ -262,7 +303,7 @@ var t = {
 				userID: request.session.getUserID()
 			},
 		}).then(() => {
-			return { unread: 0 }
+			return { unread: [] }
 		}).nodeify(fn)
 	},
 	send: (data, fn, request) => {
