@@ -105,7 +105,9 @@ function always(request, response, fn) {
 			response.error = true;
 		}
 
-		response.status = 1;
+		if (response.status !== 0) {
+			response.status = 1;
+		}
 
 		response.version = APIVERSION;
 
@@ -164,7 +166,7 @@ module.exports = function (socket) {
 				if (e) {
 					errorService.handleError(e, request);
 					result = {
-						error: true
+						status: 0
 					};
 				}
 
