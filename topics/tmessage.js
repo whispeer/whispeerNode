@@ -307,7 +307,6 @@ var t = {
 		}).nodeify(fn)
 	},
 	send: (data, fn, request) => {
-
 		const {
 			topicid
 		} = data.message.meta

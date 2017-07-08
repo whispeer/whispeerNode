@@ -1,13 +1,5 @@
 "use strict";
 
-/*
-Initial keys:
-	topicid
-
-Optional Keys:
-
-*/
-
 const uuidv4 = require("uuid/v4");
 
 const sequelize = require("../dbConnector/sequelizeClient");
