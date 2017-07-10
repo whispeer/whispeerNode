@@ -337,7 +337,9 @@ const migrateTopics = () => {
 
 		return Bluebird.all([
 			Chat.bulkCreate(chats),
-			ChatChunk.bulkCreate(chunks, chunkInclude),
+			Bluebird.all(
+				chunks.map((chunk) => ChatChunk.create(chunk, chunkInclude))
+			)
 		])
 	}).then(() => {
 		return createMessages()
