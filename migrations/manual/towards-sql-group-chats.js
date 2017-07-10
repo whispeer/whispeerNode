@@ -178,7 +178,7 @@ function migrateMessage(messageID, latest) {
 			meta.images = JSON.parse(meta.images)
 		}
 
-		return Message.create({
+		return {
 			id: messageid,
 			ChunkId: topicid,
 			latest,
@@ -188,8 +188,16 @@ function migrateMessage(messageID, latest) {
 
 			meta,
 			content
-		})
+		}
 	})
+}
+
+const messagesList = []
+
+const chunkInclude = {
+	include: [{
+		association: ChatChunk.Receiver,
+	}]
 }
 
 function migrateTopic(id) {
@@ -199,30 +207,54 @@ function migrateTopic(id) {
 	]).then(([meta, receiverKeys]) => {
 		meta.receiver = meta.receiver.split(",").map(h.parseDecimal)
 
-		const chat = Chat.create({
+		const chat = {
 			id
-		}, {  })
+		}
 
-		const chunk = ChatChunk.create({
+		const chunk = {
 			id,
 			meta,
 			receiverKeys,
 			ChatId: id
-		}, {
-			include: [{
-				association: ChatChunk.Receiver,
-			}]
-		}, {  })
+		}
 
 		const messages = client.zrangeAsync(`topic:${id}:messages`, 0, -1).map(h.parseDecimal).then((messageIDs) => {
 			return messageIDs.sort((a, b) =>
 				a - b
 			)
 		}).map((messageID, index, len) => {
-			return migrateMessage(messageID, index === len - 1)
+			messagesList.push({
+				messageID,
+				latest: index === len - 1
+			})
 		})
 
 		return Bluebird.all([chunk, chat, messages])
+	})
+}
+
+const MESSAGE_BULK_SIZE = 1000
+let t = process.hrtime()
+
+const createMessages = (startIndex = 0) => {
+	const nextIndex = startIndex + MESSAGE_BULK_SIZE
+	const currentBulk = messagesList.slice(startIndex, nextIndex)
+
+	if (startIndex % 50000 === 0) {
+		const r = process.hrtime(t)
+		t = process.hrtime()
+
+		console.log(`Finished ${startIndex} messages and took ${r[0]}:${r[1]}`)
+	}
+
+	if (currentBulk.length === 0) {
+		return Bluebird.resolve()
+	}
+
+	return Bluebird.all(currentBulk.map(({ messageID, latest }) => migrateMessage(messageID, latest))).then((messages) => {
+		return Message.bulkCreate(messages)
+	}).then(() => {
+		return createMessages(nextIndex)
 	})
 }
 
@@ -299,7 +331,17 @@ const migrateTopics = () => {
 		})
 	}).map((id) => {
 		return migrateTopic(id)
-	}, { concurrency: 5 }).then(() => {
+	}).then((results) => {
+		const chats = results.map(([chat]) => chat)
+		const chunks = results.map(([chunk]) => chunk)
+
+		return Bluebird.all([
+			Chat.bulkCreate(chats),
+			ChatChunk.bulkCreate(chunks, chunkInclude),
+		])
+	}).then(() => {
+		return createMessages()
+	}).then(() => {
 		return Bluebird.all([
 			sequelize.query("select setval('\"Chats_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
 			sequelize.query("select setval('\"Chunks_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
