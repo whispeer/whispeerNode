@@ -342,15 +342,13 @@ const migrateTopics = () => {
 	}).then(() => {
 		return createMessages()
 	}).then(() => {
+		console.log("Recreating indices and sequences")
 		return Bluebird.all([
 			sequelize.query("select setval('\"Chats_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
 			sequelize.query("select setval('\"Chunks_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
 			sequelize.query("select setval('\"Messages_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
 			sequelize.query(ADD_CONSTRAINTS),
 		])
-	}).then(() => {
-		console.log("END")
-		process.exit(0)
 	})
 }
 
@@ -358,6 +356,9 @@ setup().then(() => {
 	return migrateTopics()
 }).then(() => {
 	return migrateTopicUpdates()
+}).then(() => {
+	console.log("END")
+	process.exit(0)
 }).catch((e) => {
 	console.error(e);
 	process.exit(1);
