@@ -15,6 +15,148 @@ const ChunkTitleUpdate = require("../../includes/models/chunkTitleUpdate")
 
 const h = require("whispeerHelper")
 
+const ADD_CONSTRAINTS = `
+	ALTER TABLE ONLY "Chats"
+		ADD CONSTRAINT "Chats_pkey" PRIMARY KEY (id);
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		ADD CONSTRAINT "ChunkTitleUpdates_pkey" PRIMARY KEY (id);
+
+	ALTER TABLE ONLY "Chunks"
+		ADD CONSTRAINT "Chunks_pkey" PRIMARY KEY (id);
+
+	ALTER TABLE ONLY "Messages"
+		ADD CONSTRAINT "Messages_pkey" PRIMARY KEY (id);
+
+	ALTER TABLE ONLY "Receivers"
+		ADD CONSTRAINT "Receivers_pkey" PRIMARY KEY (id);
+
+	ALTER TABLE ONLY "UserWithAccesses"
+		ADD CONSTRAINT "UserWithAccesses_pkey" PRIMARY KEY (id);
+
+	ALTER TABLE "ChunkTitleUpdates"
+		ADD CONSTRAINT "ChunkTitleUpdates_ChunkId_fkey" FOREIGN KEY ("ChunkId") REFERENCES "Chunks"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+	ALTER TABLE "Chunks"
+		ADD CONSTRAINT "Chunks_ChatId_fkey" FOREIGN KEY ("ChatId") REFERENCES "Chats"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+	ALTER TABLE "Chunks"
+		ADD CONSTRAINT "Chunks_predecessorId_fkey" FOREIGN KEY ("predecessorId") REFERENCES "Chunks"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+	ALTER TABLE "Messages"
+		ADD CONSTRAINT "Messages_ChunkId_fkey" FOREIGN KEY ("ChunkId") REFERENCES "Chunks"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+	ALTER TABLE "Receivers"
+		ADD CONSTRAINT "Receivers_ChunkId_fkey" FOREIGN KEY ("ChunkId") REFERENCES "Chunks"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		ADD CONSTRAINT "ChunkTitleUpdates__contentHash_key" UNIQUE ("_contentHash");
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		ADD CONSTRAINT "ChunkTitleUpdates__ownHash_key" UNIQUE ("_ownHash");
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		ADD CONSTRAINT "ChunkTitleUpdates__signature_key" UNIQUE (_signature);
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		ADD CONSTRAINT "ChunkTitleUpdates_iv_key" UNIQUE (iv);
+
+	ALTER TABLE ONLY "Chunks"
+		ADD CONSTRAINT "Chunks__ownHash_key" UNIQUE ("_ownHash");
+
+	ALTER TABLE ONLY "Chunks"
+		ADD CONSTRAINT "Chunks__signature_key" UNIQUE (_signature);
+
+	ALTER TABLE ONLY "Chunks"
+		ADD CONSTRAINT "Chunks_iv_key" UNIQUE (iv);
+
+	ALTER TABLE ONLY "Messages"
+		ADD CONSTRAINT "Messages__contentHash_key" UNIQUE ("_contentHash");
+
+	ALTER TABLE ONLY "Messages"
+		ADD CONSTRAINT "Messages__ownHash_key" UNIQUE ("_ownHash");
+
+	ALTER TABLE ONLY "Messages"
+		ADD CONSTRAINT "Messages__signature_key" UNIQUE (_signature);
+
+	ALTER TABLE ONLY "Messages"
+		ADD CONSTRAINT "Messages_iv_key" UNIQUE (iv);
+
+	ALTER TABLE ONLY "Messages"
+		ADD CONSTRAINT "Messages_messageUUID_key" UNIQUE ("messageUUID");
+`
+
+const REMOVE_CONSTRAINTS = `
+	ALTER TABLE "ChunkTitleUpdates"
+		DROP CONSTRAINT "ChunkTitleUpdates_ChunkId_fkey";
+
+	ALTER TABLE "Chunks"
+		DROP CONSTRAINT "Chunks_ChatId_fkey";
+
+	ALTER TABLE "Chunks"
+		DROP CONSTRAINT "Chunks_predecessorId_fkey";
+
+	ALTER TABLE "Messages"
+		DROP CONSTRAINT "Messages_ChunkId_fkey";
+
+	ALTER TABLE "Receivers"
+		DROP CONSTRAINT "Receivers_ChunkId_fkey";
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		DROP CONSTRAINT "ChunkTitleUpdates__contentHash_key";
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		DROP CONSTRAINT "ChunkTitleUpdates__ownHash_key";
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		DROP CONSTRAINT "ChunkTitleUpdates__signature_key";
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		DROP CONSTRAINT "ChunkTitleUpdates_iv_key";
+
+	ALTER TABLE ONLY "Chunks"
+		DROP CONSTRAINT "Chunks__ownHash_key";
+
+	ALTER TABLE ONLY "Chunks"
+		DROP CONSTRAINT "Chunks__signature_key";
+
+	ALTER TABLE ONLY "Chunks"
+		DROP CONSTRAINT "Chunks_iv_key";
+
+	ALTER TABLE ONLY "Messages"
+		DROP CONSTRAINT "Messages__contentHash_key";
+
+	ALTER TABLE ONLY "Messages"
+		DROP CONSTRAINT "Messages__ownHash_key";
+
+	ALTER TABLE ONLY "Messages"
+		DROP CONSTRAINT "Messages__signature_key";
+
+	ALTER TABLE ONLY "Messages"
+		DROP CONSTRAINT "Messages_iv_key";
+
+	ALTER TABLE ONLY "Messages"
+		DROP CONSTRAINT "Messages_messageUUID_key";
+
+	ALTER TABLE ONLY "Chats"
+		DROP CONSTRAINT "Chats_pkey" CASCADE;
+
+	ALTER TABLE ONLY "ChunkTitleUpdates"
+		DROP CONSTRAINT "ChunkTitleUpdates_pkey" CASCADE;
+
+	ALTER TABLE ONLY "Chunks"
+		DROP CONSTRAINT "Chunks_pkey" CASCADE;
+
+	ALTER TABLE ONLY "Messages"
+		DROP CONSTRAINT "Messages_pkey" CASCADE;
+
+	ALTER TABLE ONLY "Receivers"
+		DROP CONSTRAINT "Receivers_pkey" CASCADE;
+
+	ALTER TABLE ONLY "UserWithAccesses"
+		DROP CONSTRAINT "UserWithAccesses_pkey" CASCADE;
+`
+
 function migrateMessage(messageID, latest) {
 	return Bluebird.all([
 		client.hgetallAsync(`message:${messageID}:meta`),
@@ -59,30 +201,28 @@ function migrateTopic(id) {
 
 		const chat = Chat.create({
 			id
+		}, {  })
+
+		const chunk = ChatChunk.create({
+			id,
+			meta,
+			receiverKeys,
+			ChatId: id
+		}, {
+			include: [{
+				association: ChatChunk.Receiver,
+			}]
+		}, {  })
+
+		const messages = client.zrangeAsync(`topic:${id}:messages`, 0, -1).map(h.parseDecimal).then((messageIDs) => {
+			return messageIDs.sort((a, b) =>
+				a - b
+			)
+		}).map((messageID, index, len) => {
+			return migrateMessage(messageID, index === len - 1)
 		})
 
-		return chat.then(() => {
-			const chunk = ChatChunk.create({
-				id,
-				meta,
-				receiverKeys,
-				ChatId: id
-			}, {
-				include: [{
-					association: ChatChunk.Receiver,
-				}]
-			})
-
-			return chunk
-		}).then(() => {
-			return client.zrangeAsync(`topic:${id}:messages`, 0, -1).map(h.parseDecimal).then((messageIDs) => {
-				return messageIDs.sort((a, b) =>
-					a - b
-				)
-			}).map((messageID, index, len) => {
-				return migrateMessage(messageID, index === len - 1)
-			})
-		})
+		return Bluebird.all([chunk, chat, messages])
 	})
 }
 
@@ -141,7 +281,9 @@ const migrateTopicUpdates = () => {
 }
 
 const migrateTopics = () => {
-	return client.getAsync("topic:topics").then((maximumIDString) => {
+	return sequelize.query(REMOVE_CONSTRAINTS).then(() => {
+		return client.getAsync("topic:topics")
+	}).then((maximumIDString) => {
 		const maximumID = parseInt(maximumIDString, 10)
 
 		const possibleTopics = []
@@ -157,11 +299,12 @@ const migrateTopics = () => {
 		})
 	}).map((id) => {
 		return migrateTopic(id)
-	}, { concurrency: 1 }).then(() => {
+	}, { concurrency: 5 }).then(() => {
 		return Bluebird.all([
 			sequelize.query("select setval('\"Chats_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
 			sequelize.query("select setval('\"Chunks_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
 			sequelize.query("select setval('\"Messages_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
+			sequelize.query(ADD_CONSTRAINTS),
 		])
 	}).then(() => {
 		console.log("END")
