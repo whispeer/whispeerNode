@@ -15,6 +15,7 @@ const sequelize = require("../includes/dbConnector/sequelizeClient");
 const User = require("../includes/user")
 const KeyApi = require("../includes/crypto/KeyApi")
 const SymKey = require("../includes/crypto/symKey")
+const mailer = require("../includes/mailer");
 
 const pushAPI = require("../includes/pushAPI");
 
@@ -296,11 +297,18 @@ const pushNotify = (request, receiverIDs, data) => {
 		return Bluebird.resolve()
 	}
 
-	return getUserName(request, senderID).then((senderName) =>
-		Bluebird.all(receivers.map((userID) =>
+	return getUserName(request, senderID).then((senderName) => {
+		if (data.message) {
+			mailer.sendInteractionMails(receivers.map((r) => new User(r)), "message", "new", {
+				sender: senderName,
+				interactionID: data.message.server.chunkID
+			});
+		}
+
+		return Bluebird.all(receivers.map((userID) =>
 			pushToUser(userID, data, senderName)
 		))
-	)
+	})
 }
 
 const createSymKeys = (request, keys) => {
@@ -315,8 +323,6 @@ const createSymKeys = (request, keys) => {
 
 const chatAPI = {
 	create: ({ initialChunk, firstMessage, receiverKeys }, fn, request) => {
-		console.log(firstMessage)
-
 		return validateChunk(request, initialChunk.meta, receiverKeys).then(() => {
 			return sequelize.transaction((transaction) => {
 				const includeReceiverInCreate = {

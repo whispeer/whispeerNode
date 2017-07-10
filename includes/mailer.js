@@ -144,7 +144,7 @@ var mailer = {
 	},
 	sendInteractionMails: function (users, type, subType, interactionObj, options) {
 		var sendUserMail = Bluebird.promisify(mailer.sendUserMail, {
-		    context: mailer
+			context: mailer
 		});
 
 		console.log("sending interaction mail to users: " + users.map(function (user) {
@@ -157,7 +157,7 @@ var mailer = {
 			}
 
 			var isOnline = Bluebird.promisify(user.isOnline, {
-			    context: user
+				context: user
 			});
 
 			return Bluebird.all([
