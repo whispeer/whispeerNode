@@ -697,13 +697,15 @@ const chatAPI = {
 							Message.update({
 								latestInChunk: false
 							}, {
-								latestInChunk: true,
-								ChunkId: chunk.id,
+								where: {
+									latestInChunk: true,
+									ChunkId: chunk.id
+								},
 								transaction
 							}),
 							Message.create(dbMessageData, { transaction })
 						])
-					}))[1]
+					}))[2]
 
 					yield createSymKeys(request, message.imageKeys)
 
