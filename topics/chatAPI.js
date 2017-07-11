@@ -649,6 +649,16 @@ const chatAPI = {
 					throw new Error("message to long");
 				}
 
+				var err = validator.validate("message", message);
+
+				if (err) {
+					throw new InvalidMessageData();
+				}
+
+				if (!chunkID) {
+					throw new InvalidMessageData();
+				}
+
 				const chunk = yield Chunk.findById(chunkID)
 
 				yield chunk.validateAccess(request)
@@ -657,11 +667,23 @@ const chatAPI = {
 					throw new SuccessorError("chunk already has a successor")
 				}
 
+				const latestMessage = yield Message.findOne({ where: {
+					latest: true,
+					ChunkId: chunkID
+				}})
+
+				if (latestMessage && h.parseDecimal(message.meta._sortCounter, 10) < h.parseDecimal(latestMessage.meta._sortCounter)) {
+					return { success: false }
+				}
+
 				const dbMessageData = Object.assign({}, message, {
 					sender: request.session.getUserID(),
 					sendTime: new Date().getTime(),
 					ChunkId: chunk.id
 				})
+
+				//TODO: check overall signature
+				//chelper.checkSignature(user.key, toHash, meta.encrSignature)
 
 				try {
 					const dbMessage = (yield sequelize.transaction((transaction) => {
