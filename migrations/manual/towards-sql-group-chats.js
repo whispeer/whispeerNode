@@ -182,6 +182,7 @@ function migrateMessage(messageID, latest) {
 			id: messageid,
 			ChunkId: topicid,
 			latest,
+			latestInChunk: latest,
 
 			sender,
 			sendTime,

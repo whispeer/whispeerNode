@@ -119,7 +119,7 @@ var t = {
 				include: [{
 					association: Chunk.Message,
 					required: true,
-					where: { latest: true }
+					where: { latestInChunk: true }
 				}, {
 					association: Chunk.ChunkTitleUpdate,
 					required: false,
@@ -156,7 +156,7 @@ var t = {
 				include: [{
 					association: Chunk.Message,
 					required: true,
-					where: { latest: true }
+					where: { latestInChunk: true }
 				}, {
 					association: Chunk.ChunkTitleUpdate,
 					required: false,

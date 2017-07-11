@@ -51,6 +51,7 @@ const Message = sequelize.define("Message", {
 	messageUUID: defaultValue(required(unique(uuid())), Sequelize.UUIDV4),
 
 	latest: defaultValue(boolean(), true),
+	latestInChunk: defaultValue(boolean(), true),
 
 	meta: required(json()),
 }, {

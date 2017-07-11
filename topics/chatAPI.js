@@ -672,6 +672,13 @@ const chatAPI = {
 								},
 								transaction
 							}),
+							Message.update({
+								latestInChunk: false
+							}, {
+								latestInChunk: true,
+								ChunkId: chunk.id,
+								transaction
+							}),
 							Message.create(dbMessageData, { transaction })
 						])
 					}))[1]
