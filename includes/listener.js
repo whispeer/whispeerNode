@@ -1,12 +1,14 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
-var User = require("./user");
+const step = require("step");
+const h = require("whispeerHelper");
+const User = require("./user");
 
-var RequestData = require("./requestData");
+const RequestData = require("./requestData");
 
-var errorService = require("./errorService");
+const errorService = require("./errorService");
+
+const t = require("../topics/tmessage")
 
 const versionGreater = (versionGiven, versionCompare) => {
 	const splitGiven = versionGiven.split(".")
@@ -73,19 +75,9 @@ var listener = {
 			}
 		});
 	},
-	topicRead: function (socketData) {
-		var Topic = require("./topic.js");
-		var request = new RequestData(socketData, {});
-
-		step(function () {
-			Topic.unreadIDs(request, this);
-		}, h.sF(function (ids) {
-			socketData.socket.emit("unreadTopics", { unread: ids });
-		}), function (e) {
-			if (e) {
-				errorService.handleError(e, request);
-			}
-		});
+	synchronizeRead: function (socketData, { unreadChatIDs, unreadChunkIDs }) {
+		socketData.socket.emit("unreadTopics", { unread: unreadChunkIDs })
+		socketData.socket.emit("unreadChats", { unreadChatIDs })
 	},
 	message: function (socketData, { message }) {
 		if (!message) {

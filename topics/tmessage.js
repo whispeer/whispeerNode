@@ -7,7 +7,9 @@ const ChunkTitleUpdate = require("../includes/models/chunkTitleUpdate")
 
 const chatAPI = require("./chatAPI")
 
-const sequelize = require("../includes/dbConnector/sequelizeClient");
+const sequelize = require("../includes/dbConnector/sequelizeClient")
+
+const errorService = require("../includes/errorService")
 
 var Bluebird = require("bluebird");
 
@@ -108,7 +110,18 @@ const getUserUnreadMessagesByChunk = (userID) => {
 
 		return byChunk
 	})
+}
 
+const synchronizeRead = (request) => {
+	return Bluebird.all([
+		t.getUnreadTopicIDs({}, null, request),
+		chatAPI.getUnreadIDs({}, null, request),
+	]).then(([{ unread }, { chatIDs }]) => {
+		request.socketData.notifyOwnClients("synchronizeRead", {
+			unreadChatIDs: chatIDs,
+			unreadChunkIDs: unread
+		});
+	}).catch((e) => errorService.handleError(e, request))
 }
 
 var t = {
@@ -303,6 +316,8 @@ var t = {
 				userID: request.session.getUserID()
 			},
 		}).then(() => {
+			synchronizeRead(request)
+
 			return { unread: [] }
 		}).nodeify(fn)
 	},
