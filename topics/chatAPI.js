@@ -267,7 +267,7 @@ const pushToUser = (userID, data, senderName) => {
 	const pushNotification = pushAPI.getTitle(new User(userID), referenceType, senderName).then((title) =>
 		pushAPI.notifyUser(userID, title, {
 			type: referenceType,
-			id: data.message.server.chatID
+			id: data.message.server.chunkID
 		})
 	)
 
