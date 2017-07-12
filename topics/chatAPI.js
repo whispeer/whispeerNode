@@ -92,7 +92,7 @@ const getLaterChunks = (chunk, userID) => {
 	)
 }
 
-const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
+const formatChatResponse = (chat, chunks, latestMessage, unreadMessageIDs) => {
 	const latestMessageInfo = latestMessage ? { latestMessageID: latestMessage.messageUUID } : {}
 
 	return {
@@ -102,6 +102,18 @@ const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
 		}, latestMessageInfo, chat.getAPIFormatted()),
 		chunks: chunks.map((chunk) => chunk.getAPIFormatted()),
 		messages: latestMessage ? [latestMessage.getAPIFormatted(chat.id)] : [],
+	}
+}
+
+const pushChatResponse = (chat, chunk, message, unreadMessageIDs) => {
+	return {
+		chat: Object.assign({
+			latestChunkID: chunk.id,
+			unreadMessageIDs,
+			latestMessageID: message.messageUUID
+		}, chat.getAPIFormatted()),
+		chunk: chunk.getAPIFormatted(),
+		message: message.getAPIFormatted(chat.id),
 	}
 }
 
@@ -125,8 +137,8 @@ const chatResponse = (chat, request) => {
 		return formatChatResponse(
 			chat,
 			chunks,
-			unreadMessageIDs,
-			hasLatestMessageAccess ? latestMessage : null
+			hasLatestMessageAccess ? latestMessage : null,
+			unreadMessageIDs
 		)
 	})()
 }
@@ -350,8 +362,8 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
-			const chatResponseOthers = formatChatResponse(chat, [chunk], [message.id], message)
-			const chatResponseMe = formatChatResponse(chat, [chunk], [], message)
+			const chatResponseOthers = pushChatResponse(chat, chunk, message, [message.id], message)
+			const chatResponseMe = pushChatResponse(chat, chunk, message, [])
 			const myID = request.session.getUserID()
 
 			const otherReceiver = chunk.receiver.map((r) => r.userID).filter((userID) => userID !== myID)
@@ -362,7 +374,7 @@ const chatAPI = {
 			return Bluebird.all([
 				addToUnread(chunk, message.id, request),
 				createSymKeys(request, firstMessage.imageKeys)
-			]).thenReturn({ chat: chatResponseMe })
+			]).thenReturn({ chat: formatChatResponse(chat, [chunk], [message], []) })
 		}).nodeify(fn)
 	},
 
