@@ -374,7 +374,7 @@ const chatAPI = {
 			return Bluebird.all([
 				addToUnread(chunk, message.id, request),
 				createSymKeys(request, firstMessage.imageKeys)
-			]).thenReturn({ chat: formatChatResponse(chat, [chunk], [message], []) })
+			]).thenReturn({ chat: formatChatResponse(chat, [chunk], message, []) })
 		}).nodeify(fn)
 	},
 
