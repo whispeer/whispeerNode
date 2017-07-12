@@ -105,18 +105,6 @@ const formatChatResponse = (chat, chunks, latestMessage, unreadMessageIDs) => {
 	}
 }
 
-const pushChatResponse = (chat, chunk, message, unreadMessageIDs) => {
-	return {
-		chat: Object.assign({
-			latestChunkID: chunk.id,
-			unreadMessageIDs,
-			latestMessageID: message.messageUUID
-		}, chat.getAPIFormatted()),
-		chunk: chunk.getAPIFormatted(),
-		message: message.getAPIFormatted(chat.id),
-	}
-}
-
 const chatResponse = (chat, request) => {
 	return Bluebird.coroutine(function* () {
 		const userID = request.session.getUserID()
@@ -362,19 +350,19 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
-			const chatResponseOthers = pushChatResponse(chat, chunk, message, [message.id], message)
-			const chatResponseMe = pushChatResponse(chat, chunk, message, [])
+			const chatResponseOthers = formatChatResponse(chat, [chunk], message, [])
+			const chatResponseMe = formatChatResponse(chat, [chunk], message, [])
 			const myID = request.session.getUserID()
 
 			const otherReceiver = chunk.receiver.map((r) => r.userID).filter((userID) => userID !== myID)
 
-			notifyUsers(request, otherReceiver, chatResponseOthers)
-			notifyUsers(request, [myID], chatResponseMe)
+			notifyUsers(request, otherReceiver, { chat: chatResponseOthers, message: message.getAPIFormatted(chat.id) })
+			notifyUsers(request, [myID], { chat: chatResponseMe, message: message.getAPIFormatted(chat.id)  })
 
 			return Bluebird.all([
 				addToUnread(chunk, message.id, request),
 				createSymKeys(request, firstMessage.imageKeys)
-			]).thenReturn({ chat: formatChatResponse(chat, [chunk], message, []) })
+			]).thenReturn({ chat: chatResponseMe })
 		}).nodeify(fn)
 	},
 
