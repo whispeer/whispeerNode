@@ -101,7 +101,7 @@ const formatChatResponse = (chat, chunks, unreadMessageIDs, latestMessage) => {
 			unreadMessageIDs,
 		}, latestMessageInfo, chat.getAPIFormatted()),
 		chunks: chunks.map((chunk) => chunk.getAPIFormatted()),
-		messages: latestMessage ? [latestMessage.getAPIFormatted()] : [],
+		messages: latestMessage ? [latestMessage.getAPIFormatted(chat.id)] : [],
 	}
 }
 
@@ -260,6 +260,8 @@ const pushToUser = (userID, data, senderName) => {
 
 	const pushData = pushAPI.pushDataToUser(userID, data)
 
+	console.log("Pushing: ", JSON.stringify(data, null, 2))
+
 	if (!data.message) {
 		return pushData
 	}
@@ -267,7 +269,8 @@ const pushToUser = (userID, data, senderName) => {
 	const pushNotification = pushAPI.getTitle(new User(userID), referenceType, senderName).then((title) =>
 		pushAPI.notifyUser(userID, title, {
 			type: referenceType,
-			id: data.message.server.chunkID
+			id: data.message.server.chunkID,
+			chatID: data.message.server.chatID
 		})
 	)
 
@@ -510,7 +513,7 @@ const chatAPI = {
 			])
 
 			return {
-				messages: messages.map((message) => message.getAPIFormatted()),
+				messages: messages.map((message) => message.getAPIFormatted(chat.id)),
 				chunks: chunks.map((chunk) => chunk.getAPIFormatted()),
 				remainingMessagesCount: messagesCount - messages.length
 			}
@@ -711,14 +714,18 @@ const chatAPI = {
 
 					yield addToUnread(chunk, dbMessage.id, request)
 
-					notifyUsers(request, chunk.receiver.map(r => r.userID), { message: dbMessage.getAPIFormatted() })
+					notifyUsers(request, chunk.receiver.map(r => r.userID), { message: dbMessage.getAPIFormatted(chunk.ChatId) })
 
-					return Object.assign({ success: true }, dbMessage.getAPIFormatted())
+					return Object.assign({ success: true }, dbMessage.getAPIFormatted(chunk.ChatId))
 				} catch (err) {
 					if (err instanceof Sequelize.UniqueConstraintError && err.fields.messageUUID && Object.keys(err.fields).length === 1) {
 						const existingDBMessage = yield Message.findOne({ where: { messageUUID: err.fields.messageUUID }})
 
-						return Object.assign({ success: true }, existingDBMessage.getAPIFormatted())
+						if (existingDBMessage.sender !== request.session.getUserID()) {
+							throw new Error("Duplicate UUID: Message already send but we are not the sender.")
+						}
+
+						return Object.assign({ success: true }, existingDBMessage.getAPIFormatted(chunk.ChatId))
 					} else {
 						return Bluebird.reject(err)
 					}

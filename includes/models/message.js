@@ -61,12 +61,12 @@ const Message = sequelize.define("Message", {
 			return Object.assign({}, this.getDataValue("meta"), this.getMetaExtra())
 		},
 		getContent: getObject(contentKeys),
-		getAPIFormatted: function () {
+		getAPIFormatted: function (chatID) {
 			return {
 				server: {
 					id: this.id,
 					chunkID: this.ChunkId,
-					chatID: this.ChatId,
+					chatID,
 					sendTime: this.getDataValue("sendTime"),
 					sender: this.getDataValue("sender"),
 					uuid: this.getDataValue("messageUUID"),
