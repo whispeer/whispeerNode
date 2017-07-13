@@ -318,6 +318,8 @@ var t = {
 		}).then(() => {
 			synchronizeRead(request)
 
+			chatAPI.updateBadge(request.session.getUserID())
+
 			return { unread: [] }
 		}).nodeify(fn)
 	},

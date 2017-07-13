@@ -737,7 +737,8 @@ const chatAPI = {
 				return message.getAPIFormatted()
 			})().nodeify(fn)
 		}
-	}
+	},
+	updateBadge
 }
 
 module.exports = chatAPI
