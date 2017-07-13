@@ -417,8 +417,6 @@ const chatAPI = {
 
 	markRead: ({ id }, fn, request) => {
 		return Bluebird.coroutine(function* () {
-			updateBadge(request.session.getUserID())
-
 			const chat = yield Chat.findById(id)
 			yield chat.validateAccess(request)
 			yield UserUnreadMessage.destroy({
@@ -427,6 +425,8 @@ const chatAPI = {
 					userID: request.session.getUserID()
 				}
 			})
+
+			updateBadge(request.session.getUserID())
 		})().nodeify(fn)
 	},
 
