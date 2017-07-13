@@ -65,6 +65,19 @@ const UPDATE_LATEST_MESSAGES_QUERY = `
 		"Messages"."ChunkId" = "Chunks"."id"
 `
 
+const CHAT_IDS_QUERY = `
+SELECT "Chat"."id"
+FROM "Chats" AS "Chat"
+INNER JOIN "Chunks" AS "chunk" ON "Chat"."id" = "chunk"."ChatId"
+	AND "chunk"."latest" = TRUE
+INNER JOIN "Receivers" AS "chunk.receiver" ON "chunk"."id" = "chunk.receiver"."ChunkId"
+	AND "chunk.receiver"."userID" = $userIDMe
+INNER JOIN "Chunks" AS "chunk2" ON "Chat"."id" = "chunk2"."ChatId"
+INNER JOIN "Messages" AS "chunk2.message" ON "chunk2"."id" = "chunk2.message"."ChunkId"
+	AND "chunk2.message"."latest" = TRUE
+ORDER BY "sendTime" DESC;
+`
+
 const addToUnread = (chunk, messageId, request) => {
 	return Bluebird.all(chunk.receiver.map((receiver) => {
 		if(request.session.isMyID(receiver.userID)) {
@@ -185,9 +198,10 @@ const addMessageKeys = (messages, request) => Bluebird.all(messages.map((message
 const addChunksKeys = (chunks, request) => Bluebird.all(chunks.map((chunk) => {
 	const meReceiver = chunk.receiver.find((receiver) => receiver.userID === request.session.getUserID())
 
-	if (meReceiver.key) {
-		return request.addKey(meReceiver.key)
-	}
+	return Bluebird.all([
+		request.addKey(chunk.meta._key),
+		meReceiver.key ? request.addKey(meReceiver.key) : null
+	])
 }))
 
 const ensureUserKeyAccess = (uid, key) => {
@@ -377,33 +391,11 @@ const chatAPI = {
 	},
 
 	getAllIDs: (data, fn, request) => {
-		return Chat.findAll({
-			attributes: ["id"],
-			include: [{
-				association: Chat.Chunk,
-				model: Chunk.unscoped(),
-				attributes: [],
-				where: {
-					latest: true
-				},
-				required: true,
-				include: [{
-					attributes: [],
-					association: Chunk.Receiver,
-					required: true,
-					where: { userID: request.session.getUserID() }
-				}, {
-					attributes: ["sendTime"],
-					association: Chunk.Message,
-					where: { latest: true }
-				}]
-			}],
-			order: [
-				[
-					Sequelize.col("sendTime"),
-					"DESC"
-				]
-			]
+		return sequelize.query(CHAT_IDS_QUERY, {
+			type: sequelize.QueryTypes.SELECT,
+			bind: {
+				userIDMe: request.session.getUserID(),
+			},
 		}).map((entry) => entry.id).then((chatIDs) => ({
 			chatIDs
 		})).nodeify(fn)
@@ -425,6 +417,8 @@ const chatAPI = {
 
 	markRead: ({ id }, fn, request) => {
 		return Bluebird.coroutine(function* () {
+			updateBadge(request.session.getUserID())
+
 			const chat = yield Chat.findById(id)
 			yield chat.validateAccess(request)
 			yield UserUnreadMessage.destroy({
@@ -503,7 +497,10 @@ const chatAPI = {
 				self.indexOf(value) === index
 			)
 
-			const chunks = yield Chunk.findAll({ where: { id: { $in: chunkIDs }}})
+			const max = Math.max.apply(Math, chunkIDs)
+			const min = Math.min.apply(Math, chunkIDs)
+
+			const chunks = yield Chunk.findAll({ where: { id: { $between: [min, max] }}})
 
 			yield Bluebird.all([
 				addMessageKeys(messages, request),

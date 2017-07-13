@@ -333,12 +333,12 @@ var t = {
 		return chatAPI.message.create({ chunkID: topicid, message: data.message}, null, request).then(({ success, server }) => {
 			return {
 				success,
-				server: {
+				server: server ? {
 					messageid: server.id,
 					topicid: server.chunkID,
 					sendTime: server.sendTime,
 					sender: server.sender,
-				}
+				} : null
 			}
 		}).nodeify(fn)
 	},

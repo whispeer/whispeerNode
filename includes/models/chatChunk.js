@@ -88,6 +88,10 @@ const Chunk = sequelize.define("Chunk", {
 			})
 		},
 		isAdmin: function (userID) {
+			if (this.meta.admins) {
+				return this.meta.admins.indexOf(userID) !== -1
+			}
+
 			return h.parseDecimal(this.getDataValue("meta").creator) === h.parseDecimal(userID)
 		},
 		hasContent: function () {
