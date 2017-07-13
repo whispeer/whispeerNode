@@ -260,8 +260,6 @@ const pushToUser = (userID, data, senderName) => {
 
 	const pushData = pushAPI.pushDataToUser(userID, data)
 
-	console.log("Pushing: ", JSON.stringify(data, null, 2))
-
 	if (!data.message) {
 		return pushData
 	}

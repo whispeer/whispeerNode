@@ -348,8 +348,8 @@ const migrateTopics = () => {
 		console.log("Recreating indices and sequences")
 		console.time("Indices")
 		return Bluebird.all([
-			sequelize.query("select setval('\"Chats_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
-			sequelize.query("select setval('\"Chunks_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
+			sequelize.query("select setval('\"Chats_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Chats\"));"),
+			sequelize.query("select setval('\"Chunks_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Chunks\"));"),
 			sequelize.query("select setval('\"Messages_id_seq\"'::regclass, (select MAX(\"id\") FROM \"Messages\"));"),
 			sequelize.query(ADD_CONSTRAINTS),
 		])
