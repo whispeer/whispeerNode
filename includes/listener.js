@@ -1,12 +1,31 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
-var User = require("./user");
+const step = require("step");
+const h = require("whispeerHelper");
+const User = require("./user");
 
-var RequestData = require("./requestData");
+const RequestData = require("./requestData");
 
-var errorService = require("./errorService");
+const errorService = require("./errorService");
+
+const t = require("../topics/tmessage")
+
+const versionGreater = (versionGiven, versionCompare) => {
+	const splitGiven = versionGiven.split(".")
+	const splitCompare = versionCompare.split(".")
+
+	for (let i = 0; i < splitGiven.length; i += 1) {
+		if (splitGiven[i] > splitCompare[i]) {
+			return true
+		}
+
+		if (splitGiven[i] < splitCompare[i]) {
+			return false
+		}
+	}
+
+	return false
+}
 
 var listener = {
 	"friends:online": function (socketData, data) {
@@ -56,59 +75,36 @@ var listener = {
 			}
 		});
 	},
-	topicRead: function (socketData) {
-		var Topic = require("./topic.js");
-		var request = new RequestData(socketData, {});
-
-		step(function () {
-			Topic.unreadIDs(request, this);
-		}, h.sF(function (ids) {
-			socketData.socket.emit("unreadTopics", { unread: ids });
-		}), function (e) {
-			if (e) {
-				errorService.handleError(e, request);
-			}
-		});
+	synchronizeRead: function (socketData, { unreadChatIDs, unreadChunkIDs }) {
+		socketData.socket.emit("unreadTopics", { unread: unreadChunkIDs })
+		socketData.socket.emit("unreadChats", { unreadChatIDs })
 	},
-	message: function messageLF(socketData, messageid) {
-		var Message = require("./messages.js");
-		var m, mData, theTopic;
+	message: function (socketData, { message }) {
+		if (!message) {
+			return
+		}
 
-		var request = new RequestData(socketData, {});
+		const version = socketData.getVersion()
 
-		step(function messageLF1() {
-			m = new Message(messageid);
+		if (version && versionGreater(version, "0.0.3")) {
+			return
+		}
 
-			this.parallel.unflatten();
+		const messageLegacyFormat = {
+			content: message.content,
+			meta: Object.assign({
+				sender: message.server.sender,
+				sendTime: message.server.sendTime,
+				messageid: message.server.id,
+				topicid: message.server.chunkID,
+			}, message.meta),
+		}
 
-			m.getFullData(request, this.parallel(), true);
-			m.getTopic(this.parallel());
-		}, h.sF(function (data, topic) {
-			theTopic = topic;
-			mData = data;
-
-			theTopic.messageCount(request, this);
-		}), h.sF(function (count) {
-			if (count === 1) {
-				theTopic.getFullData(request, this, true, false);
-			} else {
-				this.last.ne({
-					message: mData
-				});
-			}
-		}), h.sF(function (topicData) {
-			this.last.ne({
-				topic: topicData,
-				message: mData
-			});
-		}), function (e, data) {
-			if (!e) {
-				data.keys = request.getAllKeys();
-				socketData.socket.emit("message", data);
-			} else {
-				errorService.handleError(e, request);
-			}
-		});
+		socketData.socket.emit("message", {
+			message: messageLegacyFormat
+			// TODO: keys?
+			// TODO: topic?
+		})
 	}
 };
 

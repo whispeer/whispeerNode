@@ -60,7 +60,7 @@ var pushService = {
 	pushAndroid: function (token, data) {
 		var notification = new gcm.Message({ data });
 
-		var sendPushToGCM = Bluebird.promisify(sender.send, sender);
+		var sendPushToGCM = Bluebird.promisify(sender.send, { context: sender });
 
 		return sendPushToGCM(notification, [token], 4);
 	},

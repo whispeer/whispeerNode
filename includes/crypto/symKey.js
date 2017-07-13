@@ -1,12 +1,13 @@
 "use strict";
 
-var step = require("step");
-var client = require("../redisClient");
-var h = require("whispeerHelper");
+const Bluebird = require("bluebird")
+const h = require("whispeerHelper");
 
-var Key = require("./Key");
+const client = require("../redisClient");
 
-var Decryptor = require("./decryptor");
+const Key = require("./Key");
+
+const Decryptor = require("./decryptor");
 
 var SymKey = function (keyRealID) {
 	if (!h.isRealID(keyRealID)) {
@@ -28,10 +29,6 @@ SymKey.prototype.isEccKey = function () {
 };
 
 SymKey.prototype.getKData = Key.prototype.getBasicData;
-
-SymKey.prototype.check = function (errors, cb) {
-	cb();
-};
 
 function validateFormat(data) {
 	if (!data) {
@@ -57,82 +54,66 @@ function validateFormat(data) {
 	}
 }
 
-SymKey.validate = function validateF(data, cb) {
+SymKey.validate = function (data) {
 	var err = validateFormat(data);
 	if (err) {
 		throw err;
-	} else {
-		cb();
 	}
 };
 
-SymKey.validateNoThrow = function validateF(data, cb) {
-	step(function () {
-		if (validateFormat(data)) {
-			this.ne(false);
-		} else {
-			this.ne(true);
-		}
-	}, cb);
+SymKey.validateNoThrow = function (data) {
+	return !validateFormat(data)
 };
 
 
 /** get all decryptors for a certain key id */
 SymKey.get = function getF(keyRealID, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 			if (!h.isRealID(keyRealID)) {
 				throw new InvalidRealID();
 			}
 
-			client.hget("key:" + keyRealID, "type", this);
-	}, h.sF(function (type) {
+			return client.hgetAsync("key:" + keyRealID, "type");
+	}).then((type) => {
 		if (type === "sym") {
-			this.ne(new SymKey(keyRealID));
-		} else {
-			throw new NotASymKey(keyRealID);
-		}
-	}), cb);
-};
-
-SymKey.createWDecryptors = function (request, data, cb) {
-	step(function () {
-		if (!data.decryptors || data.decryptors.length === 0) {
-			throw new InvalidSymKey("no decryptors given");
+			return new SymKey(keyRealID);
 		}
 
-		SymKey.create(request, data, this);
-	}, cb);
+		throw new NotASymKey(keyRealID);
+	}).nodeify(cb);
 };
 
 /** create a symmetric key */
 SymKey.create = function (request, data, cb) {
 	var keyRealID, theKey;
-	step(function () {
-		SymKey.validate(data, this);
-	}, h.sF(function () {
+	return Bluebird.try(function () {
+		if (!data.decryptors || data.decryptors.length === 0) {
+			throw new InvalidSymKey("no decryptors given");
+		}
+
+		SymKey.validate(data);
+
 		keyRealID = data.realid;
 
-		client.setnx("key:" + keyRealID + ":used", "1", this);
-	}), h.sF(function (set) {
+		return client.setnxAsync("key:" + keyRealID + ":used", "1");
+	}).then((set) => {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
-		client.hmset("key:" + keyRealID, {
+		return client.hmsetAsync("key:" + keyRealID, {
 			owner: request.session.getUserID(),
 			type: data.type,
 			comment: data.comment || ""
-		}, this);
-	}), h.sF(function () {
+		});
+	}).then(() => {
 		theKey = new SymKey(keyRealID);
 		if (data.decryptors) {
-			theKey.addDecryptors(request, data.decryptors, this);
-		} else {
-			this.last.ne(theKey);
+			return theKey.addDecryptors(request, data.decryptors).thenReturn(theKey);
 		}
-	}), h.sF(function () {
-		this.last.ne(theKey);
-	}), cb);
+
+		return Bluebird.resolve(theKey)
+	}).nodeify(cb)
 };
 
 module.exports = SymKey;

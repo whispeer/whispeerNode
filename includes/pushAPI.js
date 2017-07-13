@@ -2,7 +2,6 @@
 
 var Bluebird = require("bluebird");
 
-var client = require("./redisClient");
 var errorService = require("./errorService");
 
 var pushService = require("./pushService");
@@ -94,13 +93,11 @@ var pushAPI = {
 			return getTitle(referenceType, userLanguage, username);
 		});
 	},
-	updateBadgeForUser: (userID =>
-		client.zcardAsync("topic:user:" + userID + ":unreadTopics").then(unreadMessageCount =>
-			getPushTokens([userID])
-				.filter(token => token.deviceType === "ios")
-				.map(token => token.pushIOSBadge(unreadMessageCount))
-		)
-	),
+	updateBadgeForUser: (userID, notificationsCount) => {
+		return getPushTokens([userID])
+			.filter(token => token.deviceType === "ios")
+			.map(token => token.pushIOSBadge(notificationsCount))
+	},
 	pushDataToUser: function (userId, data) {
 		return getPushTokens([userId]).map(function (token) {
 			return token.pushData(data);

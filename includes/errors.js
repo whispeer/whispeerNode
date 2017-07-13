@@ -74,10 +74,11 @@ global.InvalidHexError = addError("invalid hex", 36, true);
 
 /** message part */
 
-global.InvalidTopicData = addError("invalid Message Topic", 40, true);
+global.InvalidChunkData = addError("invalid Message Chunk", 40, true);
 global.InvalidMessageData = addError("invalid Message Data", 41, true);
 global.TopicNotExisting = addError("topic not existing", 42, true);
 global.MessageNotExisting = addError("message not existing", 43, true);
+global.SuccessorError = addError("successor error", 44, true)
 
 /** end message part */
 
@@ -95,5 +96,7 @@ global.TimeSpanExceeded  = addError("timespan has been exceeded", 62, true);
 
 global.InvalidBlobID = addError("invalid blob id", 70, true);
 global.BlobNotFound = addError("blob not found", 71, true);
+
+global.BreakPromiseChain = addError("break promise chain", 100, true);
 
 module.exports = possibleErrors;

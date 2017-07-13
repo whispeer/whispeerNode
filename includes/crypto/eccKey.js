@@ -1,6 +1,6 @@
 "use strict";
 
-var step = require("step");
+var Bluebird = require("bluebird")
 var client = require("../redisClient");
 var h = require("whispeerHelper");
 var Key = require("./Key");
@@ -27,46 +27,44 @@ EccKey.prototype.isEccKey = function () {
 	return true;
 };
 
-EccKey.prototype.getCurve = function getCurveF(cb) {
-	this._getAttribute("curve", cb);
+EccKey.prototype.getCurve = function (cb) {
+	return this._getAttribute("curve").nodeify(cb);
 };
 
-EccKey.prototype.getPointX = function getPointXF(cb) {
-	this._getAttribute("x", cb);
+EccKey.prototype.getPointX = function () {
+	return this._getAttribute("x")
 };
 
-EccKey.prototype.getPointY = function getPointYF(cb) {
-	this._getAttribute("y", cb);
+EccKey.prototype.getPointY = function () {
+	return this._getAttribute("y")
 };
 
-EccKey.prototype.getPoint = function getPointF(cb) {
-	var theKey = this;
-	step(function () {
-		theKey.getPointX(this.parallel());
-		theKey.getPointY(this.parallel());
-	}, h.sF(function (data) {
-		this.ne({
+EccKey.prototype.getPoint = function (cb) {
+	return Bluebird.all([
+		this.getPointX(),
+		this.getPointY(),
+	]).then(function (data) {
+		return {
 			x: data[0],
 			y: data[1]
-		});
-	}), cb);
+		}
+	}).nodeify(cb);
 };
 
-EccKey.prototype.getKData = function getKDataF(request, cb, wDecryptors) {
+EccKey.prototype.getKData = function (request, wDecryptors) {
 	var theKey = this;
 	var result;
-	step(function () {
-		this.parallel.unflatten();
-		theKey.getPoint(this.parallel());
-		theKey.getCurve(this.parallel());
-		theKey.getBasicData(request, this.parallel(), wDecryptors);
-	}, h.sF(function (point, curve, basic) {
+	return Bluebird.all([
+		theKey.getPoint(),
+		theKey.getCurve(),
+		theKey.getBasicData(request, wDecryptors)
+	]).spread(function (point, curve, basic) {
 		result = basic;
 		result.point = point;
 		result.curve = curve;
 
-		this.last.ne(result);
-	}), cb);
+		return result;
+	})
 };
 
 function validateFormat(data) {
@@ -93,87 +91,71 @@ function validateFormat(data) {
 	}
 }
 
-EccKey.validate = function validateF(data, cb) {
+EccKey.validate = function (data) {
 	var err = validateFormat(data);
 	if (err) {
 		throw err;
-	} else {
-		cb();
 	}
 };
 
-EccKey.validateNoThrow = function validateF(data, cb) {
-	step(function () {
-		if (validateFormat(data)) {
-			this.ne(false);
-		} else {
-			this.ne(true);
-		}
-	}, cb);
+EccKey.validateNoThrow = function (data) {
+	return !validateFormat(data)
 };
 
 /** get all decryptors for a certain key id */
 EccKey.get = function getF(keyRealID, cb) {
-	step(function () {
+	return Bluebird.try(() => {
 		if (h.isRealID(keyRealID)) {
-			client.hget("key:" + keyRealID, "type", this);
-		} else {
-			throw new InvalidRealID(keyRealID);
+			return client.hgetAsync("key:" + keyRealID, "type")
 		}
-	}, h.sF(function (type) {
+
+		throw new InvalidRealID(keyRealID);
+	}).then(function (type) {
 		if (type === "crypt" || type === "sign") {
-			this.ne(new EccKey(keyRealID));
-		} else {
-			throw new NotAEccKey();
-		}
-	}), cb);
-};
-
-EccKey.createWDecryptors = function (request, data, cb) {
-	step(function () {
-		if (!data.decryptors || data.decryptors.length === 0) {
-			throw new InvalidEccKey();
+			return new EccKey(keyRealID)
 		}
 
-		EccKey.create(request, data, this);
-	}, cb);
+		throw new NotAEccKey();
+	}).nodeify(cb);
 };
-
 
 /** create a symmetric key */
 EccKey.create = function (request, data, cb) {
 	var domain, keyRealID, theKey;
 
-	step(function () {
-		EccKey.validate(data, this);
-	}, h.sF(function () {
+	return Bluebird.try(function () {
+		if (!data.decryptors || data.decryptors.length === 0) {
+			throw new InvalidEccKey();
+		}
+
+		EccKey.validate(data);
+
 		keyRealID = data.realid;
 		domain = "key:" + keyRealID;
 
-		client.setnx(domain + ":used", "1", this);
-	}), h.sF(function (set) {
+		return client.setnxAsync(domain + ":used", "1");
+	}).then(function (set) {
 		if (set === 0) {
 			throw new RealIDInUse();
 		}
 
-		client.hmset(domain, {
+		return client.hmsetAsync(domain, {
 			curve: data.curve,
 			x: data.point.x,
 			y: data.point.y,
 			type: data.type,
 			owner: request.session.getUserID(),
 			comment: data.comment || ""
-		}, this);
-	}), h.sF(function () {
+		});
+	}).then(function () {
 		theKey = new EccKey(keyRealID);
+
 		if (data.decryptors) {
-			theKey.addDecryptors(request, data.decryptors, this);
-		} else {
-			this.last.ne(theKey);
+			return theKey.addDecryptors(request, data.decryptors).thenReturn(theKey);
 		}
-	}), h.sF(function () {
-		this.ne(theKey);
-	}), cb);
+
+		return Bluebird.resolve(theKey)
+	}).nodeify(cb);
 };
 
 module.exports = EccKey;

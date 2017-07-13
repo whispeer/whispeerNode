@@ -2,8 +2,11 @@
 
 var step = require("step");
 var h = require("whispeerHelper");
+const Bluebird = require("bluebird")
 
 var verifySecuredMeta = require("./includes/verifyObject");
+
+var chatAPI = require("./topics/chatAPI")
 
 var user = require("./topics/tuser");
 var session = require("./topics/tsession");
@@ -68,6 +71,7 @@ var whispeerAPI = {
 	blob: blob,
 	invites: invites,
 	recovery: recovery,
+	chat: chatAPI,
 	pushNotification: {
 		subscribe: function (data, fn, request) {
 			step(function () {
@@ -134,6 +138,13 @@ var whispeerAPI = {
 			});
 		}, fn);
 	},
+	whispeerPing: function (data, fn) {
+		step(function () {
+			this.ne({
+				pong: true
+			});
+		}, fn);
+	},
 	key: {
 		getMultiple: function (data, fn, request) {
 			step(function () {
@@ -146,7 +157,7 @@ var whispeerAPI = {
 				}, this);
 			}, fn);
 		},
-		get: function getKeyChainF(data, fn, request) {
+		get: function (data, fn, request) {
 			var theKey, result = [];
 			step(function () {
 				KeyApi.get(data.realid, this);
@@ -156,7 +167,7 @@ var whispeerAPI = {
 				}
 
 				theKey = key;
-				theKey.getAllAccessedParents(request, this, MAXDEPTH);
+				return theKey.getAllAccessedParents(request, MAXDEPTH);
 			}), h.sF(function (parents) {
 				var i;
 				if (data.loaded && Array.isArray(data.loaded)) {
@@ -169,9 +180,9 @@ var whispeerAPI = {
 
 				result.push(theKey);
 
-				for (i = 0; i < result.length; i += 1) {
-					result[i].getKData(request, this.parallel(), true);
-				}
+				return Bluebird.resolve(result).then(() => {
+					return result.getKData(request, true);
+				})
 			}), h.sF(function (keys) {
 				this.ne({keychain: keys});
 			}), fn);
@@ -277,6 +288,7 @@ var whispeerAPI = {
 
 whispeerAPI.preRegisterID.noLoginNeeded = true;
 whispeerAPI.ping.noLoginNeeded = true;
+whispeerAPI.whispeerPing.noLoginNeeded = true
 whispeerAPI.nicknameFree.noLoginNeeded = true;
 whispeerAPI.mailFree.noLoginNeeded = true;
 whispeerAPI.logedin.noLoginNeeded = true;

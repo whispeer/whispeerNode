@@ -65,7 +65,9 @@ var invites = {
 		}), cb);
 	},
 	getMyInvites: function (request, cb) {
-		var logedinError = Bluebird.promisify(request.session.logedinError, request.session);
+		var logedinError = Bluebird.promisify(request.session.logedinError, {
+		    context: request.session
+		});
 
 		var resultPromise = logedinError().then(function () {
 			return client.smembersAsync("invites:v2:user:" + request.session.getUserID());
@@ -98,7 +100,9 @@ var invites = {
 
 			return mails;
 		}).map(function (mail) {
-			var generateCode = Bluebird.promisify(invites.generateCode, mailer);
+			var generateCode = Bluebird.promisify(invites.generateCode, {
+			    context: mailer
+			});
 
 			return generateCode(request, mail, true).then(function (code) {
 				return {
@@ -107,7 +111,9 @@ var invites = {
 				};
 			});
 		}).map(function (invite) {
-			var sendMail = Bluebird.promisify(mailer.sendMail, mailer);
+			var sendMail = Bluebird.promisify(mailer.sendMail, {
+			    context: mailer
+			});
 			sendMail(invite.mail, "invite", {
 				name: name,
 				language: language,

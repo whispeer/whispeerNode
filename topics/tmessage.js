@@ -1,226 +1,362 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
+const Chunk = require("../includes/models/chatChunk")
+const Message = require("../includes/models/message")
+const UserUnreadMessage = require("../includes/models/unreadMessage")
+const ChunkTitleUpdate = require("../includes/models/chunkTitleUpdate")
 
+const chatAPI = require("./chatAPI")
 
-var Topic = require("../includes/topic");
-var Message = require("../includes/messages");
+const sequelize = require("../includes/dbConnector/sequelizeClient")
+
+const errorService = require("../includes/errorService")
 
 var Bluebird = require("bluebird");
 
-var MAXMESSAGELENGTH = 200 * 1000;
+const UNREAD_TOPICS_QUERY = `
+	SELECT DISTINCT "Messages"."ChunkId" from "Messages"
+	INNER JOIN "UserUnreadMessages" ON
+		"Messages"."id" = "UserUnreadMessages"."MessageId" AND
+		"UserUnreadMessages"."userID" = $userID
+`
 
-/*
+const DELETE_UNREAD_MESSAGES_QUERY = `
+	DELETE FROM "UserUnreadMessages" USING "Messages"
+	WHERE
+		"Messages"."id" = "UserUnreadMessages"."MessageId" AND
+		"UserUnreadMessages"."userID" = $userID AND
+		"Messages"."ChunkId" = $chunkID
+`
 
-	topic: {
-		createTime: (int)
-		key: key,
-		cryptKeys: [key],
-		receiver: (int),
-		creator: (int),
-		newest (int),
-		unread: (bool)
+const TOPIC_WITH_USER_QUERY = `
+	SELECT "Chunks"."id" FROM "Chunks"
+		INNER JOIN "Receivers" AS "receiverMe"
+			ON "Chunks"."id" = "receiverMe"."ChunkId"
+			AND "receiverMe"."userID" = $userIDMe
+		INNER JOIN "Receivers" AS "receiverOther"
+			ON "Chunks"."id" = "receiverOther"."ChunkId"
+			AND "receiverOther"."userID" = $userIDOther
+		LEFT OUTER JOIN "Receivers" AS "receiverNone"
+			ON "Chunks"."id" = "receiverNone"."ChunkId"
+			AND "receiverNone"."userID" NOT IN ($userIDMe, $userIDOther)
+	WHERE "receiverNone"."id" IS null AND "Chunks"."latest" = true;
+`
+
+const formatTopicUpdate = (chunkTitleUpdate) => {
+	if (!chunkTitleUpdate) {
+		return
 	}
 
-	message: {
-		unsignedMeta: {
-			topicid: (int),
-			read: (bool)
+	const apiFormatted = chunkTitleUpdate.getAPIFormatted()
+
+	return {
+		id: apiFormatted.server.id,
+		meta: apiFormatted.meta,
+		content: apiFormatted.content,
+	}
+}
+
+const formatMessage = (message, topicid) => {
+	return {
+		content: message.getContent(),
+		meta: Object.assign({
+			sender: message.sender,
+			sendTime: message.sendTime,
+			messageid: message.id,
+			topicid,
+		}, message.getMeta()),
+	}
+}
+
+const formatTopic = (chunk, unread = []) => {
+	const newest = chunk.message[0]
+	const latestTopicUpdate = formatTopicUpdate(chunk.chunkTitleUpdate[0])
+
+	const latestTopicUpdates = latestTopicUpdate ? [latestTopicUpdate] : []
+
+	return {
+		latestTopicUpdates,
+		meta: chunk.getMeta(),
+		topicid: chunk.id,
+		unread,
+		newest: formatMessage(newest, chunk.id),
+		newestTime: newest.sendTime
+	}
+}
+
+const getUserUnreadMessagesByChunk = (userID) => {
+	return UserUnreadMessage.findAll({
+		where: {
+			userID
 		},
-		meta: {
-			createTime: (int),
-			topicHash: (hex)
-			previousMessage: (int),
-			previousMessageHash: (hex),
-			ownHash: (hex)
-			sender: (int)
-		}
-		content: {
-			key,
-			iv: (hex),
-			text: (hex)
-		}
-		signature: (hex)
-		encrSignature: (hex)
-	}
+		include: [{
+			attributes: ["id", "ChunkId"],
+			association: UserUnreadMessage.Message
+		}]
+	}).then((unreadMessages) => {
+		return unreadMessages.map((unreadMessage) =>
+			unreadMessage.message
+		)
+	}).then((unreadMessages) => {
+		const byChunk = {}
 
-*/
+		unreadMessages.forEach((message) => {
+			if (typeof byChunk[message.ChunkId] === "undefined") {
+				byChunk[message.ChunkId] = []
+			}
 
-const getTopicUpdates = (request, topic, messages, lastMessage) => {
-	if (!messages || messages.length === 0) {
-		return Bluebird.resolve([]);
-	}
+			byChunk[message.ChunkId].push(message.id)
+		})
 
-	return Bluebird.try(() => {
-		messages.sort((m1, m2) => {
-			return m1.meta.sendTime - m2.meta.sendTime;
+		return byChunk
+	})
+}
+
+const synchronizeRead = (request) => {
+	return Bluebird.all([
+		t.getUnreadTopicIDs({}, null, request),
+		chatAPI.getUnreadIDs({}, null, request),
+	]).then(([{ unread }, { chatIDs }]) => {
+		request.socketData.notifyOwnClients("synchronizeRead", {
+			unreadChatIDs: chatIDs,
+			unreadChunkIDs: unread
 		});
-
-		return topic.getTopicUpdatesBetween(request,
-			h.array.first(messages).meta.messageid,
-			lastMessage
-		);
-	});
-};
+	}).catch((e) => errorService.handleError(e, request))
+}
 
 var t = {
-	getTopic: function getTopicF(data, fn, request) {
-		step(function () {
-			Topic.get(data.topicid, this);
-		}, h.sF(function (topic) {
-			topic.getFullData(request, this, true, false);
-		}), h.sF(function (topicData) {
-			this.ne({
-				topic: topicData
-			});
-		}), fn);
-	},
-	getTopics: function getTopicsF(data, fn, request) {
-		step(function () {
-			Topic.own(request, data.afterTopic, 10, this);
-		}, h.sF(function (topics) {
-			var i;
-			for (i = 0; i < topics.length; i += 1) {
-				topics[i].getFullData(request, this.parallel(), true, false);
+	getTopic: ({ topicid }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chunk = yield Chunk.findOne({
+				where: { id: topicid },
+				include: [{
+					association: Chunk.Message,
+					required: true,
+					where: { latestInChunk: true }
+				}, {
+					association: Chunk.ChunkTitleUpdate,
+					required: false,
+					where: { latest: true }
+				}]
+			})
+
+			if (!chunk) {
+				throw new Error(`could not find topic ${topicid}`)
 			}
 
-			if (topics.length === 0) {
-				this.ne([]);
-			}
-		}), h.sF(function (results) {
-			this.ne({
-				topics: results
-			});
-		}), fn);
-	},
-	refetch: function (data, fn, request) {
-		step(function () {
-			Topic.get(data.topicid, this);
-		}, h.sF(function (topic) {
-			topic.refetch(request, data, this);
-		}), fn);
-	},
-	getUserTopic: function (data, fn, request) {
-		step(function () {
-			Topic.getUserTopicID(request, data.userid, this);
-		}, h.sF(function (topicid) {
-			this.ne({
-				topicid: topicid
-			});
-		}), fn);
-	},
-	markRead: function markReadF(data, fn, request) {
-		step(function () {
-			Topic.get(data.topicid, this);
-		}, h.sF(function (topic) {
-			topic.markMessagesRead(request, data.beforeTime, this);
-		}), h.sF(function (stillUnread) {
-			this.ne({
-				unread: stillUnread
-			});
-		}), fn);
-	},
-	getTopicMessages: function getMessagesF(data, fn, request) {
-		var remainingCount, topic;
+			yield chunk.validateAccess(request)
 
-		step(function () {
-			Topic.get(data.topicid, this);
-		}, h.sF(function (_topic) {
-			topic = _topic;
-			var count = Math.min(data.maximum || 20, 20);
+			const byChunkUnread = yield getUserUnreadMessagesByChunk(request.session.getUserID())
 
-			topic.getMessages(request, data.afterMessage, count, this);
-		}), h.sF(function (data) {
-			remainingCount = data.remaining;
-			var messages = data.messages;
-			var i;
-			for (i = 0; i < messages.length; i += 1) {
-				messages[i].getFullData(request, this.parallel(), true);
-			}
+			return { topic: formatTopic(chunk, byChunkUnread[chunk.id]) }
+		})().nodeify(fn)
+	},
+	getTopics: ({ afterTopic }, fn, request) => {
+		return Bluebird.coroutine(function* () {
 
-			this.parallel()();
-		}), h.sF(function (messages) {
-			return getTopicUpdates(request, topic, messages, data.afterMessage).then(function (topicUpdates) {
-				return {
-					topicUpdates: topicUpdates,
-					remaining: remainingCount,
-					messages: messages
-				};
-			});
-		}), fn);
+		const chunkIDs = (yield Chunk.findAll({
+				attributes: ["id"],
+				include: [{
+					attributes: [],
+					association: Chunk.Receiver,
+					required: true,
+					where: { userID: request.session.getUserID() }
+				}]
+			})).map((chunk) => chunk.id)
+
+			const chunks = yield Chunk.findAll({
+				where: { id: { $in: chunkIDs } },
+				include: [{
+					association: Chunk.Message,
+					required: true,
+					where: { latestInChunk: true }
+				}, {
+					association: Chunk.ChunkTitleUpdate,
+					required: false,
+					where: { latest: true }
+				}]
+			})
+
+			const byChunkUnread = yield getUserUnreadMessagesByChunk(request.session.getUserID())
+
+			const topics = chunks.map((chunk) => formatTopic(chunk, byChunkUnread[chunk.id]))
+
+			topics.sort((topic1, topic2) => parseInt(topic2.newest.meta.sendTime, 10) - parseInt(topic1.newest.meta.sendTime, 10))
+
+			const afterIndex = topics.findIndex((topic) => topic.topicid === afterTopic)
+
+			const paginatedTopics = afterIndex === -1 ? topics.slice(0, 20) : topics.slice(afterIndex + 1, afterIndex + 21)
+
+			return { topics: paginatedTopics }
+		})().nodeify(fn)
 	},
-	getUnreadTopicIDs: function (data, fn, request) {
-		step(function () {
-			Topic.unreadIDs(request, this);
-		}, h.sF(function (unread) {
-			this.ne({unread: unread});
-		}), fn);
+	refetch:  (data, fn) => {
+		return Bluebird.resolve({
+			clearMessages: false,
+			messages: []
+		}).nodeify(fn)
 	},
-	getUnreadCount: function getUnreadCountF(data, fn, request) {
-		step(function () {
-			Topic.unreadCount(request, this);
-		}, h.sF(function (unread) {
-			this.ne({unread: unread});
-		}), fn);
-	},
-	getLatestTopicUpdate: function (data, fn, request) {
-		step(function () {
-			Topic.get(data.topicID, this);
-		}, h.sF(function (topic) {
-			return topic.getLatestTopicUpdate(request).then(function (topicUpdate) {
-				return {
-					topicUpdate: topicUpdate
-				};
-			});
-		}), fn);
-	},
-	createTopicUpdate: function (data, fn, request) {
-		step(function () {
-			Topic.get(data.topicID, this);
-		}, h.sF(function (topic) {
-			topic.createTopicUpdate(request, data.topicUpdate, this);
-		}), h.sF(function (id) {
-			this.ne({
-				id: id
-			});
-		}), fn);
-	},
-	send: function sendMessageF(data, fn, request) {
-		step(function () {			
-			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
-				throw new Error("message to long");
+	getTopicMessages: ({ topicid, afterMessage }, fn, request) => {
+		const idClause = afterMessage ? {
+			id: {
+				$lt: afterMessage
 			}
-			
-			Message.create(request, data.message, this);
-		}, h.sF(function (result) {
-			this.ne({
-				success: result.success,
-				server: result.server
-			});
-		}), fn);
-		//message
-	},
-	sendNewTopic: function sendNewTopicF(data, fn, request) {		
-		var topic;
-		step(function () {
-			if (data.message.content.ct.length > MAXMESSAGELENGTH) {
-				throw new Error("message to long");
+		} : {}
+
+		return Bluebird.coroutine(function* () {
+			const chunk = yield Chunk.findById(topicid)
+
+			yield chunk.validateAccess(request)
+
+			const messageCount = yield Message.count({
+				where: Object.assign({
+					ChunkId: chunk.id
+				}, idClause)
+			})
+
+			if (messageCount === 0) {
+				return { topicUpdates: [], messages: [], remaining: 0 }
 			}
 
-			Topic.create(request, data.topic, data.receiverKeys, this);
-		}, h.sF(function (theTopic) {
-			topic = theTopic;
-			data.message.meta.topicid = theTopic.getID();
-			Message.create(request, data.message, this);
-		}), h.sF(function () {
-			topic.getFullData(request, this, false, false);
-		}), h.sF(function (data) {
-			this.ne({
-				topic: data,
+			const messages = yield Message.findAll({
+				where: Object.assign({
+					ChunkId: chunk.id
+				}, idClause),
+				order: [["id", "DESC"]],
+				limit: 20,
+			})
+
+			const apiMessages = messages.map((message) =>
+				formatMessage(message, topicid)
+			)
+
+			return { topicUpdates: [], messages: apiMessages, remaining: messageCount - apiMessages.length }
+		})().nodeify(fn)
+	},
+	getLatestTopicUpdate: ({ topicID }, fn, request) => {
+		return Chunk.findById(topicID).then((chunk) => {
+			return chunk.validateAccess(request).thenReturn(chunk)
+		}).then((chunk) => {
+			return ChunkTitleUpdate.findOne({
+				where: {
+					latest: true,
+					ChunkId: chunk.id,
+				}
+			})
+		}).then((chunkTitleUpdate) => {
+			if (!chunkTitleUpdate) {
+				return {}
+			}
+
+			return {
+				topicUpdate: formatTopicUpdate(chunkTitleUpdate)
+			}
+		}).nodeify(fn)
+	},
+	createTopicUpdate:  ({ topicID, topicUpdate }, fn, request) => {
+		return Chunk.findById(topicID).then((chunk) => {
+			return chunk.validateAccess(request).thenReturn(chunk)
+		}).then((chunk) => {
+			if (!chunk.latest) {
+				throw new SuccessorError("Chunk has a successor")
+			}
+
+			return ChunkTitleUpdate.create({
+				ChunkId: chunk.id,
+				meta: topicUpdate.meta,
+				content: topicUpdate.content,
+			})
+		}).then((chunkTitleUpdate) => {
+			const apiFormatted = chunkTitleUpdate.getAPIFormatted()
+
+			return {
+				id: apiFormatted.server.id
+			}
+		}).nodeify(fn)
+	},
+	getUserTopic:  ({ userid }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chunks = yield sequelize.query(TOPIC_WITH_USER_QUERY, {
+				type: sequelize.QueryTypes.SELECT,
+				model: Chunk,
+				bind: {
+					userIDMe: request.session.getUserID(),
+					userIDOther: parseInt(userid, 10),
+				},
+			})
+
+			if (chunks.length === 0) {
+				return {}
+			}
+
+			return {
+				topicid: chunks[0].id
+			}
+		})().nodeify(fn)
+	},
+	getUnreadTopicIDs:  (data, fn, request) => {
+		return sequelize.query(UNREAD_TOPICS_QUERY, {
+			type: sequelize.QueryTypes.SELECT,
+			bind: {
+				userID: request.session.getUserID()
+			},
+		}).map((chunk) => chunk.ChunkId).then((unread) => {
+			return { unread }
+		}).nodeify(fn)
+	},
+	getUnreadCount: (data, fn, request) => {
+		return t.getUnreadTopicIDs(data, null, request).then((unread) => ({
+			unread: unread.length
+		}))
+	},
+	markRead: ({ topicid }, fn, request) => {
+		return sequelize.query(DELETE_UNREAD_MESSAGES_QUERY, {
+			bind: {
+				chunkID: topicid,
+				userID: request.session.getUserID()
+			},
+		}).then(() => {
+			synchronizeRead(request)
+
+			return { unread: [] }
+		}).nodeify(fn)
+	},
+	send: (data, fn, request) => {
+		const {
+			topicid
+		} = data.message.meta
+
+		delete data.message.meta.sender
+		delete data.message.meta.sendTime
+		delete data.message.meta.topicid
+
+		return chatAPI.message.create({ chunkID: topicid, message: data.message}, null, request).then(({ success, server }) => {
+			return {
+				success,
+				server: {
+					messageid: server.id,
+					topicid: server.chunkID,
+					sendTime: server.sendTime,
+					sender: server.sender,
+				}
+			}
+		}).nodeify(fn)
+	},
+	sendNewTopic: ({ topic, receiverKeys, message }, fn, request) => {
+		return chatAPI.create({
+			initialChunk: { meta: topic },
+			firstMessage: message,
+			receiverKeys
+		}, null, request).then(({ chat }) => {
+			const topicid = chat.chunks[0].server.id
+
+			return t.getTopic({ topicid }, null, request)
+		}).then(({ topic }) => {
+			return {
+				topic,
 				success: true
-			});
-		}), fn);
+			}
+		}).nodeify(fn)
 	}
 };
 

@@ -36,7 +36,7 @@ var Notification = require("./notification");
 		content //padded!
 	}
 
-	
+
 
 */
 
@@ -170,25 +170,18 @@ var Post = function (postid) {
 		}), cb);
 	};
 
-	this.hasUserAccess = function (userid, cb) {
-		step(function () {
-			client.hget(domain + ":meta", "_key", this);
-		}, h.sF(function (keyRealID) {
-			client.sismember("key:" + keyRealID + ":access", userid, this);
-		}), cb);
+	this.hasUserAccess = function (userid) {
+		return client.hgetAsync(domain + ":meta", "_key").then((keyRealID) => {
+			return client.sismemberAsync("key:" + keyRealID + ":access", userid);
+		})
 	};
 
-	this.throwUserAccess = function throwUserAccessF(request, cb) {
-		var that = this;
-		step(function () {
-			that.hasUserAccess(request.session.getUserID(), this);
-		}, h.sF(function (access) {
+	this.throwUserAccess = function (request) {
+		return this.hasUserAccess(request.session.getUserID()).then(function (access) {
 			if (!access) {
 				throw new AccessViolation("user has no access to post");
 			}
-
-			this.ne();
-		}), cb);
+		})
 	};
 
 	/**
@@ -420,7 +413,7 @@ Post.getTimeline = function (request, filter, afterID, count, sortByCommentTime,
 			client.expire(unionKey, 120);
 
 			paginator.getRangeAfterID(afterID, this, accessablePostFilter(request));
-		}		
+		}
 	}), h.sF(function (ids, remaining) {
 		var result = ids.map(function (id) {
 			return makePost(request, id);
@@ -459,7 +452,9 @@ Post.validateFormat = function (data, cb) {
 			throw new InvalidPost("time too old");
 		}
 
-		KeyApi.validate(data.meta._key, this);
+		KeyApi.validate(data.meta._key);
+
+		this.ne()
 	}, cb);
 };
 
@@ -476,7 +471,7 @@ function processWallUser(userid, cb) {
 function processKey(request, keyData, cb) {
 	if (keyData) {
 		step(function () {
-			SymKey.createWDecryptors(request, keyData, this);
+			SymKey.create(request, keyData, this);
 		}, h.sF(function (key) {
 			this.ne(key.getRealID());
 		}), cb);
@@ -488,7 +483,7 @@ function processKey(request, keyData, cb) {
 function processImages(request, images, keys, cb) {
 	step(function () {
 		keys.forEach(function (key) {
-			SymKey.createWDecryptors(request, key, this.parallel());
+			SymKey.create(request, key, this.parallel());
 		}, this);
 	}, cb);
 }
@@ -590,7 +585,7 @@ Post.get = function (request, postid, cb) {
 	}, h.sF(function (id) {
 		thePost = makePost(request, id);
 
-		thePost.throwUserAccess(request, this);
+		return thePost.throwUserAccess(request);
 	}), h.sF(function () {
 		this.ne(thePost);
 	}), cb);

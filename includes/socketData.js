@@ -5,10 +5,10 @@ const client = require("./redisClient");
 
 const OnlineStatusUpdater = require("./onlineStatus");
 const errorService = require("./errorService");
-const step = require("step");
-const h = require("whispeerHelper");
 
 const socketS = require("socket.io-stream");
+
+const Bluebird = require("bluebird")
 
 function SocketData(socket, session) {
 	this.session = session;
@@ -20,6 +20,8 @@ function SocketData(socket, session) {
 	var subs = {};
 
 	var closeSubscribers = [];
+
+	let version
 
 	theSocketData.once("disconnect", function () {
 		console.log("removing subscribers");
@@ -34,14 +36,19 @@ function SocketData(socket, session) {
 		closeSubscribers = [];
 	});
 
+	this.setVersion = (_version) => {
+		version = _version
+	}
+
+	this.getVersion = () => version
+
 	this.getShortIP = function () {
-		var address = socket.handshake.address, ipV4, ipV6;
+		var address = socket.handshake.address, ipV4;
 
 		var lastDouble = address.lastIndexOf(":");
 		var lastSingle = address.lastIndexOf(".");
 
 		if (lastSingle > -1 && lastDouble > -1) {
-			ipV6 = address.substr(0, lastDouble);
 			ipV4 = address.substr(lastDouble + 1, lastSingle);
 		} else if (lastDouble === -1) {
 			ipV4 = address;
@@ -92,16 +99,10 @@ function SocketData(socket, session) {
 	};
 
 	this.notifyOwnClients = function (channel, message) {
-		step(function () {
-			theSocketData.session.getOwnUser(this);
-		}, h.sF(function (me) {
-			me.notify(channel, message);
-		}), function (e) {
-			if (e) {
-				console.error(e);
-			}
-		});
-	};
+		return theSocketData.session.getOwnUser().then((me) => {
+			me.notify(channel, message)
+		}).catch((e) => console.error(e))
+	}
 
 	var statusUpdater = new OnlineStatusUpdater(this, session);
 
@@ -117,13 +118,13 @@ util.inherits(SocketData, EventEmitter);
 SocketData.logedinStub = {
 	session: {
 		ownUserError: function (user, cb) {
-			cb();
+			return Bluebird.resolve().nodeify(cb);
 		},
 		logedin: function (cb) {
-			cb(null, true);
+			return Bluebird.resolve(true).nodeify(cb);
 		},
 		logedinError: function (cb) {
-			cb();
+			return Bluebird.resolve().nodeify(cb);
 		}
 	}
 };

@@ -12,12 +12,18 @@ var Bluebird = require("bluebird");
 var setupP = Bluebird.promisify(setup);
 
 var settings = require("../includes/settings");
-var getUser = Bluebird.promisify(User.getUser, User);
+var getUser = Bluebird.promisify(User.getUser, {
+    context: User
+});
 var SimpleUserDataStore = require("../includes/SimpleUserDataStore");
 var trustManager = new SimpleUserDataStore("trustManager");
 
-var getOwnSettings = Bluebird.promisify(settings.getOwnSettings, settings);
-var getTrustManager = Bluebird.promisify(trustManager.get, trustManager);
+var getOwnSettings = Bluebird.promisify(settings.getOwnSettings, {
+    context: settings
+});
+var getTrustManager = Bluebird.promisify(trustManager.get, {
+    context: trustManager
+});
 
 var verifySecuredMeta = Bluebird.promisify(require("../includes/verifyObject"));
 

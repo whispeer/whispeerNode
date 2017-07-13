@@ -3,6 +3,7 @@
     "node": true,
     "es6": true
   },
+  "extends": "eslint:recommended",
   "globals": {
     "StepError": true,
     "NotLogedin": true,
@@ -25,17 +26,20 @@
     "NotAEccKey": true,
     "InvalidEccKey": true,
     "InvalidKey": true,
+    "KeyNotFound": true,
     "InvalidHexError": true,
-    "InvalidTopicData": true,
+    "InvalidChunkData": true,
     "InvalidMessageData": true,
     "TopicNotExisting": true,
     "MessageNotExisting": true,
+    "SuccessorError": true,
     "InvalidPost": true,
     "InvalidFilter": true,
     "InvalidCircleData": true,
     "TimeSpanExceeded": true,
     "InvalidBlobID": true,
     "BlobNotFound": true,
+    "BreakPromiseChain": true,
     "CircleNotExisting": true
   },
   "rules": {
@@ -65,7 +69,8 @@
     "no-use-before-define": [
       2,
       {
-        "functions": false
+        "functions": false,
+        "variables": false
       }
     ],
     "max-statements": 0

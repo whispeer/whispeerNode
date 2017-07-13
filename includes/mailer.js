@@ -20,7 +20,9 @@ var mail = nodemailer.createTransport(config.mailType, config.mail);
 var defaultFrom = config.mailFrom || "whispeer <support@whispeer.de>";
 
 var Bluebird = require("bluebird");
-var readFile = Bluebird.promisify(fs.readFile, fs);
+var readFile = Bluebird.promisify(fs.readFile, {
+    context: fs
+});
 
 var settingsAPI = require("./settings");
 
@@ -143,7 +145,9 @@ var mailer = {
 		}), cb);
 	},
 	sendInteractionMails: function (users, type, subType, interactionObj, options) {
-		var sendUserMail = Bluebird.promisify(mailer.sendUserMail, mailer);
+		var sendUserMail = Bluebird.promisify(mailer.sendUserMail, {
+			context: mailer
+		});
 
 		console.log("sending interaction mail to users: " + users.map(function (user) {
 			return user.getID();
@@ -154,7 +158,9 @@ var mailer = {
 				return true;
 			}
 
-			var isOnline = Bluebird.promisify(user.isOnline, user);
+			var isOnline = Bluebird.promisify(user.isOnline, {
+				context: user
+			});
 
 			return Bluebird.all([
 				client.sismemberAsync("mail:notifiedUsers", user.getID()),
@@ -301,7 +307,9 @@ var mailer = {
 			text: text.toString()
 		};
 
-		var sendMailAsync = Bluebird.promisify(mail.sendMail, mail);
+		var sendMailAsync = Bluebird.promisify(mail.sendMail, {
+		    context: mail
+		});
 
 		return sendMailAsync(mailOptions).nodeify(cb);
 	}

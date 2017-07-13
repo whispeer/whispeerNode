@@ -2,40 +2,36 @@
 
 var KeyApi = {};
 
-var step = require("step");
 var client = require("../redisClient");
 var h = require("whispeerHelper");
+var Bluebird = require("bluebird")
 
 var EccKey = require("./eccKey");
 var SymKey = require("./symKey");
 var Decryptor = require("./decryptor");
 
 /** validate key data. Does no duplicate check. */
-KeyApi.validate = function validateF(data, callback) {
-	step(function () {
-		if (data) {
-			switch (data.type) {
-			case "sym":
-				SymKey.validate(data, this);
-				break;
-			case "sign":
-			case "crypt":
-				EccKey.validate(data, this);
-				break;
-			default:
-				throw new InvalidKey();
-			}
-		} else {
+KeyApi.validate = function (data) {
+	if (data) {
+		switch (data.type) {
+		case "sym":
+			SymKey.validate(data);
+			break;
+		case "sign":
+		case "crypt":
+			EccKey.validate(data);
+			break;
+		default:
 			throw new InvalidKey();
 		}
-	}, callback);
+	} else {
+		throw new InvalidKey();
+	}
 };
 
 /** validate a decryptor. No Duplicate check. */
-KeyApi.validateDecryptor = function validateDecryptorF(request, data, key, callback) {
-	step(function () {
-		Decryptor.validate(request, data, key, this);
-	}, callback);
+KeyApi.validateDecryptor = function (request, data, key, cb) {
+	return Decryptor.validate(request, data, key).nodeify(cb);
 };
 
 KeyApi.isKey = function isKeyF(key) {
@@ -45,70 +41,65 @@ KeyApi.isKey = function isKeyF(key) {
 /** warning: side effects possible */
 KeyApi.removeKeyDecryptorForUser = function (request, realid, userid, cb) {
 	var key, m = client.multi();
-	step(function () {
-		KeyApi.get(realid, this);
-	}, h.sF(function (_key) {
+
+	return KeyApi.get(realid).then(function (_key) {
 		key = _key;
-		key.getOwner(this);
-	}), h.sF(function (owner) {
+		return key.getOwner();
+	}).then(function (owner) {
 		if (h.parseDecimal(owner) !== request.session.getUserID()) {
 			throw new Error("can only remove decryptors of own keys!");
 		}
 
 		console.log("removing decryptor for user: " + userid);
-		key.removeDecryptorForUser(m, userid, this);
-	}), h.sF(function () {
-		m.exec(this);
-	}), cb);
+		return key.removeDecryptorForUser(m, userid);
+	}).then(function () {
+		return Bluebird.fromCallback((cb) => m.exec(cb));
+	}).nodeify(cb)
 };
 
 /** warning: side effects possible */
 KeyApi.removeKeyDecryptor = function (request, realid, decryptorid, cb) {
-	var key, m = client.multi();
-	step(function () {
-		KeyApi.get(realid, this);
-	}, h.sF(function (_key) {
-		key = _key;
-		key.getOwner(this);
-	}), h.sF(function (owner) {
-		if (h.parseDecimal(owner) !== request.session.getUserID()) {
-			throw new Error("can only remove decryptors of own keys!");
-		}
+	var m = client.multi();
 
-		key.removeDecryptor(m, decryptorid, this);
-	}), h.sF(function () {
-		m.exec(this);
-	}), cb);
+	return KeyApi.get(realid).then((key) => {
+		return key.getOwner().then((owner) => {
+			if (h.parseDecimal(owner) !== request.session.getUserID()) {
+				throw new Error("can only remove decryptors of own keys!");
+			}
+		}).thenReturn(key)
+	}).then((key) => {
+		return key.removeDecryptor(m, decryptorid);
+	}).then(() => {
+		return Bluebird.fromCallback((cb) => m.exec(cb))
+	}).nodeify(cb);
 };
 
 /** warning: side effects possible */
 KeyApi.removeKey = function (request, realid, cb) {
-	var key, m = client.multi();
-	step(function () {
-		KeyApi.get(realid, this);
-	}, h.sF(function (_key) {
-		key = _key;
-		key.getOwner(this);
-	}), h.sF(function (owner) {
-		if (h.parseDecimal(owner) !== request.session.getUserID()) {
-			throw new Error("can only remove decryptors of own keys!");
-		}
+	var m = client.multi();
 
-		key.remove(m, this);
-	}), h.sF(function () {
-		m.exec(this);
-	}), cb);
+	return KeyApi.get(realid).then(function (key) {
+		return key.getOwner().then((owner) => {
+			if (h.parseDecimal(owner) !== request.session.getUserID()) {
+				throw new Error("can only remove decryptors of own keys!");
+			}
+		}).thenReturn(key)
+	}).then(function (key) {
+		return key.remove(m);
+	}).then(function () {
+		return Bluebird.fromCallback((cb) => m.exec(cb))
+	}).nodeify(cb);
 };
 
 /** get a key
 * @param realid keys real id
 */
-KeyApi.get = function getKF(realid, callback) {
+KeyApi.get = function (realid, cb) {
 	if (!realid) {
 		throw new Error("invalid realid " + realid);
 	}
 
-	var p = client.hgetAsync("key:" + realid, "type").then(function (type) {
+	return client.hgetAsync("key:" + realid, "type").then(function (type) {
 		switch (type) {
 		case "sym":
 			return new SymKey(realid);
@@ -117,49 +108,35 @@ KeyApi.get = function getKF(realid, callback) {
 			return new EccKey(realid);
 		default:
 			throw new KeyNotFound("key not found for realid: " + realid);
-		}		
-	});
-
-	return step.unpromisify(p, callback);
+		}
+	}).nodeify(cb)
 };
 
 KeyApi.createWithDecryptors = function (request, keyData, cb) {
 	if (keyData.type === "sign" || keyData.type === "crypt") {
-		EccKey.createWDecryptors(request, keyData, cb);
+		return EccKey.create(request, keyData).nodeify(cb);
 	} else {
-		SymKey.createWDecryptors(request, keyData, cb);
+		return SymKey.create(request, keyData).nodeify(cb);
 	}
 };
 
-KeyApi.getWData = function getDataF(request, realid, callback, wDecryptors) {
-	step(function () {
-		KeyApi.get(realid, this);
-	}, h.sF(function (key) {
-		key.getKData(request, this, wDecryptors);
-	}), callback);
+KeyApi.getWData = function (request, realid, callback, wDecryptors) {
+	return KeyApi.get(realid).then((key) => {
+		return key.getKData(request, wDecryptors);
+	}).nodeify(callback);
 };
 
 /** get multiple keys */
-KeyApi.getKeys = function getKeysF(realids, callback) {
-	step(function () {
-		var i;
-		for (i = 0; i < realids.length; i += 1) {
-			KeyApi.get(realids[i], this.parallel());
-		}
-	}, callback);
+KeyApi.getKeys = function getKeysF(realids, cb) {
+	return Bluebird.resolve(realids).map((realid) => {
+		return KeyApi.get(realid);
+	}).nodeify(cb)
 };
 
 KeyApi.checkKey = function (errors, realid, cb) {
-	step(function () {
-		KeyApi.get(realid, this);
-	}, function (err, key) {
-		if (err) {
-			errors.push(err);
-			this.ne();
-		} else {
-			key.check(errors, this);
-		}
-	}, cb);
+	return KeyApi.get(realid).catch((err) => {
+		errors.push(err)
+	}).nodeify(cb);
 };
 
 module.exports = KeyApi;
