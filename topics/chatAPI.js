@@ -500,7 +500,10 @@ const chatAPI = {
 			const max = Math.max.apply(Math, chunkIDs)
 			const min = Math.min.apply(Math, chunkIDs)
 
-			const chunks = yield Chunk.findAll({ where: { id: { $between: [min, max] }}})
+			const chunks = yield Chunk.findAll({ where: {
+				id: { $between: [min, max] },
+				ChatId: chat.id
+			}})
 
 			yield Bluebird.all([
 				addMessageKeys(messages, request),

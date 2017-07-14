@@ -57,9 +57,7 @@ const Chunk = sequelize.define("Chunk", {
 	instanceMethods: {
 		getMetaExtra: getObject(metaExtraKeys),
 		getMeta: function () {
-			return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"), {
-				receiver: this.receiver.map((u) => u.userID)
-			})
+			return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
 		},
 		getAPIFormatted: function () {
 			const contentInfo = this.hasContent() ? { content: this.getContent() } : {}
