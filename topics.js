@@ -17,6 +17,7 @@ var posts = require("./topics/tposts");
 var invites = require("./topics/tinvites");
 var blob = require("./topics/tblob");
 var recovery = require("./topics/trecovery");
+var reports = require("./topics/treports");
 
 var KeyApi = require("./includes/crypto/KeyApi");
 var settings = require("./includes/settings");
@@ -238,6 +239,7 @@ var whispeerAPI = {
 	user: user,
 	session: session,
 	posts: posts,
+	reports: reports,
 	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
 			if (data && data.nickname) {
