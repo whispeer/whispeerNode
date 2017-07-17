@@ -99,7 +99,14 @@ const getLaterChunks = (chunk, userID) => {
 				$gte: chunk.id
 			},
 			ChatId: chunk.ChatId
-		}
+		}, include: [{
+			association: Chunk.ChunkTitleUpdate,
+			as: "chunk",
+			required: false,
+			where: {
+				latest: true
+			}
+		}]
 	}).filter((chunk) =>
 		Boolean(chunk.receiver.find((r) => r.userID === userID))
 	)
@@ -165,6 +172,13 @@ const getChats = (chatIDs, request) => {
 				association: Chunk.Message,
 				as: "message",
 				required: true,
+				where: {
+					latest: true
+				}
+			}, {
+				association: Chunk.ChunkTitleUpdate,
+				as: "chunk",
+				required: false,
 				where: {
 					latest: true
 				}
@@ -460,6 +474,26 @@ const chatAPI = {
 		}).nodeify(fn)
 	},
 
+	getChunks: ({ id }, fn, request) => {
+		return Bluebird.coroutine(function* () {
+			const chat = yield Chat.findById(id)
+
+			yield chat.validateAccess(request)
+
+			const dbChunks = yield Chunk.findAll({ where: {
+				ChatId: chat.id
+			}})
+
+			const chunks = dbChunks.filter((chunk) =>
+				chunk.receiver.some((receiver) =>
+					receiver.userID === request.session.getUserID()
+				)
+			).map((chunk) => chunk.getAPIFormatted() )
+
+			return { chunks }
+		})().nodeify(fn)
+	},
+
 	getMessages: ({ id, oldestKnownMessage, limit = 20 }, fn, request) => {
 		return Bluebird.coroutine(function* () {
 			const chat = yield Chat.findById(id)
@@ -577,7 +611,7 @@ const chatAPI = {
 	},
 
 	chunk: {
-		create: ({ predecessorID, chunk: { meta, content }, receiverKeys }, fn, request) => {
+		create: ({ predecessorID, chunk: { meta, content }, receiverKeys, previousChunksDecryptors }, fn, request) => {
 			return Bluebird.coroutine(function* () {
 				const validateChunkPromise = validateChunk(request, meta, receiverKeys)
 
@@ -605,6 +639,35 @@ const chatAPI = {
 						})
 					])
 				))[1]
+
+				if (previousChunksDecryptors) {
+					const keys = yield KeyApi.getKeys(Object.keys(previousChunksDecryptors))
+					const addedReceiver = dbChunk.receiver.filter((receiver) => {
+						return !predecessor.receiver.some(({ userID }) => receiver.userID === userID)
+					})
+
+					yield Bluebird.all(keys.map((key) => key.addDecryptors(request, previousChunksDecryptors)))
+
+					const dbChunks = yield Chunk.findAll({ where: {
+						ChatId: predecessor.ChatId
+					}})
+
+					const chunks = dbChunks.filter((chunk) =>
+						chunk.receiver.some((receiver) =>
+							receiver.userID === request.session.getUserID()
+						)
+					)
+
+					const newReceiver = h.array.flatten(chunks.map((chunk) =>
+						addedReceiver.map((receiver) => ({
+							key: receiver.key,
+							userID: receiver.userID,
+							ChunkId: chunk.id
+						}))
+					))
+
+					yield Chunk.ReceiverModel.bulkCreate(newReceiver)
+				}
 
 				notifyUsers(request, dbChunk.receiver.map(r => r.userID), { chunk: dbChunk.getAPIFormatted() })
 

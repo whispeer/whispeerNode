@@ -127,7 +127,7 @@ KeyApi.getWData = function (request, realid, callback, wDecryptors) {
 };
 
 /** get multiple keys */
-KeyApi.getKeys = function getKeysF(realids, cb) {
+KeyApi.getKeys = function (realids, cb) {
 	return Bluebird.resolve(realids).map((realid) => {
 		return KeyApi.get(realid);
 	}).nodeify(cb)

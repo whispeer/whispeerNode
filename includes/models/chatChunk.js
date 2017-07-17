@@ -59,8 +59,24 @@ const Chunk = sequelize.define("Chunk", {
 		getMeta: function () {
 			return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
 		},
+		getLatestChunkTitleUpdate: function () {
+			if (!this.chunkTitleUpdate || !this.latest) {
+				return
+			}
+
+			const latest = this.chunkTitleUpdate.find((c) => c.latest)
+
+			if (!latest) {
+				return
+			}
+
+			return latest.getAPIFormatted()
+		},
 		getAPIFormatted: function () {
+			const latestTitleUpdate = this.getLatestChunkTitleUpdate()
+
 			const contentInfo = this.hasContent() ? { content: this.getContent() } : {}
+			const latestTitleInfo = latestTitleUpdate ? { latestTitleUpdate } : {}
 
 			return Object.assign({
 				server: {
@@ -69,7 +85,7 @@ const Chunk = sequelize.define("Chunk", {
 					predecessorID: this.predecessorId
 				},
 				meta: this.getMeta(),
-			}, contentInfo)
+			}, contentInfo, latestTitleInfo)
 		},
 		hasAccess: function (request) {
 			const receiverPromise = this.receiver || this.getReceiver()
