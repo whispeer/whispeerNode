@@ -28,17 +28,11 @@
     "socket.io-stream": "0.9.x",
     "step": "git+ssh://git@github.com:whispeer/whispeerStep.git#master",
     "uuid": "^3.1.0",
-    "xtend": "4.0.x",
-    "snyk": "^1.36.2"
+    "xtend": "4.0.x"
   },
   "devDependencies": {
     "eslint": "^3.15.0",
     "grunt": "~1.0.1",
     "selenium-webdriver": "2.x"
-  },
-  "scripts": {
-    "snyk-protect": "snyk protect",
-    "prepublish": "npm run snyk-protect"
-  },
-  "snyk": true
+  }
 }
