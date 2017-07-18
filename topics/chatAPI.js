@@ -613,12 +613,18 @@ const chatAPI = {
 	chunk: {
 		create: ({ predecessorID, chunk: { meta, content }, receiverKeys, previousChunksDecryptors }, fn, request) => {
 			return Bluebird.coroutine(function* () {
-				const validateChunkPromise = validateChunk(request, meta, receiverKeys)
-
 				const predecessor = yield Chunk.findById(predecessorID)
-				yield validateChunkPromise
 
-				yield predecessor.validateAccess(request)
+				if (meta._key === predecessor.meta._key) {
+					predecessor.receiver.forEach((r) => {
+						receiverKeys[r.userID] = r.key
+					})
+				}
+
+				yield Bluebird.all([
+					predecessor.validateAccess(request),
+					validateChunk(request, meta, receiverKeys),
+				])
 
 				if (!predecessor.isAdmin(request.session.getUserID())) {
 					throw new AccessViolation(`Not an admin of chunk ${predecessor.id}: ${request.session.getUserID()}`)
