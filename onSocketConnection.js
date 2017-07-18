@@ -5,7 +5,7 @@ var Bluebird = require("bluebird")
 
 const HandlerCallback = require("./includes/handlerCallback");
 const listener = require("./includes/listener");
-const topics = require("./topics.js");
+const api = require("./api.js");
 
 const SocketData = require("./includes/socketData");
 const RequestData = require("./includes/requestData");
@@ -180,8 +180,8 @@ module.exports = function (socket) {
 		};
 	}
 
-	function registerHandler(topics, base) {
-		h.objectEach(topics, function (topic, cur) {
+	function registerHandler(api, base) {
+		h.objectEach(api, function (topic, cur) {
 			socket.on(base + topic, handleF(cur, base + topic));
 			if (typeof cur === "object") {
 				registerHandler(cur, base + topic + ".");
@@ -189,9 +189,9 @@ module.exports = function (socket) {
 		});
 	}
 
-	registerHandler(topics, "");
+	registerHandler(api, "");
 
-	socket.on("data", handleF(topics, "data"));
+	socket.on("data", handleF(api, "data"));
 
 	socket.on("error", function () {
 		console.error(arguments);
