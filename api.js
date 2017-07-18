@@ -20,7 +20,6 @@ var recovery = require("./topics/trecovery");
 var reports = require("./topics/treports");
 
 var KeyApi = require("./includes/crypto/KeyApi");
-var settings = require("./includes/settings");
 var mailer = require("./includes/mailer");
 
 var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
@@ -69,6 +68,18 @@ trustManager.preSet(function (request, newContent, cb) {
 var pushAPI = require("./includes/pushAPI");
 
 var whispeerAPI = {
+	featureToggles: (data, fn) => {
+		return Bluebird.resolve({
+			toggles: {
+				"chat.fileTransfer": false,
+				"chat.voiceMail": false,
+				"chat.changeTitle": false,
+				"chat.addReceiver": false,
+				"chat.removeReceiver": false,
+				"chat.promoteReceiver": false,
+			}
+		}).nodeify(fn)
+	},
 	blob: blob,
 	invites: invites,
 	recovery: recovery,
