@@ -12,7 +12,6 @@
     "elasticsearch": "^11.0.1",
     "escape-html": "^1.0.3",
     "express": "^4.8.0",
-    "helmet": "3.6.1",
     "node-gcm": "^0.14.4",
     "nodemailer": "0.7.x",
     "pg": "^6.1.0",
