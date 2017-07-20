@@ -8,7 +8,7 @@ const RequestData = require("./requestData");
 
 const errorService = require("./errorService");
 
-const t = require("../topics/tmessage")
+const t = require("../apis/tmessage")
 
 const versionGreater = (versionGiven, versionCompare) => {
 	const splitGiven = versionGiven.split(".")

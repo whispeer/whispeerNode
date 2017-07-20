@@ -4,25 +4,25 @@ var step = require("step");
 var h = require("whispeerHelper");
 const Bluebird = require("bluebird")
 
-var verifySecuredMeta = require("./includes/verifyObject");
+var chatAPI = require("./chatAPI")
 
-var chatAPI = require("./topics/chatAPI")
+var user = require("./tuser");
+var session = require("./tsession");
+var messages = require("./tmessage");
+var friends = require("./tfriends");
+var circles = require("./tcircles");
+var posts = require("./tposts");
+var invites = require("./tinvites");
+var blob = require("./tblob");
+var recovery = require("./trecovery");
+var reports = require("./treports");
 
-var user = require("./topics/tuser");
-var session = require("./topics/tsession");
-var messages = require("./topics/tmessage");
-var friends = require("./topics/tfriends");
-var circles = require("./topics/tcircles");
-var posts = require("./topics/tposts");
-var invites = require("./topics/tinvites");
-var blob = require("./topics/tblob");
-var recovery = require("./topics/trecovery");
-var reports = require("./topics/treports");
+var KeyApi = require("../includes/crypto/KeyApi");
+var mailer = require("../includes/mailer");
 
-var KeyApi = require("./includes/crypto/KeyApi");
-var mailer = require("./includes/mailer");
-
-var SimpleUserDataStore = require("./includes/SimpleUserDataStore");
+var verifySecuredMeta = require("../includes/verifyObject");
+var User = require("../includes/user");
+var SimpleUserDataStore = require("../includes/SimpleUserDataStore");
 
 var MAXDEPTH = 20;
 
@@ -30,7 +30,7 @@ var signatureCache = new SimpleUserDataStore("signatureCache");
 var trustManager = new SimpleUserDataStore("trustManager");
 var settings = new SimpleUserDataStore("settings");
 
-var client = require("./includes/redisClient");
+var client = require("../includes/redisClient");
 
 settings.preSet(function (request, newContent, cb) {
 	step(function () {
@@ -65,7 +65,7 @@ trustManager.preSet(function (request, newContent, cb) {
 //seperate timeline, post
 //more crud
 
-var pushAPI = require("./includes/pushAPI");
+var pushAPI = require("../includes/pushAPI");
 
 var whispeerAPI = {
 	featureToggles: (data, fn) => {
@@ -255,7 +255,6 @@ var whispeerAPI = {
 		step(function () {
 			if (data && data.nickname) {
 				if (h.isNickname(data.nickname)) {
-					var User = require("./includes/user");
 					User.isNicknameFree(data.nickname, this);
 				} else {
 					this.last.ne({
@@ -275,7 +274,6 @@ var whispeerAPI = {
 		step(function () {
 			if (data && data.mail) {
 				if (h.isMail(data.mail)) {
-					var User = require("./includes/user");
 					User.getUser(data.mail, this);
 				} else {
 					this.last.ne({

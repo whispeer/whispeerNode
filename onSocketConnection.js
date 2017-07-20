@@ -5,7 +5,7 @@ var Bluebird = require("bluebird")
 
 const HandlerCallback = require("./includes/handlerCallback");
 const listener = require("./includes/listener");
-const api = require("./api.js");
+const api = require("./apis/api.js");
 
 const SocketData = require("./includes/socketData");
 const RequestData = require("./includes/requestData");
