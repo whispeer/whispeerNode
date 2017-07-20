@@ -245,12 +245,12 @@ var whispeerAPI = {
 		}
 	},
 	circle: circles,
-	friends: friends,
-	messages: messages,
-	user: user,
-	session: session,
-	posts: posts,
-	reports: reports,
+	friends,
+	messages,
+	user,
+	session,
+	posts,
+	reports,
 	nicknameFree: function isNickNameFree(data, fn) {
 		step(function () {
 			if (data && data.nickname) {

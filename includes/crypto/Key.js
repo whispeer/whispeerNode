@@ -284,10 +284,14 @@ Key.prototype.addAccess = function (decryptorid, userids, added = []) {
 			return Bluebird.all([
 				client.saddAsync(theKey._domain + ":access", userid),
 				client.saddAsync(theKey._domain + ":accessVia:" + userid, decryptorid),
-			])
+			]).then(([accessAdded]) => accessAdded)
 		}));
-	}).then(() => {
-		return theKey.getEncryptors();
+	}).then((added) => {
+		if (added.some((added) => added === 1)) {
+			return theKey.getEncryptors();
+		}
+
+		return []
 	}).then((encryptors) => {
 		if (encryptors.length === 0) {
 			return Bluebird.resolve();
