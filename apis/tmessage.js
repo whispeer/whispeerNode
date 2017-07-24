@@ -5,20 +5,17 @@ const Message = require("../includes/models/message")
 const UserUnreadMessage = require("../includes/models/unreadMessage")
 const ChunkTitleUpdate = require("../includes/models/chunkTitleUpdate")
 
+const {
+	synchronizeRead,
+	getUnreadChunkIDs,
+	updateBadge,
+} = require("../includes/chatHelper")
+
 const chatAPI = require("./chatAPI")
 
 const sequelize = require("../includes/dbConnector/sequelizeClient")
 
-const errorService = require("../includes/errorService")
-
 var Bluebird = require("bluebird");
-
-const UNREAD_TOPICS_QUERY = `
-	SELECT DISTINCT "Messages"."ChunkId" from "Messages"
-	INNER JOIN "UserUnreadMessages" ON
-		"Messages"."id" = "UserUnreadMessages"."MessageId" AND
-		"UserUnreadMessages"."userID" = $userID
-`
 
 const DELETE_UNREAD_MESSAGES_QUERY = `
 	DELETE FROM "UserUnreadMessages" USING "Messages"
@@ -110,18 +107,6 @@ const getUserUnreadMessagesByChunk = (userID) => {
 
 		return byChunk
 	})
-}
-
-const synchronizeRead = (request) => {
-	return Bluebird.all([
-		t.getUnreadTopicIDs({}, null, request),
-		chatAPI.getUnreadIDs({}, null, request),
-	]).then(([{ unread }, { chatIDs }]) => {
-		request.socketData.notifyOwnClients("synchronizeRead", {
-			unreadChatIDs: chatIDs,
-			unreadChunkIDs: unread
-		});
-	}).catch((e) => errorService.handleError(e, request))
 }
 
 var t = {
@@ -295,18 +280,13 @@ var t = {
 		})().nodeify(fn)
 	},
 	getUnreadTopicIDs:  (data, fn, request) => {
-		return sequelize.query(UNREAD_TOPICS_QUERY, {
-			type: sequelize.QueryTypes.SELECT,
-			bind: {
-				userID: request.session.getUserID()
-			},
-		}).map((chunk) => chunk.ChunkId).then((unread) => {
+		return getUnreadChunkIDs(request.session.getUserID()).then((unread) => {
 			return { unread }
 		}).nodeify(fn)
 	},
 	getUnreadCount: (data, fn, request) => {
-		return t.getUnreadTopicIDs(data, null, request).then((unread) => ({
-			unread: unread.length
+		return getUnreadChunkIDs(request.session.getUserID()).then((chunkIDs) => ({
+			unread: chunkIDs.length
 		}))
 	},
 	markRead: ({ topicid }, fn, request) => {
@@ -318,7 +298,7 @@ var t = {
 		}).then(() => {
 			synchronizeRead(request)
 
-			chatAPI.updateBadge(request.session.getUserID())
+			updateBadge(request.session.getUserID())
 
 			return { unread: [] }
 		}).nodeify(fn)
