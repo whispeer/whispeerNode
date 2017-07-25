@@ -63,6 +63,8 @@ const pushTokenModel = sequelize.define("pushToken", {
 				}
 			}
 
+			console.log(`Pushing to ${this.deviceType} device ${this.token}: ${title}`)
+
 			if (this.deviceType === "android") {
 				payload.vibrationPattern = [0, 400, 500, 400]
 				payload.ledColor = [0, 0, 255, 0]
