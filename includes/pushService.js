@@ -15,8 +15,10 @@ if (!config.push) {
 
 	module.exports = {
 		listenFeedback: function () {},
-		pushAndroid: function () { return Bluebird.resolve(); },
-		pushIOS: function () { return Bluebird.resolve(); },
+		pushAndroid: () => Bluebird.resolve(),
+		pushIOSBadge: () => Bluebird.resolve(),
+		pushIOSData: () => Bluebird.resolve(),
+		pushIOS: () => Bluebird.resolve(),
 	};
 
 	return;

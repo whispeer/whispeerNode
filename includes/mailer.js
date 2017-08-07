@@ -296,7 +296,7 @@ var mailer = {
 				generateTextFromHTML: true
 			}, errorService.criticalError);
 
-			this.ne()
+			this.ne(true)
 		}), cb);
 	},
 	mailAdmin: function (subject, text, cb) {
@@ -308,7 +308,7 @@ var mailer = {
 		};
 
 		var sendMailAsync = Bluebird.promisify(mail.sendMail, {
-		    context: mail
+			context: mail
 		});
 
 		return sendMailAsync(mailOptions).nodeify(cb);
