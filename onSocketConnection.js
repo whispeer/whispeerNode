@@ -99,7 +99,7 @@ function always(request, response, fn) {
 		request.session.isBusiness(this.parallel())
 
 		request.socketData.recentActivity();
-	}, function (e, logedin, isBusiness) {
+	}, function (e, loggedin, isBusiness) {
 		if (e) {
 			errorService.handleError(e, request);
 			response.error = true;
@@ -113,9 +113,10 @@ function always(request, response, fn) {
 
 		response.keys = request.getAllKeys();
 
-		response.logedin = logedin;
+		response.logedin = loggedin;
+		response.loggedin = loggedin;
 
-		if (logedin) {
+		if (loggedin) {
 			response.sid = request.session.getSID();
 			response.userid = request.session.getUserID();
 			response.serverTime = new Date().getTime();
