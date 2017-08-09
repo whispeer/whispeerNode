@@ -305,5 +305,6 @@ whispeerAPI.mailFree.noLoginNeeded = true;
 whispeerAPI.logedin.noLoginNeeded = true;
 whispeerAPI.verifyMail.noLoginNeeded = true;
 whispeerAPI.errors.noLoginNeeded = true;
+whispeerAPI.featureToggles.noLoginNeeded = true
 
 module.exports = whispeerAPI;
