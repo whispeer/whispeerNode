@@ -5,6 +5,20 @@ const uuidv4 = require("uuid/v4");
 const sequelize = require("../dbConnector/sequelizeClient");
 const Sequelize = require("sequelize")
 
+const getPreviousMessagesSelector = (arr) => `
+SELECT "oldestEarlierIDMap"."uuid" as "currentUUID", "result"."messageUUID" as "previousUUID" FROM (
+	SELECT "current"."messageUUID" as "uuid", MAX("previous"."id") as "maxId"
+	FROM "Messages" as "current"
+	JOIN "Chunks" as "chunk" ON "chunk"."id" = "current"."ChunkId"
+	JOIN "Chunks" as "chatChunks" ON "chunk"."ChatId" = "chatChunks"."ChatId"
+	JOIN "Messages" as "previous" ON "previous"."ChunkId" = "chatChunks"."id" AND "previous"."id" < "current"."id"
+	WHERE "current"."messageUUID" IN (${arr.map(() => "?").join(",")})
+	GROUP BY "current"."messageUUID"
+	ORDER BY "current"."messageUUID" ASC
+) as "oldestEarlierIDMap"
+JOIN "Messages" as "result" ON "result"."id" = "maxId"
+`
+
 const {
 	autoIncrementInteger,
 
@@ -55,13 +69,33 @@ const Message = sequelize.define("Message", {
 
 	meta: required(json()),
 }, {
+	classMethods: {
+		loadPreviousMessage: function (messages) {
+			return sequelize.query(getPreviousMessagesSelector(messages), {
+				type: sequelize.QueryTypes.SELECT,
+				replacements: messages.map((m) => m.messageUUID),
+			}).then((entries) =>
+				messages.forEach((message) => {
+					const entry = entries.find(({ currentUUID }) => currentUUID === message.messageUUID)
+					message.previousMessage = entry ? entry.previousUUID : null
+				})
+			)
+		}
+	},
 	instanceMethods: {
+		loadPreviousMessage: function () {
+			return Message.loadPreviousMessage([this])
+		},
 		getMetaExtra: getObject(metaExtraKeys),
 		getMeta: function () {
 			return Object.assign({}, this.getDataValue("meta"), this.getMetaExtra())
 		},
 		getContent: getObject(contentKeys),
 		getAPIFormatted: function (chatID) {
+			if (typeof this.previousMessage === "undefined") {
+				console.error("called get api formatted of message without loading previous message")
+			}
+
 			return {
 				server: {
 					id: this.id,
@@ -70,6 +104,7 @@ const Message = sequelize.define("Message", {
 					sendTime: this.getDataValue("sendTime"),
 					sender: this.getDataValue("sender"),
 					uuid: this.getDataValue("messageUUID"),
+					previousMessage: this.previousMessage,
 				},
 				content: this.getContent(),
 				meta: this.getMeta()

@@ -141,7 +141,8 @@ const chatResponse = (chat, request) => {
 
 		yield Bluebird.all([
 			hasLatestMessageAccess ? addMessageKeys([latestMessage], request) : null,
-			addChunksKeys(chunks, request)
+			addChunksKeys(chunks, request),
+			latestMessage.loadPreviousMessage()
 		])
 
 		return formatChatResponse(
@@ -256,6 +257,8 @@ const chatAPI = {
 				})
 			})
 		}).then(([ chat, chunk, message ]) => {
+			message.previousMessage = null
+
 			const chatResponseOthers = formatChatResponse(chat, [chunk], message, [])
 			const chatResponseMe = formatChatResponse(chat, [chunk], message, [])
 			const myID = request.session.getUserID()
@@ -417,6 +420,7 @@ const chatAPI = {
 			yield Bluebird.all([
 				addMessageKeys(messages, request),
 				addChunksKeys(chunks, request),
+				Message.loadPreviousMessage(messages),
 			])
 
 			return {
@@ -652,7 +656,10 @@ const chatAPI = {
 						])
 					}))[2]
 
-					yield createSymKeys(request, message.imageKeys)
+					yield Bluebird.all([
+						createSymKeys(request, message.imageKeys),
+						dbMessage.loadPreviousMessage()
+					])
 
 					yield addToUnread(chunk, dbMessage.id, request)
 
@@ -662,6 +669,8 @@ const chatAPI = {
 				} catch (err) {
 					if (err instanceof Sequelize.UniqueConstraintError && err.fields.messageUUID && Object.keys(err.fields).length === 1) {
 						const existingDBMessage = yield Message.findOne({ where: { messageUUID: err.fields.messageUUID }})
+
+						yield existingDBMessage.loadPreviousMessage()
 
 						if (existingDBMessage.sender !== request.session.getUserID()) {
 							throw new Error("Duplicate UUID: Message already send but we are not the sender.")
@@ -679,7 +688,10 @@ const chatAPI = {
 			return Bluebird.coroutine(function* () {
 				const message = id.indexOf("-") === -1 ? yield Message.findById(id) : yield Message.findOne({ where: { messageUUID: id }})
 
-				yield message.validateAccess(request)
+				yield Bluebird.all([
+					message.validateAccess(request),
+					message.loadPreviousMessage()
+				])
 
 				return message.getAPIFormatted()
 			})().nodeify(fn)
