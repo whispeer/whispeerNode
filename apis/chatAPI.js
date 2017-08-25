@@ -677,7 +677,7 @@ const chatAPI = {
 
 		get: ({ id }, fn, request) => {
 			return Bluebird.coroutine(function* () {
-				const message = id.indexOf("-") === -1 ? yield Message.findById(id) : yield Message.findOne({ messageUUID: id })
+				const message = id.indexOf("-") === -1 ? yield Message.findById(id) : yield Message.findOne({ where: { messageUUID: id }})
 
 				yield message.validateAccess(request)
 
