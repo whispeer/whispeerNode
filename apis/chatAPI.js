@@ -30,7 +30,7 @@ const MESSAGE_QUERY = `
 	SELECT "Message".* FROM "Messages" AS "Message"
 		INNER JOIN "Chunks" AS "chunk" ON "Message"."ChunkId" = "chunk"."id" AND "chunk"."ChatId" = $id
 		INNER JOIN "Receivers" AS "chunk.receiver" ON "chunk"."id" = "chunk.receiver"."ChunkId" AND "chunk.receiver"."userID" = $userID
-	WHERE ("Message"."id" < $oldestID) ORDER BY "Message"."id" DESC LIMIT 20;
+	WHERE ("Message"."id" < $oldestID) ORDER BY "Message"."id" DESC LIMIT $limit;
 `
 
 const MESSAGE_COUNT_QUERY = `
@@ -402,6 +402,7 @@ const chatAPI = {
 					id,
 					userID: request.session.getUserID(),
 					oldestID: oldestKnownMessage,
+					limit
 				},
 			})
 
