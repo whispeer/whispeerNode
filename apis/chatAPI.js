@@ -133,7 +133,7 @@ const chatResponse = (chat, request) => {
 		const latestMessage = chat.chunk[0].message[0]
 		const messageChunk = chat.chunk[0]
 
-		const unreadMessageIDs = chat.userUnreadMessage.map((m) => m.MessageId)
+		const unreadMessageIDs = chat.userUnreadMessage.map((m) => m.message.messageUUID)
 
 		const chunks = messageChunk.latest ? [messageChunk] : yield getLaterChunks(messageChunk, userID)
 
@@ -166,7 +166,11 @@ const getChats = (chatIDs, request) => {
 			required: false,
 			where: {
 				userID: request.session.getUserID()
-			}
+			},
+			include: [{
+				association: UserUnreadMessage.Message,
+				as: "unreadmessage"
+			}],
 		}, {
 			association: Chat.Chunk,
 			as: "chunk",
@@ -189,7 +193,7 @@ const getChats = (chatIDs, request) => {
 		}],
 		order: [
 			[
-				Sequelize.col("sendTime"),
+				Sequelize.col("chunk.message.sendTime"),
 				"DESC"
 			]
 		]
