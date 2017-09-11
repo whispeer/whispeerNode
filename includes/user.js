@@ -364,8 +364,6 @@ var User = function (id) {
 
 	this.isBlocked = (userID) =>
 		this.getSettings().then((settings) => {
-			console.log(settings)
-
 			if (!settings.safety || !settings.safety.blockedUsers) {
 				return false
 			}
