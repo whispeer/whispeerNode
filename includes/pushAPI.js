@@ -7,6 +7,23 @@ const errorService = require("./errorService");
 const pushService = require("./pushService");
 const sequelize = require("./dbConnector/sequelizeClient");
 
+const configManager = require("./configManager");
+const config = configManager.get();
+
+if (!config.push) {
+	console.warn("No Push Service Configured");
+
+	module.exports = {
+		subscribe: () => Bluebird.resolve(),
+		getTitle: () => Bluebird.resolve(),
+		updateBadgeForUser: () => Bluebird.resolve(),
+		pushDataToUser: () => Bluebird.resolve(),
+		notifyUser: () => Bluebird.resolve()
+	}
+
+	return
+}
+
 const sandBoxUsers = [1, 43, 2496]
 
 const pushToken = sequelize.define("pushToken", {
