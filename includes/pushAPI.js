@@ -4,7 +4,6 @@ const Bluebird = require("bluebird");
 const Sequelize = require("sequelize");
 
 const errorService = require("./errorService");
-const pushService = require("./pushService");
 const sequelize = require("./dbConnector/sequelizeClient");
 
 const configManager = require("./configManager");
@@ -24,6 +23,8 @@ if (!config.push) {
 
 	return
 }
+
+const pushService = require("./pushService");
 
 const sandBoxUsers = [1, 43, 2496]
 
