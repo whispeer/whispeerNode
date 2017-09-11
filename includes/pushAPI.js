@@ -1,12 +1,137 @@
 "use strict";
 
-var Bluebird = require("bluebird");
+const Bluebird = require("bluebird");
+const Sequelize = require("sequelize");
 
-var errorService = require("./errorService");
+const errorService = require("./errorService");
+const pushService = require("./pushService");
+const sequelize = require("./dbConnector/sequelizeClient");
 
-var pushService = require("./pushService");
+const sandBoxUsers = [1, 43, 2496]
 
-const pushToken = require("./models/pushTokenModel");
+const pushToken = sequelize.define("pushToken", {
+	id: {
+		type: Sequelize.UUID,
+		allowNull: false,
+		defaultValue: Sequelize.UUIDV4,
+		primaryKey: true
+	},
+
+	userID: {
+		type: Sequelize.INTEGER,
+		allowNull: false
+	},
+
+	deviceType: {
+		type: Sequelize.STRING,
+		allowNull: false,
+		validate: {
+			is: /^(android|ios)$/
+		}
+	},
+
+	token: {
+		type: Sequelize.STRING,
+		allowNull: false,
+		unique: true
+	},
+
+	pushKey: {
+		type: Sequelize.STRING,
+		unique: false
+	},
+
+	sandbox: {
+		type: Sequelize.BOOLEAN
+	}
+
+}, {
+	instanceMethods: {
+		pushNotification: function (title, reference) {
+			if (!title) {
+				return Bluebird.reject("No title");
+			}
+
+			var payload = {};
+
+			if (reference) {
+				payload = {
+					reference: reference
+				};
+
+				if (reference.type === "message") {
+					payload.topicid = reference.id;
+				}
+			}
+
+			console.log(`Pushing to ${this.deviceType} device ${this.token}: ${title}`)
+
+			if (this.deviceType === "android") {
+				payload.vibrationPattern = [0, 400, 500, 400]
+				payload.ledColor = [0, 0, 255, 0]
+
+				payload.title = title;
+				payload.message = "-";
+
+				return pushService.pushAndroid(this.token, payload);
+			}
+
+			if (this.deviceType === "ios") {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
+					this.sandbox = true;
+				}
+
+				return pushService.pushIOS(this.token, payload, title, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		},
+		pushIOSBadge: function (badge) {
+			if (this.deviceType === "ios") {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
+					this.sandbox = true;
+				}
+
+				return pushService.pushIOSBadge(this.token, badge, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		},
+		pushData: function(data) {
+			if (!data) {
+				return Bluebird.reject("No data");
+			}
+
+			if (!this.pushKey) {
+				console.warn("No push key for token: " + this.token);
+				return Bluebird.resolve();
+			}
+
+			var sjcl = require("../crypto/sjcl");
+			const encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+
+			var payload = {
+				encryptedContent
+			};
+
+			if (this.deviceType === "android") {
+				payload["content-available"] = "1"
+
+				return pushService.pushAndroid(this.token, payload);
+			}
+
+			if (this.deviceType === "ios") {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
+					this.sandbox = true;
+				}
+
+				return pushService.pushIOSData(this.token, payload, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		}
+	}
+});
 
 pushService.listenFeedback(function (devices) {
 	Bluebird.resolve(devices).then(function (devices) {
