@@ -128,7 +128,7 @@ const pushToken = sequelize.define("pushToken", {
 				return Bluebird.resolve();
 			}
 
-			var sjcl = require("../crypto/sjcl");
+			var sjcl = require("./crypto/sjcl");
 			const encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
 
 			var payload = {
