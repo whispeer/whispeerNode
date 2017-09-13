@@ -142,7 +142,7 @@ const pushNotify = (request, receiverIDs, data) => {
 
 	return Bluebird.all([
 		getUserName(request, senderID),
-		Bluebird.resolve(receivers).filter((user) => !user.isBlocked(senderID))
+		Bluebird.resolve(receivers).filter((user) => user.isBlocked(senderID).then((blocked) => !blocked))
 	]).then(([senderName, receivers]) => {
 		if (data.message) {
 			mailer.sendInteractionMails(receivers, "message", "new", {
