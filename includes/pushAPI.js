@@ -1,17 +1,161 @@
 "use strict";
 
-var Bluebird = require("bluebird");
+const Bluebird = require("bluebird");
+const Sequelize = require("sequelize");
 
-var errorService = require("./errorService");
+const errorService = require("./errorService");
+const sequelize = require("./dbConnector/sequelizeClient");
 
-var pushService = require("./pushService");
+const configManager = require("./configManager");
+const config = configManager.get();
 
-const pushToken = require("./models/pushTokenModel");
+if (!config.push) {
+	// eslint-disable-next-line no-console
+	console.warn("No Push Service Configured");
+
+	module.exports = {
+		subscribe: () => Bluebird.resolve(),
+		getTitle: () => Bluebird.resolve(),
+		updateBadgeForUser: () => Bluebird.resolve(),
+		pushDataToUser: () => Bluebird.resolve(),
+		notifyUser: () => Bluebird.resolve()
+	}
+
+	return
+}
+
+const pushService = require("./pushService");
+
+const sandBoxUsers = [1, 43, 2496]
+
+const pushToken = sequelize.define("pushToken", {
+	id: {
+		type: Sequelize.UUID,
+		allowNull: false,
+		defaultValue: Sequelize.UUIDV4,
+		primaryKey: true
+	},
+
+	userID: {
+		type: Sequelize.INTEGER,
+		allowNull: false
+	},
+
+	deviceType: {
+		type: Sequelize.STRING,
+		allowNull: false,
+		validate: {
+			is: /^(android|ios)$/
+		}
+	},
+
+	token: {
+		type: Sequelize.STRING,
+		allowNull: false,
+		unique: true
+	},
+
+	pushKey: {
+		type: Sequelize.STRING,
+		unique: false
+	},
+
+	sandbox: {
+		type: Sequelize.BOOLEAN
+	}
+
+}, {
+	instanceMethods: {
+		pushNotification: function (title, reference) {
+			if (!title) {
+				return Bluebird.reject("No title");
+			}
+
+			var payload = {};
+
+			if (reference) {
+				payload = {
+					reference: reference
+				};
+
+				if (reference.type === "message") {
+					payload.topicid = reference.id;
+				}
+			}
+
+			// eslint-disable-next-line no-console
+			console.log(`Pushing to ${this.deviceType} device ${this.token}: ${title}`)
+
+			if (this.deviceType === "android") {
+				payload.vibrationPattern = [0, 400, 500, 400]
+				payload.ledColor = [0, 0, 255, 0]
+
+				payload.title = title;
+				payload.message = "-";
+
+				return pushService.pushAndroid(this.token, payload);
+			}
+
+			if (this.deviceType === "ios") {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
+					this.sandbox = true;
+				}
+
+				return pushService.pushIOS(this.token, payload, title, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		},
+		pushIOSBadge: function (badge) {
+			if (this.deviceType === "ios") {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
+					this.sandbox = true;
+				}
+
+				return pushService.pushIOSBadge(this.token, badge, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		},
+		pushData: function(data) {
+			if (!data) {
+				return Bluebird.reject("No data");
+			}
+
+			if (!this.pushKey) {
+				// eslint-disable-next-line no-console
+				console.warn("No push key for token: " + this.token);
+				return Bluebird.resolve();
+			}
+
+			var sjcl = require("../crypto/sjcl");
+			const encryptedContent = sjcl.encrypt(sjcl.codec.hex.toBits(this.pushKey), JSON.stringify(data));
+
+			var payload = {
+				encryptedContent
+			};
+
+			if (this.deviceType === "android") {
+				payload["content-available"] = "1"
+
+				return pushService.pushAndroid(this.token, payload);
+			}
+
+			if (this.deviceType === "ios") {
+				if (sandBoxUsers.indexOf(this.userID) > -1) {
+					this.sandbox = true;
+				}
+
+				return pushService.pushIOSData(this.token, payload, this.sandbox);
+			}
+
+			return Bluebird.reject("push: invalid type");
+		}
+	}
+});
 
 pushService.listenFeedback(function (devices) {
 	Bluebird.resolve(devices).then(function (devices) {
-		console.log(devices);
-
 		if (devices.length === 0) {
 			return;
 		}
@@ -20,6 +164,7 @@ pushService.listenFeedback(function (devices) {
 			return deviceInfo.device.token.toString("hex");
 		});
 
+		// eslint-disable-next-line no-console
 		console.info("removing ios devices from database: " + JSON.stringify(tokens));
 
 		return pushToken.destroy({ where: { token: tokens }});
@@ -75,12 +220,10 @@ var pushAPI = {
 
 			return pushToken.findOne({ where: { token: token }}).then(function (record) {
 				if (!record) {
-					console.log("CREATE: " + JSON.stringify(givenData));
 					return pushToken.create(givenData);
 				}
 
 				if (record.userID !== givenData.userID || record.pushKey !== givenData.pushKey) {
-					console.log("UPDATE: " + JSON.stringify(givenData));
 					return pushToken.destroy({ where: { token: token }}).then(function () {
 						return pushToken.create(givenData);
 					});

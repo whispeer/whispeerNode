@@ -360,20 +360,28 @@ var User = function (id) {
 		return databaseUser.isSaved();
 	};
 
-	this.getID = function() {
-		return id;
-	};
+	this.getID = () => id
+
+	this.isBlocked = (userID) =>
+		this.getSettings().then((settings) => {
+			if (!settings.safety || !settings.safety.blockedUsers) {
+				return false
+			}
+
+			return !!settings.safety.blockedUsers.find(({ id }) => id === userID)
+		})
+
+	this.getSettings = () => client.getAsync(`user:${this.getID()}:settings`).then((s) => JSON.parse(s))
 
 	this.getLanguage = function () {
-		return client.getAsync("user:" + this.getID() + ":settings").then(function (settings) {
-			return JSON.parse(settings);
-		}).then(function (settings) {
+		return this.getSettings().then((settings) => {
 			if (settings && settings.meta) {
 				return settings.meta.uiLanguage || settings.meta.initialLanguage || "en";
 			}
 
 			return "en";
 		}).catch(function (err) {
+			// eslint-disable-next-line no-console
 			console.error(err);
 			return "en";
 		});

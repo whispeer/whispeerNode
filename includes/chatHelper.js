@@ -134,22 +134,25 @@ const pushNotify = (request, receiverIDs, data) => {
 
 	var receivers = receiverIDs.filter(function (userID) {
 		return userID !== senderID
-	})
+	}).map((uid) => new User(uid))
 
 	if (receivers.length === 0) {
 		return Bluebird.resolve()
 	}
 
-	return getUserName(request, senderID).then((senderName) => {
+	return Bluebird.all([
+		getUserName(request, senderID),
+		Bluebird.resolve(receivers).filter((user) => user.isBlocked(senderID))
+	]).then(([senderName, receivers]) => {
 		if (data.message) {
-			mailer.sendInteractionMails(receivers.map((r) => new User(r)), "message", "new", {
+			mailer.sendInteractionMails(receivers, "message", "new", {
 				sender: senderName,
 				interactionID: data.message.server.chunkID
 			})
 		}
 
-		return Bluebird.all(receivers.map((userID) =>
-			pushToUser(userID, data, senderName)
+		return Bluebird.all(receivers.map((receiver) =>
+			pushToUser(receiver.getID(), data, senderName)
 		))
 	})
 }

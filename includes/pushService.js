@@ -10,20 +10,6 @@ var Bluebird = require("bluebird");
 
 var errorService = require("./errorService");
 
-if (!config.push) {
-	console.warn("No Push Service Configured");
-
-	module.exports = {
-		listenFeedback: function () {},
-		pushAndroid: () => Bluebird.resolve(),
-		pushIOSBadge: () => Bluebird.resolve(),
-		pushIOSData: () => Bluebird.resolve(),
-		pushIOS: () => Bluebird.resolve(),
-	};
-
-	return;
-}
-
 var sender = new gcm.Sender(config.push.gcmAPIKey);
 var apnConnection = new apn.Connection(config.push.apn);
 
@@ -54,7 +40,7 @@ const pushIOSProductionOrSandbox = (notification, device, sandbox) => {
 	apnConnection.pushNotification(notification, device);
 }
 
-var pushService = {
+const pushService = {
 	listenFeedback: function (cb) {
 		var feedback = new apn.Feedback(config.push.apn);
 		feedback.on("feedback", cb);
