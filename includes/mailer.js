@@ -299,6 +299,16 @@ var mailer = {
 			this.ne(true)
 		}), cb);
 	},
+	mailSupport: (subject, text) => {
+		var mailOptions = {
+			from: defaultFrom,
+			to: "support@whispeer.de",
+			subject: subject.toString(),
+			text: text.toString()
+		}
+
+		return Bluebird.fromCallback((cb) => mail.sendMail(mailOptions, cb))
+	},
 	mailAdmin: function (subject, text, cb) {
 		var mailOptions = {
 			from: defaultFrom,

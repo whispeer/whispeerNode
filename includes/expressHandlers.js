@@ -20,6 +20,29 @@ module.exports = function (express) {
 	express.use(bodyParser.json());
 	express.use(allowCrossDomain);
 
+	express.post("/businessTrial", (req, res, next) => {
+		if (!req.body || !req.body.sessionID) {
+			next()
+			return
+		}
+
+		const { sessionID } = req.body
+
+		return client.getAsync("session:" + sessionID).then((userID) =>
+			client.scardAsync(`user:${userID}:companies`).then((companyCount) => {
+				if (companyCount > 0) {
+					return
+				}
+
+				const companyID = `trial-${Math.random()}`
+
+				client.saddAsync(`user:${userID}:companies`, companyID).then(() =>
+					mailer.mailSupport("Business Trial", `${userID} started trial with ${companyID} as companyID`)
+				)
+			})
+		)
+	})
+
 	express.post("/reportError",  function (req, res, next) {
 		if (!req.body || !req.body.error) {
 			next();
@@ -42,16 +65,17 @@ module.exports = function (express) {
 			res.send("Thank you! We will handle your request soon! <a href='https://whispeer.de/en/b2b'>Take me back</a>");
 			next();
 		}).catch((e) => {
+			// eslint-disable-next-line no-console
 			console.error(e);
 			res.send("An error occured. Please send us a mail directly: <a href='mailto:nils@whispeer.de'>nils@whispeer.de</a>");
 			next();
 		});
-		console.log(JSON.stringify(req.body));
 	});
 
 	express.get("/pixel/:id.png", function (req, res) {
 		client.zadd("analytics:mail:tracked", new Date().getTime(), req.params.id, function (e) {
 			if (e) {
+				// eslint-disable-next-line no-console
 				console.error(e);
 			}
 		});
@@ -69,6 +93,7 @@ module.exports = function (express) {
 
 		res.sendFile(pixelPath, options, function (err) {
 			if (err) {
+				// eslint-disable-next-line no-console
 				console.error(err);
 			}
 		});
