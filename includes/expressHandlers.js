@@ -28,11 +28,10 @@ module.exports = function (express) {
 
 		const { sessionID } = req.body
 
-		console.log(`Business trial for sid: ${sessionID}`)
-
 		return client.getAsync("session:" + sessionID).then((userID) =>
 			client.scardAsync(`user:${userID}:companies`).then((companyCount) => {
 				if (companyCount > 0) {
+					// eslint-disable-next-line no-console
 					console.log(`${userID} is already a business user`)
 					return
 				}
@@ -40,12 +39,13 @@ module.exports = function (express) {
 				const companyID = `trial-${Math.random()}`
 
 				client.saddAsync(`user:${userID}:companies`, companyID).then(() => {
+					// eslint-disable-next-line no-console
 					console.log(`${userID} started trial with ${companyID} as companyID`)
 
 					return mailer.mailSupport("Business Trial", `${userID} started trial with ${companyID} as companyID`)
 				})
 			})
-		).then(() => next())
+		).finally(() => next())
 	})
 
 	express.post("/reportError",  function (req, res, next) {
