@@ -28,19 +28,24 @@ module.exports = function (express) {
 
 		const { sessionID } = req.body
 
+		console.log(`Business trial for sid: ${sessionID}`)
+
 		return client.getAsync("session:" + sessionID).then((userID) =>
 			client.scardAsync(`user:${userID}:companies`).then((companyCount) => {
 				if (companyCount > 0) {
+					console.log(`${userID} is already a business user`)
 					return
 				}
 
 				const companyID = `trial-${Math.random()}`
 
-				client.saddAsync(`user:${userID}:companies`, companyID).then(() =>
-					mailer.mailSupport("Business Trial", `${userID} started trial with ${companyID} as companyID`)
-				)
+				client.saddAsync(`user:${userID}:companies`, companyID).then(() => {
+					console.log(`${userID} started trial with ${companyID} as companyID`)
+
+					return mailer.mailSupport("Business Trial", `${userID} started trial with ${companyID} as companyID`)
+				})
 			})
-		)
+		).then(() => next())
 	})
 
 	express.post("/reportError",  function (req, res, next) {
