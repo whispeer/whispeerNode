@@ -42,7 +42,7 @@ const Chat = sequelize.define("Chat", {
 		validateAccess: function (request) {
 			return this.hasAccess(request).then((access) => {
 				if (!access) {
-					throw new AccessViolation(`No access to chat ${this.id}`)
+					throw new AccessViolation(`No access to chat ${this.id} for ${request.session.getUserID()}`)
 				}
 			})
 		},
