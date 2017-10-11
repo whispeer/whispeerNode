@@ -14,7 +14,7 @@ if (!config.push) {
 	console.warn("No Push Service Configured");
 
 	module.exports = {
-		subscribe: () => Bluebird.resolve(),
+		subscribe: (request, type, token, pushKey, cb) => Bluebird.resolve().nodeify(cb),
 		getTitle: () => Bluebird.resolve(),
 		updateBadgeForUser: () => Bluebird.resolve(),
 		pushDataToUser: () => Bluebird.resolve(),
