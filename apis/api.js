@@ -68,7 +68,9 @@ trustManager.preSet(function (request, newContent, cb) {
 var pushAPI = require("../includes/pushAPI");
 
 var whispeerAPI = {
-	featureToggles: (data, fn) => {
+	featureToggles: (data, fn, request) => {
+		console.log(request.session.getUserID())
+
 		return Bluebird.resolve({
 			toggles: {
 				"chat.fileTransfer": false,
