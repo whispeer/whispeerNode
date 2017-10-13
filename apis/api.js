@@ -67,9 +67,38 @@ trustManager.preSet(function (request, newContent, cb) {
 
 var pushAPI = require("../includes/pushAPI");
 
+const TEST_USERS = {
+	DANIEL: 1,
+	MARTIN: 3,
+	NILS: 4,
+	JONA: 2495,
+	BASTI: 2578,
+	STEFFEN: 2496,
+}
+
+const testUsers = [
+	TEST_USERS.DANIEL,
+	TEST_USERS.MARTIN,
+	TEST_USERS.NILS,
+	TEST_USERS.JONA,
+	TEST_USERS.BASTI,
+	TEST_USERS.STEFFEN
+]
+
 var whispeerAPI = {
 	featureToggles: (data, fn, request) => {
-		console.log(request.session.getUserID())
+		if (testUsers.indexOf(request.session.getUserID())) {
+			return Bluebird.resolve({
+				toggles: {
+					"chat.fileTransfer": true,
+					"chat.voiceMail": true,
+					"chat.changeTitle": true,
+					"chat.addReceiver": true,
+					"chat.removeReceiver": true,
+					"chat.promoteReceiver": true,
+				}
+			}).nodeify(fn)
+		}
 
 		return Bluebird.resolve({
 			toggles: {
