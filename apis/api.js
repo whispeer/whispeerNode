@@ -87,7 +87,7 @@ const testUsers = [
 
 var whispeerAPI = {
 	featureToggles: (data, fn, request) => {
-		if (testUsers.indexOf(request.session.getUserID())) {
+		if (testUsers.indexOf(request.session.getUserID()) > -1) {
 			return Bluebird.resolve({
 				toggles: {
 					"chat.fileTransfer": true,
