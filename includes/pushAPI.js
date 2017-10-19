@@ -26,8 +26,6 @@ if (!config.push) {
 
 const pushService = require("./pushService");
 
-const sandBoxUsers = [1, 43, 2496]
-
 const pushToken = sequelize.define("pushToken", {
 	id: {
 		type: Sequelize.UUID,
@@ -62,6 +60,16 @@ const pushToken = sequelize.define("pushToken", {
 
 	sandbox: {
 		type: Sequelize.BOOLEAN
+	},
+
+	errorCount: {
+		type: Sequelize.INTEGER,
+		defaultValue: 0
+	},
+
+	disabled: {
+		type: Sequelize.BOOLEAN,
+		defaultValue: false
 	}
 
 }, {
@@ -97,10 +105,6 @@ const pushToken = sequelize.define("pushToken", {
 			}
 
 			if (this.deviceType === "ios") {
-				if (sandBoxUsers.indexOf(this.userID) > -1) {
-					this.sandbox = true;
-				}
-
 				return pushService.pushIOS(this.token, payload, title, this.sandbox);
 			}
 
@@ -108,10 +112,6 @@ const pushToken = sequelize.define("pushToken", {
 		},
 		pushIOSBadge: function (badge) {
 			if (this.deviceType === "ios") {
-				if (sandBoxUsers.indexOf(this.userID) > -1) {
-					this.sandbox = true;
-				}
-
 				return pushService.pushIOSBadge(this.token, badge, this.sandbox);
 			}
 
@@ -142,10 +142,6 @@ const pushToken = sequelize.define("pushToken", {
 			}
 
 			if (this.deviceType === "ios") {
-				if (sandBoxUsers.indexOf(this.userID) > -1) {
-					this.sandbox = true;
-				}
-
 				return pushService.pushIOSData(this.token, payload, this.sandbox);
 			}
 
@@ -201,8 +197,31 @@ function getTitle(referenceType, userLanguage, userName) {
 }
 
 var getPushTokens = function (users) {
-	return pushToken.findAll({ where: { userID: users }});
+	return pushToken.findAll({ where: { userID: users, disabled: false }});
 }
+
+const extraInfo = {
+	"8": "\nA error code of 8 indicates that the device token is invalid. This could be for a number of reasons - are you using the correct environment? i.e. Production vs. Sandbox"
+}
+
+pushService.listenAPNError((errCode, notification, device) => {
+	const token = device.toString("hex")
+	const extra = extraInfo[errCode]
+
+	pushToken.findOne({ where: { token }}).then((pushInfo) => {
+		if (errCode === 8) {
+			return pushInfo.sandbox ?
+				pushInfo.update({ disabled: true }) :
+				pushInfo.update({ sandbox: true })
+		}
+
+		return pushInfo.increment("errorCount")
+	})
+
+	const message = `APN Transmission Error:\nNotification caused error: ${errCode} for device ${token}-${JSON.stringify(notification)}${extra}`;
+	errorService.handleError(new Error(message));
+
+})
 
 var pushAPI = {
 	subscribe: function (request, type, token, pushKey, cb) {

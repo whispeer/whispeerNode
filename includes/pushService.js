@@ -8,25 +8,12 @@ var config = configManager.get();
 
 var Bluebird = require("bluebird");
 
-var errorService = require("./errorService");
-
 var sender = new gcm.Sender(config.push.gcmAPIKey);
 var apnConnection = new apn.Connection(config.push.apn);
 
 var apnConfigSandbox = JSON.parse(JSON.stringify(config.push.apn));
 apnConfigSandbox.production = false;
 var apnConnectionSandbox = new apn.Connection(apnConfigSandbox);
-
-apnConnection.on("transmissionError", function (errCode, notification, device) {
-	var message = "APN Transmission Error:";
-
-	message += "\nNotification caused error: " + errCode + " for device " + device.toString("hex") + "-" + JSON.stringify(notification);
-	if (errCode === 8) {
-		message += "\nA error code of 8 indicates that the device token is invalid. This could be for a number of reasons - are you using the correct environment? i.e. Production vs. Sandbox";
-	}
-
-	errorService.handleError(new Error(message));
-});
 
 const getExpiry = (time) => {
 	return Math.floor(new Date().getTime() / 1000) + time
@@ -41,6 +28,7 @@ const pushIOSProductionOrSandbox = (notification, device, sandbox) => {
 }
 
 const pushService = {
+	listenAPNError: (cb) => apnConnection.on("transmissionError", cb),
 	listenFeedback: function (cb) {
 		var feedback = new apn.Feedback(config.push.apn);
 		feedback.on("feedback", cb);
