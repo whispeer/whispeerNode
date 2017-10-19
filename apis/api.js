@@ -82,7 +82,15 @@ const testUsers = [
 	TEST_USERS.NILS,
 	TEST_USERS.JONA,
 	TEST_USERS.BASTI,
-	TEST_USERS.STEFFEN
+	TEST_USERS.STEFFEN,
+	3696,
+	3697,
+	3698,
+	3699,
+	3700,
+	3701,
+	3703,
+	3704,
 ]
 
 var whispeerAPI = {
