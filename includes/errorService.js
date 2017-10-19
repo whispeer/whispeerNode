@@ -6,6 +6,10 @@ var errorService = {
 			try {
 				console.error(e);
 
+				if (e.id === 12) {
+					return
+				}
+
 				var error = "Unknown Error";
 				var stack = e.stack;
 
