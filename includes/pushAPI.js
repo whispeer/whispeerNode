@@ -210,9 +210,13 @@ pushService.listenAPNError((errCode, notification, device) => {
 
 	pushToken.findOne({ where: { token }}).then((pushInfo) => {
 		if (errCode === 8) {
-			return pushInfo.sandbox ?
-				pushInfo.update({ disabled: true }) :
-				pushInfo.update({ sandbox: true })
+			if (!pushInfo.sandbox) {
+				return pushInfo.update({ sandbox: true })
+			}
+
+			if (pushInfo.sandbox && pushInfo.errorCount > 42) {
+				return pushInfo.update({ disabled: true })
+			}
 		}
 
 		return pushInfo.increment("errorCount")
