@@ -93,6 +93,31 @@ const testUsers = [
 	3704,
 ]
 
+const versionGreater = (data, type, minVersion) => {
+	if (!data.clientInfo || !data.clientInfo.version) {
+		return false
+	}
+
+	if (data.clientInfo.type !== type) {
+		return false
+	}
+
+	const userVersion = data.clientInfo.version.split(".")
+	const minVersionArr = minVersion.split(".")
+
+	for (let i = 0; i < userVersion.length; i += 1) {
+		if (userVersion[i] > minVersionArr[i]) {
+			return true
+		}
+
+		if (userVersion[i] < minVersionArr[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 var whispeerAPI = {
 	featureToggles: (data, fn, request) => {
 		if (testUsers.indexOf(request.session.getUserID()) > -1) {
@@ -108,14 +133,16 @@ var whispeerAPI = {
 			}).nodeify(fn)
 		}
 
+		const changeChat = versionGreater(data, "messenger", "0.3.5")
+
 		return Bluebird.resolve({
 			toggles: {
 				"chat.fileTransfer": false,
 				"chat.voiceMail": false,
-				"chat.changeTitle": false,
-				"chat.addReceiver": false,
+				"chat.changeTitle": changeChat,
+				"chat.addReceiver": changeChat,
 				"chat.removeReceiver": false,
-				"chat.promoteReceiver": false,
+				"chat.promoteReceiver": changeChat,
 			}
 		}).nodeify(fn)
 	},
