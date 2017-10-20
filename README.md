@@ -13,11 +13,3 @@ whispeer
 * git submodule update --init
 * npm install
 * node app.js
-
-
-## Enabling push
-
-* Install mongodb on your machine (hopefully this won't be necessary soon)
-* npm install node-pushserver -g
-* Copy pushServerConfig.conf.json.example to pushServerConfig.conf.json and add api-key/certificate
-* pushserver -c pushServerConfig.conf.json
