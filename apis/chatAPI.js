@@ -541,8 +541,6 @@ const chatAPI = {
 					!dbChunk.receiver.some(({ userID }) => receiver.userID === userID)
 				).map(({ userID }) => userID)
 
-				console.log(predecessor.receiver.map(({ userID }) => userID), dbChunk.receiver.map(({ userID }) => userID))
-
 				if (removedReceiver.length > 0) {
 					yield Bluebird.resolve(removedReceiver).map((userID) => Bluebird.all([
 						sequelize.query(DELETE_RECEIVER_QUERY, { bind: { chatID, userID }}),
