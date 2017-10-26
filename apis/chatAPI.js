@@ -543,8 +543,8 @@ const chatAPI = {
 						!predecessor.receiver.some(({ userID }) => receiver.userID === userID)
 					)
 
-					const removedReceiver = dbChunk.receiver.filter((receiver) =>
-						predecessor.receiver.some(({ userID }) => receiver.userID === userID)
+					const removedReceiver = predecessor.receiver.filter((receiver) =>
+						!dbChunk.receiver.some(({ userID }) => receiver.userID === userID)
 					)
 
 					if (removedReceiver.length > 0) {
