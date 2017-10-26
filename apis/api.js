@@ -135,10 +135,11 @@ var whispeerAPI = {
 		}
 
 		const changeChat = versionGreater(data, "messenger", "0.3.5")
+		const fileTransfer = versionGreater(data, "messenger", "0.3.6")
 
 		return Bluebird.resolve({
 			toggles: {
-				"chat.fileTransfer": false,
+				"chat.fileTransfer": fileTransfer,
 				"chat.voiceMail": false,
 				"chat.changeTitle": changeChat,
 				"chat.addReceiver": changeChat,
