@@ -537,23 +537,24 @@ const chatAPI = {
 					])
 				))[1]
 
+				const removedReceiver = predecessor.receiver.filter((receiver) =>
+					!dbChunk.receiver.some(({ userID }) => receiver.userID === userID)
+				)
+
+				console.log(predecessor.receiver, dbChunk.receiver, removedReceiver)
+
+				if (removedReceiver.length > 0) {
+					yield Bluebird.resolve(removedReceiver).map((userID) => Bluebird.all([
+						sequelize.query(DELETE_RECEIVER_QUERY, { bind: { chatID, userID }}),
+						UserUnreadMessage.delete({ where: { chatID, userID }})
+					]))
+				}
+
 				if (previousChunksDecryptors) {
 					const keys = yield KeyApi.getKeys(Object.keys(previousChunksDecryptors))
 					const addedReceiver = dbChunk.receiver.filter((receiver) =>
 						!predecessor.receiver.some(({ userID }) => receiver.userID === userID)
 					)
-
-					const removedReceiver = predecessor.receiver.filter((receiver) =>
-						!dbChunk.receiver.some(({ userID }) => receiver.userID === userID)
-					)
-
-					if (removedReceiver.length > 0) {
-						yield Bluebird.resolve(removedReceiver).map((userID) => Bluebird.all([
-							sequelize.query(DELETE_RECEIVER_QUERY, { bind: { chatID, userID }}),
-							UserUnreadMessage.delete({ where: { chatID, userID }})
-						]))
-
-					}
 
 					yield Bluebird.all(keys.map((key) => key.addDecryptors(request, previousChunksDecryptors)))
 
