@@ -504,6 +504,7 @@ const chatAPI = {
 		create: ({ predecessorID, chunk: { meta, content }, receiverKeys, previousChunksDecryptors }, fn, request) => {
 			return Bluebird.coroutine(function* () {
 				const predecessor = yield Chunk.findById(predecessorID)
+				const chatID = predecessor.ChatId
 
 				if (meta._key === predecessor.meta._key) {
 					predecessor.receiver.forEach((r) => {
@@ -526,8 +527,8 @@ const chatAPI = {
 
 				const dbChunk = (yield sequelize.transaction((transaction) =>
 					Bluebird.all([
-						Chunk.update({ latest: false }, { where: { latest: true, ChatId: predecessor.ChatId }, transaction }),
-						Chunk.create({ meta, content, receiverKeys, ChatId: predecessor.ChatId, predecessorId: predecessor.id }, {
+						Chunk.update({ latest: false }, { where: { latest: true, ChatId: chatID }, transaction }),
+						Chunk.create({ meta, content, receiverKeys, ChatId: chatID, predecessorId: predecessor.id }, {
 							include: [{
 								association: Chunk.Receiver,
 							}],
@@ -547,18 +548,17 @@ const chatAPI = {
 					)
 
 					if (removedReceiver.length > 0) {
-						yield Bluebird.resolve(removedReceiver).map((userID) => sequelize.query(DELETE_RECEIVER_QUERY, {
-							bind: {
-								chatID: predecessor.ChatId,
-								userID,
-							},
-						}))
+						yield Bluebird.resolve(removedReceiver).map((userID) => Bluebird.all([
+							sequelize.query(DELETE_RECEIVER_QUERY, { bind: { chatID, userID }}),
+							UserUnreadMessage.delete({ where: { chatID, userID }})
+						]))
+
 					}
 
 					yield Bluebird.all(keys.map((key) => key.addDecryptors(request, previousChunksDecryptors)))
 
 					const dbChunks = yield Chunk.findAll({ where: {
-						ChatId: predecessor.ChatId
+						ChatId: chatID
 					}})
 
 					const chunks = dbChunks.filter((chunk) =>
