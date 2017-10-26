@@ -93,6 +93,7 @@ const Message = sequelize.define("Message", {
 		getContent: getObject(contentKeys),
 		getAPIFormatted: function (chatID) {
 			if (typeof this.previousMessage === "undefined") {
+				// eslint-disable-next-line no-console
 				console.error("called get api formatted of message without loading previous message")
 			}
 

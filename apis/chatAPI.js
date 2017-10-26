@@ -40,6 +40,12 @@ const MESSAGE_COUNT_QUERY = `
 	WHERE ("Message"."id" < $oldestID);
 `
 
+const DELETE_RECEIVER_QUERY = `
+	DELETE FROM "Receivers"
+		WHERE "Receivers"."userID" = $userID
+		AND "Receivers"."ChunkId" IN (SELECT id from "Chunks" WHERE "Chunks"."ChatId" = $chatID);
+`
+
 const CHAT_WITH_USER_QUERY = `
 	SELECT "Chat"."id" FROM "Chats" AS "Chat"
 		INNER JOIN "Chunks" AS "chunk"
@@ -532,9 +538,22 @@ const chatAPI = {
 
 				if (previousChunksDecryptors) {
 					const keys = yield KeyApi.getKeys(Object.keys(previousChunksDecryptors))
-					const addedReceiver = dbChunk.receiver.filter((receiver) => {
-						return !predecessor.receiver.some(({ userID }) => receiver.userID === userID)
-					})
+					const addedReceiver = dbChunk.receiver.filter((receiver) =>
+						!predecessor.receiver.some(({ userID }) => receiver.userID === userID)
+					)
+
+					const removedReceiver = dbChunk.receiver.filter((receiver) =>
+						predecessor.receiver.some(({ userID }) => receiver.userID === userID)
+					)
+
+					if (removedReceiver.length > 0) {
+						yield Bluebird.resolve(removedReceiver).map((userID) => sequelize.query(DELETE_RECEIVER_QUERY, {
+							bind: {
+								chatID: predecessor.ChatId,
+								userID,
+							},
+						}))
+					}
 
 					yield Bluebird.all(keys.map((key) => key.addDecryptors(request, previousChunksDecryptors)))
 
