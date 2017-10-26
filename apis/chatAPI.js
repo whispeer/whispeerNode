@@ -546,7 +546,7 @@ const chatAPI = {
 				if (removedReceiver.length > 0) {
 					yield Bluebird.resolve(removedReceiver).map((userID) => Bluebird.all([
 						sequelize.query(DELETE_RECEIVER_QUERY, { bind: { chatID, userID }}),
-						UserUnreadMessage.destroy({ where: { chatID, userID }})
+						UserUnreadMessage.destroy({ where: { ChatId: chatID, userID }})
 					]))
 				}
 
