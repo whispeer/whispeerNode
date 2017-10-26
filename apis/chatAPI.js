@@ -539,9 +539,9 @@ const chatAPI = {
 
 				const removedReceiver = predecessor.receiver.filter((receiver) =>
 					!dbChunk.receiver.some(({ userID }) => receiver.userID === userID)
-				)
+				).map(({ userID }) => userID)
 
-				console.log(predecessor.receiver, dbChunk.receiver, removedReceiver)
+				console.log(predecessor.receiver.map(({ userID }) => userID), dbChunk.receiver.map(({ userID }) => userID))
 
 				if (removedReceiver.length > 0) {
 					yield Bluebird.resolve(removedReceiver).map((userID) => Bluebird.all([
