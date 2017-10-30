@@ -135,7 +135,7 @@ var whispeerAPI = {
 		}
 
 		const changeChat = versionGreater(data, "messenger", "0.3.5")
-		const fileTransfer = versionGreater(data, "messenger", "0.3.6")
+		const fileTransfer = versionGreater(data, "messenger", "0.3.6") || versionGreater(data, "browser", "0.3.11")
 
 		return Bluebird.resolve({
 			toggles: {
