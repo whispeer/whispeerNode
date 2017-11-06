@@ -92,6 +92,8 @@ const testUsers = [
 	3703,
 	3704,
 	3398,
+	3500,
+	3501,
 ]
 
 const versionGreater = (data, type, minVersion) => {
