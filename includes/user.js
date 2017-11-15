@@ -364,11 +364,11 @@ var User = function (id) {
 
 	this.isBlocked = (userID) =>
 		this.getSettings().then((settings) => {
-			if (!settings.safety || !settings.safety.blockedUsers) {
+			if (!settings.safety || !settings.safety.blocked) {
 				return false
 			}
 
-			return !!settings.safety.blockedUsers.find(({ id }) => id === userID)
+			return !!settings.safety.blocked.find(({ id }) => id === userID)
 		})
 
 	this.getSettings = () => client.getAsync(`user:${this.getID()}:settings`).then((s) => JSON.parse(s))
