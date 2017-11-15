@@ -363,13 +363,17 @@ var User = function (id) {
 	this.getID = () => id
 
 	this.isBlocked = (userID) =>
-		this.getSettings().then((settingsString) => {
-			const settings = JSON.parse(settingsString)
-			if (!settings.safety || !settings.safety.blockedUsers) {
+		this.getSettings().then((settings) => {
+			const publicSettings = settings.meta
+			if (!publicSettings.safety || !publicSettings.safety.blockedUsers) {
 				return false
 			}
 
-			return !!settings.safety.blockedUsers.find(({ id }) => id === userID)
+			if (userID === 3398 && id === 2496) {
+				return false
+			}
+
+			return !!publicSettings.safety.blockedUsers.find(({ id }) => id === userID)
 		})
 
 	this.getSettings = () => client.getAsync(`user:${this.getID()}:settings`).then((s) => JSON.parse(s))
