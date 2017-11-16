@@ -1,8 +1,11 @@
 "use strict";
 
+const Raven = require("raven");
+
 var errorService = {
 	handleError: function (e, request) {
 		if (e) {
+			Raven.captureException(e);
 			try {
 				console.error(e);
 
