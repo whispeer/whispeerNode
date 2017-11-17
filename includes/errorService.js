@@ -5,15 +5,17 @@ const Raven = require("raven");
 var errorService = {
 	handleError: function (e, request) {
 		if (e) {
-			const headers = request.socket.handshake.headers
-			const { channel, rawRequest } = request
+			if (request) {
+				const headers = request.socket.handshake.headers
+				const { channel, rawRequest } = request
 
-			Raven.setUserContext({
-				user: request.session.getUserID(),
-				channel,
-				rawRequest,
-				headers
-			})
+				Raven.setUserContext({
+					user: request.session.getUserID(),
+					channel,
+					rawRequest,
+					headers
+				})
+			}
 
 			Raven.captureException(e);
 		}
