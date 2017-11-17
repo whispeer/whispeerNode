@@ -15,7 +15,9 @@ const Bluebird = require("bluebird")
 Bluebird.longStackTraces()
 
 const Raven = require("raven");
-Raven.config("https://d122c62d9c284acb977c0565b3e4530b:30dfa83e01e347a390cd2e5b1b176c34@errors.whispeer.de/2").install();
+Raven.config("https://d122c62d9c284acb977c0565b3e4530b:30dfa83e01e347a390cd2e5b1b176c34@errors.whispeer.de/2", {
+	release: process.env.npm_package_version
+}).install();
 
 var options = {};
 
