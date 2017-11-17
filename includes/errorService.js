@@ -9,7 +9,7 @@ var errorService = {
 				const headers = request.socket.handshake.headers
 				const { channel, rawRequest } = request
 
-				Raven.setUserContext({
+				Raven.setContext({
 					user: request.session.getUserID(),
 					channel,
 					rawRequest,
