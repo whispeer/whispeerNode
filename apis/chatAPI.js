@@ -711,6 +711,10 @@ const chatAPI = {
 			return Bluebird.coroutine(function* () {
 				const message = id.indexOf("-") === -1 ? yield Message.findById(id) : yield Message.findOne({ where: { messageUUID: id }})
 
+				if (!message) {
+					throw new AccessViolation(`No access to message ${id}`)
+				}
+
 				yield Bluebird.all([
 					message.validateAccess(request),
 					message.loadPreviousMessage()
