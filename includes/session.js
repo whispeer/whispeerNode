@@ -286,11 +286,11 @@ var Session = function Session() {
 		};
 
 		function regErr(code, data) {
-			errorService.handleError({
+			errorService.handleError(new Error(JSON.stringify({
 				type: "register error",
 				code: code,
 				data: data
-			}, request);
+			})), request);
 
 			if (result.errorCodes[code] !== undefined) {
 				result.errorCodes[code] = true;
