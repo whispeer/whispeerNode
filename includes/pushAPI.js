@@ -143,10 +143,6 @@ const pushToken = sequelize.define("pushToken", {
 			}
 
 			if (this.deviceType === "ios") {
-				if (JSON.stringify(payload).length > 2000) {
-					errorService.handleError(new Error(`large push ${JSON.stringify(data)}`))
-				}
-
 				return pushService.pushIOSData(this.token, payload, this.sandbox);
 			}
 
