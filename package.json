@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "dependencies": {
     "amanda": "0.5.x",
-    "apn": "^1.7.4",
+    "apn": "^2.1.5",
     "base64stream": "0.1.1",
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
