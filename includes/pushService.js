@@ -19,10 +19,16 @@ const getExpiry = (time) => {
 	return Math.floor(new Date().getTime() / 1000) + time
 }
 
+const apnErrors = []
+
 const sendPush = (connection, notification, token) => {
 	connection.send(notification, token).then((response) => {
 		if (response.failed.length > 0) {
-			debugger
+			apnErrors.forEach((cb) =>
+				response.failed.forEach(({ device, status, response }) =>
+					cb(status, response, device)
+				)
+			)
 		}
 	})
 }
@@ -38,7 +44,7 @@ const pushIOSProductionOrSandbox = (notification, token, sandbox) => {
 
 const pushService = {
 	listenAPNError: (cb) => {
-		// apnConnection.on("transmissionError", cb)
+		apnErrors.push(cb)
 	},
 	listenFeedback: function (cb) {
 		/*var feedback = new apn.Feedback(config.push.apn);

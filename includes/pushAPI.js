@@ -208,11 +208,10 @@ const extraInfo = {
 	"8": "\nA error code of 8 indicates that the device token is invalid. This could be for a number of reasons - are you using the correct environment? i.e. Production vs. Sandbox"
 }
 
-pushService.listenAPNError((errCode, notification, device) => {
-	const token = device.toString("hex")
-	const extra = extraInfo[errCode]
+pushService.listenAPNError((errCode, notification, token) => {
+	const extra = extraInfo[errCode] || ""
 
-	pushToken.findOne({ where: { token }}).then((pushInfo) => {
+	/*pushToken.findOne({ where: { token }}).then((pushInfo) => {
 		if (errCode === 8) {
 			if (!pushInfo.sandbox) {
 				return pushInfo.update({ sandbox: true })
@@ -224,7 +223,7 @@ pushService.listenAPNError((errCode, notification, device) => {
 		}
 
 		return pushInfo.increment("errorCount")
-	})
+	})*/
 
 	const message = `APN Transmission Error:\nNotification caused error: ${errCode} for device ${token}-${JSON.stringify(notification)}${extra}`;
 	errorService.handleError(new Error(message));
