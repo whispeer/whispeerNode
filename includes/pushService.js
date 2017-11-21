@@ -21,7 +21,9 @@ const getExpiry = (time) => {
 
 const sendPush = (connection, notification, token) => {
 	connection.send(notification, token).then((response) => {
-		debugger
+		if (response.failed.length > 0) {
+			debugger
+		}
 	})
 }
 
