@@ -54,7 +54,14 @@
 		},
 		"push": {
 			"apn": {
-				"production": false
+				"production": true,
+				"cert": "cert.pem",
+				"key": "key.pem"
+			},
+			"apnSandbox": {
+				"production": false,
+				"cert": "cert-sandbox.pem",
+				"key": "key-sandbox.pem"
 			}
 		},
 		"production": true,
