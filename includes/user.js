@@ -365,7 +365,7 @@ var User = function (id) {
 	this.isBlocked = (userID) =>
 		this.getSettings().then((settings) => {
 			const publicSettings = settings.meta
-			if (!publicSettings.safety || !publicSettings.safety.blockedUsers) {
+			if (!publicSettings || !publicSettings.safety || !publicSettings.safety.blockedUsers) {
 				return false
 			}
 
