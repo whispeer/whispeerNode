@@ -54,6 +54,7 @@ const pushService = {
 
 		notification.expiry = getExpiry(60);
 		notification.badge = badge;
+		notification.topic = "whispeer.app.badge"
 
 		pushIOSProductionOrSandbox(notification, token, sandbox)
 
@@ -67,6 +68,7 @@ const pushService = {
 		notification.payload = payload;
 		notification.expiry = getExpiry(60*60);
 		notification.priority = 5;
+		notification.topic = "whispeer.app.data"
 
 		pushIOSProductionOrSandbox(notification, token, sandbox)
 
@@ -79,6 +81,7 @@ const pushService = {
 		notification.expiry = getExpiry(24*60*60);
 		notification.alert = title;
 		notification.sound = "default";
+		notification.topic = "whispeer.app.notification"
 
 		pushIOSProductionOrSandbox(notification, token, sandbox)
 
