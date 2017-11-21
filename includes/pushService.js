@@ -14,7 +14,7 @@ var apnConfigSandbox = JSON.parse(JSON.stringify(config.push.apn));
 apnConfigSandbox.production = false;
 var apnConnectionSandbox = new apn.Provider(apnConfigSandbox);
 
-var apnConnection = new apn.Provider(config.push.apn);
+var apnConnection = apnConnectionSandbox // new apn.Provider(config.push.apn);
 
 const getExpiry = (time) => {
 	return Math.floor(new Date().getTime() / 1000) + time
