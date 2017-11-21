@@ -9,11 +9,12 @@ var config = configManager.get();
 var Bluebird = require("bluebird");
 
 var sender = new gcm.Sender(config.push.gcmAPIKey);
-var apnConnection = new apn.Provider(config.push.apn);
 
 var apnConfigSandbox = JSON.parse(JSON.stringify(config.push.apn));
 apnConfigSandbox.production = false;
 var apnConnectionSandbox = new apn.Provider(apnConfigSandbox);
+
+var apnConnection = new apn.Provider(config.push.apn);
 
 const getExpiry = (time) => {
 	return Math.floor(new Date().getTime() / 1000) + time
@@ -45,10 +46,6 @@ const pushIOSProductionOrSandbox = (notification, token, sandbox) => {
 const pushService = {
 	listenAPNError: (cb) => {
 		apnErrors.push(cb)
-	},
-	listenFeedback: function (cb) {
-		/*var feedback = new apn.Feedback(config.push.apn);
-		feedback.on("feedback", cb);*/
 	},
 	pushAndroid: function (token, data) {
 		var notification = new gcm.Message({ data });

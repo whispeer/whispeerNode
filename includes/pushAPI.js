@@ -151,7 +151,7 @@ const pushToken = sequelize.define("pushToken", {
 	}
 });
 
-pushService.listenFeedback(function (devices) {
+/*TODO pushService.listenFeedback(function (devices) {
 	Bluebird.resolve(devices).then(function (devices) {
 		if (devices.length === 0) {
 			return;
@@ -166,7 +166,7 @@ pushService.listenFeedback(function (devices) {
 
 		return pushToken.destroy({ where: { token: tokens }});
 	}).catch(errorService.handleError);
-});
+});*/
 
 var translations = {
 	"en": {
