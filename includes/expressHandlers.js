@@ -54,15 +54,15 @@ module.exports = function (express) {
 			return;
 		}
 
-		clientError.create({
+		/*clientError.create({
 			errorText: req.body.error,
 			errorStack: req.body.stack,
 			headers: JSON.stringify(req.headers),
 			mailSent: false
-		}).then(() => {
+		}).then(() => {*/
 			res.send("Error Report Transfered");
 			next();
-		})
+		/*})*/
 	});
 
 	express.post("/b2b", function (req, res, next) {
