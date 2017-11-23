@@ -23,9 +23,10 @@ const sendPush = (connection, notification, token) => {
 	connection.send(notification, token).then((response) => {
 		if (response.failed.length > 0) {
 			apnErrors.forEach((cb) =>
-				response.failed.forEach(({ device, status, response }) =>
-					cb(status, response, device)
-				)
+				response.failed.forEach((info) => {
+					const { device, status, response } = info
+					cb(device, status, response, info)
+				})
 			)
 		}
 	})

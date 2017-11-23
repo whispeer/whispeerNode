@@ -201,12 +201,20 @@ var getPushTokens = function (users) {
 	return pushToken.findAll({ where: { userID: users, disabled: false }});
 }
 
-const extraInfo = {
-	"8": "\nA error code of 8 indicates that the device token is invalid. This could be for a number of reasons - are you using the correct environment? i.e. Production vs. Sandbox"
+const errorMessages = {
+	"400": "Bad request",
+	"403": "There was an error with the certificate or with the provider authentication token",
+	"405": "The request used a bad :method value. Only POST requests are supported.",
+	"410": "The device token is no longer active for the topic.",
+	"413": "The notification payload was too large.",
+	"429": "The server received too many requests for the same device token.",
+	"500": "Internal server error",
+	"503": "The server is shutting down and unavailable.",
 }
 
-pushService.listenAPNError((errCode, notification, token) => {
-	const extra = extraInfo[errCode] || ""
+
+pushService.listenAPNError((token, errCode, notification, fullFailure) => {
+	const extra = errorMessages[errCode] || ""
 
 	/*pushToken.findOne({ where: { token }}).then((pushInfo) => {
 		if (errCode === 8) {
@@ -222,8 +230,12 @@ pushService.listenAPNError((errCode, notification, token) => {
 		return pushInfo.increment("errorCount")
 	})*/
 
-	const message = `APN Transmission Error:\nNotification caused error: ${errCode} for device ${token}-${JSON.stringify(notification)}${extra}`;
-	errorService.handleError(new Error(message));
+	if (!errCode) {
+		errorService.handleError(new Error(`Unknown APN Error ${token} ${JSON.stringify(fullFailure)}`))
+		return
+	}
+
+	errorService.handleError(new Error(`APN Error ${extra} (${errCode}) for device ${token} - ${JSON.stringify(notification)}`))
 
 })
 
