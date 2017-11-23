@@ -81,7 +81,7 @@ function setSignedList(request, m, signedList, add, remove, cb) {
 	var ownID = request.session.getUserID();
 
 	step(function () {
-		return client.hgetallAsync("friends:" + ownID + ":signedList");
+		return client.hgetallAsync(`friends:${ownID}:signedList`);
 	}, h.sF(function (oldSignedList) {
 		oldSignedList = oldSignedList || {};
 

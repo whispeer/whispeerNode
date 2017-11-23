@@ -107,7 +107,7 @@ KeyApi.get = function (realid, cb) {
 		case "sign":
 			return new EccKey(realid);
 		default:
-			throw new KeyNotFound("key not found for realid: " + realid);
+			throw new KeyNotFound(`key not found for realid: ${realid} - ${type}`);
 		}
 	}).nodeify(cb)
 };

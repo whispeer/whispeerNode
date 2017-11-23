@@ -44,7 +44,7 @@ const io = require("socket.io")(server);
 
 require("./includes/errors");
 
-const setupErrorMails = require("./includes/errorMails")
+// const setupErrorMails = require("./includes/errorMails")
 
 const client = require("./includes/redisClient");
 
@@ -78,9 +78,9 @@ return require("check-dependencies")({}).then((dependencyCheck) => {
 
 	return setup();
 }).then(() => {
-	return client.smembersAsync("user:online");
+	// setupErrorMails()
 
-	setupErrorMails()
+	return client.smembersAsync("user:online");
 }).then((onlineUsers) => {
 	return deleteOnlineUsers(onlineUsers)
 }).then(() => {
@@ -98,5 +98,3 @@ return require("check-dependencies")({}).then((dependencyCheck) => {
 		io.set("transports", ["websocket", "polling"]);
 	}
 });
-
-console.log("App started");
