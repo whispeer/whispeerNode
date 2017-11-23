@@ -20,7 +20,7 @@ const checkSignedList = (signedList) => {
 				.filter((key) => helper.isRealID(key))
 		)
 		.filter((key) => client.existsAsync(`key:${key}`).then((b) => !b))
-		.then((missing) => console.log(missing))
+		.then((missing) => missing.length > 0 ? console.log(missing) : null)
 }
 
 Bluebird.try(() => {
