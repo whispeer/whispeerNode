@@ -16,8 +16,22 @@ const packageJSON = require("./package.json")
 
 Bluebird.longStackTraces()
 
+const getRavenKey = () => {
+	const env = process.env.WHISPEER_ENV || "development"
+
+	if (env === "production") {
+		return "https://d122c62d9c284acb977c0565b3e4530b:30dfa83e01e347a390cd2e5b1b176c34@errors.whispeer.de/2"
+	}
+
+	if (env === "staging") {
+		return "https://52d49d77894641a490ff4aea5cd4cbb6:a7484600df2f46a0979a4d5dd0ff3528@errors.whispeer.de/4"
+	}
+
+	return "https://e9e0fc7cc8af4816a15dc35f60690aa8:d8e3791764ec45f3aa09613f9259157a@errors.whispeer.de/5"
+}
+
 const Raven = require("raven");
-Raven.config("https://d122c62d9c284acb977c0565b3e4530b:30dfa83e01e347a390cd2e5b1b176c34@errors.whispeer.de/2", {
+Raven.config(getRavenKey(), {
 	release: packageJSON.version
 }).install();
 

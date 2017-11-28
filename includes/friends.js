@@ -99,7 +99,7 @@ function setSignedList(request, m, signedList, add, remove, cb) {
 			throw new Error("signedList update error");
 		}
 
-		verifySecuredMeta(request, signedList, "signedFriendList", this);
+		return verifySecuredMeta(request, signedList, "signedFriendList");
 	}), h.sF(function () {
 		//TODO: get all signed list keys!
 
@@ -273,7 +273,7 @@ var friends = {
 
 			setSignedList(request, m, signedList, [], [uid], this);
 		}), h.sF(function () {
-			client.hget("friends:" + ownID + ":signedList", uid, this);
+			return client.hgetAsync(`friends:${ownID}:signedList`, uid);
 		}), h.sF(function (friendShipKey) {
 			KeyApi.get(friendShipKey, this);
 		}), h.hE(function (e, friendShipKey) {
@@ -306,39 +306,6 @@ var friends = {
 			m.srem("friends:" + ownID + ":requests", uid);
 			m.sadd("friends:" + ownID + ":ignored", uid);
 
-			m.exec(this);
-		}), h.sF(function () {
-			this.ne(true);
-		}), cb);
-	},
-	declineRequest: function (request, uid, signedRemove, cb) {
-		var m = client.multi(), ownID = request.session.getUserID();
-		uid = h.parseDecimal(uid);
-
-		//move a friend request to the ignore list
-		step(function () {
-			client.sismember("friends:" + ownID + ":requests", uid, this);
-		}, h.sF(function (request) {
-			if (!request) {
-				this.last.ne(false);
-				return;
-			}
-
-			/* remove from request lists */
-			m.srem("friends:" + ownID + ":requests", uid);
-			m.srem("friends:" + uid + ":requested", ownID);
-
-			/* save signed unfriending and add to unfriended list */
-			m.sadd("friends:" + uid + ":unfriended", ownID);
-			m.hmset("friends:" + ownID + ":" + uid + ":unfriending", signedRemove);
-
-			client.hget("friends:" + uid + ":signedList", ownID, this);
-		}), h.sF(function (friendShipKey) {
-			KeyApi.get(friendShipKey, this);
-		}), h.sF(function (friendShipKey) {
-			//remove: friendShipKey from uid for ownid
-			friendShipKey.remove(m, this);
-		}), h.sF(function () {
 			m.exec(this);
 		}), h.sF(function () {
 			this.ne(true);
