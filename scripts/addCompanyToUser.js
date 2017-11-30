@@ -3,7 +3,7 @@
 "use strict";
 
 var setup = require("../includes/setup");
-var client = require("../includes/redisClient");
+const CompanyUser = require("../includes/models/companyUser")
 
 var Bluebird = require("bluebird");
 Bluebird.longStackTraces();
@@ -45,20 +45,26 @@ var requireConfirmation = Bluebird.promisify(function(message, action) {
 });
 
 const getCompaniesForUser = (userID) => {
-	return client.smembersAsync(`user:${userID}:companies`)
+	return CompanyUser.findAll({ where: { userID } })
 }
 
-const setCompanyID = (userID, companyID) => {
-	return client.saddAsync(`user:${userID}:companies`, companyID)
+const addCompanyID = (userID, CompanyId) => {
+	return CompanyUser.create({ userID, CompanyId })
 }
 
 const promise = setupP().then(() => {
 	return getCompaniesForUser(userID)
 }).then((oldCompanies) => {
 	if (oldCompanies.length > 0) {
-		return requireConfirmation(`Adding company id to user ${userID} and existing companies ${oldCompanies.join(",")} (adding: ${companyID})` )
+		const companyIDs = oldCompanies.map((c) => c.CompanyId)
+
+		if (companyIDs.indexOf(parseInt(companyID, 10)) > -1) {
+			throw new Error(`User is already in company ${companyID}`)
+		}
+
+		return requireConfirmation(`Adding company ${companyID} to user ${userID}. Is already in companies ${companyIDs.join(",")}`)
 	}
-}).then(() => setCompanyID(userID, companyID)).then(() => {
+}).then(() => addCompanyID(userID, companyID)).then(() => {
 	process.exit()
 })
 
