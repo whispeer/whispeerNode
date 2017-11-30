@@ -105,8 +105,8 @@ const versionGreater = (data, type, minVersion) => {
 		return false
 	}
 
-	const userVersion = data.clientInfo.version.split(".")
-	const minVersionArr = minVersion.split(".")
+	const userVersion = data.clientInfo.version.split(".").map((v) => parseInt(v, 10))
+	const minVersionArr = minVersion.split(".").map((v) => parseInt(v, 10))
 
 	for (let i = 0; i < userVersion.length; i += 1) {
 		if (userVersion[i] > minVersionArr[i]) {
