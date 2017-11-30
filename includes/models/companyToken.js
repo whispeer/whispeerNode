@@ -7,7 +7,7 @@ const Company = require("./company")
 const {
 	autoIncrementInteger,
 	required,
-	string,
+	token,
 	integer,
 } = require("./utils/columns")
 
@@ -17,7 +17,7 @@ const {
 
 const CompanyToken = sequelize.define("CompanyToken", {
 	id: autoIncrementInteger(),
-	token: required(string()),
+	token: required(token()),
 	uses: required(integer()),
 	used: required(integer()),
 })

@@ -1,36 +1,38 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
+const step = require("step");
+const h = require("whispeerHelper");
 const Bluebird = require("bluebird")
 
-var chatAPI = require("./chatAPI")
+const chatAPI = require("./chatAPI")
 
-var user = require("./tuser");
-var session = require("./tsession");
-var messages = require("./tmessage");
-var friends = require("./tfriends");
-var circles = require("./tcircles");
-var posts = require("./tposts");
-var invites = require("./tinvites");
-var blob = require("./tblob");
-var recovery = require("./trecovery");
-var reports = require("./treports");
+const user = require("./tuser");
+const session = require("./tsession");
+const messages = require("./tmessage");
+const friends = require("./tfriends");
+const circle = require("./tcircles");
+const posts = require("./tposts");
+const invites = require("./tinvites");
+const blob = require("./tblob");
+const recovery = require("./trecovery");
+const reports = require("./treports");
 
-var KeyApi = require("../includes/crypto/KeyApi");
-var mailer = require("../includes/mailer");
+const token = require("./tokenAPI")
 
-var verifySecuredMeta = require("../includes/verifyObject");
-var User = require("../includes/user");
-var SimpleUserDataStore = require("../includes/SimpleUserDataStore");
+const KeyApi = require("../includes/crypto/KeyApi");
+const mailer = require("../includes/mailer");
 
-var MAXDEPTH = 20;
+const verifySecuredMeta = require("../includes/verifyObject");
+const User = require("../includes/user");
+const SimpleUserDataStore = require("../includes/SimpleUserDataStore");
 
-var signatureCache = new SimpleUserDataStore("signatureCache");
-var trustManager = new SimpleUserDataStore("trustManager");
-var settings = new SimpleUserDataStore("settings");
+const MAXDEPTH = 20;
 
-var client = require("../includes/redisClient");
+const signatureCache = new SimpleUserDataStore("signatureCache");
+const trustManager = new SimpleUserDataStore("trustManager");
+const settings = new SimpleUserDataStore("settings");
+
+const client = require("../includes/redisClient");
 
 settings.preSet(function (request, newContent, cb) {
 	step(function () {
@@ -151,9 +153,10 @@ var whispeerAPI = {
 			}
 		}).nodeify(fn)
 	},
-	blob: blob,
-	invites: invites,
-	recovery: recovery,
+	token,
+	blob,
+	invites,
+	recovery,
 	chat: chatAPI,
 	pushNotification: {
 		subscribe: function (data, fn, request) {
@@ -315,7 +318,7 @@ var whispeerAPI = {
 			settings.set(request, data.settings, h.objectifyResult("success", fn));
 		}
 	},
-	circle: circles,
+	circle,
 	friends,
 	messages,
 	user,

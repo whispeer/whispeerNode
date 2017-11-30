@@ -43,6 +43,10 @@ module.exports = {
 		unique: true,
 		validate: { is: hex }
 	}),
+	token: () => ({
+		type: Sequelize.STRING,
+		unique: true,
+	}),
 	iv: () => ({
 		type: Sequelize.STRING,
 		unique: true,
