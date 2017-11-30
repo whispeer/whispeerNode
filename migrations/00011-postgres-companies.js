@@ -29,7 +29,7 @@ const getAllCompanies = () =>
 						companies[name] = { companyUser: [], name, licenses: 5000, trial: true }
 					}
 
-					companies[name].companyUser.push({ userID: info.userID })
+					companies[name].companyUser.push({ userID: info.userID, role: "admin" })
 				})
 			})
 
