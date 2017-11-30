@@ -53,5 +53,10 @@ module.exports = {
 		validate: { is: hex }
 	}),
 	type: (type) => ({ type: Sequelize.STRING, validate: { is: type } }),
-	boolean: () => ({ type: Sequelize.BOOLEAN })
+	boolean: () => ({ type: Sequelize.BOOLEAN }),
+	companyRole: () => ({
+		// eslint-disable-next-line new-cap
+		type: Sequelize.ENUM("admin", "user"),
+		defaultValue: "user"
+	})
 }
