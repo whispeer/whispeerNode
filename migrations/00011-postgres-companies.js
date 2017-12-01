@@ -44,8 +44,6 @@ function addCompaniesToPostgres(cb) {
 		getAllCompanies()
 	).map((company) =>
 		createCompany(company)
-	).then(() =>
-		new Bluebird(() => {})
 	).nodeify(cb);
 }
 

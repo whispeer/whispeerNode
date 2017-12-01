@@ -2,7 +2,7 @@
 
 const CompanyToken = require("../includes/models/companyToken")
 
-module.exports = {
+const tokenAPI = {
 	get: ({ token }, fn) => {
 		return CompanyToken.findOne({ where: { token }}).then((dbToken) => {
 			if (!dbToken) {
@@ -21,3 +21,8 @@ module.exports = {
 			.nodeify(fn)
 	},
 }
+
+tokenAPI.get.noLoginNeeded = true;
+tokenAPI.use.noLoginNeeded = true;
+
+module.exports = tokenAPI
