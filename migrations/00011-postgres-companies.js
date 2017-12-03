@@ -26,7 +26,7 @@ const getAllCompanies = () =>
 			userCompanies.forEach((info) => {
 				info.companies.forEach((name) => {
 					if (!companies[name]) {
-						companies[name] = { companyUser: [], name, licenses: 5000, trial: true }
+						companies[name] = { companyUser: [], name, licenses: 9001, trial: true }
 					}
 
 					companies[name].companyUser.push({ userID: info.userID, role: "admin" })

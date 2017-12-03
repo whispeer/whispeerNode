@@ -43,7 +43,7 @@ module.exports = function (express) {
 					role: "admin",
 					company: {
 						name: companyName,
-						licenses: 5000,
+						licenses: 9001,
 						trial: true,
 					}
 				}, {
