@@ -3,7 +3,7 @@
 const path = require("path");
 const bodyParser = require("body-parser");
 
-const clientError = require("./models/clientErrorModel");
+const CompanyUser = require("./models/companyUser")
 
 module.exports = function (express) {
 	var mailer = require("./mailer");
@@ -29,20 +29,32 @@ module.exports = function (express) {
 		const { sessionID } = req.body
 
 		return client.getAsync("session:" + sessionID).then((userID) =>
-			client.scardAsync(`user:${userID}:companies`).then((companyCount) => {
-				if (companyCount > 0) {
+		CompanyUser.findAll({ where: { userID }}).then((companies) => {
+				if (companies.length > 0) {
 					// eslint-disable-next-line no-console
 					console.log(`${userID} is already a business user`)
 					return
 				}
 
-				const companyID = `trial-${Math.random()}`
+				const companyName = `trial-${Math.random()}`
 
-				client.saddAsync(`user:${userID}:companies`, companyID).then(() => {
+				return CompanyUser.create({
+					userID,
+					role: "admin",
+					company: {
+						name: companyName,
+						licenses: 9001,
+						trial: true,
+					}
+				}, {
+					include: [{
+						association: CompanyUser.Company,
+					}]
+				}).then(() => {
 					// eslint-disable-next-line no-console
-					console.log(`${userID} started trial with ${companyID} as companyID`)
+					console.log(`${userID} started trial with ${companyName} as companyName`)
 
-					return mailer.mailSupport("Business Trial", `${userID} started trial with ${companyID} as companyID`)
+					return mailer.mailSupport("Business Trial", `${userID} started trial with ${companyName} as companyName`)
 				})
 			})
 		).finally(() => next())

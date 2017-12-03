@@ -1,11 +1,13 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
+const step = require("step")
+const h = require("whispeerHelper")
+const Bluebird = require("bluebird")
 
-var mailer = require("../includes/mailer");
-var invites = require("../includes/invites");
-var errorService = require("../includes/errorService");
+const mailer = require("../includes/mailer")
+const invites = require("../includes/invites")
+const errorService = require("../includes/errorService")
+const CompanyToken = require("../includes/models/companyToken")
 
 var s = {
 	logout: function logoutF(data, fn, request) {
@@ -95,19 +97,28 @@ var s = {
 			mailer.sendAcceptMail(myUser, this.parallel());
 			invites.useCode(myUser, data.inviteCode, this.parallel().bind(this, null));
 		}), h.sF(function () {
-			this.ne(res);
+			if (data.token) {
+				return CompanyToken.use(data.token, myUser.getID())
+					.catch(errorService.criticalError)
+					.thenReturn(res)
+			}
+
+			return Bluebird.resolve(res)
 		}), fn);
 	},
-	login: function (data, fn, request) {
-		var mySession;
-		step(function () {
-			console.log(data);
-			mySession = request.session;
-			mySession.login(request, data.identifier, data.password, data.token, this);
+	login: function ({ identifier, password, token, companyToken }, fn, request) {
+		step(() => {
+			return request.session.login(request, identifier, password, token);
 		}, h.sF(function (success) {
-			this.ne({
-				login: success
-			});
+			const response = { login: success }
+
+			if (companyToken) {
+				return CompanyToken.use(companyToken, request.session.getUserID())
+					.catch(errorService.criticalError)
+					.thenReturn(response)
+			}
+
+			return Bluebird.resolve(response)
 		}), fn);
 	}
 };

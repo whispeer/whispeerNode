@@ -76,7 +76,7 @@ function loadMigrations(cb) {
 		fs.readdir(path.resolve(__dirname, "migrations"), this);
 	}, h.sF(function (files) {
 		availableMigrations = files.filter(function (file) {
-			return fs.statSync(file).isFile();
+			return fs.statSync(path.resolve(__dirname, "migrations", file)).isFile();
 		});
 		this.ne();
 	}), cb);

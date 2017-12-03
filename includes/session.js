@@ -1,27 +1,28 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
-var client = require("./redisClient");
+const step = require("step");
+const h = require("whispeerHelper");
+const Bluebird = require("bluebird");
+const random = require("secure_random");
 
-var SymKey = require("./crypto/symKey.js");
-var EccKey = require("./crypto/eccKey.js");
+const client = require("./redisClient");
 
-var settingsService = require("./settings");
+const SymKey = require("./crypto/symKey.js");
+const EccKey = require("./crypto/eccKey.js");
+
+const settingsService = require("./settings");
 
 /** how long is the session id */
-var SESSIONKEYLENGTH = 30;
+const SESSIONKEYLENGTH = 30;
 
 /** recheck online status every 10 seconds */
-var CHECKTIME = 10 * 1000;
+const CHECKTIME = 10 * 1000;
 
-var errorService = require("./errorService");
+const errorService = require("./errorService");
 
-var verifySecuredMeta = require("./verifyObject");
+const verifySecuredMeta = require("./verifyObject");
 
-var Bluebird = require("bluebird");
-
-var random = require("secure_random");
+const CompanyUser = require("../includes/models/companyUser")
 
 /** get a random sid of given length
 * @param length length of sid
@@ -135,9 +136,11 @@ var Session = function Session() {
 	}
 
 	this.isBusiness = (cb) => {
-		return client.scardAsync(`user:${userid}:companies`).then((companies) => {
-			return companies > 0
-		}).nodeify(cb)
+		return CompanyUser.findAll({
+			where: {
+				userID: userid
+			}
+		}).then((companies) => companies.length > 0).nodeify(cb)
 	}
 
 	function callListener(logedin) {
