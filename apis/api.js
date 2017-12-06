@@ -18,6 +18,7 @@ const recovery = require("./trecovery");
 const reports = require("./treports");
 
 const token = require("./tokenAPI")
+const company = require("./companyAPI")
 
 const KeyApi = require("../includes/crypto/KeyApi");
 const mailer = require("../includes/mailer");
@@ -154,6 +155,7 @@ var whispeerAPI = {
 		}).nodeify(fn)
 	},
 	token,
+	company,
 	blob,
 	invites,
 	recovery,
