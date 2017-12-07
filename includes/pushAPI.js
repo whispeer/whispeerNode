@@ -98,8 +98,12 @@ const pushToken = sequelize.define("pushToken", {
 				payload.vibrationPattern = [0, 400, 500, 400]
 				payload.ledColor = [0, 0, 255, 0]
 
-				payload.title = title;
-				payload.message = "-";
+				payload.notification = {
+					title,
+					body: "-"
+				}
+
+				payload.priority = "high"
 
 				return pushService.pushAndroid(this.token, payload);
 			}
