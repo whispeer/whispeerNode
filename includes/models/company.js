@@ -25,14 +25,14 @@ const Company = sequelize.define("Company", {
 	instanceMethods: {
 		hasAccess: function (uID) {
 			if (!this.companyUser) {
-				throw new AccessViolation(`No access to chat ${this.id} for ${uID}`)
+				throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
 			}
 
 			return !!this.companyUser.find(({ userID }) => uID === userID)
 		},
 		validateAccess: function (uID) {
 			if (!this.hasAccess(uID)) {
-				throw new AccessViolation(`No access to chat ${this.id} for ${uID}`)
+				throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
 			}
 		},
 	}
