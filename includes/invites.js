@@ -66,10 +66,10 @@ var invites = {
 	},
 	getMyInvites: function (request, cb) {
 		var logedinError = Bluebird.promisify(request.session.logedinError, {
-		    context: request.session
+			context: request.session
 		});
 
-		var resultPromise = logedinError().then(function () {
+		return logedinError().then(function () {
 			return client.smembersAsync("invites:v2:user:" + request.session.getUserID());
 		}).map(function (inviteCode) {
 			return Bluebird.all([
@@ -82,16 +82,10 @@ var invites = {
 			});
 		}).filter(function (inviteData) {
 			return inviteData.active === "1";
-		});
-
-		if (cb) {
-			step.unpromisify(resultPromise, cb);
-		} else {
-			return resultPromise;
-		}
+		}).nodeify(cb)
 	},
 	byMail: function (request, mails, name, language, cb) {
-		var resultPromise = Bluebird.try(function () {
+		return Bluebird.try(function () {
 			if (name) {
 				name = escapeHtml(name);
 			} else {
@@ -101,7 +95,7 @@ var invites = {
 			return mails;
 		}).map(function (mail) {
 			var generateCode = Bluebird.promisify(invites.generateCode, {
-			    context: mailer
+				context: mailer
 			});
 
 			return generateCode(request, mail, true).then(function (code) {
@@ -112,20 +106,14 @@ var invites = {
 			});
 		}).map(function (invite) {
 			var sendMail = Bluebird.promisify(mailer.sendMail, {
-			    context: mailer
+				context: mailer
 			});
 			sendMail(invite.mail, "invite", {
 				name: name,
 				language: language,
 				inviteCode: invite.code
 			});
-		});
-
-		if (cb) {
-			step.unpromisify(resultPromise, cb);
-		} else {
-			return resultPromise;
-		}
+		}).nodeify(cb)
 	},
 	useCode: function (myUser, inviteCode, cb) {
 		step(function () {

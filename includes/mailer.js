@@ -40,54 +40,47 @@ var TEMPLATEDIR = "./mailTemplates/_build/";
 var languages = ["en", "de"];
 
 function generateChallenge(cb) {
-	var challenge;
-	step(function () {
-		code(20, this);
-	}, h.sF(function (code) {
-		challenge = code;
-		client.sadd("mail:codes", challenge, this);
-	}), h.sF(function (added) {
+	return Bluebird.coroutine(function *() {
+		const challenge = yield code(20);
+
+		const added = yield client.saddAsync("mail:codes", challenge);
+
 		if (added !== 1) {
-			generateChallenge(cb);
-		} else {
-			this.ne(challenge);
+			return generateChallenge()
 		}
-	}), cb);
+
+		return challenge
+	}).nodeify(cb)
 }
 
 var mailer = {
 	isMailActivatedForUser: function (user, mail, cb, overwrite, overwriteVerified) {
-		step(function () {
-			this.parallel.unflatten();
-
-			client.sismember("mail:" + user.getID(), mail, this.parallel());
-			settingsAPI.getUserSettings(user.getID(), this.parallel());
-		}, h.sF(function (verified, settings) {
-			this.ne((verified || overwriteVerified) && (settings.server.mailsEnabled || overwrite));
-		}), cb);
+		return Bluebird.all([
+			client.sismemberAsync("mail:" + user.getID(), mail),
+			settingsAPI.getUserSettings(user.getID())
+		]).then(([verified, settings]) => {
+			return (verified || overwriteVerified) && (settings.server.mailsEnabled || overwrite)
+		}).nodeify(cb)
 	},
 	generateTrackingCode: function (variables, cb) {
-		var resultCode;
+		return Bluebird.coroutine(function *() {
+			const resultCode = yield code(20);
 
-		step(function () {
-			code(20, this);
-		}, h.sF(function (_code) {
-			resultCode = _code;
-			client.sadd("analytics:mail:trackingCodes", resultCode, this);
-		}), h.sF(function (inserted) {
-			if (inserted) {
-				client.set("analytics:mail:trackingCodes:" + resultCode, JSON.stringify(variables), this);
-			} else {
-				mailer.generateTrackingCode(variables, cb);
+			const inserted = yield client.saddAsync("analytics:mail:trackingCodes", resultCode);
+
+			if (!inserted) {
+				return mailer.generateTrackingCode(variables, cb);
 			}
-		}), h.sF(function () {
-			this.ne(resultCode);
-		}), cb);
+
+			yield client.setAsync("analytics:mail:trackingCodes:" + resultCode, JSON.stringify(variables));
+
+			return resultCode
+		}).nodeify(cb)
 	},
 	verifyUserMail: function (challenge, mailsEnabled, cb) {
 		var challengeData;
 		step(function () {
-			client.hgetall("mail:challenges:" + challenge, this);
+			return client.hgetallAsync("mail:challenges:" + challenge);
 		}, h.sF(function (data) {
 			if (data) {
 				challengeData = data;
@@ -119,7 +112,7 @@ var mailer = {
 	sendAcceptMail: function (user, cb) {
 		var challenge;
 		step(function () {
-			generateChallenge(this);
+			return generateChallenge()
 		}, h.sF(function (code) {
 			challenge = code;
 
@@ -222,7 +215,6 @@ var mailer = {
 			variables.tracking = trackingCode;
 
 			var inExpression = false;
-			var sawFirstBracket = false;
 
 			var result = "";
 			var expression = "";
@@ -245,7 +237,6 @@ var mailer = {
 					i += 1;
 				} else {
 					result += content[i];
-					sawFirstBracket = false;
 				}
 			}
 
