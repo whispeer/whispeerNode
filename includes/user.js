@@ -619,11 +619,6 @@ var User = function (id) {
 		}), cb);
 	};
 
-	this.check = function (errors, cb) {
-		var friends = require("./friends");
-		return Bluebird.fromCallback((cb) => friends.checkSignedList(errors, this.getID(), cb)).nodeify(cb);
-	};
-
 	function getProfiles(request, cb) {
 		step(function () {
 			this.parallel.unflatten();
@@ -934,12 +929,6 @@ User.checkUserIDs = function (ids, cb) {
 User.all = function (cb) {
 	return client.smembersAsync("user:list").map((uid) => {
 		return User.getUser(uid);
-	}).nodeify(cb);
-};
-
-User.check = function (errors, cb) {
-	return User.all().map(function (user) {
-		return user.check(errors);
 	}).nodeify(cb);
 };
 
