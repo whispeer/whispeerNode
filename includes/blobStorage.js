@@ -13,14 +13,14 @@ function blobIDtoFile(blobid) {
 	return "files/" + blobid + ".png";
 }
 
-function checkBlobExists(blobid, cb) {
+function checkBlobExists(blobid) {
 	return Bluebird.try(() => {
 		return client.sismemberAsync("blobs:usedids", blobid);
 	}).then((ismember) => {
 		if (!ismember) {
 			throw new BlobNotFound();
 		}
-	}).nodeify(cb)
+	})
 }
 
 function useBlobID(blobid) {
@@ -82,7 +82,7 @@ const getBlobData = (request, blobid) =>
 
 
 var blobStorage = {
-	reserveBlobID: function (request, meta, cb) {
+	reserveBlobID: function (request, meta) {
 		return Bluebird.coroutine(function *() {
 			yield request.session.logedinError();
 
@@ -98,9 +98,9 @@ var blobStorage = {
 			yield client.hmsetAsync("blobs:" + blobid, meta);
 
 			return blobid
-		}).nodeify(cb)
+		})
 	},
-	preReserveBlobID: function (cb) {
+	preReserveBlobID: function () {
 		return Bluebird.coroutine(function *() {
 			const blobid = yield createBlobID()
 
@@ -111,9 +111,9 @@ var blobStorage = {
 			}
 
 			throw new Error("Per logical deduction this should not have happened")
-		}).nodeify(cb);
+		})
 	},
-	fullyReserveBlobID: function (request, blobid, meta, cb) {
+	fullyReserveBlobID: function (request, blobid, meta) {
 		return Bluebird
 			.try(() => request.session.logedinError())
 			.then(() => client.sismemberAsync("blobs:prereserved", blobid))
@@ -131,9 +131,8 @@ var blobStorage = {
 			})
 			.then(() => client.hmsetAsync("blobs:" + blobid, meta))
 			.then(() => blobid)
-			.nodeify(cb)
 	},
-	addBlobPart: function (request, blobid, blobPart, previousSize, lastPart, cb) {
+	addBlobPart: function (request, blobid, blobPart, previousSize, lastPart) {
 		return Bluebird.coroutine(function *() {
 			try {
 				const stats = yield Bluebird.fromCallback((cb) => fs.stat(blobIDtoFile(blobid), cb))
@@ -161,9 +160,9 @@ var blobStorage = {
 			}
 
 			return false
-		}).nodeify(cb)
+		})
 	},
-	addBlobFromStream: function (stream, blobid, cb) {
+	addBlobFromStream: function (stream, blobid) {
 		return Bluebird
 			.try(() => useBlobID(blobid))
 			.then((blobid) => {
@@ -173,9 +172,8 @@ var blobStorage = {
 				})
 			})
 			.then(() => client.saddAsync("blobs:usedids", blobid))
-			.nodeify(cb)
 	},
-	getBlobPart: function (request, blobid, start, size, cb) {
+	getBlobPart: function (request, blobid, start, size) {
 		return Bluebird
 			.try(() => getBlobData(request, blobid))
 			.then(function ([data, meta]) {
@@ -196,9 +194,8 @@ var blobStorage = {
 
 				return result
 			})
-			.nodeify(cb)
 	},
-	getBlob: function (request, blobid, cb) {
+	getBlob: function (request, blobid) {
 		return Bluebird
 			.try(() => getBlobData(request, blobid))
 			.then(([data, meta]) => {
@@ -213,7 +210,6 @@ var blobStorage = {
 
 				return result
 			})
-			.nodeify(cb)
 	}
 };
 
