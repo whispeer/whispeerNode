@@ -608,7 +608,7 @@ var User = function (id) {
 
 	this.isMailVerified = function (request, cb, overwrite) {
 		step(function () {
-			theUser.getEMail(request, this);
+			return theUser.getEMail(request);
 		}, h.sF(function (mail) {
 			if (mail) {
 				var mailer = require("./mailer");
