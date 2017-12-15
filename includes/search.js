@@ -76,7 +76,7 @@ var search = {
 				}
 			}, cb);
 		},
-		searchFriends: function (userID, text, cb) {
+		searchFriends: function (userID, text) {
 			return elasticConnection.search({
 				index: "whispeer",
 				type: "user",
@@ -97,7 +97,7 @@ var search = {
 						}
 					}
 				}
-			}, cb);
+			});
 		}
 	}
 };

@@ -265,7 +265,7 @@ var mailer = {
 			}
 
 			receiver = _receiver;
-			mailer.isMailActivatedForUser(user, receiver, this, overwriteActive, overwriteVerified);
+			return mailer.isMailActivatedForUser(user, receiver, null, overwriteActive, overwriteVerified);
 		}), h.sF(function (activated) {
 			if (activated) {
 				mailer.sendMail(receiver, templateName, variables, this);

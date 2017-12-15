@@ -74,7 +74,7 @@ var u = {
 			}
 		}, UserNotExisting), fn);
 	},
-	searchFriends: function searchFriends(data, fn, request) {
+	searchFriends: function (data, fn, request) {
 		step(function () {
 			request.session.getOwnUser(this);
 		}, h.sF(function (ownUser) {
