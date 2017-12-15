@@ -20,65 +20,58 @@ const KeyApi = require("./crypto/KeyApi");
 
 const RedisObserver = require("./asset/redisObserver");
 
-function logedinF(data, cb) {
+function logedinF(data) {
 	return Bluebird.try(() => {
 		if (data.reference.isSaved()) {
 			return data.request.session.logedinError();
 		}
-	}).nodeify(cb);
+	})
 }
 
-function ownUserF(data, cb) {
+function ownUserF(data) {
 	return Bluebird.try(() => {
 		if (data.reference.isSaved()) {
 			return data.request.session.ownUserError(data.reference);
 		}
-	}).nodeify(cb)
+	})
 }
 
-function hasFriendKeyAccess(data, cb) {
-	step(function () {
-		if (data.reference.isSaved()) {
-			var friends = require("./friends");
-			friends.hasFriendsKeyAccess(data.request, data.reference.getID(), this);
-		} else {
-			this.last.ne();
-		}
-	}, h.sF(function (acc) {
+function hasFriendKeyAccess(data) {
+	if (!data.reference.isSaved()) {
+		return Bluebird.resolve()
+	}
+
+	return Bluebird.try(() => {
+		const friends = require("./friends");
+		return friends.hasFriendsKeyAccess(data.request, data.reference.getID());
+	}).then((acc) => {
 		if (!acc) {
 			throw new AccessViolation("No Key Access");
 		}
-
-		this.ne();
-	}), cb);
+	})
 }
 
-function trueF(data, cb) {
-	cb();
-}
+const trueF = () => Bluebird.resolve()
 
-function checkKeyExists(keyObj) {
+function checkKeyExists(keyClass) {
 	return function (data, cb) {
-		step(function () {
-			if (typeof data.value === "object" && data.value instanceof keyObj) {
-				this.last.ne();
-			} else {
-				keyObj.get(data.value, this);
-			}
-		}, h.sF(function () {
-			this.ne();
-		}), cb);
+		if (typeof data.value === "object" && data.value instanceof keyClass) {
+			return Bluebird.resolve().nodeify(cb)
+		}
+
+		return Bluebird
+			.fromCallback((cb) => keyClass.get(data.value, cb))
+			.then(() => {})
+			.nodeify(cb)
 	};
 }
 
 function keyToRealID(data, cb) {
-	step(function () {
-		if (typeof data.value === "object" && typeof data.value.getRealID === "function") {
-			this.ne(data.value.getRealID());
-		} else {
-			this.ne(data.value);
-		}
-	}, cb);
+	if (typeof data.value === "object" && typeof data.value.getRealID === "function") {
+		return Bluebird.resolve(data.value.getRealID()).nodeify(cb)
+	}
+
+	return Bluebird.resolve(data.value).nodeify(cb)
 }
 
 var validKeys = {
@@ -89,41 +82,35 @@ var validKeys = {
 	profile: {
 		read: logedinF,
 		readTransform: function (data, cb) {
-			step(function () {
-				var val = data.value, attr;
+			const val = data.value
 
-				for (attr in val) {
-					if (val.hasOwnProperty(attr)) {
-						val[attr] = JSON.parse(val[attr]);
-					}
+			for (let attr in val) {
+				if (val.hasOwnProperty(attr)) {
+					val[attr] = JSON.parse(val[attr]);
 				}
+			}
 
-				this.ne(val);
-			}, cb);
+			return Bluebird.resolve(val).nodeify(cb)
 		},
 		pre: function (data, cb) {
-			step(function () {
-				var validator = require("whispeerValidations");
-				var err = validator.validate("profile", data);
+			return Bluebird.try(() => {
+				const validator = require("whispeerValidations");
+				const err = validator.validate("profile", data);
 				if (err) {
 					throw err;
-				} else {
-					this.ne();
 				}
-			}, cb);
+			}).nodeify(cb)
 		},
 		transform: function (data, cb) {
-			var val = data.value;
-			step(function () {
-				var attr;
-				for (attr in val) {
-					if (val.hasOwnProperty(attr)) {
-						val[attr] = JSON.stringify(val[attr]);
-					}
-				}
+			const val = data.value;
 
-				this.ne(val);
-			}, cb);
+			for (let attr in val) {
+				if (val.hasOwnProperty(attr)) {
+					val[attr] = JSON.stringify(val[attr]);
+				}
+			}
+
+			return Bluebird.resolve(val).nodeify(cb)
 		},
 		hash: true
 	},
@@ -144,10 +131,10 @@ var validKeys = {
 		read: ownUserF,
 		pre: ownUserF,
 		transform: function (data, cb) {
-			cb(null, JSON.stringify(data.value));
+			return Bluebird.resolve(JSON.stringify(data.value)).nodeify(cb)
 		},
 		readTransform: function (data, cb) {
-			cb(null, JSON.parse(data.value));
+			return Bluebird.resolve(JSON.parse(data.value)).nodeify(cb)
 		}
 	},
 	mainKey: {
@@ -174,68 +161,59 @@ var validKeys = {
 		read: trueF,
 		match: /^[A-z][A-z0-9]*$/,
 		pre: function (data, cb) {
-			step(function () {
-				ownUserF(data, this);
-			}, h.sF(function () {
-				client.setnx("user:nickname:" + data.value.toLowerCase(), data.reference.getID(), this);
-			}), h.sF(function (set) {
+			return Bluebird.coroutine(function *() {
+				yield ownUserF(data);
+
+				const set = yield client.setnxAsync("user:nickname:" + data.value.toLowerCase(), data.reference.getID());
+
 				if (set) {
-					this.last.ne();
-				} else {
-					client.get("user:nickname:" + data.value.toLowerCase(), this);
-				}
-			}), h.sF(function (id) {
-				if (id === data.reference.getID()) {
-					this.last.ne();
-				} else {
-					throw new NicknameInUse(data.value);
-				}
-			}), cb);
-		},
-		post: function (data, cb) {
-			step(function () {
-				if (data.oldValue) {
-					client.del("user:nickname:" + data.oldValue.toLowerCase());
+					return
 				}
 
-				this.ne();
-			}, cb);
+				const id = yield client.getAsync("user:nickname:" + data.value.toLowerCase(), this);
+
+				if (id !== data.reference.getID()) {
+					throw new NicknameInUse(data.value);
+				}
+			}).nodeify(cb)
+		},
+		post: function (data, cb) {
+			return Bluebird.try(() => {
+				if (data.oldValue) {
+					return client.delAsync("user:nickname:" + data.oldValue.toLowerCase());
+				}
+			}).nodeify(cb)
 		}
 	},
 	email: {
 		read: logedinF,
 		match: /^[A-Z0-9._%\-]+@[A-Z0-9.\-]+\.[A-Z]+$/i,
 		pre: function (data, cb) {
-			step(function mailPre1() {
-				ownUserF(data, this);
-			}, h.sF(function mailPre2() {
-				client.setnx("user:mail:" + data.value.toLowerCase(), data.reference.getID(), this);
-			}), h.sF(function mailPre3(set) {
+			return Bluebird.coroutine(function *() {
+				yield ownUserF(data);
+
+				const set = yield client.setnxAsync("user:mail:" + data.value.toLowerCase(), data.reference.getID());
+
 				if (set) {
-					this.last.ne();
-				} else {
-					client.get("user:mail:" + data.value.toLowerCase(), this);
+					return
 				}
-			}), h.sF(function mailPre4(id) {
-				if (id === data.reference.getID()) {
-					this.last.ne();
-				} else {
+
+				const id = yield client.getAsync("user:mail:" + data.value.toLowerCase());
+
+				if (id !== data.reference.getID()) {
 					throw new MailInUse(data.value.toLowerCase());
 				}
-			}), cb);
+			}).nodeify(cb)
 		},
-		transform: function mailT1(data, cb) {
-			step(function () {
-				this.ne(data.value.toLowerCase());
-			}, cb);
+		transform: function (data, cb) {
+			return Bluebird.resolve(data.value.toLowerCase()).nodeify(cb)
 		},
 		post: function (data, cb) {
-			step(function mailP1() {
+			return Bluebird.try(() => {
 				if (data.oldValue) {
-					client.del("user:mail:" + data.oldValue.toLowerCase());
+					client.delAsync("user:mail:" + data.oldValue.toLowerCase());
 				}
-				this.ne();
-			}, cb);
+			}).nodeify(cb)
 		}
 	}
 };
@@ -247,25 +225,19 @@ var User = function (id) {
 	var theUser = this;
 
 	this.updateSearch = function (request) {
-		var Friends = require("./friends");
+		const Friends = require("./friends");
 
-		step(function () {
-			this.parallel.unflatten();
-
-			theUser.getNames(request, this.parallel());
-			Friends.get(request, this.parallel());
-		}, h.sF(function (names, friends) {
+		return Bluebird.all([
+			theUser.getNames(request),
+			Friends.get(request),
+		]).then(([names, friends]) =>
 			search.user.index(id, {
 				firstname: names.firstName || "",
 				lastname: names.lastName || "",
 				nickname: names.nickname,
 				friends: friends.map(h.parseDecimal)
-			});
-		}), function (e) {
-			if (e) {
-				console.error(e);
-			}
-		});
+			})
+		)
 	};
 
 	if (id) {
@@ -316,50 +288,38 @@ var User = function (id) {
 		"disabled"
 	]);
 
-	function deleteUser(cb) {
+	function deleteUser() {
 		//TODO: think about nickname, mail (unique values)
 
-		return client.keysAsync(userDomain + ":*").map((key) => {
-			return client.delAsync(key);
-		}).nodeify(cb);
+		return client.keysAsync(userDomain + ":*")
+			.map((key) => client.delAsync(key))
 	}
 
 	this.save = function doSave(request, cb) {
 		h.assert(!databaseUser.isSaved());
 
-		step(function doSave() {
-			return client.incrAsync("user:count");
-		}, h.sF(function handleNewID(myid) {
-			id = h.parseDecimal(myid);
-			userDomain = "user:" + id;
+		return client.incrAsync("user:count")
+			.then((myid) => {
+				id = h.parseDecimal(myid);
+				userDomain = "user:" + id;
 
-			this.parallel.unflatten();
+				return Bluebird.all([
+					client.setnx("user:id:" + id, id),
+					client.sadd("user:list", id),
+				])
+			})
+			.then(([set]) => {
+				h.assert(set);
 
-			return Bluebird.all([
-				client.setnx("user:id:" + id, id),
-				client.sadd("user:list", id),
-			])
-		}), h.sF(function ([set]) {
-			h.assert(set);
+				return databaseUser.save(request, userDomain).thenReturn(true)
+			}).catch((e) => {
+				deleteUser()
 
-			databaseUser.save(request, userDomain, this);
-		}), function saveDone(e) {
-			if (e) {
-				deleteUser(function (e) {
-					console.error(e);
-				});
-
-				throw e;
-			}
-
-			this.ne(true);
-		}, cb);
+				return Bluebird.reject(e)
+			}).nodeify(cb)
 	};
 
-	this.isSaved = function() {
-		return databaseUser.isSaved();
-	};
-
+	this.isSaved = () => databaseUser.isSaved()
 	this.getID = () => id
 
 	this.isBlocked = (userID) =>
@@ -433,7 +393,7 @@ var User = function (id) {
 				this.getNickname(request),
 				this.getPublicProfile(request),
 			])
-		}).spread((nickname, profile) => {
+		}).spread(([nickname, profile]) => {
 			var res = {};
 			if (profile && profile.content && profile.content.basic)  {
 				var basicProfile = profile.content.basic;
@@ -484,37 +444,32 @@ var User = function (id) {
 				var myProfile = new Profile(request.session.getUserID(), meID);
 				myProfile.setData(request, myProfileData, this.last);
 			} else {
-				Profile.create(request, myProfileData, this);
+				return Profile.create(request, myProfileData);
 			}
 		}), h.sF(function (myProfile) {
-			setAttribute(request, "myProfile", myProfile.getID(), this);
+			return setAttribute(request, "myProfile", myProfile.getID());
 		}), cb);
 	};
 
 	this.createPrivateProfile = function(request, data, cb) {
-		var Profile = require("./profile");
-		Profile.create(request, data, cb);
+		const Profile = require("./profile");
+		return Profile.create(request, data).nodeify(cb);
 	};
 
 	this.deletePrivateProfilesExceptMine = function (request, cb) {
-		step(function () {
-			return getAttribute(request, "myProfile");
-		}, h.sF(function (myProfile) {
-			require("./profile").deleteAllExcept(request, myProfile, this);
-		}), cb);
+		const Profile = require("./profile")
+
+		return getAttribute(request, "myProfile")
+			.then((myProfile) => Profile.deleteAllExcept(request, myProfile))
+			.nodeify(cb)
 	};
 
 	this.getPrivateProfiles = function(request, cb) {
-		step(function getPP1() {
-			var Profile = require("./profile");
-			Profile.getAccessed(request, id, this);
-		}, h.sF(function getPP2(profiles) {
-			profiles.forEach(function (profile) {
-				profile.getPData(request, this.parallel());
-			}, this);
+		const Profile = require("./profile");
 
-			this.parallel()();
-		}), cb);
+		return Profile.getAccessed(request, id)
+			.then((profiles) => profiles.map((profile) => profile.getPData(request)))
+			.nodeify(cb)
 	};
 
 	this.getPublicProfile = function(request, cb) {
@@ -522,15 +477,19 @@ var User = function (id) {
 	};
 
 	this.getFriendShipKey = function(request, cb) {
-		return request.session.logedinError().then(() => {
-			return client.hgetAsync("friends:" + request.session.getUserID() + ":signedList", id);
-		}).nodeify(cb);
+		const ownID = request.session.getUserID()
+
+		return request.session.logedinError()
+			.then(() => client.hgetAsync(`friends:${ownID}:signedList`, id))
+			.nodeify(cb)
 	};
 
 	this.getReverseFriendShipKey = function(request, cb) {
-		return request.session.logedinError(this).then(() => {
-			return client.hgetAsync(`friends:${id}:signedList`, request.session.getUserID());
-		}).nodeify(cb);
+		const ownID = request.session.getUserID()
+
+		return request.session.logedinError()
+			.then(() => client.hgetAsync(`friends:${id}:signedList`, ownID))
+			.nodeify(cb);
 	};
 
 	function addKey(request, keyName, filter) {
@@ -621,16 +580,16 @@ var User = function (id) {
 
 	function getProfiles(request, cb) {
 		step(function () {
-			this.parallel.unflatten();
-
-			theUser.getPublicProfile(request, this.parallel());
-			theUser.getPrivateProfiles(request, this.parallel(), true);
-		}, h.sF(function (pub, priv) {
-			this.ne({
-				pub: pub,
-				priv: priv
-			});
-		}), cb);
+			return Bluebird.all([
+				theUser.getPublicProfile(request),
+				theUser.getPrivateProfiles(request, null, true),
+			])
+		}, h.sF(function ([pub, priv]) {
+			return {
+				pub,
+				priv
+			}
+		}), cb)
 	}
 
 	function getMyProfile(request, cb) {
