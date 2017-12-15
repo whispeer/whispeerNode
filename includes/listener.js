@@ -1,14 +1,7 @@
 "use strict";
 
-const step = require("step");
-const h = require("whispeerHelper");
 const User = require("./user");
-
 const RequestData = require("./requestData");
-
-const errorService = require("./errorService");
-
-const t = require("../apis/tmessage")
 
 const versionGreater = (versionGiven, versionCompare) => {
 	const splitGiven = versionGiven.split(".")
@@ -37,43 +30,17 @@ var listener = {
 	},
 	signatureCache: function () {},
 	friendRequest: function (socketData, uid) {
-		var request = new RequestData(socketData, {});
-		step(function () {
-			//we definitly need to add this users friendKey here!
-			//maybe also get this users profile.
-			User.getUser(uid, this);
-		}, h.sF(function (theUser) {
-			theUser.getUData(request, this);
-		}), function (e, data) {
-			if (!e) {
-				socketData.socket.emit("friendRequest", {
-					keys: request.getAllKeys(),
-					uid: uid,
-					user: data
-				});
-			} else {
-				errorService.handleError(e, request);
-			}
-		});
+		const request = new RequestData(socketData, {});
+		return User.getUser(uid)
+			.then((theUser) => theUser.getUData(request))
+			.then((user) => socketData.socket.emit("friendRequest", { keys: request.getAllKeys(), uid, user }))
 	},
 	friendAccept: function (socketData, uid) {
-		var request = new RequestData(socketData, {});
+		const request = new RequestData(socketData, {});
 
-		step(function () {
-			User.getUser(uid, this);
-		}, h.sF(function (theUser) {
-			theUser.getUData(request, this);
-		}), function (e, data) {
-			if (!e) {
-				socketData.socket.emit("friendAccept", {
-					keys: request.getAllKeys(),
-					uid: uid,
-					user: data
-				});
-			} else {
-				errorService.handleError(e, request);
-			}
-		});
+		return User.getUser(uid)
+			.then((theUser) => theUser.getUData(request))
+			.then((user) => socketData.socket.emit("friendAccept", { keys: request.getAllKeys(), uid, user }))
 	},
 	synchronizeRead: function (socketData, { unreadChatIDs, unreadChunkIDs }) {
 		socketData.socket.emit("unreadTopics", { unread: unreadChunkIDs })
