@@ -388,6 +388,14 @@ const chatAPI = {
 
 			yield chat.validateAccess(request)
 
+			if (!oldestKnownMessage) {
+				return {
+					messages: [],
+					chunks: [],
+					remainingMessagesCount: 0
+				}
+			}
+
 			const messagesCountResponse = yield sequelize.query(MESSAGE_COUNT_QUERY, {
 				bind: {
 					id,

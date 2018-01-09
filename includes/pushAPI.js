@@ -216,8 +216,19 @@ const errorMessages = {
 pushService.listenAPNError((token, errCode, notification, fullFailure) => {
 	const extra = errorMessages[errCode] || ""
 
-	/*pushToken.findOne({ where: { token }}).then((pushInfo) => {
-		if (errCode === 8) {
+	if (!errCode) {
+		errorService.handleError(new Error(`Unknown APN Error ${token} ${JSON.stringify(fullFailure)}`))
+		return
+	}
+
+	if (errCode === 410) {
+		if (notification.reason === "Unregistered") {
+			return pushToken.destroy({ where: { token }})
+		}
+	}
+
+	if (errCode === 400) {
+		pushToken.findOne({ where: { token }}).then((pushInfo) => {
 			if (!pushInfo.sandbox) {
 				return pushInfo.update({ sandbox: true })
 			}
@@ -225,14 +236,9 @@ pushService.listenAPNError((token, errCode, notification, fullFailure) => {
 			if (pushInfo.sandbox && pushInfo.errorCount > 42) {
 				return pushInfo.update({ disabled: true })
 			}
-		}
 
-		return pushInfo.increment("errorCount")
-	})*/
-
-	if (!errCode) {
-		errorService.handleError(new Error(`Unknown APN Error ${token} ${JSON.stringify(fullFailure)}`))
-		return
+			return pushInfo.increment("errorCount")
+		})
 	}
 
 	errorService.handleError(new Error(`APN Error ${extra} (${errCode}) for device ${token} - ${JSON.stringify(notification)}`))
