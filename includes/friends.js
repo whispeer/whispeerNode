@@ -13,6 +13,9 @@ var SymKey = require("./crypto/symKey");
 var verifySecuredMeta = require("./verifyObject");
 var pushAPI = require("./pushAPI");
 
+const settingsAPI = require("../includes/settings");
+const CompanyUser = require("../includes/models/companyUser")
+
 function pushFriendRequest(request, senderId, receiver) {
 	step(function () {
 		var User = require("./user");
@@ -449,14 +452,37 @@ var friends = {
 	},
 	getUser: function (request, uid, cb) {
 		step(function () {
-			friends.areFriends(request, uid, this);
-		}, h.sF(function (hasFriend) {
-			if (hasFriend || request.session.getUserID() === h.parseDecimal(uid)) {
+			return friends.canSeeFriends(request, uid);
+		}, h.sF(function (canSeeFriends) {
+			if (canSeeFriends || request.session.getUserID() === h.parseDecimal(uid)) {
 				getFriends(request, uid, this);
 			} else {
 				this.ne([]);
 			}
 		}), cb);
+	},
+	friendsAccess: (uid) => {
+		return Bluebird.all([
+			CompanyUser.isBusinessUser(uid),
+			Bluebird.fromCallback((cb) => settingsAPI.getUserSettings(uid, cb))
+		]).then(([businessUser, settings]) => {
+			if (typeof settings.server.friendsAccess === "boolean") {
+				return settings.server.friendsAccess
+			}
+
+			return !businessUser
+		})
+	},
+	canSeeFriends: (request, uid) => {
+		if (request.session.getUserID() === h.parseDecimal(uid)) {
+			return Bluebird.resolve(true)
+		}
+
+		return Bluebird.all([
+			Bluebird.fromCallback((cb) => friends.areFriends(request, uid, cb)),
+			friends.friendsAccess(uid)
+		])
+		.then(([areFriends, friendsAccess]) => friendsAccess && areFriends)
 	},
 	get: function (request, cb) {
 		getFriends(request, request.session.getUserID(), cb);
