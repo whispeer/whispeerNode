@@ -1,6 +1,6 @@
 {
   "name": "whispeer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "dependencies": {
     "amanda": "0.5.x",
     "apn": "^2.1.5",
