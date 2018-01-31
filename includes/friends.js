@@ -466,7 +466,6 @@ var friends = {
 			CompanyUser.isBusinessUser(uid),
 			Bluebird.fromCallback((cb) => settingsAPI.getUserSettings(uid, cb))
 		]).then(([businessUser, settings]) => {
-			debugger
 			if (typeof settings.server.friendsAccess === "boolean") {
 				return settings.server.friendsAccess
 			}
