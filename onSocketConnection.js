@@ -136,6 +136,7 @@ module.exports = function (socket) {
 	const diff = (new Date().getTime() - startTime) / 1000 / 60
 
 	if (socketCount > diff + 5) {
+		console.log("Dropping socket", socketCount, diff)
 		return
 	}
 
