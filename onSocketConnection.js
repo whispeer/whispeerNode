@@ -133,7 +133,7 @@ const startTime = new Date().getTime()
 module.exports = function (socket) {
 	console.log("connection received", socket.request.headers["x-forwarded-for"]);
 
-	const diff = (new Date().getTime() - startTime) / 1000 / 20
+	const diff = (new Date().getTime() - startTime) / 1000 / 10
 
 	if (socketCount > diff + 5 && socket.request.headers["x-forwarded-for"] !== "95.91.209.194") {
 		console.log("Dropping socket", socketCount, diff)

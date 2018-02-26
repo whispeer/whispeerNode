@@ -73,7 +73,7 @@ var invites = {
 
 		console.time(`f${rand}`)
 
-		var resultPromise = logedinError().then(function () {
+		return logedinError().then(function () {
 			console.timeEnd(`f${rand}`)
 			console.time(`g${rand}`)
 
@@ -97,13 +97,7 @@ var invites = {
 			console.timeEnd(`i${rand}`)
 
 			return inviteData.active === "1";
-		});
-
-		if (cb) {
-			step.unpromisify(resultPromise, cb);
-		} else {
-			return resultPromise;
-		}
+		}).nodeify(cb);
 	},
 	byMail: function (request, mails, name, language, cb) {
 		var resultPromise = Bluebird.try(function () {
