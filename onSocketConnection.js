@@ -216,6 +216,7 @@ module.exports = function (socket) {
 	});
 
 	socket.on("disconnect", function () {
+		socketCount--;
 		socketData.emit("disconnect");
 		//unregister listener
 		console.log("client disconnected");
