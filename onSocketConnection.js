@@ -137,6 +137,7 @@ module.exports = function (socket) {
 
 	if (socketCount > diff + 5 && socket.request.headers["x-forwarded-for"] !== "95.91.209.194") {
 		console.log("Dropping socket", socketCount, diff)
+		socket.disconnect(true)
 		return
 	}
 
