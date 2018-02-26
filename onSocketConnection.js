@@ -140,6 +140,8 @@ module.exports = function (socket) {
 		return
 	}
 
+	socketCount += 1
+
 	console.log("Accepting socket", socketCount, diff)
 
 	var session = new Session();
