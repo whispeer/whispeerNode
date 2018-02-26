@@ -131,12 +131,12 @@ let socketCount = 0;
 const startTime = new Date().getTime()
 
 module.exports = function (socket) {
-	console.log(socket.request.headers)
+	console.log(socket.request.headers["x-forwarded-for"])
 	console.log("connection received", socket.handshake.address);
 
 	const diff = (new Date().getTime() - startTime) / 1000 / 60
 
-	if (socketCount > diff + 5 && "95.91.209.194" !== socket.request.headers["x-forwarded-for"]) {
+	if (socketCount > diff + 5 && socket.request.headers["x-forwarded-for"] !== "95.91.209.194") {
 		console.log("Dropping socket", socketCount, diff)
 		return
 	}
