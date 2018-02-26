@@ -131,11 +131,12 @@ let socketCount = 0;
 const startTime = new Date().getTime()
 
 module.exports = function (socket) {
+	console.log(socket.request.headers)
 	console.log("connection received", socket.handshake.address);
 
 	const diff = (new Date().getTime() - startTime) / 1000 / 60
 
-	if (socketCount > diff + 5 && socket.handshake.address !== "95.91.209.194" && socket.handshake.address !== "2a02:8109:8940:22a5:ddfe:4894:dbc5:7973") {
+	if (socketCount > diff + 5) {
 		console.log("Dropping socket", socketCount, diff)
 		return
 	}
@@ -190,8 +191,10 @@ module.exports = function (socket) {
 					};
 				}
 
-				always(request, result, fn);
+				always(request, result, this);
+			}, function (response) {
 				log(" Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
+				fn(response)
 			});
 		};
 	}
