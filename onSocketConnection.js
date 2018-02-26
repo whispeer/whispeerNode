@@ -127,8 +127,18 @@ function always(request, response, fn) {
 	}, fn);
 }
 
+let socketCount = 0;
+const startTime = new Date().getTime()
+
 module.exports = function (socket) {
 	console.log("connection received");
+
+	const diff = (new Date().getTime() - startTime) / 1000 / 60
+
+	if (socketCount > diff + 5) {
+		return
+	}
+
 	var session = new Session();
 
 	var socketData = new SocketData(socket, session);
