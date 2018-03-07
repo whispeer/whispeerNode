@@ -9,6 +9,8 @@ const sequelize = require("./dbConnector/sequelizeClient");
 const configManager = require("./configManager");
 const config = configManager.get();
 
+const CompanyUser = require("./models/companyUser")
+
 if (!config.push) {
 	// eslint-disable-next-line no-console
 	console.warn("No Push Service Configured");
@@ -281,7 +283,12 @@ var pushAPI = {
 		}).nodeify(cb);
 	},
 	getTitle: function (user, referenceType, username) {
-		return user.getLanguage().then(function (userLanguage) {
+		return Bluebird.all([
+			user.getLanguage(),
+			CompanyUser.isBusinessUser(user.getID())
+		]).then(function ([userLanguage, isBusinessUser]) {
+			console.log("meow", user.getID(), userLanguage, isBusinessUser)
+
 			return getTitle(referenceType, userLanguage, username);
 		});
 	},
