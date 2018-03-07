@@ -110,10 +110,18 @@ const pushToken = sequelize.define("pushToken", {
 
 			return Bluebird.reject("push: invalid type");
 		},
-		pushIOSBadge: function (badge) {
+		pushBadge: function (badge) {
 			if (this.deviceType === "ios") {
 				console.log(`Push badge ${badge} to ${this.token}`)
 				return pushService.pushIOSBadge(this.token, badge, this.sandbox);
+			}
+
+			if (this.deviceType === "android") {
+				console.log(`Push badge ${badge} to ${this.token}`)
+
+				const payload = { badge };
+
+				return pushService.pushAndroid(this.token, payload);
 			}
 
 			return Bluebird.reject("push: invalid type");
@@ -279,8 +287,8 @@ var pushAPI = {
 	},
 	updateBadgeForUser: (userID, notificationsCount) => {
 		return getPushTokens([userID])
-			.filter(token => token.deviceType === "ios")
-			.map(token => token.pushIOSBadge(notificationsCount))
+			// .filter(token => token.deviceType === "ios")
+			.map(token => token.pushBadge(notificationsCount))
 	},
 	pushDataToUser: function (userId, data) {
 		return getPushTokens([userId]).map(function (token) {
