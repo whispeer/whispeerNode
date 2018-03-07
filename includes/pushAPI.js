@@ -287,9 +287,13 @@ var pushAPI = {
 			user.getLanguage(),
 			CompanyUser.isBusinessUser(user.getID())
 		]).then(function ([userLanguage, isBusinessUser]) {
-			console.log("meow", user.getID(), userLanguage, isBusinessUser)
+			const lang = isBusinessUser ? "de" : userLanguage;
 
-			return getTitle(referenceType, userLanguage, username);
+			const title = getTitle(referenceType, lang, username);
+
+			console.log("meow", user.getID(), userLanguage, isBusinessUser, title)
+
+			return title
 		});
 	},
 	updateBadgeForUser: (userID, notificationsCount) => {
