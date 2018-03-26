@@ -485,7 +485,7 @@ var friends = {
 		.then(([areFriends, friendsAccess]) => friendsAccess && areFriends)
 	},
 	get: function (request, cb) {
-		getFriends(request, request.session.getUserID(), cb);
+		return getFriends(request, request.session.getUserID(), cb);
 	},
 	getSignedList: function (request, cb) {
 		client.hgetall("friends:" + request.session.getUserID() + ":signedList", cb);
