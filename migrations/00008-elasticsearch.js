@@ -13,6 +13,8 @@ const redisClient = require("../includes/redisClient");
 
 const h = require("whispeerHelper");
 
+const log = (val) => console.log(val); //eslint-disable-line no-console
+
 const indexSettings = {
 	index: "whispeer",
 	body: {
@@ -97,22 +99,22 @@ const indexSettings = {
 }
 
 const fieldMapping = {
-	"type": "multi_field",
+	"type": "text",
 	"fields": {
 		"simple": {
-			"type": "string",
+			"type": "text",
 			"analyzer": "simple"
 		},
 		"metaphone": {
-			"type": "string",
+			"type": "text",
 			"analyzer": "metaphone"
 		},
 		"ngram": {
-			"type": "string",
+			"type": "text",
 			"analyzer": "edgeNGram"
 		},
 		"porter": {
-			"type": "string",
+			"type": "text",
 			"analyzer": "porter"
 		}
 	}
@@ -134,7 +136,7 @@ function requestMock(userID) {
 	return {
 		session: {
 			logedinError: function (cb) {
-				cb();
+				return Bluebird.resolve().nodeify(cb);
 			},
 			getUserID: function () {
 				return userID;
@@ -164,27 +166,57 @@ function getUserNamesAndFriends(user) {
 	}));
 }
 
+const indexAllUsers = () => {
+	return getAllUsers()
+		.map((user) => getUserNamesAndFriends(user))
+		.map((user) =>
+			elasticClient.index({
+				"index": "whispeer",
+				"type": "user",
+				"id": user.id,
+				"body": user.names
+			})
+		, { concurrency: 5 })
+}
+
 function addNamesToElastic(cb) {
-	return Bluebird.resolve()
-	.then(() => elasticClient.indices.exists({index: "whispeer" }))
-	.then((exists) => exists && elasticClient.indices.delete({index: "whispeer"}))
-	.then(() => elasticClient.indices.create({ index: "whispeer" }))
-	.then(() => elasticClient.cluster.health({ waitForStatus: "green" }))
-	.then(() => elasticClient.indices.close({ index: "whispeer" }))
-	.then(() => elasticClient.indices.putSettings(indexSettings))
-	.then(() => elasticClient.cluster.health({ waitForStatus: "green" }))
-	.then(() => elasticClient.indices.putMapping(mapping))
-	.then(() => elasticClient.indices.open({ index: "whispeer" }))
-	.then(() => getAllUsers())
-	.map((user) => getUserNamesAndFriends(user))
-	.map((user) =>
-		elasticClient.index({
-			"index": "whispeer",
-			"type": "user",
-			"id": user.id,
-			"body": user.names
+	return Bluebird.coroutine(function * () {
+		const exists = yield elasticClient.indices.exists({index: "whispeer" })
+
+		if (exists) {
+			log("Delete old index!")
+			yield elasticClient.indices.delete({index: "whispeer"})
+		}
+
+		log("Change Replica Settings");
+		yield elasticClient.indices.putTemplate({
+			name: "template",
+			body: {
+				"template": "*",
+				"settings": {
+					"number_of_shards": 1,
+					"number_of_replicas": 0
+				},
+			}
 		})
-	, { concurrency: 5 }).nodeify(cb);
+		yield elasticClient.cluster.health({ waitForStatus: "green" })
+
+		log("Create Index!")
+		yield elasticClient.indices.create({ index: "whispeer" })
+		yield elasticClient.cluster.health()
+		yield elasticClient.cluster.health({ waitForStatus: "green" })
+		log("Settup Settings!")
+		yield elasticClient.indices.close({ index: "whispeer" })
+		yield elasticClient.indices.putSettings(indexSettings)
+		yield elasticClient.cluster.health({ waitForStatus: "green" })
+		log("Setup Mappings!")
+		yield elasticClient.indices.putMapping(mapping)
+		yield elasticClient.indices.open({ index: "whispeer" })
+
+		log("Index creation done - adding users!")
+
+		return indexAllUsers()
+	})().nodeify(cb);
 }
 
 module.exports = addNamesToElastic;

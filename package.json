@@ -9,7 +9,7 @@
     "body-parser": "^1.15.2",
     "check-dependencies": "^1.0.1",
     "cheerio": "^0.22.0",
-    "elasticsearch": "^11.0.1",
+    "elasticsearch": "^14.2.2",
     "escape-html": "^1.0.3",
     "express": "^4.8.0",
     "node-gcm": "^0.14.4",
