@@ -135,7 +135,7 @@ var whispeerAPI = {
 			}).nodeify(fn)
 		}
 
-		const changeChat = versionGreater(data, "messenger", "0.3.5")
+		const changeChat = versionGreater(data, "messenger", "0.3.5") || versionGreater(data, "browser", "0.3.11")
 		const fileTransfer = versionGreater(data, "messenger", "0.3.6") || versionGreater(data, "browser", "0.3.11")
 		const voiceMail = versionGreater(data, "messenger", "0.3.9")
 

@@ -2,7 +2,6 @@
 
 const Bluebird = require("bluebird")
 const validator = require("whispeerValidations");
-const h = require("whispeerHelper")
 
 const sequelize = require("../includes/dbConnector/sequelizeClient")
 const mailer = require("../includes/mailer")
@@ -44,7 +43,6 @@ const ensureUserKeyAccess = (uid, key) => {
 
 const validateChunk = (request, chunkMeta, receiverKeys) => {
 	const receiverIDs = chunkMeta.receiver;
-	const receiverWO = receiverIDs.filter(h.not(request.session.isMyID));
 
 	return Bluebird.try(function () {
 		var err = validator.validate("topicCreate", chunkMeta);
@@ -63,10 +61,10 @@ const validateChunk = (request, chunkMeta, receiverKeys) => {
 
 		return User.checkUserIDs(receiverIDs);
 	}).then(function () {
-		return Bluebird.resolve(receiverWO).map(function (uid) {
+		return Bluebird.resolve(receiverIDs).map(function (uid) {
 			return Bluebird.all([
 				ensureUserKeyAccess(uid, chunkMeta._key),
-				ensureUserKeyAccess(uid, receiverKeys[uid]),
+				receiverKeys[uid] ? ensureUserKeyAccess(uid, receiverKeys[uid]) : true,
 			])
 		});
 	})

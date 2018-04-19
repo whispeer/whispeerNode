@@ -130,8 +130,24 @@ function always(request, response, fn) {
 	}, fn);
 }
 
+let socketCount = 0;
+const startTime = new Date().getTime()
+
 module.exports = function (socket) {
-	console.log("connection received");
+	console.log("connection received", socket.request.headers["x-forwarded-for"]);
+
+	const diff = (new Date().getTime() - startTime) / 1000 / 10
+
+	if (socketCount > diff + 5 && socket.request.headers["x-forwarded-for"] !== "95.91.209.194") {
+		console.log("Dropping socket", socketCount, diff)
+		socket.disconnect(true)
+		return
+	}
+
+	socketCount += 1
+
+	console.log("Accepting socket", socketCount, diff)
+
 	var session = new Session();
 
 	var socketData = new SocketData(socket, session);
@@ -178,8 +194,10 @@ module.exports = function (socket) {
 					};
 				}
 
-				always(request, result, fn);
+				always(request, result, this);
+			}, function (response) {
 				log(" Request handled after: " + (new Date().getTime() - time) + " (" + channel + ")");
+				fn(response)
 			});
 		};
 	}
@@ -202,6 +220,7 @@ module.exports = function (socket) {
 	});
 
 	socket.on("disconnect", function () {
+		socketCount--;
 		socketData.emit("disconnect");
 		//unregister listener
 		console.log("client disconnected");

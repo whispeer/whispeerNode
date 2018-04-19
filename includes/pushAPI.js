@@ -9,6 +9,8 @@ const sequelize = require("./dbConnector/sequelizeClient");
 const configManager = require("./configManager");
 const config = configManager.get();
 
+const CompanyUser = require("./models/companyUser")
+
 if (!config.push) {
 	// eslint-disable-next-line no-console
 	console.warn("No Push Service Configured");
@@ -110,10 +112,18 @@ const pushToken = sequelize.define("pushToken", {
 
 			return Bluebird.reject("push: invalid type");
 		},
-		pushIOSBadge: function (badge) {
+		pushBadge: function (badge) {
 			if (this.deviceType === "ios") {
 				console.log(`Push badge ${badge} to ${this.token}`)
 				return pushService.pushIOSBadge(this.token, badge, this.sandbox);
+			}
+
+			if (this.deviceType === "android") {
+				console.log(`Push badge ${badge} to ${this.token}`)
+
+				const payload = { badge };
+
+				return pushService.pushAndroid(this.token, payload);
 			}
 
 			return Bluebird.reject("push: invalid type");
@@ -216,8 +226,19 @@ const errorMessages = {
 pushService.listenAPNError((token, errCode, notification, fullFailure) => {
 	const extra = errorMessages[errCode] || ""
 
-	/*pushToken.findOne({ where: { token }}).then((pushInfo) => {
-		if (errCode === 8) {
+	if (!errCode) {
+		errorService.handleError(new Error(`Unknown APN Error ${token} ${JSON.stringify(fullFailure)}`))
+		return
+	}
+
+	if (errCode === 410) {
+		if (notification.reason === "Unregistered") {
+			return pushToken.destroy({ where: { token }})
+		}
+	}
+
+	if (errCode === 400) {
+		pushToken.findOne({ where: { token }}).then((pushInfo) => {
 			if (!pushInfo.sandbox) {
 				return pushInfo.update({ sandbox: true })
 			}
@@ -225,14 +246,9 @@ pushService.listenAPNError((token, errCode, notification, fullFailure) => {
 			if (pushInfo.sandbox && pushInfo.errorCount > 42) {
 				return pushInfo.update({ disabled: true })
 			}
-		}
 
-		return pushInfo.increment("errorCount")
-	})*/
-
-	if (!errCode) {
-		errorService.handleError(new Error(`Unknown APN Error ${token} ${JSON.stringify(fullFailure)}`))
-		return
+			return pushInfo.increment("errorCount")
+		})
 	}
 
 	errorService.handleError(new Error(`APN Error ${extra} (${errCode}) for device ${token} - ${JSON.stringify(notification)}`))
@@ -267,14 +283,19 @@ var pushAPI = {
 		}).nodeify(cb);
 	},
 	getTitle: function (user, referenceType, username) {
-		return user.getLanguage().then(function (userLanguage) {
-			return getTitle(referenceType, userLanguage, username);
+		return Bluebird.all([
+			user.getLanguage(),
+			CompanyUser.isBusinessUser(user.getID())
+		]).then(function ([userLanguage, isBusinessUser]) {
+			const lang = isBusinessUser ? "de" : userLanguage;
+
+			return getTitle(referenceType, lang, username);
 		});
 	},
 	updateBadgeForUser: (userID, notificationsCount) => {
 		return getPushTokens([userID])
-			.filter(token => token.deviceType === "ios")
-			.map(token => token.pushIOSBadge(notificationsCount))
+			// .filter(token => token.deviceType === "ios")
+			.map(token => token.pushBadge(notificationsCount))
 	},
 	pushDataToUser: function (userId, data) {
 		return getPushTokens([userId]).map(function (token) {

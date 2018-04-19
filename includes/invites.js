@@ -60,20 +60,36 @@ const invites = {
 		}).nodeify(cb)
 	},
 	getMyInvites: function (request, cb) {
+
+		const rand = Math.random()
+
+		console.time(`f${rand}`)
+
 		return request.session.logedinError().then(function () {
-			return client.smembersAsync("invites:v2:user:" + request.session.getUserID())
+			console.timeEnd(`f${rand}`)
+			console.time(`g${rand}`)
+
+			return client.smembersAsync("invites:v2:user:" + request.session.getUserID());
 		}).map(function (inviteCode) {
+			console.timeEnd(`g${rand}`)
+			console.time(`h${rand}`)
+
 			return Bluebird.all([
 				client.hgetallAsync("invites:v2:code:" + inviteCode),
 				client.smembersAsync("invites:v2:code:" + inviteCode + ":used")
 			]).spread(function (data, usedBy) {
-				data.usedBy = usedBy
-				data.code = inviteCode
-				return data
-			})
-		}).filter((inviteData) =>
-			inviteData.active === "1"
-		).nodeify(cb)
+				console.timeEnd(`h${rand}`)
+				console.time(`i${rand}`)
+
+				data.usedBy = usedBy;
+				data.code = inviteCode;
+				return data;
+			});
+		}).filter(function (inviteData) {
+			console.timeEnd(`i${rand}`)
+
+			return inviteData.active === "1";
+		}).nodeify(cb);
 	},
 	byMail: function (request, mails, name, language, cb) {
 		return Bluebird.try(function () {

@@ -318,17 +318,28 @@ const chatAPI = {
 
 	markRead: ({ id }, fn, request) => {
 		return Bluebird.coroutine(function* () {
+			const rand = Math.random()
+
+			console.time(`a${rand}`)
 			const chat = yield Chat.findById(id)
+			console.timeEnd(`a${rand}`)
+			console.time(`b${rand}`)
 			yield chat.validateAccess(request)
+			console.timeEnd(`b${rand}`)
+			console.time(`c${rand}`)
 			yield UserUnreadMessage.destroy({
 				where: {
 					ChatId: chat.id,
 					userID: request.session.getUserID()
 				}
 			})
-
+			console.timeEnd(`c${rand}`)
+			console.time(`d${rand}`)
 			updateBadge(request.session.getUserID())
+			console.timeEnd(`d${rand}`)
+			console.time(`e${rand}`)
 			synchronizeRead(request)
+			console.timeEnd(`e${rand}`)
 		})().nodeify(fn)
 	},
 
@@ -387,6 +398,14 @@ const chatAPI = {
 			const chat = yield Chat.findById(id)
 
 			yield chat.validateAccess(request)
+
+			if (!oldestKnownMessage) {
+				return {
+					messages: [],
+					chunks: [],
+					remainingMessagesCount: 0
+				}
+			}
 
 			const messagesCountResponse = yield sequelize.query(MESSAGE_COUNT_QUERY, {
 				bind: {

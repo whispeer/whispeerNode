@@ -12,6 +12,9 @@ var SymKey = require("./crypto/symKey");
 var verifySecuredMeta = require("./verifyObject");
 var pushAPI = require("./pushAPI");
 
+const settingsAPI = require("../includes/settings");
+const CompanyUser = require("../includes/models/companyUser")
+
 function pushFriendRequest(request, senderId, receiver) {
 	const User = require("./user");
 	const referenceType = "contactRequest"
@@ -380,7 +383,6 @@ var friends = {
 		return getFriends(request, request.session.getUserID())
 			.then(function (ids) {
 				const keys = ids.map((id) => `friends:${id}`)
-
 				keys.push("friends:" + request.session.getUserID())
 
 				return client.sunionAsync(keys)
@@ -389,14 +391,37 @@ var friends = {
 	},
 	getUser: function (request, uid, cb) {
 		return friends
-			.areFriends(request, uid)
-			.then(function (hasFriend) {
-				if (hasFriend || request.session.getUserID() === h.parseDecimal(uid)) {
+			.canSeeFriends(request, uid)
+			.then(function (canSeeFriends) {
+				if (canSeeFriends || request.session.getUserID() === h.parseDecimal(uid)) {
 					return getFriends(request, uid);
 				}
 
 				return []
 			}).nodeify(cb);
+	},
+	friendsAccess: (uid) => {
+		return Bluebird.all([
+			CompanyUser.isBusinessUser(uid),
+			Bluebird.fromCallback((cb) => settingsAPI.getUserSettings(uid, cb))
+		]).then(([businessUser, settings]) => {
+			if (typeof settings.server.friendsAccess === "boolean") {
+				return settings.server.friendsAccess
+			}
+
+			return !businessUser
+		})
+	},
+	canSeeFriends: (request, uid) => {
+		if (request.session.getUserID() === h.parseDecimal(uid)) {
+			return Bluebird.resolve(true)
+		}
+
+		return Bluebird.all([
+			Bluebird.fromCallback((cb) => friends.areFriends(request, uid, cb)),
+			friends.friendsAccess(uid)
+		])
+		.then(([areFriends, friendsAccess]) => friendsAccess && areFriends)
 	},
 	get: (request, cb) => getFriends(request, request.session.getUserID()).nodeify(cb),
 	getSignedList: (request, cb) => client.hgetallAsync(`friends:${request.session.getUserID()}:signedList`).nodeify(cb),

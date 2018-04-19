@@ -136,11 +136,7 @@ var Session = function Session() {
 	}
 
 	this.isBusiness = (cb) => {
-		return CompanyUser.findAll({
-			where: {
-				userID: userid
-			}
-		}).then((companies) => companies.length > 0).nodeify(cb)
+		return CompanyUser.isBusinessUser(userid).nodeify(cb)
 	}
 
 	function callListener(logedin) {
