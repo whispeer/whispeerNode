@@ -35,26 +35,22 @@ const settings = new SimpleUserDataStore("settings");
 
 const client = require("../includes/redisClient");
 
-settings.preSet(function (request, newContent, cb) {
-	step(function () {
-		verifySecuredMeta(request, newContent.meta, "settings", this);
-	}, cb);
-});
+settings.preSet((request, newContent) =>
+	verifySecuredMeta(request, newContent.meta, "settings")
+)
 
-trustManager.preSet(function (request, newContent, cb) {
-	step(function () {
-		trustManager.get(request, this);
-	}, h.sF(function (oldTrustManager) {
+trustManager.preSet((request, newContent) =>
+	trustManager.get(request).then((oldTrustManager) => {
 		if (oldTrustManager) {
-			var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(newContent));
+			var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(newContent))
 			if (diff.length > 0) {
-				throw new Error("trust manager update blocked because it would delete data " + diff);
+				throw new Error("trust manager update blocked because it would delete data " + diff)
 			}
 		}
 
-		verifySecuredMeta(request, newContent, "trustManager", this);
-	}), cb);
-});
+		return verifySecuredMeta(request, newContent, "trustManager")
+	})
+)
 
 //change api style:
 //extract objects with methods:

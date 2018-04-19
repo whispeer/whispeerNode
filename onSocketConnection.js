@@ -63,18 +63,20 @@ function callExplicitHandler(handler, data, cb, request) {
 	var explicitHandlerRequest = new RequestData(request, data, request.channel);
 
 	step(function () {
-		if (handler.noLoginNeeded) {
-			this.ne();
-		} else {
-			request.session.logedinError(this.parallel());
-			request.checkOriginAccess(this.parallel())
+		if (!handler.noLoginNeeded) {
+			return Bluebird.all([
+				request.session.logedinError(),
+				request.checkOriginAccess()
+			])
 		}
+
+		this.ne()
 	}, h.sF(function () {
 		if (Array.isArray(data.keys)) {
-			createKeys(explicitHandlerRequest, data.keys, this);
-		} else {
-			this.ne();
+			return createKeys(explicitHandlerRequest, data.keys);
 		}
+
+		this.ne();
 	}), h.sF(function () {
 		handler(data, new HandlerCallback(this.ne, explicitHandlerRequest), explicitHandlerRequest);
 	}), cb);
@@ -94,12 +96,13 @@ handle = function (handler, data, fn, request) {
 */
 function always(request, response, fn) {
 	step(function () {
-		this.parallel.unflatten();
-		request.session.logedin(this.parallel());
-		request.session.isBusiness(this.parallel())
-
 		request.socketData.recentActivity();
-	}, function (e, loggedin, isBusiness) {
+
+		return Bluebird.all([
+			request.session.logedin(),
+			request.session.isBusiness(),
+		])
+	}, function (e, [loggedin, isBusiness]) {
 		if (e) {
 			errorService.handleError(e, request);
 			response.error = true;
@@ -177,10 +180,10 @@ module.exports = function (socket) {
 				}
 
 				if (session.getSID() !== data.sid) {
-					session.setSID(data.sid, this);
-				} else {
-					this.ne();
+					return session.setSID(data.sid);
 				}
+
+				this.ne();
 			}, h.sF(function () {
 				handle(handler, data, this, request);
 			}), function (e, result) {

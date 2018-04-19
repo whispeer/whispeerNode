@@ -1,11 +1,9 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
+const fs = require("fs");
+const Bluebird = require("bluebird")
 
-var fs = require("fs");
-
-var client = require("./redisClient");
+const client = require("./redisClient");
 
 function isBlobID(blobid) {
 	return blobid.match(/^[A-z0-9]*$/);
@@ -15,237 +13,203 @@ function blobIDtoFile(blobid) {
 	return "files/" + blobid + ".png";
 }
 
-function checkBlobExists(blobid, cb) {
-	step(function () {
-		client.sismember("blobs:usedids", blobid, this);
-	}, h.sF(function (ismember) {
+function checkBlobExists(blobid) {
+	return Bluebird.try(() => {
+		return client.sismemberAsync("blobs:usedids", blobid);
+	}).then((ismember) => {
 		if (!ismember) {
 			throw new BlobNotFound();
 		}
-
-		this.ne();
-	}), cb);
+	})
 }
 
-function useBlobID(blobid, cb) {
-	step(function () {
+function useBlobID(blobid) {
+	return Bluebird.try(() => {
 		if (isBlobID(blobid)) {
-			client.srem("blobs:reserved", blobid, this);
-		} else {
-			throw new InvalidBlobID("Not a blob id " + blobid);
+			return client.sremAsync("blobs:reserved", blobid);
 		}
-	}, h.sF(function (removed) {
+
+		throw new InvalidBlobID("Not a blob id " + blobid);
+	}).then((removed) => {
 		if (removed === 1) {
-			this.ne(blobid);
-		} else {
-			throw new InvalidBlobID("Blob ID not reserved");
+			return blobid
 		}
-	}), cb);
+
+		throw new InvalidBlobID("Blob ID not reserved");
+	})
 }
 
 var code = require("./session").code;
 
 var BLOBIDLENGTH = 30;
 
-function createBlobID(cb) {
-	var blobid;
+const createBlobID = () =>
+	Bluebird.coroutine(function *() {
+		const blobid = yield code(BLOBIDLENGTH);
+		const isNoMember = yield client.saddAsync("blobs:allids", blobid);
 
-	step(function () {
-		code(BLOBIDLENGTH, this);
-	}, h.sF(function (bid) {
-		blobid = bid;
-		client.sadd("blobs:allids", blobid, this);
-	}), h.sF(function (isNoMember) {
 		if (isNoMember === 1) {
-			this.ne(blobid);
-		} else {
-			createBlobID(cb);
-		}
-	}), cb);
-}
-
-var readFile = function (blobid, cb) {
-	step(function () {
-		fs.readFile(blobIDtoFile(blobid), this);
-	}, function (err, file) {
-		if (!err) {
-			return this.ne(file)
+			return blobid
 		}
 
+		return createBlobID()
+	})
+
+const readFile = (blobid) =>
+	Bluebird.fromCallback(function (cb) {
+		fs.readFile(blobIDtoFile(blobid), cb);
+	}).catch((err) => {
 		console.log(err)
-		throw new BlobNotFound();
-	}, cb)
-}
+		throw new BlobNotFound(blobid);
+	})
 
-var getBlobData = function (request, blobid, cb) {
-	step(function () {
-		request.session.logedinError(this);
-	}, h.sF(function () {
-		checkBlobExists(blobid, this);
-	}), h.sF(function () {
-		client.sismember("blobs:usedids", blobid, this);
-	}), h.sF(function (exists) {
-		if (exists) {
-			this.parallel.unflatten();
-			readFile(blobid, this.parallel())
-			client.hgetall("blobs:" + blobid, this.parallel());
-		} else {
-			throw new BlobNotFound();
-		}
-	}), cb);
-}
+const getBlobData = (request, blobid) =>
+	Bluebird
+		.try(() => request.session.logedinError())
+		.then(() => checkBlobExists(blobid))
+		.then(() => client.sismemberAsync("blobs:usedids", blobid))
+		.then((exists) => {
+			if (!exists) {
+				throw new BlobNotFound()
+			}
+
+			return Bluebird.all([
+				readFile(blobid),
+				client.hgetallAsync("blobs:" + blobid)
+			])
+		})
+
+
 
 var blobStorage = {
-	reserveBlobID: function (request, meta, cb) {
-		var blobid;
+	reserveBlobID: function (request, meta) {
+		return Bluebird.coroutine(function *() {
+			yield request.session.logedinError();
 
-		step(function () {
-			request.session.logedinError(this);
-		}, h.sF(function () {
-			createBlobID(this);
-		}), h.sF(function (bid) {
-			blobid = bid;
-			client.sadd("blobs:reserved", blobid, this);
-		}), h.sF(function (isNoMember) {
+			const blobid = yield createBlobID()
+			const isNoMember = yield client.saddAsync("blobs:reserved", blobid);
+
 			if (isNoMember === 1) {
 				this.ne();
 			} else {
-				throw "Per logical deduction this should not have happened";
+				throw new Error("This should never happen...")
 			}
-		}), h.sF(function () {
-			client.hmset("blobs:" + blobid, meta, this);
-		}), h.sF(function () {
-			this.ne(blobid);
-		}), cb);
+
+			yield client.hmsetAsync("blobs:" + blobid, meta);
+
+			return blobid
+		})
 	},
-	preReserveBlobID: function (cb) {
-		var blobid;
+	preReserveBlobID: function () {
+		return Bluebird.coroutine(function *() {
+			const blobid = yield createBlobID()
 
-		step(function () {
-			createBlobID(this);
-		}, h.sF(function (bid) {
-			blobid = bid;
+			const isNoMember = yield client.saddAsync("blobs:prereserved", blobid)
 
-			client.sadd("blobs:prereserved", blobid, this);
-		}), h.sF(function (isNoMember) {
 			if (isNoMember === 1) {
-				this.ne(blobid);
-			} else {
-				throw "Per logical deduction this should not have happened";
+				return blobid
 			}
-		}), cb);
+
+			throw new Error("Per logical deduction this should not have happened")
+		})
 	},
-	fullyReserveBlobID: function (request, blobid, meta, cb) {
-		step(function () {
-			request.session.logedinError(this);
-		}, h.sF(function () {
-			client.sismember("blobs:prereserved", blobid, this);
-		}), h.sF(function (isPreReserved) {
-			if (isPreReserved) {
-				client.multi().sadd("blobs:reserved", blobid).srem("blobs:prereserved", blobid).exec(this);
-			} else {
-				throw new InvalidBlobID("blob not prereserved");
-			}
-		}), h.sF(function () {
-			client.hmset("blobs:" + blobid, meta, this);
-		}), h.sF(function () {
-			this.ne(blobid);
-		}), cb);
-	},
-	addBlobPart: function (request, blobid, blobPart, previousSize, lastPart, cb) {
-		step(function () {
-			fs.stat(blobIDtoFile(blobid), this);
-		}, function (err, stats) {
-			if (err) {
-				if (previousSize > 0) {
-					this.last.ne(true);
-				} else {
-					this.ne();
+	fullyReserveBlobID: function (request, blobid, meta) {
+		return Bluebird
+			.try(() => request.session.logedinError())
+			.then(() => client.sismemberAsync("blobs:prereserved", blobid))
+			.then((isPreReserved) => {
+				if (!isPreReserved) {
+					throw new InvalidBlobID("blob not prereserved");
 				}
 
-				return;
+				return Bluebird.fromCallback((cb) =>
+					client.multi()
+						.sadd("blobs:reserved", blobid)
+						.srem("blobs:prereserved", blobid)
+						.exec(cb)
+				)
+			})
+			.then(() => client.hmsetAsync("blobs:" + blobid, meta))
+			.then(() => blobid)
+	},
+	addBlobPart: function (request, blobid, blobPart, previousSize, lastPart) {
+		return Bluebird.coroutine(function *() {
+			try {
+				const stats = yield Bluebird.fromCallback((cb) => fs.stat(blobIDtoFile(blobid), cb))
+
+				if (previousSize === 0) {
+					yield Bluebird.fromCallback((cb) => fs.unlink(blobIDtoFile(blobid), cb))
+				}
+
+				if (stats.size !== previousSize) {
+					return true
+				}
+			} catch (err) {
+				if (previousSize > 0) {
+					return true
+				}
 			}
 
-			if (previousSize === 0) {
-				fs.unlink(blobIDtoFile(blobid), this);
-				return;
-			}
+			yield  Bluebird.fromCallback((cb) => fs.appendFile(blobIDtoFile(blobid), blobPart, cb))
 
-			if (stats.size !== previousSize) {
-				this.last.ne(true);
-				return;
-			}
-
-			this.ne();
-		}, h.sF(function () {
-			fs.appendFile(blobIDtoFile(blobid), blobPart, this);
-		}), h.sF(function () {
 			if (lastPart) {
-				useBlobID(blobid, this.parallel());
-				client.sadd("blobs:usedids", blobid, this.parallel());
-			} else {
-				this.ne();
-			}
-		}), h.sF(function () {
-			this.ne(false);
-		}), cb);
-	},
-	addBlobFromStream: function (stream, blobid, cb) {
-		step(function () {
-			useBlobID(blobid, this);
-		}, h.sF(function (blobid) {
-			stream.on("end", this);
-
-			stream.pipe(fs.createWriteStream(blobIDtoFile(blobid)));
-		}), h.sF(function () {
-			client.sadd("blobs:usedids", blobid, this);
-		}), cb);
-	},
-	getBlobPart: function (request, blobid, start, size, cb) {
-		var result;
-		step(function () {
-			getBlobData(request, blobid, this);
-		}, h.sF(function (data, meta) {
-			const last = start + size >= data.length
-
-			result = {
-				part: new Buffer(data).slice(start, start + size),
-				last
+				yield Bluebird.all([
+					useBlobID(blobid),
+					client.saddAsync("blobs:usedids", blobid)
+				])
 			}
 
-			if (last) {
-				result.meta = meta
+			return false
+		})
+	},
+	addBlobFromStream: function (stream, blobid) {
+		return Bluebird
+			.try(() => useBlobID(blobid))
+			.then((blobid) => {
+				return Bluebird.fromCallback((cb) => {
+					stream.on("end", cb)
+					stream.pipe(fs.createWriteStream(blobIDtoFile(blobid)))
+				})
+			})
+			.then(() => client.saddAsync("blobs:usedids", blobid))
+	},
+	getBlobPart: function (request, blobid, start, size) {
+		return Bluebird
+			.try(() => getBlobData(request, blobid))
+			.then(function ([data, meta]) {
+				const last = start + size >= data.length
+
+				const result = {
+					part: new Buffer(data).slice(start, start + size),
+					last
+				}
+
+				if (last) {
+					result.meta = meta
+
+					if (meta && typeof meta === "object" && meta._key) {
+						return request.addKey(meta._key).thenReturn(result)
+					}
+				}
+
+				return result
+			})
+	},
+	getBlob: function (request, blobid) {
+		return Bluebird
+			.try(() => getBlobData(request, blobid))
+			.then(([data, meta]) => {
+				const result = {
+					blob: new Buffer(data).toString("base64"),
+					meta: meta
+				};
 
 				if (meta && typeof meta === "object" && meta._key) {
-					request.addKey(meta._key, this)
-					return
+					return request.addKey(meta._key).thenReturn(result)
 				}
-			}
 
-			this.ne();
-		}), h.sF(function () {
-			return result
-		}), cb)
-	},
-	getBlob: function (request, blobid, cb) {
-		var result;
-		step(function () {
-			getBlobData(request, blobid, this);
-		}, h.sF(function (data, meta) {
-			result = {
-				blob: new Buffer(data).toString("base64"),
-				meta: meta
-			};
-
-			if (meta && typeof meta === "object" && meta._key) {
-				request.addKey(meta._key, this);
-				return
-			}
-
-			this.ne();
-		}), h.sF(function () {
-			this.ne(result);
-		}), cb);
+				return result
+			})
 	}
 };
 

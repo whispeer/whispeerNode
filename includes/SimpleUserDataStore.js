@@ -1,89 +1,61 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
+const h = require("whispeerHelper");
 
-var client = require("./redisClient");
-
-/*
-	Settings: {
-		data: encryptedObject
-	}
-
-*/
+const client = require("./redisClient");
+const Bluebird = require("bluebird")
 
 function SimpleUserDataStore(name) {
 	this._name = name;
 }
 
 SimpleUserDataStore.prototype.get = function (request, cb) {
-	var that = this;
-	step(function () {
-		client.get("user:" + request.session.getUserID() + ":" + that._name, this);
-	}, h.sF(function (result) {
-		this.ne(JSON.parse(result));
-	}), cb);
+	return Bluebird
+		.try(() => client.getAsync(`user:${request.session.getUserID()}:${this._name}`))
+		.then((result) => JSON.parse(result))
+		.nodeify(cb)
 };
 
 SimpleUserDataStore.prototype.set = function (request, newContent, cb) {
-	var that = this;
-	step(function () {
-		if (that._preSet) {
-			that._preSet(request, newContent, this);
-		} else {
-			this.ne();
-		}
-	}, h.sF(function () {
-		client.set("user:" + request.session.getUserID() + ":" + that._name, JSON.stringify(newContent), this);
-	}), h.sF(function (res) {
-		request.session.getOwnUser(function (e, user) {
-			if (!e) {
-				user.notify(that._name, newContent);
-			}
-		});
+	return Bluebird
+		.try(() => this._preSet(request, newContent))
+		.then(() => client.setAsync(`user:${request.session.getUserID()}:${this._name}`, JSON.stringify(newContent)))
+		.then((res) => {
+			request.session.getOwnUser().then((user) => user.notify(this._name, newContent))
 
-		if (res === "OK") {
-			this.ne(true);
-		} else {
-			this.ne(false);
-		}
-	}), cb);
-};
+			return res === "OK"
+		})
+		.nodeify(cb)
+}
 
 SimpleUserDataStore.prototype.preSet = function (fn) {
-	this._preSet = fn;
-};
+	this._preSet = fn
+}
 
 SimpleUserDataStore.prototype.apiGet = function (data, fn, request) {
-	var that = this;
-
-	step(function () {
-		that.get(request, this);
-	}, h.sF(function (result) {
+	return this.get(request)
+		.then(function (result) {
 		if (result && data) {
-			var unchanged = result._signature && result._signature === data.cacheSignature ||
+			const unchanged = result._signature && result._signature === data.cacheSignature ||
 							result.meta && result.meta._signature && result.meta._signature === data.cacheSignature;
 
 			if (unchanged) {
-				var response = { unChanged: true };
+				const response = { unChanged: true };
 
 				if (result.server) {
 					response.content = { server: result.server };
 				}
 
-				this.ne(response);
-				return;
+				return response
 			}
 		}
 
-		this.ne({
-			content: result
-		});
-	}), fn);
+		return { content: result }
+	}).nodeify(fn)
 };
 
 SimpleUserDataStore.prototype.apiSet = function (data, fn, request) {
-	this.set(request, data.content, h.objectifyResult("success", fn));
+	return this.set(request, data.content, h.objectifyResult("success", fn));
 };
 
 

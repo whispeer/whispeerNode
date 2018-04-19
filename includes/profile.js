@@ -1,218 +1,180 @@
-"use strict";
+"use strict"
 
-var KeyApi = require("./crypto/KeyApi");
+const KeyApi = require("./crypto/KeyApi")
 
-var step = require("step");
-var client = require("./redisClient");
-var h = require("whispeerHelper");
+const client = require("./redisClient")
 
-var Session = require("./session");
+const Session = require("./session")
 
-var validator = require("whispeerValidations");
-var RedisObserver = require("./asset/redisObserver");
+const validator = require("whispeerValidations")
+const RedisObserver = require("./asset/redisObserver")
 
-var Profile = function (userid, profileid) {
-	var theProfile = this;
-	var domain = "user:" + userid + ":profile:" + profileid;
-	this.getPData = function getPDataF(request, cb) {
-		var result;
-		step(function () {
-			this.parallel.unflatten();
-			client.get(domain + ":content", this.parallel());
-			client.hgetall(domain + ":meta", this.parallel());
-		}, h.sF(function (content, meta) {
-			result = {
+const Bluebird = require("bluebird")
+
+const Profile = function (userid, profileid) {
+	const domain = "user:" + userid + ":profile:" + profileid
+
+	this.getPData = function (request, cb) {
+		return Bluebird.all([
+			client.getAsync(domain + ":content"),
+			client.hgetallAsync(domain + ":meta"),
+		]).then(function (content, meta) {
+			const result = {
 				content: JSON.parse(content),
 				meta: meta,
 				profileid: profileid
-			};
-
-			request.addKey(result.meta._key, this);
-		}), h.sF(function () {
-			this.last.ne(result);
-		}), cb);
-	};
-
-	this.setData = function setDataF(request, data, cb) {
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			if (Profile.validate(data)) {
-				var content = data.content, meta = data.meta;
-
-				client.multi()
-					.set(domain + ":content", JSON.stringify(content))
-					.hmset(domain + ":meta", meta)
-					.exec(this);
-				theProfile.notify("update", data);
-			} else {
-				throw new InvalidProfile();
 			}
-		}), cb);
-	};
 
-	this.getKey = function getKeyF(request, cb) {
-		step(function () {
-			request.session.logedinError(this);
-		}, h.sF(function () {
-			client.hget(domain + ":meta", "_key", this);
-		}), h.sF(function (keyRealID) {
-			KeyApi.get(keyRealID, this);
-		}), cb);
-	};
+			return request.addKey(result.meta._key).thenReturn(result)
+		}).nodeify(cb)
+	}
 
-	this.hasAccess = function hasAccessF(request, cb) {
-		step(function () {
-			if (request.session.getUserID() === userid) {
-				this.last.ne(true);
-			} else {
-				theProfile.getKey(request, this);
+	this.setData = function (request, data, cb) {
+		return request.session
+			.ownUserError(userid)
+			.then(() => {
+				if (!Profile.validate(data)) {
+					throw new InvalidProfile()
+				}
+
+				const { content, meta } = data
+
+				this.notify("update", data)
+
+				return Bluebird.fromCallback(cb =>
+					client.multi()
+						.set(domain + ":content", JSON.stringify(content))
+						.hmset(domain + ":meta", meta)
+						.exec(cb)
+				)
+			}).nodeify(cb)
+	}
+
+	this.getKey = function (request, cb) {
+		return request.session.logedinError()
+			.then(() => client.hgetAsync(domain + ":meta", "_key"))
+			.then((keyRealID) => KeyApi.get(keyRealID))
+			.nodeify(cb)
+	}
+
+	this.hasAccess = function (request, cb) {
+		const theProfile = this
+
+		return Bluebird.coroutine(function *() {
+			if (request.session.isMyId(userid)) {
+				return true
 			}
-		}, h.sF(function (key) {
+
+			const key = yield theProfile.getKey(request)
+
 			if (!key) {
-				throw new Error("key not existing");
+				throw new Error("key not existing")
 			}
 
-			key.hasAccess(request, this);
-		}), cb);
-	};
+			return key.hasAccess(request)
+		}).nodeify(cb)
+	}
 
-	this.remove = function removeF(m) {
-		m.srem("user:" + userid + ":profiles", profileid, this).
-		del(domain + ":meta").
-		del(domain + ":content");
-	};
+	this.remove = function (m) {
+		m
+			.srem("user:" + userid + ":profiles", profileid)
+			.del(domain + ":meta")
+			.del(domain + ":content")
+	}
 
 	this.getID = function () {
-		return profileid;
-	};
+		return profileid
+	}
 
-	RedisObserver.call(this, "user: " + userid + ":profile", profileid);
-};
-
-function getAllProfiles(request, userid, cb) {
-	step(function getAP1() {
-		request.session.logedinError(this);
-	}, h.sF(function getAP2() {
-		client.smembers("user:" + userid + ":profiles", this);
-	}), h.sF(function getAP3(profiles) {
-		this.ne(profiles.map(function (pid) {
-			return new Profile(userid, pid);
-		}));
-	}), cb);
+	RedisObserver.call(this, "user: " + userid + ":profile", profileid)
 }
 
-Profile.get = function get(request, profileid, cb) {
-	step(function () {
-		client.sismember("user:" + request.session.getUserID() + ":profiles", profileid, this);
-	}, h.sF(function (exists) {
-		if (exists) {
-			this.ne(new Profile(request.session.getUserID(), profileid));
-		} else {
-			this.ne(false);
-		}
-	}), cb);
-};
+const getAllProfiles = (request, userid) =>
+	request.session.logedinError()
+		.then(() => client.smembersAsync("user:" + userid + ":profiles"))
+		.then((profiles) => profiles.map((pid) => new Profile(userid, pid)))
 
-Profile.getAccessed = function getAccessedF(request, userid, cb) {
-	var profiles;
-	step(function () {
-		getAllProfiles(request, userid, this);
-	}, h.sF(function (p) {
-		profiles = p;
-		profiles.forEach(function (profile) {
-			profile.hasAccess(request, this.parallel());
-		}, this);
+Profile.get = function (request, profileid, cb) {
+	const ownID = request.session.getUserID()
 
-		if (profiles.length === 0) {
-			this.last.ne([]);
-		}
-	}), h.sF(function (acc) {
-		var result = profiles.filter(function (profile, index) {
-			return acc[index];
-		});
+	return client
+		.sismemberAsync(`user:${ownID}:profiles`, profileid)
+		.then((exists) => exists ? new Profile(ownID, profileid) : false)
+		.nodeify(cb)
+}
 
-		this.ne(result);
-	}), cb);
-};
+Profile.getAccessed = function (request, userid, cb) {
+	return getAllProfiles(request, userid)
+		.filter((p) => p.hasAccess(request))
+		.nodeify(cb)
+}
 
-Profile.validate = function validateF(data) {
-	var content = data.content, meta = data.meta;
-	var err = validator.validate("profileEncrypted", content, 1);
+Profile.validate = function (data) {
+	const content = data.content, meta = data.meta
+	const err = validator.validate("profileEncrypted", content, 1)
 
-	return !err && meta._signature && meta._contentHash && meta._key && meta._version;
-};
+	return !err && meta._signature && meta._contentHash && meta._key && meta._version
+}
 
-function generateProfileID(request, cb) {
-	var pid;
-	step(function () {
-		Session.code(20, this);
-	}, h.sF(function (_pid) {
-		pid = _pid;
-		client.sadd("user:" + request.session.getUserID() + ":profiles", pid, this);
-	}), h.sF(function (added) {
+const generateProfileID = (request) =>
+	Bluebird.coroutine(function *() {
+		const pid = yield Session.code(20)
+		const added = yield client.saddAsync("user:" + request.session.getUserID() + ":profiles", pid)
+
 		if (added === 0) {
-			process.nextTick(function () {
-				generateProfileID(request, cb);
-			});
-		} else {
-			this.ne(pid);
+			return generateProfileID(request)
 		}
-	}), cb);
-}
 
-Profile.create = function createF(request, data, cb) {
-	var profile;
-	step(function createP1() {
-		request.session.logedinError(this);
-	}, h.sF(function createP2() {
+		return pid
+	})
+
+Profile.create = function (request, data, cb) {
+	const ownID = request.session.getUserID()
+
+	return Bluebird.coroutine(function *() {
+		yield request.session.logedinError()
+
 		if (!Profile.validate(data)) {
-			console.error("Profile invalid. not creating!");
-			this.last.ne(false);
-			return;
+			console.error("Profile invalid. not creating!")
+			return false
 		}
 
-		var meta = data.meta;
-		KeyApi.get(meta._key, this);
-	}), h.sF(function createP3(key) {
-		if (key && key.isSymKey()) {
-			generateProfileID(request, this);
-		} else {
-			throw new NotASymKey();
+		const key = yield KeyApi.get(data.meta._key)
+
+		if (!key || !key.isSymKey()) {
+			throw new NotASymKey()
 		}
-	}), h.sF(function createP4(profileID) {
-		profile = new Profile(request.session.getUserID(), profileID);
-		profile.setData(request, data, this);
-	}), h.sF(function () {
-		this.ne(profile);
-	}), cb);
-};
+
+		const profileID = yield generateProfileID(request)
+
+		const profile = new Profile(ownID, profileID)
+
+		yield profile.setData(request, data)
+		return profile
+	}).nodeify(cb)
+}
 
 Profile.deleteAllExcept = function (request, except, cb) {
-	step(function () {
-		getAllProfiles(request, request.session.getUserID(), this);
-	}, h.sF(function (profiles) {
-		var toDelete = profiles.filter(function (profile) {
-			return profile.getID() !== except;
-		});
+	const ownID = request.session.getUserID()
 
-		if (profiles.length > 0 && toDelete.length !== profiles.length - 1) {
-			throw new Error("except is not one of our profiles.");
-		}
+	return getAllProfiles(request, ownID)
+		.then(function (profiles) {
+			const toDelete = profiles.filter((profile) => profile.getID() !== except)
 
-		if (toDelete.length === 0) {
-			this.ne();
-			return;
-		}
+			if (profiles.length > 0 && toDelete.length !== profiles.length - 1) {
+				throw new Error("except is not one of our profiles.")
+			}
 
-		var m = client.multi();
+			if (toDelete.length === 0) {
+				return
+			}
 
-		toDelete.forEach(function (profile) {
-			profile.remove(m);
-		}, this);
+			const m = client.multi()
 
-		m.exec(this);
-	}), cb);
-};
+			toDelete.forEach((profile) => profile.remove(m))
 
-module.exports = Profile;
+			return Bluebird.fromCallback(cb => m.exec(cb))
+		}).nodeify(cb)
+}
+
+module.exports = Profile

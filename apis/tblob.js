@@ -1,79 +1,62 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
+const blobStorage = require("../includes/blobStorage");
+const Bluebird = require("bluebird")
 
-var blobStorage = require("../includes/blobStorage");
-
-var pushBlobAPI = {
+const pushBlobAPI = {
 	pushBlob: function (stream, data) {
-		step(function () {
-			blobStorage.addBlobFromStream(stream, data.blobid, this);
-		}, function (e) {
-			console.error(e);
-			//todo: socket.emit(pushBlobDone or something like that!);
-		});
+		//todo: socket.emit(pushBlobDone or something like that!);
+		return blobStorage.addBlobFromStream(stream, data.blobid)
+			.catch((e) => console.error(e))
 	},
 };
 
-var streamAPI = {
+const streamAPI = {
 	uploadBlobPart: function (data, fn, request) {
-		step(function () {
+		return Bluebird.try(() => {
 			if (data.size !== (data.blobPart.byteLength || data.blobPart.length)) {
-				this.last.ne({ reset: true });
-				return;
+				return true;
 			}
 
-			blobStorage.addBlobPart(request, data.blobid, data.blobPart, data.doneBytes, data.lastPart, this);
-		}, h.sF(function (reset) {
-			this.ne({ reset: reset });
-		}), fn);
+			return blobStorage.addBlobPart(request, data.blobid, data.blobPart, data.doneBytes, data.lastPart);
+		})
+		.then((reset) => ({ reset }))
+		.nodeify(fn)
 	},
 	getBlobPart: function (data, fn, request) {
-		step(function () {
-			blobStorage.getBlobPart(request, data.blobid, data.start, data.size, this);
-		}, fn);
+		return blobStorage
+			.getBlobPart(request, data.blobid, data.start, data.size)
+			.nodeify(fn)
 	},
 	preReserveID: function (data, fn) {
-		step(function () {
-			blobStorage.preReserveBlobID(this);
-		}, h.sF(function (blobid) {
-			this.ne({
-				blobid: blobid
-			});
-		}), fn);
+		return blobStorage
+			.preReserveBlobID()
+			.then((blobid) => ({ blobid }))
+			.nodeify(fn)
 	},
 	fullyReserveID: function (data, fn, request) {
-		step(function () {
-			blobStorage.fullyReserveBlobID(request, data.blobid, data.meta, this);
-		}, h.sF(function (blobid) {
-			this.ne({
-				blobid: blobid
-			});
-		}), fn);
+		return blobStorage
+			.fullyReserveBlobID(request, data.blobid, data.meta)
+			.then((blobid) => ({ blobid }))
+			.nodeify(fn);
 	},
 	reserveBlobID: function (data, fn, request) {
-		step(function () {
-			blobStorage.reserveBlobID(request, data.meta, this);
-		}, h.sF(function (blobid) {
-			this.ne({
-				blobid: blobid
-			});
-		}), fn);
+		return blobStorage
+			.reserveBlobID(request, data.meta)
+			.then((blobid) => ({ blobid }))
+			.nodeify(fn)
 	},
 	getBlob: function (data, fn, request) {
-		step(function () {
-			blobStorage.getBlob(request, data.blobid, this);
-		}, h.sF(function (result) {
-			this.ne(result);
-		}), fn);
+		return blobStorage
+			.getBlob(request, data.blobid)
+			.nodeify(fn)
 	},
 	upgradeStream: function (data, fn, request) {
-		step(function () {
+		return Bluebird.try(() => {
 			request.socketData.upgradeStream(pushBlobAPI);
 
-			this.ne({});
-		}, fn);
+			return {}
+		}).nodeify(fn)
 	}
 };
 

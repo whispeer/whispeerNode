@@ -1,216 +1,133 @@
-"use strict";
+"use strict"
 
 /* @refactor */
 
-var step = require("step");
-var h = require("whispeerHelper");
+const h = require("whispeerHelper")
+const Bluebird = require("bluebird")
 
-var Topic = require("../includes/topic.js");
-var User = require("../includes/user");
-var mailer = require("../includes/mailer");
-var errorService = require("../includes/errorService");
+const Topic = require("../includes/topic.js")
+const User = require("../includes/user")
+const mailer = require("../includes/mailer")
+const errorService = require("../includes/errorService")
 
-function makeSearchUserData(request, cb, ids, known) {
-	var remaining, LIMIT = 10;
-	step(function () {
-		remaining = Math.max(ids.length - LIMIT, 0);
-
-		known = known || [];
-
-		known = known.map(function (e) {
-			return parseInt(e, 10);
-		});
-
-		var i;
-		for (i = 0; i < Math.min(ids.length, LIMIT); i += 1) {
-			if (known.indexOf(parseInt(ids[i], 10)) === -1) {
-				User.getUser(ids[i], this.parallel(), true);
-			} else {
-				this.parallel()(null, ids[i]);
+const userInfo = (request, id) => {
+	return User.getUser(id, null, true)
+		.then((user) => {
+			if (user instanceof UserNotExisting) {
+				return user
 			}
-		}
 
-		this.parallel()();
-	}, h.sF(function (theUsers) {
-		theUsers = theUsers || [];
+			return user.getUData(request)
+		})
+}
 
-		theUsers = theUsers.filter(function (user) {
-			return !(user instanceof UserNotExisting);
-		});
+function makeSearchUserData(request, ids, known = []) {
+	const LIMIT = 10
+	const remaining = Math.max(ids.length - LIMIT, 0)
 
-		if (theUsers.length > 0) {
-			theUsers.forEach(function (user) {
-				if (typeof user === "object") {
-					user.getUData(request, this.parallel());
-				} else {
-					this.parallel()(null, user);
-				}
-			}, this);
-		} else {
-			this.ne([]);
-		}
-	}), h.sF(function (users) {
-		this.ne({
-			remaining: remaining,
-			results: users
-		});
-	}), cb);
+
+	const knownIDs = known.map(h.parseDecimal)
+	const limitedIDs = ids.map(h.parseDecimal).slice(0, LIMIT)
+
+	return Bluebird.all(
+		limitedIDs.map((id) => knownIDs.indexOf(id) === -1 ? userInfo(id) : id)
+	)
+		.then((theUsers = []) => theUsers.filter((user) => !(user instanceof UserNotExisting)))
+		.then((results) => ({ remaining, results }))
 }
 
 var u = {
-	get: function getUserF(data, fn, request) {
-		step(function () {
-			if (data && (data.identifier || data.id)) {
-				User.getUser(data.identifier || data.id, this);
-			} else {
-				fn.error.protocol();
-			}
-		}, h.hE(function (e, theUser) {
-			if (e) {
-				fn.error({userNotExisting: true});
-				this.last.ne();
-			} else {
-				theUser.getUData(request, this);
-			}
-		}, UserNotExisting), fn);
+	get: function (data, fn, request) {
+		return User.getUser(data.identifier || data.id)
+			.then((user) => user.getUData(request))
+			.catch(UserNotExisting, () => fn.error({userNotExisting: true}))
 	},
-	searchFriends: function searchFriends(data, fn, request) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (ownUser) {
-			ownUser.searchFriends(request, data.text, this);
-		}), h.sF(function (ids) {
-			makeSearchUserData(request, this, ids, data.known);
-		}), fn);
+	searchFriends: function (data, fn, request) {
+		return request.session.getOwnUser()
+			.then((ownUser) => ownUser.searchFriends(request, data.text))
+			.then((ids) => makeSearchUserData(request, ids, data.known))
+			.nodeify(fn)
 		//TODO
 	},
 	changePassword: function (data, fn, request) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (ownUser) {
-			ownUser.changePassword(request, data.password, data.signedOwnKeys, data.decryptor, this);
-		}), h.sF(function () {
-			this.ne();
-		}), fn);
+		return request.session.getOwnUser()
+			.then((ownUser) => ownUser.changePassword(request, data.password, data.signedOwnKeys, data.decryptor))
+			.then(() => ({}))
+			.nodeify(fn)
 	},
 	search: function searchF(data, fn, request) {
-		step(function () {
-			User.search(data.text, this);
-		}, h.sF(function (ids) {
-			makeSearchUserData(request, this, ids, data.known);
-		}), fn);
+		return User.search(data.text)
+			.then((ids) => makeSearchUserData(request, ids, data.known))
+			.nodeify(fn)
 	},
 	backupKey: function (data, fn, request) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (ownUser) {
-			ownUser.addBackupKey(request, data.decryptors, data.innerKey, this);
-		}), h.sF(function () {
-			this.ne({});
-		}), fn);
+		return request.session.getOwnUser()
+			.then((ownUser) => ownUser.addBackupKey(request, data.decryptors, data.innerKey))
+			.then(() => ({}))
+			.nodeify(fn)
 	},
 	getMultiple: function getAllF(data, fn, request) {
-		step(function () {
-			if (data && data.identifiers) {
-				var i;
-				for (i = 0; i < data.identifiers.length; i += 1) {
-					User.getUser(data.identifiers[i], this.parallel(), true);
-				}
-			} else {
-				fn.error.protocol();
-			}
-		}, h.hE(function (e, theUsers) {
-			if (e) {
-				errorService.handleError(e, request);
-				fn.error({userNotExisting: true});
-				this.last.ne();
-			} else {
-				var i;
-				for (i = 0; i < theUsers.length; i += 1) {
-					if (theUsers[i] instanceof UserNotExisting) {
-						errorService.handleError(theUsers[i], request);
-						this.parallel()(null, {identifier: theUsers[i].msg, userNotExisting: true});
-					} else {
-						theUsers[i].getUData(request, this.parallel());
+		const getUserInfo = (id) =>
+			User.getUser(id, null, true)
+				.then((user) => {
+					if (user instanceof UserNotExisting) {
+						errorService.handleError(user, request)
+						return user
 					}
-				}
-			}
-		}, UserNotExisting), h.sF(function (users) {
-			this.ne({
-				users: users
-			});
-		}), fn);
+
+					return user.getUData(request)
+				})
+
+		return data.identifiers
+			.map((id) => getUserInfo(id))
+			.then((users) => ({ users }))
+			.nodeify(fn)
 	},
 	profile: {
 		update: function (data, fn, request) {
-			var ownUser;
-			step(function () {
-				request.session.getOwnUser(this);
-			}, h.sF(function (_ownUser) {
-				ownUser = _ownUser;
-				//delete all old profiles except me
-				ownUser.deletePrivateProfilesExceptMine(request, this);
-			}), h.sF(function () {
-				//update me
-				ownUser.setMyProfile(request, data.me, this.parallel());
-				//set public profile
-				ownUser.setPublicProfile(request, data.pub, this.parallel());
-				//set private profiles
-				data.priv.forEach(function (profile) {
-					ownUser.createPrivateProfile(request, profile, this.parallel());
-				}, this);
-			}), h.sF(function () {
-				this.ne({});
-			}), fn);
+			return request.session.getOwnUser()
+				.then((ownUser) => ownUser.deletePrivateProfilesExceptMine(request).thenReturn(ownUser))
+				.then((ownUser) =>
+					Bluebird.all([
+						ownUser.setMyProfile(request, data.me),
+						ownUser.setPublicProfile(request, data.pub),
+						data.priv.map((profile) => ownUser.createPrivateProfile(request, profile))
+					])
+				)
+				.then(() =>({}))
+				.nodeify(fn)
 		}
 	},
 	setMigrationState: function (data, fn, request) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (ownUser) {
-			ownUser.setMigrationState(request, data.migrationState, this);
-		}), h.sF(function () {
-			this.ne({
-				success: true
-			});
-		}), fn);
+		return request.session.getOwnUser()
+			.then((ownUser) => ownUser.setMigrationState(request, data.migrationState))
+			.then(() => ({ success: true }))
+			.nodeify(fn)
 	},
 	mailChange: function (data, fn, request) {
-		var ownUser;
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (_ownUser) {
-			ownUser = _ownUser;
-			ownUser.setMail(request, data.mail, this);
-		}), h.sF(function () {
-			mailer.sendAcceptMail(ownUser, this);
-		}), h.sF(function () {
-			this.ne({});
-		}), fn);
+		return request.session.getOwnUser()
+			.then((ownUser) => ownUser.setMail(request, data.mail).thenReturn(ownUser))
+			.then((ownUser) => mailer.sendAcceptMail(ownUser))
+			.then(() => ({}))
+			.nodeify(fn)
 	},
 	donated: function (data, fn, request) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (ownUser) {
-			ownUser.donated(request, this);
-		}), h.sF(function () {
-			this.ne({});
-		}), fn);
+		return request.session.getOwnUser(this)
+			.then((ownUser) => ownUser.donated(request))
+			.then(() => ({}))
+			.nodeify(fn)
 	},
 	own: function getOwnDataF(data, fn, request) {
-		var userData;
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (ownUser) {
-			ownUser.getUData(request, this);
-		}), h.sF(function (data) {
-			userData = data;
-			Topic.unreadCount(request, this);
-		}), h.sF(function (unreadCount) {
-			userData.unreadTopics = unreadCount;
-			this.ne(userData);
-		}), fn);
-	}
-};
+		return Bluebird.coroutine(function *() {
+			const ownUser = yield request.session.getOwnUser()
 
-module.exports = u;
+			const userData = yield ownUser.getUData(request)
+			const unreadCount = yield Topic.unreadCount(request)
+
+			userData.unreadTopics = unreadCount
+			return userData
+		}).nodeify(fn)
+	}
+}
+
+module.exports = u

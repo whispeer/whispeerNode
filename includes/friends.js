@@ -1,6 +1,5 @@
 "use strict";
 
-var step = require("step");
 var h = require("whispeerHelper");
 const Bluebird = require("bluebird")
 
@@ -17,39 +16,28 @@ const settingsAPI = require("../includes/settings");
 const CompanyUser = require("../includes/models/companyUser")
 
 function pushFriendRequest(request, senderId, receiver) {
-	step(function () {
-		var User = require("./user");
+	const User = require("./user");
+	const referenceType = "contactRequest"
 
-		User.getUser(senderId, this);
-	}, h.sF(function (sender) {
-		sender.getNames(request, this);
-	}), h.sF(function (senderNames) {
-		var senderName = senderNames.firstName || senderNames.lastName || senderNames.nickname;
+	return User.getUser(senderId)
+		.then((sender) => sender.getNames(request))
+		.then((senderNames) => {
+			const senderName = senderNames.firstName || senderNames.lastName || senderNames.nickname;
 
-		var referenceType = "contactRequest";
-
-		pushAPI.getTitle(receiver, referenceType, senderName).then(function (title) {
-			return pushAPI.notifyUser(receiver.getID(), title, {
+			return pushAPI.getTitle(receiver, referenceType, senderName)
+		}).then((title) =>
+			pushAPI.notifyUser(receiver.getID(), title, {
 				type: referenceType,
 				id: senderId
-			});
-		})
-	}));
+			})
+		)
 }
 
 var Notification = require("./notification");
 
-function hasFriend(uid, friendid, cb) {
-	return client.sismemberAsync("friends:" + uid, friendid).nodeify(cb);
-}
-
-function mutual(uid1, uid2, cb) {
-		return client.sinterAsync("friends:" + uid1, "friends:" + uid2).nodeify(cb);
-}
-
-function getFriends(request, uid, cb) {
-	return client.smembersAsync("friends:" + uid).nodeify(cb);
-}
+const hasFriend = (uid, friendid) => client.sismemberAsync("friends:" + uid, friendid)
+const mutual = (uid1, uid2) => client.sinterAsync("friends:" + uid1, "friends:" + uid2)
+const getFriends = (request, uid) => client.smembersAsync("friends:" + uid)
 
 function addFriendName(request, user) {
 	return Bluebird.try(() => {
@@ -62,173 +50,138 @@ function addFriendName(request, user) {
 	})
 }
 
-function getUserOnlineFriends(uid, cb) {
-	return client.sinterAsync("friends:" + uid, "user:online").then((friends) => {
-		return friends || []
-	}).nodeify(cb);
+function getUserOnlineFriends(uid) {
+	return client
+		.sinterAsync("friends:" + uid, "user:online")
+		.then((friends) => friends || [])
 }
 
-function getUserOnlineFriendsStatus(uid, cb) {
+function getUserOnlineFriendsStatus(uid) {
 	return getUserOnlineFriends(uid).then(function (onlineFriends) {
-		var result = {};
+		const result = {};
 
 		onlineFriends.forEach(function (friend) {
 			result[friend] = 2;
 		});
 
 		return result;
-	}).nodeify(cb);
+	})
 }
 
-function setSignedList(request, m, signedList, add, remove, cb) {
-	var ownID = request.session.getUserID();
+function setSignedList(request, m, signedList, add, remove) {
+	const ownID = request.session.getUserID();
 
-	step(function () {
-		return client.hgetallAsync(`friends:${ownID}:signedList`);
-	}, h.sF(function (oldSignedList) {
-		oldSignedList = oldSignedList || {};
+	return Bluebird
+		.try(() => client.hgetallAsync(`friends:${ownID}:signedList`))
+		.then(function (oldSignedList) {
+			oldSignedList = oldSignedList || {};
 
-		var oldUids = Object.keys(oldSignedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
-		var newUids = Object.keys(signedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
+			var oldUids = Object.keys(oldSignedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
+			var newUids = Object.keys(signedList).filter(function (key) { return key[0] !== "_"; }).map(h.parseDecimal);
 
-		var shouldBeRemoved = h.arraySubtract(oldUids, newUids);
-		var shouldBeAdded = h.arraySubtract(newUids, oldUids);
+			var shouldBeRemoved = h.arraySubtract(oldUids, newUids);
+			var shouldBeAdded = h.arraySubtract(newUids, oldUids);
 
-		if (!h.arrayEqual(remove, shouldBeRemoved)) {
-			throw new Error("signedList update error");
-		}
+			if (!h.arrayEqual(remove, shouldBeRemoved)) {
+				throw new Error("signedList update error");
+			}
 
-		if (!h.arrayEqual(add, shouldBeAdded)) {
-			throw new Error("signedList update error");
-		}
+			if (!h.arrayEqual(add, shouldBeAdded)) {
+				throw new Error("signedList update error");
+			}
 
-		return verifySecuredMeta(request, signedList, "signedFriendList");
-	}), h.sF(function () {
-		//TODO: get all signed list keys!
+			return verifySecuredMeta(request, signedList, "signedFriendList");
+		})
+		.then(() => {
+			//TODO: get all signed list keys!
 
-		//update signedList
-		m.del("friends:" + ownID + ":signedList");
-		m.hmset("friends:" + ownID + ":signedList", signedList);
-
-		this.ne();
-	}), cb);
+			//update signedList
+			m.del("friends:" + ownID + ":signedList");
+			m.hmset("friends:" + ownID + ":signedList", signedList);
+		})
 }
 
-function notifySignedListUpdate(request, signedList, cb) {
-	step(function () {
-		request.session.getOwnUser(this);
-	}, h.sF(function (ownUser) {
-		ownUser.notify("signedList", signedList);
-
-		this.ne();
-	}), cb);
+function notifySignedListUpdate(request, signedList) {
+	return request.session.getOwnUser()
+		.then(function (ownUser) {
+			ownUser.notify("signedList", signedList)
+		})
 }
 
 var friends = {
 	notifyUsersFriends: function (uid, channel, content) {
-		step(function () {
-			getUserOnlineFriends(uid, this);
-		}, h.sF(function (online) {
-			online.forEach(function (uid) {
-				User.getUser(uid, this.parallel());
-			}, this);
-		}), h.sF(function (online) {
-			online.forEach(function (user) {
-				user.notify("friends:" + channel, {
-					sender: uid,
-					receiver: user.getID(),
-					content: content
-				});
-			});
-
-			this.ne();
-		}), function (e) {
-			if (e) {
-				console.error(e);
-			}
-		});
+		return getUserOnlineFriends(uid)
+			.map((uid) => User.getUser(uid))
+			.map((user) => user.notify("friends:" + channel, {
+				sender: uid,
+				receiver: user.getID(),
+				content: content
+			}))
 	},
-	notifyAllFriends: function (request, channel, content) {
-		friends.notifyUsersFriends(request.session.getUserID(), channel, content);
-	},
+	notifyAllFriends: (request, channel, content) => friends.notifyUsersFriends(request.session.getUserID(), channel, content),
 	areFriends: function (request, uid, cb) {
-		var ownID = request.session.getUserID();
-		step(function () {
-			this.parallel.unflatten();
-
-			hasFriend(ownID, uid, this.parallel());
-			hasFriend(uid, ownID, this.parallel());
-		}, h.sF(function (friend1, friend2) {
+		const ownID = request.session.getUserID();
+		return Bluebird.all([
+			hasFriend(ownID, uid),
+			hasFriend(uid, ownID),
+		]).then(function ([friend1, friend2]) {
 			if (friend1 !== friend2) {
 				console.error("CORRUPT DATA!" + ownID + "-" + uid);
 			}
 
-			this.ne(friend1 && friend2);
-		}), cb);
+			return friend1 && friend2
+		}).nodeify(cb);
 	},
 	getOnline: function (request, cb) {
-		getUserOnlineFriendsStatus(request.session.getUserID(), cb);
+		return getUserOnlineFriendsStatus(request.session.getUserID()).nodeify(cb)
 	},
 	isOnline: function (request, uid, cb) {
-		step(function () {
-			var ownID = request.session.getUserID();
+		const ownID = request.session.getUserID();
 
-			this.parallel.unflatten();
-			client.sismember("friends:" + ownID, uid, this.parallel());
-			client.sismember("user:online", uid, this.parallel());
-		}, h.sF(function (isFriend, isOnline) {
+		return Bluebird.all([
+			client.sismemberAsync("friends:" + ownID, uid),
+			client.sismemberAsync("user:online", uid),
+		]).then(function ([isFriend, isOnline]) {
 			if (!isFriend) {
-				this.ne(-1);
-			} else if (!isOnline) {
-				this.ne(0);
-			} else {
-				this.ne(2);
+				return -1
 			}
-		}), cb);
+
+			if (!isOnline) {
+				return 0
+			}
+
+			return 2
+		}).nodeify(cb)
 	},
 	hasOtherRequested: function (request, uid, cb) {
-		var ownID = request.session.getUserID();
-		step(function () {
-			client.sismember("friends:" + ownID + ":requests", uid, this);
-		}, cb);
+		const ownID = request.session.getUserID();
+		return client
+			.sismemberAsync(`friends:${ownID}:requests`, uid)
+			.nodeify(cb)
 	},
 	hasFriendsKeyAccess: function (request, uid, cb) {
-		if (h.parseDecimal(request.session.getUserID()) === h.parseDecimal(uid)) {
+		if (request.session.isMyID(uid)) {
 			return Bluebird.resolve(true).nodeify(cb);
 		}
 
-		step(function () {
-			this.parallel.unflatten();
-
-			friends.areFriends(request, uid, this.parallel());
-			friends.hasOtherRequested(request, uid, this.parallel());
-		}, h.sF(function (areFriends, hasORequested) {
-			this.ne(areFriends || hasORequested);
-		}), cb);
+		return Bluebird.all([
+			friends.areFriends(request, uid),
+			friends.hasOtherRequested(request, uid),
+		])
+		.then(([areFriends, hasORequested]) => areFriends || hasORequested)
+		.nodeify(cb)
 	},
 	getFriendShip: function (request, uid, cb) {
-		step(function () {
-			client.hgetall("friends:" + request.session.getUserID() + ":" + uid, this.parallel());
-		}, h.sF(function (meta) {
-			this.ne(meta);
-		}), cb);
+		return client
+			.hgetallAsync(`friends:${request.session.getUserID()}:${uid}`)
+			.nodeify(cb)
 	},
 	getFriendsKeys: function (request, cb) {
-		step(function () {
-			request.session.getOwnUser(this);
-		}, h.sF(function (ownUser) {
-			this.parallel.unflatten();
-
-			ownUser.getFriendsKey(request, this.parallel());
-		}), h.sF(function (friendsKey) {
-			this.parallel.unflatten();
-
-			KeyApi.get(friendsKey, this.parallel());
-		}), h.sF(function (friendsKey) {
-			this.ne({
-				friends: friendsKey
-			});
-		}), cb);
+		return request.session.getOwnUser()
+			.then((ownUser) => ownUser.getFriendsKey(request))
+			.then((friendsKey) => KeyApi.get(friendsKey))
+			.then((friendsKey) => ({ friends: friendsKey }))
+			.nodeify(cb)
 	},
 	/** remove a friend
 	* @param request
@@ -239,23 +192,27 @@ var friends = {
 	*/
 	remove: function (request, uid, signedList, signedRemove, cb) {
 		//TODO: maybe invalidate other users friendShipKey? maybe just remove it?
-		var m = client.multi(), ownID = request.session.getUserID();
+
 		uid = h.parseDecimal(uid);
 
-		step(function () {
-			this.parallel.unflatten();
-			client.sismember("friends:" + uid, ownID, this.parallel());
-			client.sismember("friends:" + ownID, uid, this.parallel());
-			client.sismember("friends:" + ownID + ":unfriended" , uid, this.parallel());
-		}, h.sF(function (friends, friend2, unfriended) {
+		return Bluebird.coroutine(function *() {
+			const ownID = request.session.getUserID();
+
+			const [friends, friend2, unfriended] = yield Bluebird.all([
+				client.sismemberAsync("friends:" + uid, ownID),
+				client.sismemberAsync("friends:" + ownID, uid),
+				client.sismemberAsync("friends:" + ownID + ":unfriended" , uid),
+			])
+
 			if (friends !== friend2 || friends && unfriended) {
 				throw new Error("data error ... this is not good!");
 			}
 
 			if (!friends && !unfriended) {
-				this.last.ne(false);
-				return;
+				return false
 			}
+
+			const m = client.multi()
 
 			if (friends) {
 				/* remove from both friends list */
@@ -274,105 +231,95 @@ var friends = {
 			/* remove friendship detail data for myself */
 			m.del("friends:" + ownID + ":" + uid);
 
-			setSignedList(request, m, signedList, [], [uid], this);
-		}), h.sF(function () {
-			return client.hgetAsync(`friends:${ownID}:signedList`, uid);
-		}), h.sF(function (friendShipKey) {
-			KeyApi.get(friendShipKey, this);
-		}), h.hE(function (e, friendShipKey) {
-			if (e) {
-				this.ne();
-			} else {
-				//remove: friendShipKey from ownid for uid
-				friendShipKey.remove(m, this);
-			}
-		}, KeyNotFound), h.sF(function () {
-			m.exec(this);
-		}), h.sF(function () {
-			notifySignedListUpdate(request, signedList, this);
-		}), h.sF(function () {
-			this.ne(true);
-		}), cb);
+			yield setSignedList(request, m, signedList, [], [uid]);
+			const friendShipKey = yield client.hgetAsync(`friends:${ownID}:signedList`, uid)
+
+			yield KeyApi.get(friendShipKey)
+				.then((friendShipKey) => friendShipKey.remove(m))
+				.catch(KeyNotFound, () => {})
+
+			yield Bluebird.fromCallback((cb) => m.exec(cb))
+			yield notifySignedListUpdate(request, signedList)
+			return true
+		})
+		.nodeify(cb)
 	},
 	ignoreRequest: function (request, uid, cb) {
-		var m = client.multi(), ownID = request.session.getUserID();
+
+		const ownID = request.session.getUserID()
 		uid = h.parseDecimal(uid);
 
-		step(function () {
-			client.sismember("friends:" + ownID + ":requests", uid, this);
-		}, h.sF(function (request) {
+		return Bluebird.coroutine(function *() {
+			const request = yield client.sismemberAsync("friends:" + ownID + ":requests", uid);
+
 			if (!request) {
-				this.last.ne(false);
-				return;
+				return false
 			}
 
-			m.srem("friends:" + ownID + ":requests", uid);
-			m.sadd("friends:" + ownID + ":ignored", uid);
+			yield Bluebird.fromCallback((cb) =>
+				client.multi()
+					.srem(`friends:${ownID}:requests`, uid)
+					.sadd(`friends:${ownID}:ignored`, uid)
+					.exec(cb)
+			)
 
-			m.exec(this);
-		}), h.sF(function () {
-			this.ne(true);
-		}), cb);
+			return true
+		}).nodeify(cb)
 	},
 	getSignedData: function (request, uid, cb) {
-		step(function () {
-			var ownID = request.session.getUserID();
-			this.parallel.unflatten();
-			client.hgetall("friends:" + uid + ":" + ownID, this.parallel());
-			client.hgetall("friends:" + uid + ":" + ownID + ":unfriending", this.parallel());
-		}, h.sF(function (signed1, signed2) {
+		const ownID = request.session.getUserID();
+
+		return Bluebird.all([
+			client.hgetallAsync("friends:" + uid + ":" + ownID),
+			client.hgetallAsync("friends:" + uid + ":" + ownID + ":unfriending"),
+		]).then(function ([signed1, signed2]) {
 			if (signed1 && signed2) {
 				throw new Error("invalid data in database");
 			}
 
-			this.ne(signed1 || signed2);
-		}), cb);
+			return signed1 || signed2
+		}).nodeify(cb)
 	},
 	add: function (request, meta, signedList, key, decryptors, cb) {
-		var m, firstRequest;
-		var friendShip = {
-			decryptors: decryptors
-		};
+		const friendShip = { decryptors }
 
-		var domain = "friends:" + request.session.getUserID();
+		const domain = "friends:" + request.session.getUserID();
 
-		step(function getUser() {
-			User.getUser(meta.user, this);
-		}, h.sF(function checkAlreadyRequested(toAdd) {
-			var uid = toAdd.getID();
+		return Bluebird.coroutine(function *() {
+			const toAdd = yield User.getUser(meta.user)
+			const uid = toAdd.getID();
 
 			friendShip.user = toAdd;
 
-			this.parallel.unflatten();
+			const [haveIRequested, alreadyFriends] = yield Bluebird.all([
+				client.sismemberAsync(domain + ":requested", uid),
+				client.sismemberAsync(domain, uid),
+			])
 
-			client.sismember(domain + ":requested", uid, this.parallel());
-			client.sismember(domain, uid, this.parallel());
-		}), h.sF(function getFriendKeys(haveIRequested, alreadyFriends) {
 			if (haveIRequested || alreadyFriends) {
-				this.last.ne(true);
-			} else {
-				friends.getFriendsKeys(request, this);
+				return true
 			}
-		}), h.sF(function hasOtherRequested(keys) {
-			friendShip.keys = keys;
+
+			friendShip.keys = yield friends.getFriendsKeys(request)
+
 			friendShip.decryptors.friends = decryptors[friendShip.keys.friends.getRealID()][0];
 
 			//TODO: check meta format
 
-			this.parallel.unflatten();
-			client.sismember(domain + ":requests", friendShip.user.getID(), this.parallel());
-			client.sismember("friends:" + friendShip.user.getID() + ":unfriended", request.session.getUserID(), this.parallel());
-		}), h.sF(function createData(hasOtherRequested, revertRemoval) {
-			firstRequest = !hasOtherRequested;
+			const [hasOtherRequested, revertRemoval] = yield Bluebird.all([
+				client.sismember(domain + ":requests", friendShip.user.getID()),
+				client.sismember("friends:" + friendShip.user.getID() + ":unfriended", request.session.getUserID()),
+			])
+
+			const firstRequest = !hasOtherRequested;
 
 			Decryptor.validateFormat(friendShip.decryptors.friends);
 
-			m = client.multi();
+			const m = client.multi();
 
 			m.hmset(domain + ":" + friendShip.user.getID(), meta);
 
-			var ownID = request.session.getUserID(),
-				uid = friendShip.user.getID();
+			const ownID = request.session.getUserID()
 
 			if (revertRemoval) {
 				m.sadd("friends:" + uid, ownID);
@@ -394,20 +341,19 @@ var friends = {
 				throw new Error("key realid does not match signedList!");
 			}
 
-			setSignedList(request, m, signedList, [uid], [], this);
-		}), h.sF(function () {
-			return SymKey.create(request, key);
-		}), h.sF(function keyCreated() {
-			return Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends);
-		}), h.sF(function (valid) {
+			yield setSignedList(request, m, signedList, [uid], []);
+			yield SymKey.create(request, key);
+			const valid = yield Decryptor.validateNoThrow(request, friendShip.decryptors.friends, friendShip.keys.friends);
+
 			if (!valid) {
 				throw new InvalidDecryptor();
 			}
 
-			m.exec(this.parallel());
+			yield Bluebird.all([
+				Bluebird.fromCallback(cb => m.exec(cb)),
+				friendShip.keys.friends.addDecryptor(request, friendShip.decryptors.friends)
+			])
 
-			friendShip.keys.friends.addDecryptor(request, friendShip.decryptors.friends, this.parallel());
-		}), h.sF(function addFriendsName() {
 			addFriendName(request, friendShip.user);
 			if (firstRequest) {
 				Notification.add([friendShip.user], "friend", "new", request.session.getUserID(), {
@@ -423,43 +369,36 @@ var friends = {
 				friendShip.user.notify("friendAccept", request.session.getUserID());
 			}
 
-			notifySignedListUpdate(request, signedList, this);
-		}), h.sF(function () {
-			this.ne(!firstRequest);
-		}), cb);
+			yield notifySignedListUpdate(request, signedList);
+
+			return !firstRequest
+		}).nodeify(cb)
 	},
 	myMutual: function (request, uid, cb) {
-		step(function getUIDUser() {
-			User.getUser(uid, this);
-		}, h.sF(function (theUser) {
-			mutual(request.session.getUserID(), theUser.getID(), this);
-		}), cb);
+		User.getUser(uid)
+			.then((theUser) => mutual(request.session.getUserID(), theUser.getID()))
+			.nodeify(cb)
 	},
 	getFriendsOfFriends: function (request, cb) {
-		step(function () {
-			getFriends(request, request.session.getUserID(), this);
-		}, h.sF(function (ids) {
-			var keys = ids.map(function (id) {
-				return "friends:" + id;
-			});
+		return getFriends(request, request.session.getUserID())
+			.then(function (ids) {
+				const keys = ids.map((id) => `friends:${id}`)
+				keys.push("friends:" + request.session.getUserID())
 
-			keys.push("friends:" + request.session.getUserID());
-
-			client.sunion(keys, this);
-		}), h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
+				return client.sunionAsync(keys)
+			})
+			.nodeify(cb)
 	},
 	getUser: function (request, uid, cb) {
-		step(function () {
-			return friends.canSeeFriends(request, uid);
-		}, h.sF(function (canSeeFriends) {
-			if (canSeeFriends || request.session.getUserID() === h.parseDecimal(uid)) {
-				getFriends(request, uid, this);
-			} else {
-				this.ne([]);
-			}
-		}), cb);
+		return friends
+			.canSeeFriends(request, uid)
+			.then(function (canSeeFriends) {
+				if (canSeeFriends || request.session.getUserID() === h.parseDecimal(uid)) {
+					return getFriends(request, uid);
+				}
+
+				return []
+			}).nodeify(cb);
 	},
 	friendsAccess: (uid) => {
 		return Bluebird.all([
@@ -484,117 +423,13 @@ var friends = {
 		])
 		.then(([areFriends, friendsAccess]) => friendsAccess && areFriends)
 	},
-	get: function (request, cb) {
-		getFriends(request, request.session.getUserID(), cb);
-	},
-	getSignedList: function (request, cb) {
-		client.hgetall("friends:" + request.session.getUserID() + ":signedList", cb);
-	},
-	getRequests: function (request, cb) {
-		client.smembers("friends:" + request.session.getUserID() + ":requests", cb);
-	},
-	getIgnored: function (request, cb) {
-		client.smembers("friends:" + request.session.getUserID() + ":ignored", cb);
-	},
-	getRemoved: function (request, cb) {
-		client.smembers("friends:" + request.session.getUserID() + ":unfriended", cb);
-	},
-	getDeleted: function (request, cb) {
-		client.smembers("friends:" + request.session.getUserID() + ":deleted", cb);
-	},
-	getRequested: function (request, cb) {
-		step(function () {
-			client.smembers("friends:" + request.session.getUserID() + ":requested", this);
-		}, h.sF(function (ids) {
-			this.ne(ids);
-		}), cb);
-	},
-	checkFriendShip: function (errors, uid, friendID, cb) {
-		step(function () {
-			this.parallel.unflatten();
-
-			client.sismember("friends:" + uid + ":requests", friendID, this.parallel());
-			client.sismember("friends:" + uid + ":requested", friendID, this.parallel());
-			client.sismember("friends:" + uid, friendID, this.parallel());
-			client.sismember("friends:" + uid + ":unfriended", friendID, this.parallel());
-			client.sismember("friends:" + uid + ":ignored", friendID, this.parallel());
-
-			client.sismember("friends:" + friendID + ":requests", uid, this.parallel());
-			client.sismember("friends:" + friendID + ":requested", uid, this.parallel());
-			client.sismember("friends:" + friendID, uid, this.parallel());
-			client.sismember("friends:" + friendID + ":unfriended", uid, this.parallel());
-			client.sismember("friends:" + friendID + ":ignored", uid, this.parallel());
-		}, h.sF(function (requests1, requested1, friend1, unfriended1, ignored1, requests2, requested2, friend2, unfriended2, ignored2) {
-			if (requests1 && !requested2 && !ignored2) {
-				errors.push("FriendShip invalid: " + uid + "-" + friendID + " request but not requested");
-			} else if (requested1 && !requests2 && !ignored2) {
-				errors.push("FriendShip invalid: " + uid + "-" + friendID + " requested but no request");
-			} else if (friend1 && !friend2 && !unfriended2) {
-				errors.push("FriendShip invalid: " + uid + "-" + friendID + " friend but not friend or unfriended");
-			} else if (unfriended1 && !friend2 && !unfriended2) {
-				errors.push("FriendShip invalid: " + uid + "-" + friendID + " unfriended but not friend or unfriended");
-			}
-
-			if (requests1 || requested1 || friend1) {
-				client.hgetall("friends:" + uid + ":" + friendID, this);
-			} else if (unfriended1) {
-				client.hgetall("friends:" + uid + ":unfriending:" + friendID, this);
-			} else {
-				throw new Error("database changed. Please validate on a duplicate!");
-			}
-
-			this.ne();
-		}),cb);
-	},
-	checkSignedList: function (errors, uid, cb) {
-		step(function () {
-			this.parallel.unflatten();
-
-			client.hgetall("friends:" + uid + ":signedList", this.parallel());
-			client.smembers("friends:" + uid + ":requests", this.parallel());
-			client.smembers("friends:" + uid + ":requested", this.parallel());
-			client.smembers("friends:" + uid, this.parallel());
-			client.smembers("friends:" + uid + ":unfriended", this.parallel());
-			client.smembers("friends:" + uid + ":ignored", this.parallel());
-		}, h.sF(function (signedList, requests, requested, userFriends, unfriended, ignored) {
-			requested = requested.map(h.parseDecimal);
-			userFriends = userFriends.map(h.parseDecimal);
-			unfriended = unfriended.map(h.parseDecimal);
-			requests = requests.map(h.parseDecimal);
-			ignored = ignored.map(h.parseDecimal);
-
-			var signedListIDs = Object.keys(signedList || {}).filter(function (key) {
-				return key[0] !== "_";
-			}).map(h.parseDecimal);
-
-			var listFriends = requested.concat(userFriends);
-
-			if (!h.arrayEqual(signedListIDs, listFriends)) {
-				errors.push("signed lists do not match for uid: " + uid + " - " + signedListIDs + " - " + listFriends);
-			}
-
-			signedListIDs.forEach(function (id) {
-				KeyApi.checkKey(errors, signedList[id], this.parallel());
-			}, this);
-
-			if (!h.emptyUnion(requests, requested)) 	{ errors.push("requests and requested are not exclusive for " + uid); }
-			if (!h.emptyUnion(requests, userFriends)) 	{ errors.push("requests and friends are not exclusive for " + uid); }
-			if (!h.emptyUnion(requests, unfriended)) 	{ errors.push("requests and unfriended are not exclusive for " + uid); }
-			if (!h.emptyUnion(requests, ignored)) 		{ errors.push("requests and ignored are not exclusive for " + uid); }
-			if (!h.emptyUnion(requested, userFriends)) 	{ errors.push("requested and friends are not exclusive for " + uid); }
-			if (!h.emptyUnion(requested, unfriended)) 	{ errors.push("requested and unfriended are not exclusive for " + uid); }
-			if (!h.emptyUnion(requested, ignored)) 		{ errors.push("requested and ignored are not exclusive for " + uid); }
-			if (!h.emptyUnion(userFriends, unfriended)) { errors.push("friends and unfriended are not exclusive for " + uid); }
-			if (!h.emptyUnion(userFriends, ignored)) 	{ errors.push("friends and ignored are not exclusive for " + uid); }
-			if (!h.emptyUnion(unfriended, ignored)) 	{ errors.push("unfriendedand ignored are not exclusive for " + uid); }
-
-			requests.concat(requested).concat(userFriends).concat(unfriended).forEach(function (friendID) {
-				friends.checkFriendShip(errors, uid, friendID, this.parallel());
-			}, this);
-
-			this.parallel()();
-		}), cb);
-	}
+	get: (request, cb) => getFriends(request, request.session.getUserID()).nodeify(cb),
+	getSignedList: (request, cb) => client.hgetallAsync(`friends:${request.session.getUserID()}:signedList`).nodeify(cb),
+	getRequests: (request, cb) => client.smembersAsync(`friends:${request.session.getUserID()}:requests`).nodeify(cb),
+	getIgnored: (request, cb) => client.smembersAsync(`friends:${request.session.getUserID()}:ignored`).nodeify(cb),
+	getRemoved: (request, cb) => client.smembersAsync(`friends:${request.session.getUserID()}:unfriended`).nodeify(cb),
+	getDeleted: (request, cb) => client.smembersAsync(`friends:${request.session.getUserID()}:deleted`).nodeify(cb),
+	getRequested: (request, cb) => client.smembersAsync(`friends:${request.session.getUserID()}:requested`).nodeify(cb),
 };
 
 module.exports = friends;

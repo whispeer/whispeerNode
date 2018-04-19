@@ -1,79 +1,71 @@
-"use strict";
+"use strict"
 
-var step = require("step");
-var h = require("whispeerHelper");
+const code = require("./session").code
+const client = require("./redisClient")
+const mailer = require("./mailer")
+const User = require("./user")
 
-var code = require("./session").code;
-var client = require("./redisClient");
-var mailer = require("./mailer");
-var User = require("./user");
+const Bluebird = require("bluebird")
 
-var Bluebird = require("bluebird");
+const Notification = require("./notification")
 
-var Notification = require("./notification");
-
-var INVITELENGTH = 10;
+const INVITELENGTH = 10
 
 
-var escapeHtml = require("escape-html");
+const escapeHtml = require("escape-html")
 
-var invites = {
-	generateCode: function (request, reference, active, cb) {
-		var inviteCode;
-		step(function () {
-			request.session.logedinError(this);
-		}, h.sF(function () {
+const invites = {
+	generateCode: function (request, reference, active) {
+		return Bluebird.coroutine(function *() {
+			yield request.session.logedinError()
+
 			//generate random invite code
-			code(INVITELENGTH, this);
-		}), h.sF(function (_inviteCode) {
-			inviteCode = _inviteCode;
-			//add invite code to list of all codes
-			client.sadd("invites:v2:all", inviteCode, this);
-		}), h.sF(function (addedCount) {
-			if (addedCount === 1) {
-				var userid = request.session.getUserID();
+			const inviteCode = yield code(INVITELENGTH)
 
-				//add code to list of codes created by current user
+			//add invite code to list of all codes
+			const addedCount = yield client.saddAsync("invites:v2:all", inviteCode)
+
+			if (addedCount !== 1) {
+				return invites.generateCode(request, reference, active)
+			}
+
+			const userid = request.session.getUserID()
+
+			yield Bluebird.fromCallback(cb =>
 				client.multi()
 					.hmset("invites:v2:code:" + inviteCode, {
 						user: userid,
 						added: new Date().getTime(),
-						reference: reference,
+						reference,
 						active: (active ? 1 : 0)
 					})
 					.sadd("invites:v2:user:" + userid, inviteCode)
-					.exec(this);
-			} else {
-				invites.generateCode(request, reference, active, this);
-			}
-		}), h.sF(function () {
-			this.ne(inviteCode);
-		}), cb);
+					.exec(cb)
+			)
+
+			return inviteCode
+		})
 	},
 	activateCode: function (inviteCode, reference, cb) {
-		step(function () {
-			client.sismember("invites:v2:all", inviteCode, this);
-		}, h.sF(function (isMember) {
+		return Bluebird.coroutine(function *() {
+			const isMember = yield client.sismemberAsync("invites:v2:all", inviteCode)
+
 			if (isMember) {
-				client.hset("invites:v2:code:" + inviteCode, "active", 1, this);
-				if (reference) {
-					client.hset("invites:v2:code:" + inviteCode, "reference", reference, this);
-				}
-			} else {
-				this.ne();
+				yield client.hsetAsync("invites:v2:code:" + inviteCode, "active", 1)
 			}
-		}), cb);
+
+			if (isMember && reference) {
+				yield client.hsetAsync("invites:v2:code:" + inviteCode, "reference", reference)
+			}
+		}).nodeify(cb)
 	},
 	getMyInvites: function (request, cb) {
-		var logedinError = Bluebird.promisify(request.session.logedinError, {
-		    context: request.session
-		});
 
 		const rand = Math.random()
 
 		console.time(`f${rand}`)
 
-		return logedinError().then(function () {
+		return request.session.logedinError().then(function () {
 			console.timeEnd(`f${rand}`)
 			console.time(`g${rand}`)
 
@@ -100,60 +92,50 @@ var invites = {
 		}).nodeify(cb);
 	},
 	byMail: function (request, mails, name, language, cb) {
-		var resultPromise = Bluebird.try(function () {
+		return Bluebird.try(function () {
 			if (name) {
-				name = escapeHtml(name);
+				name = escapeHtml(name)
 			} else {
-				name = false;
+				name = false
 			}
 
-			return mails;
+			return mails
 		}).map(function (mail) {
-			var generateCode = Bluebird.promisify(invites.generateCode, {
-			    context: mailer
-			});
-
-			return generateCode(request, mail, true).then(function (code) {
+			return invites.generateCode(request, mail, true).then(function (code) {
 				return {
 					code: code,
 					mail: mail
-				};
-			});
+				}
+			})
 		}).map(function (invite) {
-			var sendMail = Bluebird.promisify(mailer.sendMail, {
-			    context: mailer
-			});
+			const sendMail = Bluebird.promisify(mailer.sendMail, {
+				context: mailer
+			})
 			sendMail(invite.mail, "invite", {
 				name: name,
 				language: language,
 				inviteCode: invite.code
-			});
-		});
-
-		if (cb) {
-			step.unpromisify(resultPromise, cb);
-		} else {
-			return resultPromise;
-		}
+			})
+		}).nodeify(cb)
 	},
 	useCode: function (myUser, inviteCode, cb) {
-		step(function () {
-			client.hget("invites:v2:code:" + inviteCode, "user", this);
-		}, h.sF(function (user) {
-			if (user) {
-				User.getUser(user, this);
-			} else {
-				this.last.ne();
+		return Bluebird.coroutine(function *() {
+			const userID = yield client.hgetAsync("invites:v2:code:" + inviteCode, "user")
+
+			if (!userID) {
+				return
 			}
-		}), h.sF(function (otherUser) {
-			Notification.add([otherUser], "invite", "accepted", myUser.getID());
 
-			client.sadd("invites:v2:code:" + inviteCode + ":used", myUser.getID(), this.parallel());
-			client.hset("invites:v2:code:" + inviteCode, "active", 1, this.parallel());
-			otherUser.addFriendRecommendation(myUser, 0, this.parallel());
-			myUser.addFriendRecommendation(otherUser, 0, this.parallel());
-		}), cb);
+			const otherUser = yield User.getUser(userID)
+
+			Notification.add([otherUser], "invite", "accepted", myUser.getID())
+
+			client.sadd("invites:v2:code:" + inviteCode + ":used", myUser.getID(), this.parallel())
+			client.hset("invites:v2:code:" + inviteCode, "active", 1, this.parallel())
+			otherUser.addFriendRecommendation(myUser, 0, this.parallel())
+			myUser.addFriendRecommendation(otherUser, 0, this.parallel())
+		}).nodeify(cb)
 	}
-};
+}
 
-module.exports = invites;
+module.exports = invites
