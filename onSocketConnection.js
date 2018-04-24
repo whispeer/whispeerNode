@@ -129,13 +129,14 @@ function always(request, response, fn) {
 
 let socketCount = 0;
 const startTime = new Date().getTime()
+const INITIAL_SLOTS = 30
 
 module.exports = function (socket) {
 	console.log("connection received", socket.request.headers["x-forwarded-for"]);
 
 	const diff = (new Date().getTime() - startTime) / 1000 / 10
 
-	if (socketCount > diff + 5 && socket.request.headers["x-forwarded-for"] !== "95.91.209.194") {
+	if (socketCount > diff + INITIAL_SLOTS) {
 		console.log("Dropping socket", socketCount, diff)
 		socket.disconnect(true)
 		return
