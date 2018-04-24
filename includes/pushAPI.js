@@ -231,13 +231,13 @@ pushService.listenAPNError((token, errCode, notification, fullFailure) => {
 		return
 	}
 
-	if (errCode === 410) {
+	if (errCode === "410") {
 		if (notification.reason === "Unregistered") {
 			return pushToken.destroy({ where: { token }})
 		}
 	}
 
-	if (errCode === 400) {
+	if (errCode === "400") {
 		pushToken.findOne({ where: { token }}).then((pushInfo) => {
 			if (!pushInfo.sandbox) {
 				return pushInfo.update({ sandbox: true })
