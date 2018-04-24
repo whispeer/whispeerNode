@@ -46,7 +46,9 @@ trustManager.preSet(function (request, newContent, cb) {
 		trustManager.get(request, this);
 	}, h.sF(function (oldTrustManager) {
 		if (oldTrustManager) {
-			var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(newContent));
+			var diff = h.arraySubtract(Object.keys(oldTrustManager), Object.keys(newContent))
+				.filter((key) => key !== "_v2");
+
 			if (diff.length > 0) {
 				throw new Error("trust manager update blocked because it would delete data " + diff);
 			}
