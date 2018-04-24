@@ -1,14 +1,14 @@
 "use strict";
 
-var step = require("step");
-var h = require("whispeerHelper");
+const h = require("whispeerHelper");
+const Bluebird = require("bluebird");
 
-var validator = require("whispeerValidations");
-var client = require("./redisClient");
-var KeyApi = require("./crypto/KeyApi");
-var User = require("./user");
+const validator = require("whispeerValidations");
+const client = require("./redisClient");
+const KeyApi = require("./crypto/KeyApi");
+const User = require("./user");
 
-var SymKey = require("./crypto/symKey");
+const SymKey = require("./crypto/symKey");
 
 /*
 	circle: {
@@ -20,72 +20,64 @@ var SymKey = require("./crypto/symKey");
 */
 
 var Circle = function (userid, id) {
-	var domain = "user:" + userid + ":circle:" + id;
+	const domain = `user:${userid}:circle:${id}`;
 	this.getData = function getDataF(request, cb) {
-		var result = {};
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			this.parallel.unflatten();
-			client.hgetall(domain + ":content", this.parallel());
-			client.hgetall(domain + ":meta", this.parallel());
-		}), h.sF(function (content, meta) {
+		return request.session.ownUserError(userid).then(() =>
+			Bluebird.all([
+				client.hgetallAsync(domain + ":content"),
+				client.hgetallAsync(domain + ":meta"),
+			])
+		).then(([content, meta]) => {
 			meta.users = JSON.parse(meta.users);
 
-			result.id = id;
-			result.content = content;
-			result.meta = meta;
-
-			request.addKey(meta.circleKey, this);
-		}), h.sF(function () {
-			this.ne(result);
-		}), cb);
+			return request.addKey(meta.circleKey)
+				.thenReturn({
+					id,
+					content,
+					meta
+				});
+		})
+		.nodeify(cb);
 	};
 
 	this.remove = function (request, cb) {
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			client.hget(domain + ":meta", "circleKey", this);
-		}), h.sF(function (circleKey) {
-			KeyApi.removeKey(request, circleKey, this);
-		}), h.sF(function () {
-			client.multi()
-				.srem("user:" + userid + ":circle", id)
-				.sadd("user:" + userid + ":circle:deleted", id)
-				.exec(this);
-		}), h.sF(function () {
-			this.ne(true);
-		}), cb);
+		return request.session.ownUserError(userid)
+			.then(() => client.hgetAsync(domain + ":meta", "circleKey"))
+			.then((circleKey) => KeyApi.removeKey(request, circleKey))
+			.then(() => {
+				const multi = client.multi()
+					.srem("user:" + userid + ":circle", id)
+					.sadd("user:" + userid + ":circle:deleted", id)
+
+				return Bluebird.fromCallback((cb) => multi.exec(cb))
+			})
+			.then(() => true)
+			.nodeify(cb);
 	};
 
 	function createKeysAndDecryptors(request, key, decryptors, cb) {
-		step(function () {
-			client.hget(domain + ":meta", "circleKey", this);
-		}, h.sF(function (oldKeyID) {
-			this.parallel.unflatten();
-
-			KeyApi.get(oldKeyID, this.parallel());
-			if (key) {
-				SymKey.create(request, key, this.parallel());
-			}
-		}), h.sF(function (oldKey) {
-			oldKey.addDecryptors(request, decryptors, this.parallel());
-		}), cb);
+		return client.hgetAsync(domain + ":meta", "circleKey")
+			.then((oldKeyID) =>
+				Bluebird.all([
+						KeyApi.get(oldKeyID),
+						key ? SymKey.create(request, key) : null
+				])
+			)
+			.then(([oldKey]) => oldKey.addDecryptors(request, decryptors))
+			.thenReturn(true)
+			.nodeify(cb)
 	}
 
 	this.update = function (request, content, meta, key, decryptors, cb) {
-		var usersRemoved;
-		step(function () {
-			request.session.ownUserError(userid, this);
-		}, h.sF(function () {
-			this.parallel.unflatten();
-			client.hget(domain + ":meta", "users", this.parallel());
-			client.hget(domain + ":meta", "circleKey", this.parallel());
-		}), h.sF(function (users, oldKey) {
+		return request.session.ownUserError(userid).then(() => {
+			return Bluebird.all([
+				client.hgetAsync(domain + ":meta", "users"),
+				client.hgetAsync(domain + ":meta", "circleKey"),
+			])
+		}).then(([users, oldKey]) => {
 			users = JSON.parse(users);
 
-			usersRemoved = h.arraySubtract(users, meta.users);
+			const usersRemoved = h.arraySubtract(users, meta.users);
 			var removing = usersRemoved.length > 0;
 
 			if (removing && !key) {
@@ -100,13 +92,10 @@ var Circle = function (userid, id) {
 				throw new Error("we need new decryptors!");
 			}
 
-			usersRemoved.forEach(function (userid) {
-				KeyApi.removeKeyDecryptorForUser(request, oldKey, userid, this.parallel());
-			}, this);
-			this.parallel()();
-		}), h.sF(function () {
-			createKeysAndDecryptors(request, key, decryptors, this.parallel());
-		}), h.sF(function () {
+			return Bluebird.all(usersRemoved.map((userid) => KeyApi.removeKeyDecryptorForUser(request, oldKey, userid)))
+		}).then(() =>
+			createKeysAndDecryptors(request, key, decryptors)
+		).then(() => {
 			var multi = client.multi();
 			meta.users = JSON.stringify(meta.users);
 
@@ -115,40 +104,35 @@ var Circle = function (userid, id) {
 			multi.hmset(domain + ":content", content);
 			multi.hmset(domain + ":meta", meta);
 
-			multi.exec(this.parallel());
-		}), h.sF(function () {
-			this.ne(true);
-		}), cb);
+			return Bluebird.fromCallback((cb) => multi.exec(cb))
+		})
+		.then(() => true)
+		.nodeify(cb);
 	};
 };
 
 Circle.get = function (request, circleid, cb) {
-	step(function () {
-		client.exists("user:" + request.session.getUserID() + ":circle:" + circleid + ":content", this);
-	}, h.sF(function (exists) {
-		if (exists === 1) {
-			this.ne(new Circle(request.session.getUserID(), circleid));
-		} else {
+	return client.existsAsync(`user:${request.session.getUserID()}:circle:${circleid}:content`)
+		.then((exists) => {
+			if (exists === 1) {
+				return new Circle(request.session.getUserID(), circleid);
+			}
+
 			throw new CircleNotExisting();
-		}
-	}), cb);
+		}).nodeify(cb);
 };
 
 Circle.all = function (request, cb) {
-	step(function () {
-		client.smembers("user:" + request.session.getUserID() + ":circle", this);
-	}, h.sF(function (circles) {
-		this.ne(circles.map(function (circle) {
-			return new Circle(request.session.getUserID(), circle);
-		}));
-	}), cb);
+	return client.smembersAsync(`user:${request.session.getUserID()}:circle`)
+		.map((circle) => new Circle(request.session.getUserID(), circle))
+		.nodeify(cb);
 };
 
 Circle.create = function (request, data, cb) {
 	var theCircleID, userid = request.session.getUserID();
 
 	var content = data.content, meta = data.meta;
-	step(function () {
+	return Bluebird.try(() => {
 		var err = validator.validate("circle", data);
 
 		if (err) {
@@ -159,16 +143,11 @@ Circle.create = function (request, data, cb) {
 			throw new InvalidCircleData("not enough decryptors");
 		}
 
-		meta.users.forEach(function (uid) {
-			User.getUser(uid, this.parallel());
-		}, this);
-
-		this.parallel()();
-	}, h.sF(function () {
-		SymKey.create(request, data.key, this);
-	}), h.sF(function () {
-		client.incr("user:" + userid + ":circle:count", this);
-	}), h.sF(function (circleid) {
+		return Bluebird.all(meta.users.map((uid) => User.getUser(uid)))
+	})
+	.then(() => SymKey.create(request, data.key))
+	.then(() => client.incrAsync("user:" + userid + ":circle:count"))
+	.then((circleid) => {
 		theCircleID = circleid;
 
 		var domain = "user:" + userid;
@@ -181,10 +160,10 @@ Circle.create = function (request, data, cb) {
 		multi.hmset(domain + ":circle:" + circleid + ":content", content);
 		multi.hmset(domain + ":circle:" + circleid + ":meta", meta);
 
-		multi.exec(this);
-	}), h.sF(function () {
-		this.ne(new Circle(request.session.getUserID(), theCircleID));
-	}), cb);
+		return Bluebird.fromCallback((cb) => multi.exec(cb))
+	}).then(function () {
+		return new Circle(request.session.getUserID(), theCircleID);
+	}).nodeify(cb)
 };
 
 module.exports = Circle;
