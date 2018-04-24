@@ -2,17 +2,17 @@
 
 "use strict";
 
-var client = require("./includes/redisClient");
+const client = require("./includes/redisClient");
 
-var step = require("step");
-var h = require("whispeerHelper");
+const step = require("step");
+const h = require("whispeerHelper");
 
-var fs = require("fs");
-var path = require("path");
+const fs = require("fs");
+const path = require("path");
 
 var migrationState, availableMigrations, highestMigrationState;
 
-var migrationToRun = process.argv[2];
+const migrationToRun = process.argv[2];
 
 var runMigrations;
 
