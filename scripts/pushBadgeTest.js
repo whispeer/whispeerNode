@@ -8,7 +8,7 @@ const setup = require("../includes/setup");
 const userID = parseInt(process.argv[2], 10);
 const count = parseInt(process.argv[3], 10);
 
-if (!count || !userID) {
+if ((!count && count !== 0) || !userID) {
   console.warn("Usage: pushBadgeTest.js userID count");
 
   process.exit(0);
