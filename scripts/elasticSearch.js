@@ -5,7 +5,6 @@
 const setup = require("../includes/setup");
 const addNamesToElastic = require("../migrations/00008-elasticsearch");
 
-
 setup()
 	.then(() => addNamesToElastic())
 	.then(() => process.exit())
