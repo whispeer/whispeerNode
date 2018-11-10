@@ -3,7 +3,7 @@
   "version": "0.1.2",
   "dependencies": {
     "amanda": "0.5.x",
-    "apn": "^2.1.5",
+    "apn": "^2.2.0",
     "base64stream": "0.1.1",
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
@@ -19,7 +19,7 @@
     "raven": "^2.2.1",
     "redis": "2.x.x",
     "redlock": "^2.0.0",
-    "request": "^2.60.0",
+    "request": "^2.88.0",
     "secure_random": "0.1.x",
     "semver": "^5.3.0",
     "sequelize": "^3.30.4",
@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "eslint": "^3.15.0",
-    "grunt": "~1.0.1",
+    "grunt": "^1.0.3",
     "selenium-webdriver": "2.x"
   }
 }
