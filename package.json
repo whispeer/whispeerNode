@@ -30,8 +30,8 @@
     "xtend": "4.0.x"
   },
   "devDependencies": {
-    "eslint": "^3.15.0",
+    "eslint": "^5.9.0",
     "grunt": "^1.0.3",
-    "selenium-webdriver": "2.x"
+    "selenium-webdriver": "^3.6.0"
   }
 }
