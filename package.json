@@ -28,6 +28,9 @@
     "uuid": "^3.1.0",
     "xtend": "4.0.x"
   },
+  "scripts": {
+    "postinstall": "git submodule update"
+  },
   "devDependencies": {
     "eslint": "^5.9.0",
     "grunt": "^1.0.3",
