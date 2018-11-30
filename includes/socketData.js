@@ -6,8 +6,6 @@ const client = require("./redisClient");
 const OnlineStatusUpdater = require("./onlineStatus");
 const errorService = require("./errorService");
 
-const socketS = require("socket.io-stream");
-
 const Bluebird = require("bluebird")
 
 function SocketData(socket, session) {
@@ -82,19 +80,6 @@ function SocketData(socket, session) {
 			subs[channel] = true;
 
 			closeSubscribers.push(client.sub(channel, cb));
-		}
-	};
-
-	this.upgradeStream = function (api) {
-		if (!streamSocket) {
-			streamSocket = socketS(socket);
-
-			var attr;
-			for (attr in api) {
-				if (api.hasOwnProperty(attr)) {
-					streamSocket.on(attr, api[attr]);
-				}
-			}
 		}
 	};
 

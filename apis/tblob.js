@@ -5,17 +5,6 @@ var h = require("whispeerHelper");
 
 var blobStorage = require("../includes/blobStorage");
 
-var pushBlobAPI = {
-	pushBlob: function (stream, data) {
-		step(function () {
-			blobStorage.addBlobFromStream(stream, data.blobid, this);
-		}, function (e) {
-			console.error(e);
-			//todo: socket.emit(pushBlobDone or something like that!);
-		});
-	},
-};
-
 var streamAPI = {
 	uploadBlobPart: function (data, fn, request) {
 		step(function () {
@@ -67,13 +56,6 @@ var streamAPI = {
 		}, h.sF(function (result) {
 			this.ne(result);
 		}), fn);
-	},
-	upgradeStream: function (data, fn, request) {
-		step(function () {
-			request.socketData.upgradeStream(pushBlobAPI);
-
-			this.ne({});
-		}, fn);
 	}
 };
 

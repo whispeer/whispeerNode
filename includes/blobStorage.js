@@ -190,17 +190,6 @@ var blobStorage = {
 			this.ne(false);
 		}), cb);
 	},
-	addBlobFromStream: function (stream, blobid, cb) {
-		step(function () {
-			useBlobID(blobid, this);
-		}, h.sF(function (blobid) {
-			stream.on("end", this);
-
-			stream.pipe(fs.createWriteStream(blobIDtoFile(blobid)));
-		}), h.sF(function () {
-			client.sadd("blobs:usedids", blobid, this);
-		}), cb);
-	},
 	getBlobPart: function (request, blobid, start, size, cb) {
 		var result;
 		step(function () {
