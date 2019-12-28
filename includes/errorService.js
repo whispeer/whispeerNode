@@ -1,7 +1,5 @@
 "use strict";
 
-const Raven = require("raven");
-
 const getExtra = (request) => {
 	if (!request) {
 		return {}
@@ -23,13 +21,9 @@ var errorService = {
 		if (e) {
 			const extra = getExtra(request)
 
-			Raven.captureException(e, { extra });
+			console.error(e, extra);
 		}
 	}
 };
-
-process.on("unhandledRejection", function(reason) {
-    errorService.handleError(reason);
-});
 
 module.exports = errorService;
