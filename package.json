@@ -28,6 +28,8 @@
     "uuid": "^3.1.0",
     "xtend": "4.0.x"
   },
+  "author": "mindpost GmbH",
+  "license": "MIT",
   "scripts": {
     "postinstall": "git submodule update",
     "lint": "eslint ."
