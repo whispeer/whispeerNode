@@ -22,7 +22,7 @@
     "request": "^2.88.0",
     "secure_random": "0.1.x",
     "semver": "^5.3.0",
-    "sequelize": "^3.35.1",
+    "sequelize": "^5.15.1",
     "socket.io": "^2.2.0",
     "step": "git+ssh://git@github.com:whispeer/whispeerStep.git#master",
     "uuid": "^3.1.0",
