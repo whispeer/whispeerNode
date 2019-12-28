@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+/* eslint-disable no-console */
+
 "use strict";
 
 var setup = require("../includes/setup");
@@ -216,13 +218,13 @@ function removeKey(key) {
 
 	return getKey(key).then(function (theKey) {
 		var removeKey = Bluebird.promisify(theKey.remove, {
-		    context: theKey
+			context: theKey
 		});
 		var multi = client.multi();
 
 		return removeKey(multi).then(function () {
 			var exec = Bluebird.promisify(multi.exec, {
-			    context: multi
+				context: multi
 			});
 			return exec();
 		});
