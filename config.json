@@ -5,7 +5,7 @@
 		"wsPort": 3000,
 		"serverUrl": "http://localhost:3000",
 		"db": {
-			"number": 1
+			"number": 0
 		},
 		"production": false,
 		"mail": {

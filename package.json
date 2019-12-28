@@ -28,10 +28,12 @@
     "xtend": "4.0.x"
   },
   "scripts": {
-    "postinstall": "git submodule update"
+    "postinstall": "git submodule update",
+    "lint": "eslint ."
   },
   "devDependencies": {
-    "eslint": "^5.9.0",
+    "babel-eslint": "^10.0.3",
+    "eslint": "^6.8.0",
     "grunt": "^1.0.4",
     "selenium-webdriver": "^3.6.0"
   }
