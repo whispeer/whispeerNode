@@ -2,8 +2,6 @@
 
 /* eslint-disable no-console */
 
-"use strict";
-
 var setup = require("../includes/setup");
 var client = require("../includes/redisClient");
 
@@ -11,6 +9,7 @@ const Message = require("../includes/models/message")
 const Chunk = require("../includes/models/chatChunk")
 const Chat = require("../includes/models/chat")
 const UserUnreadMessages = require("../includes/models/unreadMessage")
+const pushTokenModel = require("../includes/models/pushTokenModel");
 
 const Receivers = Chunk.ReceiverModel;
 
@@ -163,6 +162,13 @@ function removeUserSignatureCache(userid) {
 	});
 }
 
+const removeUserPushTokens = async (userID) =>
+	pushTokenModel.destroy({
+		where: {
+			userID
+		}
+	});
+
 const removeUserMessages = async (userID) => {
 	const messages = await Message.findAll({
 		where: {
@@ -177,7 +183,7 @@ const removeUserMessages = async (userID) => {
 		}
 	});
 
-	await Receivers.delete({
+	await Receivers.destroy({
 		where: {
 			userID
 		}
@@ -245,6 +251,8 @@ const removeUserMessages = async (userID) => {
 			}
 		}
 	})
+
+	// TODO: update latest message!
 }
 
 function removeKey(key) {
@@ -418,6 +426,8 @@ Bluebird.try(() => {
 	return removeUserSignatureCache(deleteUserID);
 }).then(function () {
 	return removeUserMessages(deleteUserID);
+}).then(function () {
+	return removeUserPushTokens(deleteUserID);
 }).then(function () {
 	return removeUserCircles(deleteUserID);
 }).then(function () {
