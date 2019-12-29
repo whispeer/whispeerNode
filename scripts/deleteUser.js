@@ -7,18 +7,26 @@
 var setup = require("../includes/setup");
 var client = require("../includes/redisClient");
 
-var KeyApi = require("../includes/crypto/KeyApi");
+const Message = require("../includes/models/message")
+const Chunk = require("../includes/models/chatChunk")
+const Chat = require("../includes/models/chat")
+const UserUnreadMessages = require("../includes/models/unreadMessage")
 
-var Bluebird = require("bluebird");
+const Receivers = Chunk.ReceiverModel;
+
+const KeyApi = require("../includes/crypto/KeyApi");
+
+const Bluebird = require("bluebird");
+const _ = require("lodash");
 Bluebird.longStackTraces();
 
-var setupP = Bluebird.promisify(setup);
-var getKey = Bluebird.promisify(KeyApi.get);
+const setupP = Bluebird.promisify(setup);
+const getKey = Bluebird.promisify(KeyApi.get);
 
 
 // requireConfirmation will ask the user to confirm by typing 'y'. When
 // not in a tty, the action is performed w/o confirmation.
-var requireConfirmation = Bluebird.promisify(function(message, action) {
+const requireConfirmation = Bluebird.promisify(function(message, action) {
 	console.log(message);
 	if (process.stdout.isTTY) {
 		var stdin = process.openStdin();
@@ -155,62 +163,88 @@ function removeUserSignatureCache(userid) {
 	});
 }
 
-function deleteMessage(messageID, topicID, userid) {
-	return Bluebird.all([
-		client.zremAsync("topic:" + topicID + ":messages", messageID),
-		client.zremAsync("topic:" + topicID + ":user:" + userid + ":messages", messageID)
-	]).then(function () {
-		return removeKeyAndSubKeys("message:" + messageID);
+const removeUserMessages = async (userID) => {
+	const messages = await Message.findAll({
+		where: {
+			sender: userID
+		},
+		attributes: ["ChunkId"]
 	});
-}
 
-function getReceivers(topicID) {
-	return client.smembersAsync("topic:" + topicID + ":receiver");
-}
-
-function removeTopic(topicID) {
-	return getReceivers(topicID).each(function (receiverID) {
-		return Bluebird.all([
-			client.zremAsync("topic:user:" + receiverID + ":topics", topicID),
-			client.zremAsync("topic:user:" + receiverID + ":unreadTopics", topicID)
-		]);
-	}).then(function () {
-		return removeKeyAndSubKeys("topic:" + topicID);
-	}).then(function () {
-		console.log("removed topic: " + topicID);
-	});
-}
-
-function updateNewest(topicID) {
-	return client.zrangeAsync("topic:" + topicID + ":messages", -1, -1).then(function (newest) {
-		if (newest.length === 0) {
-			return removeTopic(topicID);
+	await Message.destroy({
+		where: {
+			sender: userID,
 		}
-
-		return client.hsetAsync("topic:" + topicID + ":server", "newest", newest[0]);
 	});
-}
 
-function removeUserMessagesFromTopic(topicID, userid) {
-	console.log("removing messages from topic: " + topicID);
-
-	return client.zrangeAsync("topic:" + topicID + ":user:" + userid + ":messages", 0, -1).each(function (messageID) {
-		console.log("deleting message: " + messageID);
-		return deleteMessage(messageID, topicID, userid);
-	}).then(function () {
-		console.log("updating newest message for topic: " + topicID);
-		return updateNewest(topicID);
+	await Receivers.delete({
+		where: {
+			userID
+		}
 	});
-}
 
-function removeUserMessages(userid) {
-	return client.zrangeAsync("topic:user:" + userid + ":topics", 0, -1).each(function (topicID) {
-		return removeUserMessagesFromTopic(topicID, userid);
-	}).then(function () {
-		return removeKeyAndSubKeys("topic:user:" + userid);
-	}).then(function () {
-		console.log("removed user messages");
+	await UserUnreadMessages.destroy({
+		where: {
+			userID
+		}
 	});
+
+	const chunkIds = _.uniq(messages.map((m) => m.getDataValue("ChunkId")));
+
+	const deleteChunks = await Bluebird.resolve(chunkIds).filter(async (ChunkId) => {
+		const messages = await Message.findAll({
+			where: {
+				ChunkId
+			},
+			attributes: ["id"],
+			limit: 1
+		});
+
+		return messages.length === 0;
+	});
+
+	const chunks = await Chunk.findAll({
+		where: {
+			id: {
+				$in: deleteChunks
+			}
+		},
+		attributes: ["ChatId"]
+	});
+
+	console.log("Removing empty chunks:", deleteChunks);
+
+	await Chunk.destroy({
+		where: {
+			id: {
+				$in: deleteChunks
+			}
+		}
+	})
+
+	const chatIds = _.uniq(chunks.map((c) => c.getDataValue("ChatId")));
+
+	const chatsToDelete = await Bluebird.resolve(chatIds).filter(async (ChatId) => {
+		const chunks = await Chunk.findAll({
+			where: {
+				ChatId
+			},
+			attributes: ["id"],
+			limit: 1
+		});
+
+		return chunks.length === 0;
+	});
+
+	console.log("Removing empty chats:", chatsToDelete);
+
+	await Chat.destroy({
+		where: {
+			id: {
+				$in: chatsToDelete
+			}
+		}
+	})
 }
 
 function removeKey(key) {
