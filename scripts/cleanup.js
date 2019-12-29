@@ -32,6 +32,8 @@ Bluebird.try(async () => {
 	await deleteByPattern("invites:*");
 	await deleteByPattern("notifications:*");
 	await deleteByPattern("waterline:*");
+	await deleteByPattern("search:*");
+	await deleteByPattern("settings:*");
 
 	for (let i = 2013; i < 2019; i += 1) {
 		await deleteByPattern(`analytics:online:hour:${i}-*`)
