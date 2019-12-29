@@ -414,10 +414,6 @@ var Session = function Session() {
 			myUser.setSignedOwnKeys(request, signedOwnKeys, this.parallel());
 			settingsService.setOwnSettings(request, settings, this.parallel());
 		}), h.sF(function decryptorsAdded() {
-			if (preID) {
-				client.sadd("analytics:registration:id:" + preID + ":user", myUser.getID());
-			}
-
 			return client.zaddAsync("user:registered", new Date().getTime(), myUser.getID());
 		}), h.sF(function () {
 			this.ne(mySid);

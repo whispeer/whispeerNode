@@ -13,22 +13,31 @@ const client = require("../includes/redisClient");
 
 const setupP = Bluebird.promisify(setup);
 
+const deleteByPattern = async (pattern) => {
+	const patternKeys = await client.keysAsync(pattern);
+
+	console.log(`Deleting keys ${pattern} (${patternKeys.length})`);
+
+	const chunks = _.chunk(patternKeys, 5000);
+	await Bluebird.map(chunks, (keys) => client.delAsync(keys), { concurrency: 1 });
+}
+
 Bluebird.try(async () => {
 	await setupP();
 
-  const messageKeys = await client.keysAsync("message:*");
+  await deleteByPattern("message:*");
+  await deleteByPattern("topic:*");
+	await deleteByPattern("analytics:registration:*");
+	await deleteByPattern("analytics:mail:trackingCodes:*");
+	await deleteByPattern("invites:*");
+	await deleteByPattern("notifications:*");
 
-  console.log("Deleting Message Keys", messageKeys.length);
-
-  const chunks = _.chunk(messageKeys, 5000);
-  await Bluebird.map(chunks, (keys) => client.delAsync(keys), { concurrency: 1 });
-
-  const topicKeys = await client.keysAsync("topic:*");
-
-  console.log("Deleting Topic Keys", topicKeys.length);
-
-  const chunks2 = _.chunk(topicKeys, 5000);
-  await Bluebird.map(chunks2, (keys) => client.delAsync(keys), { concurrency: 1 });
+	for (let i = 2013; i < 2019; i += 1) {
+		await deleteByPattern(`analytics:online:hour:${i}-*`)
+		await deleteByPattern(`analytics:online:day:${i}-*`)
+		await deleteByPattern(`analytics:online:week:${i} *`)
+		await deleteByPattern(`analytics:online:month:${i}-*`)
+	}
 }).then(function () {
   process.exit();
 });

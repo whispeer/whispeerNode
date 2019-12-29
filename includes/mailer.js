@@ -67,20 +67,9 @@ var mailer = {
 		}), cb);
 	},
 	generateTrackingCode: function (variables, cb) {
-		var resultCode;
-
 		step(function () {
 			code(20, this);
-		}, h.sF(function (_code) {
-			resultCode = _code;
-			client.sadd("analytics:mail:trackingCodes", resultCode, this);
-		}), h.sF(function (inserted) {
-			if (inserted) {
-				client.set("analytics:mail:trackingCodes:" + resultCode, JSON.stringify(variables), this);
-			} else {
-				mailer.generateTrackingCode(variables, cb);
-			}
-		}), h.sF(function () {
+		}, h.sF(function (resultCode) {
 			this.ne(resultCode);
 		}), cb);
 	},

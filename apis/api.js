@@ -33,8 +33,6 @@ const signatureCache = new SimpleUserDataStore("signatureCache");
 const trustManager = new SimpleUserDataStore("trustManager");
 const settings = new SimpleUserDataStore("settings");
 
-const client = require("../includes/redisClient");
-
 settings.preSet(function (request, newContent, cb) {
 	step(function () {
 		verifySecuredMeta(request, newContent.meta, "settings", this);
@@ -179,20 +177,10 @@ var whispeerAPI = {
 			}), fn);
 		}
 	},
-	preRegisterID: function (data, fn, request) {
+	preRegisterID: function (data, fn) {
 		step(function () {
-			var id = data.id;
-
-			client.multi()
-				.sadd("analytics:registration:ids", id)
-				.hmset("analytics:registration:id:" + id, {
-					added: new Date().getTime()
-				})
-				.sadd("analytics:registration:id:" + id + ":ips", request.getShortIP())
-				.exec(this);
-		}, h.sF(function () {
 			this.ne({});
-		}), fn);
+		}, fn);
 	},
 	errors: function (data, fn) {
 		step(function () {
