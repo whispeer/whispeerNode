@@ -113,16 +113,48 @@ const exportUserFriends = (userID) =>
     exportKeys([`friends:${userID}`]),
   ]);
 
+const copyBlobs = async (userID, blobIDs) => {
+  await Bluebird.resolve(blobIDs)
+  .map((id) =>
+    fs.promises.copyFile(`./files/${id}.png`, `./export/user-${userID}/blobs/${id}.png`)
+      .catch((e) => e.code !== "ENOENT" ? Promise.reject(e) : null)
+  )
+}
+
+const exportBlobs = async (userID) => {
+  const nickname = await client.hgetAsync(`user:${userID}`, "nickname");
+
+  const myBlobs = await client.keysAsync("blobs:*")
+    .map((key) => key.split(":")[1])
+    .filter(async (blobID) => {
+      if (blobID.length !== 30) {
+        return false;
+      }
+
+      const key = await client.hgetAsync(`blobs:${blobID}`, "_key");
+
+      if (!key) {
+        return false;
+      }
+
+      return key.indexOf(nickname) === 0;
+    });
+
+  await exportKeys(myBlobs.map((id) => `blobs:${id}`));
+  await copyBlobs(userID, myBlobs);
+}
+
 const exportRedis = async (userID) => {
   await exportUserSessions(userID);
   await exportUser(userID);
   await exportUserPosts(userID);
   await exportUserComments(userID);
   await exportUserFriends(userID);
+  await exportBlobs(userID);
 
-  fs.writeFileSync(`./export/export-${userID}-redis.json`, JSON.stringify(redisExport, null, 2))
+  fs.writeFileSync(`./export/user-${userID}/redis.json`, JSON.stringify(redisExport, null, 2))
 
-  console.log(redisExport.map(([a]) => a));
+  console.log(`Exported ${redisExport.length} keys to redis.json`);
 };
 
 const path = __dirname
@@ -143,7 +175,7 @@ const exportPG = async (userID) => {
   ]
 
   await Bluebird.resolve(queries).each(async ([table, query]) =>
-    sequelize.query(`COPY (${query}) TO '${process.cwd()}/export/export-${userID}-${table}.csv';`)
+    sequelize.query(`COPY (${query}) TO '${process.cwd()}/export/user-${userID}/${table}.csv';`)
   )
 };
 
@@ -159,6 +191,8 @@ Bluebird.try(async () => {
   const nickname = await client.hgetAsync(`user:${exportUserID}`, "nickname");
 
   console.log(`Exporting user ${nickname} (${exportUserID})`);
+
+  fs.mkdirSync(`./export/user-${exportUserID}/blobs`, { recursive: true });
 
   await Bluebird.all([
     exportRedis(exportUserID),
