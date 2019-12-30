@@ -128,6 +128,8 @@ const exportRedis = async (userID) => {
 const path = __dirname
 
 const exportPG = async (userID) => {
+  // Taken from https://stackoverflow.com/questions/12815496/export-specific-rows-from-a-postgresql-table-as-insert-sql-script
+
   const receiverQuery = `SELECT DISTINCT "Receivers"."ChunkId" FROM "Receivers" WHERE "Receivers"."userID" = ${userID}`
 
   const queries = [
