@@ -106,19 +106,30 @@ const exportUserComments = async (userID) => {
     });
 }
 
+const exportUserFriends = (userID) =>
+  Promise.all([
+    exportPattern(`friends:${userID}:*`),
+    exportKeys([`friends:${userID}`]),
+  ]);
+
 const exportRedis = async (userID) => {
   await exportUserSessions(userID);
   await exportUser(userID);
   await exportUserPosts(userID);
   await exportUserComments(userID);
+  await exportUserFriends(userID);
 
   fs.writeFileSync(`./export/export-${userID}-redis.json`, JSON.stringify(redisExport, null, 2))
 
   console.log(redisExport.map(([a]) => a));
 };
 
-const exportPG = async () => {
-  // TODO implement
+const path = __dirname
+
+const exportPG = async (userID) => {
+  console.log(__dirname);
+
+  `COPY (SELECT * FROM "public"."Messages" WHERE sender = ${userID}) TO '/Users/nilos/software/whispeer/node/export/export-${userID}-messages.csv';`
 };
 
 Bluebird.try(async () => {
