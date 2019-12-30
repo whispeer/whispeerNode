@@ -140,6 +140,13 @@ const exportBlobs = async (userID) => {
       return key.indexOf(nickname) === 0;
     });
 
+  const profileJSON = await client.hgetAsync(`user:${userID}:profile`, "content");
+  const profile = JSON.parse(profileJSON);
+
+  if (profile && profile.imageBlob && profile.imageBlob.blobid) {
+    myBlobs.push(profile.imageBlob.blobid);
+  }
+
   await exportKeys(myBlobs.map((id) => `blobs:${id}`));
   await copyBlobs(userID, myBlobs);
 }
