@@ -80,10 +80,8 @@ function OnlineStatusUpdater(socketData, session) {
 		var month = now.getFullYear() + "-" + (now.getMonth() + 1);
 		var week = now.getFullYear() + " W" + h.getWeekNumber(now);
 		var day = month + "-" + now.getDate();
-		var hour = day + " " + now.getHours() + "h";
 
 		client.multi()
-			.sadd("analytics:online:hour:" + hour, userID)
 			.sadd("analytics:online:day:" + day, userID)
 			.sadd("analytics:online:week:" + week, userID)
 			.sadd("analytics:online:month:" + month, userID)

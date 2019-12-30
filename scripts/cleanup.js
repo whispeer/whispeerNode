@@ -2,7 +2,7 @@
 
 /* eslint-disable no-console */
 
-"use strict";
+
 
 const Bluebird = require("bluebird");
 const _ = require("lodash");
@@ -35,8 +35,9 @@ Bluebird.try(async () => {
 	await deleteByPattern("search:*");
 	await deleteByPattern("settings:*");
 
+	await deleteByPattern("analytics:online:hour:*")
+
 	for (let i = 2013; i < 2019; i += 1) {
-		await deleteByPattern(`analytics:online:hour:${i}-*`)
 		await deleteByPattern(`analytics:online:day:${i}-*`)
 		await deleteByPattern(`analytics:online:week:${i} *`)
 		await deleteByPattern(`analytics:online:month:${i}-*`)

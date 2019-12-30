@@ -90,13 +90,6 @@ module.exports = function (express) {
 	});
 
 	express.get("/pixel/:id.png", function (req, res) {
-		client.zadd("analytics:mail:tracked", new Date().getTime(), req.params.id, function (e) {
-			if (e) {
-				// eslint-disable-next-line no-console
-				console.error(e);
-			}
-		});
-
 		var pixelPath = "pixel.png";
 
 		var options = {
