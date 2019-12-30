@@ -36,6 +36,7 @@ Bluebird.try(async () => {
 	await deleteByPattern("settings:*");
 
 	await deleteByPattern("analytics:online:hour:*")
+	await deleteByPattern("server:migraionState");
 
 	for (let i = 2013; i < 2019; i += 1) {
 		await deleteByPattern(`analytics:online:day:${i}-*`)

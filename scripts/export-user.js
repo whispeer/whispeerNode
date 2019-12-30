@@ -53,9 +53,24 @@ const exportPattern = async (pattern) => {
   await exportKeys(keys);
 }
 
+const exportReferences = async (userID) => {
+  await client.smembersAsync(`mail:${userID}`)
+    .map((mail) =>
+      exportKeys([`user:mail:${mail}`])
+    )
+
+  const nickname = await client.hgetAsync(`user:${userID}`, "nickname")
+
+  await exportKeys([`user:nickname:${nickname.toLowerCase()}`])
+}
+
 const exportUser = async (userID) => Promise.all([
-  exportKeys([`user:${userID}`]),
-  exportPattern(`user:${userID}:*`),
+  exportKeys([
+    `user:${userID}`,
+    `mail:${userID}`,
+  ]),
+  // exportPattern(`user:${userID}:*`),
+  exportReferences(userID),
 ]);
 
 const exportUserSessions = async (userID)  => {
@@ -92,9 +107,9 @@ const exportUserComments = async (userID) => {
 }
 
 const exportRedis = async (userID) => {
-  // await exportUserSessions(userID);
-  // await exportUser(userID);
-  // await exportUserPosts(userID);
+  await exportUserSessions(userID);
+  await exportUser(userID);
+  await exportUserPosts(userID);
   await exportUserComments(userID);
 
   fs.writeFileSync(`./export/export-${userID}-redis.json`, JSON.stringify(redisExport, null, 2))
