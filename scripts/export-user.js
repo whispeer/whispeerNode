@@ -9,6 +9,7 @@ Bluebird.longStackTraces();
 
 const setup = require("../includes/setup");
 const client = require("../includes/redisClient");
+const sequelize = require("../includes/dbConnector/sequelizeClient");
 
 const setupP = Bluebird.promisify(setup);
 
@@ -127,9 +128,21 @@ const exportRedis = async (userID) => {
 const path = __dirname
 
 const exportPG = async (userID) => {
-  console.log(__dirname);
+  const receiverQuery = `SELECT DISTINCT "Receivers"."ChunkId" FROM "Receivers" WHERE "Receivers"."userID" = ${userID}`
 
-  `COPY (SELECT * FROM "public"."Messages" WHERE sender = ${userID}) TO '/Users/nilos/software/whispeer/node/export/export-${userID}-messages.csv';`
+  const queries = [
+    ["Chats", `SELECT * FROM "Chats" WHERE id IN (SELECT DISTINCT "Chunks"."ChatId" FROM "Chunks" WHERE id IN (${receiverQuery}))`],
+    ["Chunks", `SELECT * FROM "Chunks" WHERE id IN (${receiverQuery})`],
+    ["ChunkTitleUpdates", `SELECT * FROM "ChunkTitleUpdates" WHERE "ChunkTitleUpdates"."ChunkId" IN (${receiverQuery})`],
+    ["Messages", `SELECT * FROM "Messages" WHERE "Messages"."sender" = ${userID}`],
+    ["pushTokens", `SELECT * FROM "pushTokens" WHERE "pushTokens"."userID" = ${userID}`],
+    ["Receivers", `SELECT * FROM "Receivers" WHERE "Receivers"."ChunkId" IN (${receiverQuery})`],
+    ["UserUnreadMessages", `SELECT * FROM "UserUnreadMessages" WHERE "UserUnreadMessages"."userID" = ${userID}`],
+  ]
+
+  await Bluebird.resolve(queries).each(async ([table, query]) =>
+    sequelize.query(`COPY (${query}) TO '${process.cwd()}/export/export-${userID}-${table}.csv';`)
+  )
 };
 
 Bluebird.try(async () => {

@@ -237,6 +237,7 @@ Key.prototype.addDecryptors = function (request, data, cb) {
 * @param cb callback
 */
 Key.prototype.addEncryptor = (realid, cb) => {
+	// TODO: looks like somethis this._domain is UNDEFINED here!
 	return client.saddAsync(this._domain + ":encryptors", realid).nodeify(cb)
 };
 
