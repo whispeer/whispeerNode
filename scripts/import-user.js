@@ -55,6 +55,11 @@ const importRedis = async (userID) => {
     }));
 }
 
+const importBlobs = async (userID) => {
+  return Bluebird.resolve(fs.promises.readdir(`./export/user-${userID}/blobs/`))
+    .map((file) => fs.promises.copyFile(`./export/user-${userID}/blobs/${file}`, `./files/${file}`));
+}
+
 Bluebird.try(async () => {
   const importUserID = parseInt(process.argv[2], 10);
 
@@ -68,7 +73,8 @@ Bluebird.try(async () => {
 
   await Bluebird.all([
     importRedis(importUserID),
-    importPG(importUserID)
+    importPG(importUserID),
+    importBlobs(importUserID),
   ])
 }).then(function () {
   process.exit();

@@ -409,8 +409,8 @@ Bluebird.try(() => {
 	console.log("Running removeUserSessions");
 	return removeUserSessions(deleteUserID);
 }).then(function () {
-	console.log("Running removeUserFromSearch");
-	return removeUserFromSearch(deleteUserID);
+	console.log("Skipping removeUserFromSearch");
+	// return removeUserFromSearch(deleteUserID);
 }).then(function () {
 	console.log("Running removeUserPosts");
 	return removeUserPosts(deleteUserID);
@@ -445,8 +445,8 @@ Bluebird.try(() => {
 	console.log("Running removeUserCircles");
 	return removeUserCircles(deleteUserID);
 }).then(function () {
-	console.log("Running removeUserKeys");
-	return removeUserKeys(deleteUserID);
+	console.log("Skipping removeUserKeys");
+	// return removeUserKeys(deleteUserID);
 }).then(function () {
 	console.log("Running removeUserFriends");
 	return removeUserFriends(deleteUserID);
