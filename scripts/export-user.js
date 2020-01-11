@@ -84,7 +84,7 @@ const exportUser = async (userID) => Promise.all([
     `user:${userID}`,
     `mail:${userID}`,
   ]),
-  // exportPattern(`user:${userID}:*`),
+  exportPattern(`user:${userID}:*`),
   exportReferences(userID),
 ]);
 

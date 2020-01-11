@@ -403,38 +403,55 @@ Bluebird.try(() => {
 
 	return requireConfirmation(`Deleting user ${deleteUserID} (${nickname})` )
 }).then(function () {
+	console.log("Running disableUserLogin");
 	return disableUserLogin(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserSessions");
 	return removeUserSessions(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserFromSearch");
 	return removeUserFromSearch(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserPosts");
 	return removeUserPosts(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserWall");
 	return removeUserWall(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserComments");
 	return removeUserComments(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserNotifications");
 	return removeUserNotifications(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserSettings");
 	return removeUserSettings(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserProfiles");
 	return removeUserProfiles(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserTrustManager");
 	return removeUserTrustManager(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserSignatureCache");
 	return removeUserSignatureCache(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserMessages");
 	return removeUserMessages(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserPushTokens");
 	return removeUserPushTokens(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserCircles");
 	return removeUserCircles(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserKeys");
 	return removeUserKeys(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserFriends");
 	return removeUserFriends(deleteUserID);
 }).then(function () {
+	console.log("Running removeUserMainData");
 	return removeUserMainData(deleteUserID);
 }).then(function () {
 	process.exit();
