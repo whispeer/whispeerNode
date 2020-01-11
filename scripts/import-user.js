@@ -6,6 +6,7 @@ Bluebird.longStackTraces();
 const setup = require("../includes/setup");
 const client = require("../includes/redisClient");
 const sequelize = require("../includes/dbConnector/sequelizeClient");
+const rebuildIndexes = require("./rebuild-indexes");
 
 const setupP = Bluebird.promisify(setup);
 
@@ -76,6 +77,8 @@ Bluebird.try(async () => {
     importPG(importUserID),
     importBlobs(importUserID),
   ])
+
+  await rebuildIndexes();
 }).then(function () {
   process.exit();
 });
