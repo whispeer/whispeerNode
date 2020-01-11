@@ -39,11 +39,25 @@ const requireConfirmation = Bluebird.promisify(function(message, action) {
 
 const redisExport = [];
 
+const clientBuffers = client.create({
+	return_buffers: true
+});
+
 const exportKeys = async (keys) => {
   const values = await Bluebird.resolve(keys).map(async (key) => {
-    const value = await client.dumpAsync(key);
-    return [key, value];
-  });
+		const value = await clientBuffers.dumpAsync(key);
+
+		if (!value) {
+			return;
+		}
+
+		const ttl = await client.pttlAsync(key);
+		if (ttl >= 0) {
+			console.log("ttl found", ttl, key);
+		}
+
+		return [key, value.toString("base64")];
+  }).filter((val) => typeof val !== "undefined");
 
   redisExport.push(...values);
 }

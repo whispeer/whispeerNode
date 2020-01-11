@@ -10,8 +10,8 @@ Bluebird.promisifyAll(random);
 var configManager = require("./configManager");
 var config = configManager.get();
 
-function create() {
-	return redis.createClient(config.db.port || 6379, config.db.url || "127.0.0.1", {});
+function create(options = {}) {
+	return redis.createClient(config.db.port || 6379, config.db.url || "127.0.0.1", options);
 }
 
 var client = create();
@@ -59,5 +59,6 @@ client.psub = function subF(channel, callback) {
 };
 
 client.pub = create();
+client.create = create;
 
 module.exports = client;
