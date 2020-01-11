@@ -82,6 +82,7 @@ const exportReferences = async (userID) => {
 const exportUser = async (userID) => Promise.all([
   exportKeys([
     `user:${userID}`,
+    `user:id:${userID}`,
     `mail:${userID}`,
   ]),
   exportPattern(`user:${userID}:*`),
