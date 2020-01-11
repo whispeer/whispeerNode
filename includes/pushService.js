@@ -1,17 +1,25 @@
 "use strict";
 
-var gcm = require("node-gcm");
-var apn = require("apn");
+const gcm = require("node-gcm");
+const apn = require("apn");
 
-var configManager = require("./configManager");
-var config = configManager.get();
+const configManager = require("./configManager");
+const config = configManager.get();
 
-var Bluebird = require("bluebird");
+const Bluebird = require("bluebird");
 
-var sender = new gcm.Sender(config.push.gcmAPIKey);
+if (!config.push) {
+	console.warn("No Push Service Configured");
 
-var apnConnection = new apn.Provider(config.push.apn);
-var apnConnectionSandbox = new apn.Provider(config.push.apnSandbox);
+	module.exports = {}
+
+	return;
+}
+
+const sender = new gcm.Sender(config.push.gcmAPIKey);
+
+const apnConnection = new apn.Provider(config.push.apn);
+const apnConnectionSandbox = new apn.Provider(config.push.apnSandbox);
 
 const getExpiry = (time) => {
 	return Math.floor(new Date().getTime() / 1000) + time

@@ -9,7 +9,7 @@ const Message = require("../includes/models/message")
 const Chunk = require("../includes/models/chatChunk")
 const Chat = require("../includes/models/chat")
 const UserUnreadMessages = require("../includes/models/unreadMessage")
-const pushTokenModel = require("../includes/models/pushTokenModel");
+const pushTokenModel = require("../includes/models/pushToken");
 
 const Receivers = Chunk.ReceiverModel;
 
