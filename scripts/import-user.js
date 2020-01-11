@@ -67,7 +67,7 @@ Bluebird.try(async () => {
   console.log(`Importing user ${importUserID}`);
 
   await Bluebird.all([
-    // importRedis(importUserID),
+    importRedis(importUserID),
     importPG(importUserID)
   ])
 }).then(function () {
