@@ -57,18 +57,19 @@ var s = {
 	register: function (data, fn, request) {
 		var res, myUser;
 		step(function () {
-			request.session.register(
-				data.mail,
-				data.nickname,
-				data.password,
-				data.keys,
-				data.settings,
-				data.signedKeys,
-				data.signedOwnKeys,
-				data.preID,
-				request,
-				this
-			);
+			throw new Error("Registration is currently blocked");
+			// request.session.register(
+			// 	data.mail,
+			// 	data.nickname,
+			// 	data.password,
+			// 	data.keys,
+			// 	data.settings,
+			// 	data.signedKeys,
+			// 	data.signedOwnKeys,
+			// 	data.preID,
+			// 	request,
+			// 	this
+			// );
 		}, h.sF(function (result) {
 			res = result;
 			if (result.error) {

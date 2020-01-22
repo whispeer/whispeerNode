@@ -25,6 +25,24 @@ const rebuildChatIndex = async () => {
     where: {}
   });
 
+  await Message.update({
+    latestInChunk: false,
+  }, {
+    where: {
+      latestInChunk: true,
+    }
+  });
+
+  await Message.update({
+    latest: false,
+  }, {
+    where: {
+      latest: true
+    }
+  });
+
+  console.log("starting");
+
   await Chunk.findAll().map(async (chunk) => {
     const message = await Message.findOne({
       where: {
@@ -41,6 +59,8 @@ const rebuildChatIndex = async () => {
     message.latestInChunk = true;
     await message.save();
   });
+
+  console.log("chunks done");
 
   await Chat.findAll().map(async (chat) => {
     const chunk = await Chunk.findOne({
@@ -67,6 +87,8 @@ const rebuildChatIndex = async () => {
       }
     })
   });
+
+  console.log("chats done");
 };
 
 const rebuildIndexes = async () => {
