@@ -1,3 +1,4 @@
+const fs = require("fs");
 const Bluebird = require("bluebird");
 const setup = require("../includes/setup");
 const client = require("../includes/redisClient");
@@ -8,7 +9,10 @@ const Chat = require("../includes/models/chat")
 const setupP = Bluebird.promisify(setup);
 
 const rebuildBlobIndex = async () => {
-  const blobIds = await client.keysAsync("blobs:*").map(key => key.split(":")[1]);
+  // const blobIds = await client.keysAsync("blobs:*").map(key => key.split(":")[1]);
+  const blobIds = fs.readdirSync("./files/")
+    .filter((f) => f.match(/\.png$/))
+    .map((f) => f.replace(/\.png$/, ""))
 
   await client.saddAsync("blobs:usedids", blobIds);
 }
