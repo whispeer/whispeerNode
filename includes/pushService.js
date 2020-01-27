@@ -19,7 +19,7 @@ if (!config.push) {
 const sender = new gcm.Sender(config.push.gcmAPIKey);
 
 const apnConnection = new apn.Provider(config.push.apn);
-const apnConnectionSandbox = new apn.Provider(config.push.apnSandbox);
+// const apnConnectionSandbox = new apn.Provider(config.push.apnSandbox);
 
 const getExpiry = (time) => {
 	return Math.floor(new Date().getTime() / 1000) + time
@@ -42,7 +42,7 @@ const sendPush = (connection, notification, token) => {
 
 const pushIOSProductionOrSandbox = (notification, token, sandbox) => {
 	if (sandbox) {
-		sendPush(apnConnectionSandbox, notification, token)
+		// sendPush(apnConnectionSandbox, notification, token)
 		return
 	}
 
