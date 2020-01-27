@@ -49,8 +49,7 @@
 		"wsPort": 3000,
 		"serverUrl": "https://data.whispeer.de",
 		"db": {
-			"number": 0,
-			"url": "10.0.0.5"
+			"number": 0
 		},
 		"push": {
 			"apn": {
