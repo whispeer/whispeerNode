@@ -17,7 +17,7 @@
     "nodemailer": "0.7.x",
     "pg": "^6.1.0",
     "pg-hstore": "^2.3.2",
-    "redis": "2.x.x",
+    "redis": "3.x.x",
     "redlock": "^2.0.0",
     "request": "^2.88.0",
     "secure_random": "0.1.x",
