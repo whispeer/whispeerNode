@@ -14,7 +14,7 @@
     "express": "^4.8.0",
     "lodash": "^4.17.15",
     "node-gcm": "^1.0.2",
-    "nodemailer": "0.7.x",
+    "nodemailer": "6.4.x",
     "pg": "^6.1.0",
     "pg-hstore": "^2.3.2",
     "redis": "2.x.x",
