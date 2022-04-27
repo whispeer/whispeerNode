@@ -37,7 +37,7 @@
   "devDependencies": {
     "babel-eslint": "^10.0.3",
     "eslint": "^6.8.0",
-    "grunt": "^1.0.4",
+    "grunt": "^1.5.2",
     "selenium-webdriver": "^3.6.0"
   }
 }
