@@ -53,7 +53,7 @@ const pushToken = sequelize.define("pushToken", {
 
 }, {});
 
-pushToken.prototype.pushNotification = (title, reference) => {
+pushToken.prototype.pushNotification = function (title, reference) {
 	if (!title) {
 		return Bluebird.reject("No title");
 	}
@@ -90,7 +90,7 @@ pushToken.prototype.pushNotification = (title, reference) => {
 	return Bluebird.reject("push: invalid type");
 };
 
-pushToken.prototype.pushBadge = (badge) => {
+pushToken.prototype.pushBadge = function (badge) {
 	if (this.deviceType === "ios") {
 		console.log(`Push badge ${badge} to ${this.token}`)
 		return pushService.pushIOSBadge(this.token, badge, this.sandbox);
@@ -107,7 +107,7 @@ pushToken.prototype.pushBadge = (badge) => {
 	return Bluebird.reject("push: invalid type");
 };
 
-pushToken.prototype.pushData =(data) => {
+pushToken.prototype.pushData = function (data) {
 	if (!data) {
 		return Bluebird.reject("No data");
 	}

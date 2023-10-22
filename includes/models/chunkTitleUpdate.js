@@ -55,18 +55,18 @@ const chunkTitleUpdate = sequelize.define("ChunkTitleUpdate", {
 });
 
 chunkTitleUpdate.prototype.getMetaExtra = getObject(metaExtraKeys),
-chunkTitleUpdate.prototype.getMeta = () => {
+chunkTitleUpdate.prototype.getMeta = function () {
 	return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
 };
 
-chunkTitleUpdate.prototype.getContent = () => {
+chunkTitleUpdate.prototype.getContent = function () {
 	return {
 		ct: this.getDataValue("ct"),
 		iv: this.getDataValue("iv"),
 	}
 };
 
-chunkTitleUpdate.prototype.getAPIFormatted = () => {
+chunkTitleUpdate.prototype.getAPIFormatted = function () {
 	return {
 		server: {
 			id: this.id,

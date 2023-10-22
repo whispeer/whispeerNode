@@ -23,7 +23,7 @@ const Company = sequelize.define("Company", {
 	trial: required(boolean()),
 }, {})
 
-Company.prototype.hasAccess = (uID) => {
+Company.prototype.hasAccess = function (uID) {
 	if (!this.companyUser) {
 		throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
 	}
@@ -31,7 +31,7 @@ Company.prototype.hasAccess = (uID) => {
 	return !!this.companyUser.find(({ userID }) => uID === userID)
 };
 
-Company.prototype.validateAccess = (uID) => {
+Company.prototype.validateAccess = function (uID) {
 	if (!this.hasAccess(uID)) {
 		throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
 	}
