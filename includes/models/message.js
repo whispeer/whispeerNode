@@ -69,59 +69,6 @@ const Message = sequelize.define("Message", {
 
 	meta: required(json()),
 }, {
-	classMethods: {
-		loadPreviousMessage: function (messages) {
-			return sequelize.query(getPreviousMessagesSelector(messages), {
-				type: sequelize.QueryTypes.SELECT,
-				replacements: messages.map((m) => m.messageUUID),
-			}).then((entries) =>
-				messages.forEach((message) => {
-					const entry = entries.find(({ currentUUID }) => currentUUID === message.messageUUID)
-					message.previousMessage = entry ? entry.previousUUID : null
-				})
-			)
-		}
-	},
-	instanceMethods: {
-		loadPreviousMessage: function () {
-			return Message.loadPreviousMessage([this])
-		},
-		getMetaExtra: getObject(metaExtraKeys),
-		getMeta: function () {
-			return Object.assign({}, this.getDataValue("meta"), this.getMetaExtra())
-		},
-		getContent: getObject(contentKeys),
-		getAPIFormatted: function (chatID) {
-			if (typeof this.previousMessage === "undefined") {
-				// eslint-disable-next-line no-console
-				console.error("called get api formatted of message without loading previous message")
-			}
-
-			return {
-				server: {
-					id: this.id,
-					chunkID: this.ChunkId,
-					chatID,
-					sendTime: this.getDataValue("sendTime"),
-					sender: this.getDataValue("sender"),
-					uuid: this.getDataValue("messageUUID"),
-					previousMessage: this.previousMessage,
-				},
-				content: this.getContent(),
-				meta: this.getMeta()
-			};
-		},
-		hasAccess: function (request) {
-			return this.getChunk().then((chunk) => chunk.hasAccess(request))
-		},
-		validateAccess: function (request) {
-			return this.hasAccess(request).then((access) => {
-				if (!access) {
-					throw new AccessViolation(`No access to message ${this.id}`)
-				}
-			})
-		},
-	},
 	setterMethods: {
 		meta: function (value) {
 			metaExtraKeys.forEach((key) => {
@@ -135,5 +82,57 @@ const Message = sequelize.define("Message", {
 		content: setObject(contentKeys)
 	}
 });
+
+Message.loadPreviousMessage = function (messages) {
+	return sequelize.query(getPreviousMessagesSelector(messages), {
+		type: sequelize.QueryTypes.SELECT,
+		replacements: messages.map((m) => m.messageUUID),
+	}).then((entries) =>
+		messages.forEach((message) => {
+			const entry = entries.find(({ currentUUID }) => currentUUID === message.messageUUID)
+			message.previousMessage = entry ? entry.previousUUID : null
+		})
+	)
+};
+
+Message.prototype.loadPreviousMessage = function () {
+	return Message.loadPreviousMessage([this])
+};
+
+Message.prototype.getMetaExtra = getObject(metaExtraKeys);
+Message.prototype.getMeta = function () {
+	return Object.assign({}, this.getDataValue("meta"), this.getMetaExtra())
+};
+Message.prototype.getContent = getObject(contentKeys),
+	getAPIFormatted: function (chatID) {
+		if (typeof this.previousMessage === "undefined") {
+			// eslint-disable-next-line no-console
+			console.error("called get api formatted of message without loading previous message")
+		}
+
+		return {
+			server: {
+				id: this.id,
+				chunkID: this.ChunkId,
+				chatID,
+				sendTime: this.getDataValue("sendTime"),
+				sender: this.getDataValue("sender"),
+				uuid: this.getDataValue("messageUUID"),
+				previousMessage: this.previousMessage,
+			},
+			content: this.getContent(),
+			meta: this.getMeta()
+		};
+	};
+Message.prototype.hasAccess = function (request) {
+	return this.getChunk().then((chunk) => chunk.hasAccess(request))
+};
+Message.prototype.validateAccess = function (request) {
+	return this.hasAccess(request).then((access) => {
+		if (!access) {
+			throw new AccessViolation(`No access to message ${this.id}`)
+		}
+	})
+};
 
 module.exports = Message;

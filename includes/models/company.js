@@ -21,22 +21,21 @@ const Company = sequelize.define("Company", {
 	name: required(text()),
 	licenses: required(integer()),
 	trial: required(boolean()),
-}, {
-	instanceMethods: {
-		hasAccess: function (uID) {
-			if (!this.companyUser) {
-				throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
-			}
+}, {})
 
-			return !!this.companyUser.find(({ userID }) => uID === userID)
-		},
-		validateAccess: function (uID) {
-			if (!this.hasAccess(uID)) {
-				throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
-			}
-		},
+Company.prototype.hasAccess = (uID) => {
+	if (!this.companyUser) {
+		throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
 	}
-})
+
+	return !!this.companyUser.find(({ userID }) => uID === userID)
+};
+
+Company.prototype.validateAccess = (uID) => {
+	if (!this.hasAccess(uID)) {
+		throw new AccessViolation(`No access to company ${this.id} for ${uID}`)
+	}
+};
 
 hasMany(Company, CompanyUser)
 

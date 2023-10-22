@@ -42,28 +42,6 @@ const chunkTitleUpdate = sequelize.define("ChunkTitleUpdate", {
 
 	latest: defaultValue(boolean(), true),
 }, {
-	instanceMethods: {
-		getMetaExtra: getObject(metaExtraKeys),
-		getMeta: function () {
-			return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
-		},
-		getContent: function () {
-			return {
-				ct: this.getDataValue("ct"),
-				iv: this.getDataValue("iv"),
-			}
-		},
-		getAPIFormatted: function () {
-			return {
-				server: {
-					id: this.id,
-					chunkID: this.ChunkId,
-				},
-				content: this.getContent(),
-				meta: this.getMeta()
-			};
-		}
-	},
 	setterMethods: {
 		meta: function (value) {
 			metaExtraKeys.forEach((key) => {
@@ -75,5 +53,28 @@ const chunkTitleUpdate = sequelize.define("ChunkTitleUpdate", {
 		content: setObject(contentKeys, "invalid content keys")
 	}
 });
+
+chunkTitleUpdate.prototype.getMetaExtra = getObject(metaExtraKeys),
+chunkTitleUpdate.prototype.getMeta = () => {
+	return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
+};
+
+chunkTitleUpdate.prototype.getContent = () => {
+	return {
+		ct: this.getDataValue("ct"),
+		iv: this.getDataValue("iv"),
+	}
+};
+
+chunkTitleUpdate.prototype.getAPIFormatted = () => {
+	return {
+		server: {
+			id: this.id,
+			chunkID: this.ChunkId,
+		},
+		content: this.getContent(),
+		meta: this.getMeta()
+	};
+};
 
 module.exports = chunkTitleUpdate;

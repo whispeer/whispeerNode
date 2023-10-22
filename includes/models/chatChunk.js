@@ -54,70 +54,6 @@ const Chunk = sequelize.define("Chunk", {
 
 	latest: defaultValue(boolean(), true),
 }, {
-	instanceMethods: {
-		getMetaExtra: getObject(metaExtraKeys),
-		getMeta: function () {
-			return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
-		},
-		getLatestChunkTitleUpdate: function () {
-			if (!this.chunkTitleUpdate || !this.latest) {
-				return
-			}
-
-			const latest = this.chunkTitleUpdate.find((c) => c.latest)
-
-			if (!latest) {
-				return
-			}
-
-			return latest.getAPIFormatted()
-		},
-		getAPIFormatted: function () {
-			const latestTitleUpdate = this.getLatestChunkTitleUpdate()
-
-			const contentInfo = this.hasContent() ? { content: this.getContent() } : {}
-			const latestTitleInfo = latestTitleUpdate ? { latestTitleUpdate } : {}
-
-			return Object.assign({
-				server: {
-					id: this.id,
-					chatID: this.ChatId,
-					predecessorID: this.predecessorId
-				},
-				meta: this.getMeta(),
-			}, contentInfo, latestTitleInfo)
-		},
-		hasAccess: function (request) {
-			const receiverPromise = this.receiver || this.getReceiver()
-
-			return Bluebird.resolve(receiverPromise).then((receiver) =>
-				receiver.some((receiver) => request.session.isMyID(receiver.userID))
-			)
-		},
-		validateAccess: function (request) {
-			return this.hasAccess(request).then((access) => {
-				if (!access) {
-					throw new AccessViolation(`No access to chunk ${this.id}`)
-				}
-			})
-		},
-		isAdmin: function (userID) {
-			if (this.meta.admins) {
-				return this.meta.admins.indexOf(userID) !== -1
-			}
-
-			return h.parseDecimal(this.getDataValue("meta").creator) === h.parseDecimal(userID)
-		},
-		hasContent: function () {
-			return Boolean(this.getDataValue("ct")) && Boolean(this.getDataValue("iv"))
-		},
-		getContent: function () {
-			return {
-				ct: this.getDataValue("ct"),
-				iv: this.getDataValue("iv"),
-			}
-		}
-	},
 	setterMethods: {
 		meta: function (value) {
 			metaExtraKeys.forEach((key) => {
@@ -134,6 +70,77 @@ const Chunk = sequelize.define("Chunk", {
 		}
 	}
 }, { indexes: [ { fields: "latest" } ] })
+
+Chunk.prototype.getMetaExtra = getObject(metaExtraKeys);
+
+Chunk.prototype.getMeta = function () {
+	return Object.assign({}, this.getMetaExtra(), this.getDataValue("meta"))
+};
+
+Chunk.prototype.getLatestChunkTitleUpdate = function () {
+	if (!this.chunkTitleUpdate || !this.latest) {
+		return
+	}
+
+	const latest = this.chunkTitleUpdate.find((c) => c.latest)
+
+	if (!latest) {
+		return
+	}
+
+	return latest.getAPIFormatted()
+};
+
+Chunk.prototype.getAPIFormatted = function () {
+	const latestTitleUpdate = this.getLatestChunkTitleUpdate()
+
+	const contentInfo = this.hasContent() ? { content: this.getContent() } : {}
+	const latestTitleInfo = latestTitleUpdate ? { latestTitleUpdate } : {}
+
+	return Object.assign({
+		server: {
+			id: this.id,
+			chatID: this.ChatId,
+			predecessorID: this.predecessorId
+		},
+		meta: this.getMeta(),
+	}, contentInfo, latestTitleInfo)
+};
+
+Chunk.prototype.hasAccess = function (request) {
+	const receiverPromise = this.receiver || this.getReceiver()
+
+	return Bluebird.resolve(receiverPromise).then((receiver) =>
+		receiver.some((receiver) => request.session.isMyID(receiver.userID))
+	)
+};
+
+Chunk.prototype.validateAccess = function (request) {
+	return this.hasAccess(request).then((access) => {
+		if (!access) {
+			throw new AccessViolation(`No access to chunk ${this.id}`)
+		}
+	})
+};
+
+Chunk.prototype.isAdmin = function (userID) {
+	if (this.meta.admins) {
+		return this.meta.admins.indexOf(userID) !== -1
+	}
+
+	return h.parseDecimal(this.getDataValue("meta").creator) === h.parseDecimal(userID)
+};
+
+Chunk.prototype.hasContent = function () {
+	return Boolean(this.getDataValue("ct")) && Boolean(this.getDataValue("iv"))
+};
+
+Chunk.prototype.getContent = function () {
+	return {
+		ct: this.getDataValue("ct"),
+		iv: this.getDataValue("iv"),
+	}
+};
 
 Chunk.sequelizeCreate = Chunk.create
 
