@@ -199,7 +199,7 @@ const getChats = (chatIDs, request) => {
 		}],
 		order: [
 			[
-				Sequelize.col("chunk.message.sendTime"),
+				Sequelize.col("chunk->message.sendTime"),
 				"DESC"
 			]
 		]
