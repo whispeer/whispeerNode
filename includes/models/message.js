@@ -103,27 +103,27 @@ Message.prototype.getMetaExtra = getObject(metaExtraKeys);
 Message.prototype.getMeta = function () {
 	return Object.assign({}, this.getDataValue("meta"), this.getMetaExtra())
 };
-Message.prototype.getContent = getObject(contentKeys),
-	getAPIFormatted: function (chatID) {
-		if (typeof this.previousMessage === "undefined") {
-			// eslint-disable-next-line no-console
-			console.error("called get api formatted of message without loading previous message")
-		}
+Message.prototype.getContent = getObject(contentKeys);
+Message.prototype.getAPIFormatted = function (chatID) {
+	if (typeof this.previousMessage === "undefined") {
+		// eslint-disable-next-line no-console
+		console.error("called get api formatted of message without loading previous message")
+	}
 
-		return {
-			server: {
-				id: this.id,
-				chunkID: this.ChunkId,
-				chatID,
-				sendTime: this.getDataValue("sendTime"),
-				sender: this.getDataValue("sender"),
-				uuid: this.getDataValue("messageUUID"),
-				previousMessage: this.previousMessage,
-			},
-			content: this.getContent(),
-			meta: this.getMeta()
-		};
+	return {
+		server: {
+			id: this.id,
+			chunkID: this.ChunkId,
+			chatID,
+			sendTime: this.getDataValue("sendTime"),
+			sender: this.getDataValue("sender"),
+			uuid: this.getDataValue("messageUUID"),
+			previousMessage: this.previousMessage,
+		},
+		content: this.getContent(),
+		meta: this.getMeta()
 	};
+};
 Message.prototype.hasAccess = function (request) {
 	return this.getChunk().then((chunk) => chunk.hasAccess(request))
 };
