@@ -10,7 +10,7 @@ const sequelize = require("./dbConnector/sequelizeClient");
 
 module.exports = function (cb) {
 	return Bluebird.all([
-		sequelize.sync(),
+		// sequelize.sync(),
 		client.selectAsync(config.db.number || 0)
 	]).nodeify(cb);
 };
